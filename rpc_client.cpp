@@ -2,11 +2,13 @@
 
 rpc_client::rpc_client()
 {
-
 }
 
 void rpc_client::init()
 {
+    na_manager = new QNetworkAccessManager;
+    QObject::connect(na_manager,SIGNAL(finished(QNetworkReply*)), this, SLOT(replyFinished(QNetworkReply*)));
+
     QString concatenated = "vmark:8kfkfvq9"; //username:password
     QByteArray data = concatenated.toLocal8Bit().toBase64();
     QString headerData = "Basic " + data;
@@ -14,17 +16,31 @@ void rpc_client::init()
     // make request
     QNetworkRequest request = QNetworkRequest(QUrl("http://nas2.mvgrafx.net:9091/transmission/rpc"));
     request.setRawHeader("Authorization", headerData.toLocal8Bit());
-    QNetworkReply* reply = m_manager.get(request);
+    //QNetworkReply* reply =
+    na_manager->get(request);
     // connect to signal  when its done using lambda)
-    QObject::connect(reply, &QNetworkReply::finished, [reply,this]() {
+
+    //QObject::connect(na_manager,&QNetworkAccessManager::finished(QNetworkReply * reply), this, &rpc_client::replyFinished(QNetworkReply * reply))
+    //connect(reply, &QNetworkReply::finished, [reply,this]() {
         // read data
         //QString ReplyText = reply->readAll();
+    /*
         QByteArray _token = reply->rawHeader("X-Transmission-Session-Id");
         //qDebug() << "debug: " << _token;
         rpc_client::setSessionToken(_token);
         reply->deleteLater(); // make sure to clean up
         getTorrentList();
-    });
+*/
+    //});
+}
+
+void rpc_client::replyFinished(QNetworkReply * reply)
+{
+    QByteArray _token = reply->rawHeader("X-Transmission-Session-Id");
+    //qDebug() << "debug: " << _token;
+    rpc_client::setSessionToken(_token);
+    //reply->deleteLater(); // make sure to clean up
+    //getTorrentList();
 }
 
 bool rpc_client::isClientReady()
@@ -48,7 +64,7 @@ void rpc_client::getTorrentList()
     qDebug() << _session_token;
 
     QByteArray data("{\"method\":\"torrent-get\",\"arguments\": {\"fields\":[\"rateDownload\",\"rateUpload\",\"id\",\"percentDone\",\"status\",\"name\"]}}");
-    QNetworkReply *reply = m_manager.post(request, data);
+    QNetworkReply *reply = na_manager->post(request, data);
 
     QObject::connect(reply, &QNetworkReply::finished, [=](){
         if(reply->error() == QNetworkReply::NoError){

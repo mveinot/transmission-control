@@ -10,8 +10,10 @@
 #include <QJsonArray>
 #include <QUrl>
 
-class rpc_client
+class rpc_client: public QObject
 {
+    Q_OBJECT
+
 public:
     rpc_client();
     void init();
@@ -20,9 +22,11 @@ public:
 private:
     bool _clientReady = false;
     QByteArray _session_token;
-    QNetworkAccessManager m_manager;
+    QNetworkAccessManager *na_manager;
     void setSessionToken(QByteArray token);
     QJsonArray torrentList;
+public slots:
+    void replyFinished(QNetworkReply *reply);
 };
 
 #endif // RPC_CLIENT_H

@@ -17,20 +17,10 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_torrentListing_clicked(const QModelIndex &index)
 {
-    qDebug() << "click!";
-    qDebug() <<
-    QListWidgetItem *newItem = new QListWidgetItem;
-    newItem->setText("testing");
-    ui->torrentListing->insertItem(0,newItem);
 }
 
 
 void MainWindow::on_torrentListing_viewportEntered()
 {
-    qDebug() << "click!";
-
-    QListWidgetItem *newItem = new QListWidgetItem;
-    newItem->setText("testing");
-    ui->torrentListing->insertItem(0,newItem);
 }
 
