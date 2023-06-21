@@ -29,6 +29,9 @@
     <property name="columnCount">
      <number>6</number>
     </property>
+    <attribute name="verticalHeaderVisible">
+     <bool>false</bool>
+    </attribute>
     <column/>
     <column/>
     <column/>

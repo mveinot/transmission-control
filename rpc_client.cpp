@@ -27,8 +27,8 @@ QString rpc_client::authString()
 void rpc_client::replyFinished(QNetworkReply * reply)
 {
     //if(reply->error() == QNetworkReply::NoError){
-        qDebug() << "Network reply OK";
-    qDebug() << reply->error();
+        //qDebug() << "Network reply OK";
+        //qDebug() << reply->error();
         if (_session_token.isEmpty())
         {
             QByteArray _token = reply->rawHeader("X-Transmission-Session-Id");
@@ -39,7 +39,7 @@ void rpc_client::replyFinished(QNetworkReply * reply)
             QJsonValue dObj = doc["arguments"];
             QJsonValue torrentsObj = dObj["torrents"];
             rpc_client::torrentList = torrentsObj.toArray();
-            qDebug() << rpc_client::torrentList;
+            //qDebug() << rpc_client::torrentList;
         }
         /*} else {
         QString err = reply->errorString();
@@ -77,7 +77,7 @@ void rpc_client::getTorrentList()
     QNetworkRequest request = QNetworkRequest(QUrl("http://nas2.mvgrafx.net:9091/transmission/rpc"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setRawHeader(QByteArray("X-Transmission-Session-Id"), QByteArray(rpc_client::_session_token));
-    qDebug() << _session_token;
+    //qDebug() << _session_token;
 
     QByteArray data("{\"method\":\"torrent-get\",\"arguments\": {\"fields\":[\"rateDownload\",\"rateUpload\",\"id\",\"percentDone\",\"status\",\"name\"]}}");
     na_manager->post(request, data);
