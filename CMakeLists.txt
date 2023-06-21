@@ -9,8 +9,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Network)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Network)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Network Core)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Network Core)
 
 set(TS_FILES transmission-control_en_CA.ts)
 
@@ -21,6 +21,8 @@ set(PROJECT_SOURCES
         mainwindow.ui
         rpc_client.h
         rpc_client.cpp
+        torrent.h
+        torrent.cpp
         ${TS_FILES}
 )
 

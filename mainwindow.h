@@ -17,6 +17,7 @@ public:
 
 private slots:
     void updateTorrentList();
+    void drawTorrentList();
 
 private:
     Ui::MainWindow *ui;

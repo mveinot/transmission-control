@@ -9,6 +9,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QUrl>
+#include "torrent.h"
 
 class rpc_client: public QObject
 {
@@ -22,6 +23,11 @@ public:
     bool isClientReady();
     int countTorrents();
     QString authString();
+    torrent getTorrent(int item);
+
+signals:
+    void listUpdated();
+
 private:
     QString username = "vmark";
     QString password = "8kfkfvq9";
@@ -30,6 +36,8 @@ private:
     QNetworkAccessManager *na_manager;
     void setSessionToken(QByteArray token);
     QJsonArray torrentList;
+    QVector<torrent> torrentVector;
+    QUrl transmission = QUrl("http://nas2.mvgrafx.net:9091/transmission/rpc");
 public slots:
     void replyFinished(QNetworkReply *reply);
 };
