@@ -16,11 +16,10 @@ public:
     ~MainWindow();
 
 private slots:
-    void on_torrentListing_clicked(const QModelIndex &index);
-
-    void on_torrentListing_viewportEntered();
+    void updateTorrentList();
 
 private:
     Ui::MainWindow *ui;
+    QTimer *timer;
 };
 #endif // MAINWINDOW_H

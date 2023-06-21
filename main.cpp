@@ -1,5 +1,4 @@
 #include "mainwindow.h"
-#include "rpc_client.h"
 
 #include <QApplication>
 #include <QLocale>
@@ -21,8 +20,7 @@ int main(int argc, char *argv[])
     MainWindow w;
     w.show();
 
-    rpc_client client;
-    client.init();
+
 
     return a.exec();
 }

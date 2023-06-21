@@ -18,8 +18,13 @@ public:
     rpc_client();
     void init();
     void getTorrentList();
+    QJsonArray torrents();
     bool isClientReady();
+    int countTorrents();
+    QString authString();
 private:
+    QString username = "vmark";
+    QString password = "8kfkfvq9";
     bool _clientReady = false;
     QByteArray _session_token;
     QNetworkAccessManager *na_manager;
