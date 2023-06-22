@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(transmission-control VERSION 0.1 LANGUAGES CXX)
+project(Planetary VERSION 0.1 LANGUAGES CXX)
+
+add_custom_target(gen_version ALL
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/make_version.pl
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Generating version.h"
+)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -23,6 +29,10 @@ set(PROJECT_SOURCES
         rpc_client.cpp
         torrent.h
         torrent.cpp
+        dialogabout.cpp
+        dialogabout.h
+        dialogabout.ui
+        version.h
         ${TS_FILES}
 )
 
@@ -37,7 +47,7 @@ set_source_files_properties(${app_icon_macos} PROPERTIES
     MACOSX_PACKAGE_LOCATION "Resources")
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(transmission-control
+    qt_add_executable(Planetary
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
         Resources/resources.qrc
@@ -51,13 +61,13 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 else()
     if(ANDROID)
-        add_library(transmission-control SHARED
+        add_library(Planetary SHARED
             ${PROJECT_SOURCES}
         )
 # Define properties for Android with Qt 5 after find_package() calls as:
 #    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
     else()
-        add_executable(transmission-control
+        add_executable(Planetary
             ${PROJECT_SOURCES}
         )
     endif()
@@ -65,22 +75,22 @@ else()
     qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 endif()
 
-target_link_libraries(transmission-control PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt6::Network)
+target_link_libraries(Planetary PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt6::Network)
 
-set_target_properties(transmission-control PROPERTIES
-    MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
+set_target_properties(Planetary PROPERTIES
+    MACOSX_BUNDLE_GUI_IDENTIFIER planetary.mvgrafx.net
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )
 
-install(TARGETS transmission-control
+install(TARGETS Planetary
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 if(QT_VERSION_MAJOR EQUAL 6)
-    qt_finalize_executable(transmission-control)
+    qt_finalize_executable(Planetary)
 endif()
