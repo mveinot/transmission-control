@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QJsonObject>
+#include <QJsonValue>
 #include <QLocale>
 
 class torrent
@@ -17,6 +18,7 @@ public:
     QString getRateUpload();
     QString getUploadRatio();
     QString getEta();
+    int getId();
 
 private:
     int id;
@@ -25,6 +27,8 @@ private:
     double rateDownload;
     double rateUpload;
     double uploadRatio;
+    QJsonValue files;
+    QJsonValue peers;
     int status;
     int eta;
 
