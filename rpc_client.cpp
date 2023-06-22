@@ -105,8 +105,7 @@ void rpc_client::getTorrentList()
     QNetworkRequest request = QNetworkRequest(transmissionURL());
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setRawHeader(QByteArray("X-Transmission-Session-Id"), QByteArray(rpc_client::_session_token));
-    //qDebug() << _session_token;
 
-    QByteArray data("{\"method\":\"torrent-get\",\"arguments\": {\"fields\":[\"rateDownload\",\"rateUpload\",\"id\",\"percentDone\",\"status\",\"name\",\"uploadRatio\",\"eta\"]}}");
+    QByteArray data("{\"method\":\"torrent-get\",\"arguments\": {\"fields\":[\"rateDownload\",\"rateUpload\",\"id\",\"percentDone\",\"status\",\"name\",\"uploadRatio\",\"eta\",\"files\",\"peers\"]}}");
     na_manager->post(request, data);
 }
