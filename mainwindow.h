@@ -2,6 +2,8 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QMenu>
+#include <QAction>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -14,6 +16,7 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    void showAbout();
 
 private slots:
     void updateTorrentList();
@@ -22,5 +25,8 @@ private slots:
 private:
     Ui::MainWindow *ui;
     QTimer *timer;
+    QMenu *mainMenu;
+    QAction *aboutAction;
+    QMenuBar *mainMenuBar;
 };
 #endif // MAINWINDOW_H

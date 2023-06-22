@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "rpc_client.h"
+#include "dialogabout.h"
 #include <QTimer>
 #include <QProgressBar>
 
@@ -10,10 +11,24 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
+    this->aboutAction = new QAction(0);
+    this->aboutAction->setMenuRole(QAction::AboutRole);
+
     ui->setupUi(this);
+
+    MainWindow::setWindowTitle(QCoreApplication::applicationName());
+
+    this->mainMenu = new QMenu(0);
+    this->menuBar()->addMenu(this->mainMenu);
+    this->mainMenu->addAction(this->aboutAction);
+    this->setMenuBar(this->menuBar());
+
     timer = new QTimer(this);
+
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTorrentList);
     connect(&client, &rpc_client::listUpdated, this, &MainWindow::drawTorrentList);
+    connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
+
     timer->start(5000);
     client.init();
     QStringList tableHeaders;
@@ -22,6 +37,9 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tableWidget->setColumnWidth(0, 450);
     ui->tableWidget->setColumnWidth(1,100);
     ui->tableWidget->setColumnWidth(2, 100);
+    QHeaderView *verticalHeader = ui->tableWidget->verticalHeader();
+    verticalHeader->setSectionResizeMode(QHeaderView::Fixed);
+    verticalHeader->setDefaultSectionSize(16);
 }
 
 MainWindow::~MainWindow()
@@ -53,4 +71,10 @@ void MainWindow::drawTorrentList()
         ui->tableWidget->setItem(i, 6, new QTableWidgetItem(client.getTorrent(i).getEta()));
         ui->tableWidget->resizeColumnToContents(0);
     }
+}
+
+void MainWindow::showAbout()
+{
+    DialogAbout *about = new DialogAbout(this);
+    about->show();
 }
