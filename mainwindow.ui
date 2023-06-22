@@ -72,14 +72,27 @@
         <height>300</height>
        </size>
       </property>
-      <widget class="QWidget" name="tab">
+      <property name="currentIndex">
+       <number>3</number>
+      </property>
+      <widget class="QWidget" name="generalInfo">
        <attribute name="title">
-        <string>Tab 1</string>
+        <string>General</string>
        </attribute>
       </widget>
-      <widget class="QWidget" name="tab_2">
+      <widget class="QWidget" name="fileList">
        <attribute name="title">
-        <string>Tab 2</string>
+        <string>Files</string>
+       </attribute>
+      </widget>
+      <widget class="QWidget" name="trackers">
+       <attribute name="title">
+        <string>Trackers</string>
+       </attribute>
+      </widget>
+      <widget class="QWidget" name="peers">
+       <attribute name="title">
+        <string>Peers</string>
        </attribute>
       </widget>
      </widget>
@@ -104,6 +117,18 @@
    <addaction name="menuFile"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="action_Open_Torrent"/>
+  </widget>
   <action name="action_Open_Torrent">
    <property name="text">
     <string>&amp;Open Torrent...</string>
