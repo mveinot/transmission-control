@@ -62,16 +62,23 @@
      </widget>
     </item>
     <item>
-     <widget class="QGroupBox" name="torrentInfo">
-      <property name="minimumSize">
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="maximumSize">
        <size>
-        <width>0</width>
-        <height>200</height>
+        <width>16777215</width>
+        <height>300</height>
        </size>
       </property>
-      <property name="title">
-       <string>Torrent Info</string>
-      </property>
+      <widget class="QWidget" name="tab">
+       <attribute name="title">
+        <string>Tab 1</string>
+       </attribute>
+      </widget>
+      <widget class="QWidget" name="tab_2">
+       <attribute name="title">
+        <string>Tab 2</string>
+       </attribute>
+      </widget>
      </widget>
     </item>
    </layout>

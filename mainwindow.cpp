@@ -11,7 +11,6 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTorrentList);
     connect(&client, &rpc_client::listUpdated, this, &MainWindow::drawTorrentList);
