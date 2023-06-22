@@ -22,6 +22,8 @@ private slots:
     void updateTorrentList();
     void drawTorrentList();
 
+    void on_tableWidget_cellClicked(int row, int column);
+
 private:
     Ui::MainWindow *ui;
     QTimer *timer;

@@ -78,3 +78,9 @@ void MainWindow::showAbout()
     DialogAbout *about = new DialogAbout(this);
     about->show();
 }
+
+void MainWindow::on_tableWidget_cellClicked(int row, int column)
+{
+    qDebug() << client.getTorrent(row).getName();
+}
+
