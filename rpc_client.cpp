@@ -11,7 +11,7 @@ void rpc_client::init()
     QObject::connect(na_manager,&QNetworkAccessManager::finished, this, &rpc_client::replyFinished);
 
     // make request
-    QNetworkRequest request = QNetworkRequest(transmission);
+    QNetworkRequest request = QNetworkRequest(transmissionURL());
     request.setRawHeader("Authorization", rpc_client::authString().toLocal8Bit());
     na_manager->get(request);
 }
@@ -85,9 +85,24 @@ QJsonArray rpc_client::torrents()
     return rpc_client::torrentList;
 }
 
+QUrl rpc_client::transmissionURL()
+{
+    QString URL;
+    if (useSSL)
+    {
+        URL += "https://";
+    } else {
+        URL += "http://";
+    }
+
+    URL += server + ":" + QString::number(port) + serverPath;
+
+    return QUrl(URL);
+}
+
 void rpc_client::getTorrentList()
 {
-    QNetworkRequest request = QNetworkRequest(transmission);
+    QNetworkRequest request = QNetworkRequest(transmissionURL());
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setRawHeader(QByteArray("X-Transmission-Session-Id"), QByteArray(rpc_client::_session_token));
     //qDebug() << _session_token;

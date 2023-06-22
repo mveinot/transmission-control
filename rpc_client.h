@@ -37,7 +37,11 @@ private:
     void setSessionToken(QByteArray token);
     QJsonArray torrentList;
     QVector<torrent> torrentVector;
-    QUrl transmission = QUrl("http://nas2.mvgrafx.net:9091/transmission/rpc");
+    bool useSSL = false;
+    QString server = "nas2.mvgrafx.net";
+    int port = 9091;
+    QString serverPath = "/transmission/rpc";
+    QUrl transmissionURL();// = QUrl("http://nas2.mvgrafx.net:9091/transmission/rpc");
 public slots:
     void replyFinished(QNetworkReply *reply);
 };
