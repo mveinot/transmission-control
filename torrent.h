@@ -10,27 +10,27 @@ class torrent
 {
 
 public:
-    explicit torrent(QJsonValue val, QObject *parent = nullptr);
-    QString getName();
-    double getPercentDone();
-    QString getStatus();
-    QString getRateDownload();
-    QString getRateUpload();
-    QString getUploadRatio();
-    QString getEta();
-    int getId();
+    explicit torrent(QJsonValue val /*, QObject *parent = nullptr*/);
+    QString getName() const;
+    double getPercentDone() const;
+    QString getStatus() const;
+    QString getRateDownload() const;
+    QString getRateUpload() const;
+    QString getUploadRatio() const;
+    QString getEta() const;
+    int getId() const;
 
 private:
-    int id;
+    int id = 0;
     QString name;
-    double percentDone;
-    double rateDownload;
-    double rateUpload;
-    double uploadRatio;
+    double percentDone = 0.0;
+    double rateDownload = 0.0;
+    double rateUpload = 0.0;
+    double uploadRatio =0.0;
     QJsonValue files;
     QJsonValue peers;
-    int status;
-    int eta;
+    int status = 0;
+    int eta = 0;
 
 signals:
 
