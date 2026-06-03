@@ -52,6 +52,10 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         ${PROJECT_SOURCES}
         Resources/resources.qrc
         ${app_icon_macos}
+        appsettings.ui
+        appsettings.h
+        appsettings.h
+        appsettings.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET transmission-control APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
