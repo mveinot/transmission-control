@@ -30,6 +30,20 @@ public:
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
+    int rowForId(int id) const;
+    bool updateFromJson(const QByteArray &json);
+    enum Column
+    {
+        IdColumn,
+        NameColumn,
+        PercentDoneColumn,
+        StatusColumn,
+        RateDownloadColumn,
+        RateUploadColumn,
+        UploadRatioColumn,
+        EtaColumn,
+        ColumnCount
+    };
 
 signals:
     void listUpdated();
@@ -43,11 +57,16 @@ private:
     void setSessionToken(QByteArray token);
     QJsonArray torrentList;
     QVector<torrent> torrentVector;
+    void rebuildIndex();
+    void applyUpdate(const QVector<torrent> &incoming);
+    QHash<int, int> m_rowById;
     bool useSSL = false;
     QString server = "nas2.mvgrafx.net";
     int port = 9091;
     QString serverPath = "/transmission/rpc";
     QUrl transmissionURL();// = QUrl("http://nas2.mvgrafx.net:9091/transmission/rpc");
+
+
 public slots:
     void replyFinished(QNetworkReply *reply);
 };

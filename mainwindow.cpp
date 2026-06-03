@@ -4,15 +4,17 @@
 #include "dialogabout.h"
 #include <QTimer>
 #include <QProgressBar>
-#include <QAbstractTableModel>
-#include <QSortFilterProxyModel>
 #include "version.h"
+#include "torrentsortproxtmodel.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
-    client = new rpc_client(this);
+    auto *client = new rpc_client(this);
+    auto *proxy = new TorrentSortProxtModel(this);
+    proxy->setSourceModel(client);
+
     this->aboutAction = new QAction(0);
     this->aboutAction->setMenuRole(QAction::AboutRole);
 
@@ -45,7 +47,11 @@ MainWindow::MainWindow(QWidget *parent)
     verticalHeader->setSectionResizeMode(QHeaderView::Fixed);
     verticalHeader->setDefaultSectionSize(16);
     ui->statusbar->showMessage("Planetary " + QString(__PLANETARY_VERSION__) + " connected to " + client->getServer());
-    ui->tableView->setModel(client);
+    ui->tableView->setModel(proxy);
+    ui->tableView->setSortingEnabled(true);
+    ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->tableView->sortByColumn(rpc_client::NameColumn, Qt::AscendingOrder);
 }
 
 MainWindow::~MainWindow()
@@ -92,7 +98,7 @@ void MainWindow::showAbout()
 void MainWindow::on_tableWidget_cellClicked(int row, int column)
 {
     selected = row;
-    qDebug() << client->getTorrent(row).getName();
+    qDebug() << client->getTorrent(row).getName() << client->getTorrent(row).getId();
 }
 
 

@@ -1,5 +1,6 @@
-<!DOCTYPE RCC><RCC version="1.0">
-    <qresource>
+<RCC>
+    <qresource prefix="/">
         <file>icons/planetary.icns</file>
+        <file>icons/planetary.png</file>
     </qresource>
 </RCC>

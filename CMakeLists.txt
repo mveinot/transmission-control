@@ -56,6 +56,11 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         appsettings.h
         appsettings.h
         appsettings.cpp
+        Resources/icons/planetary.png
+        torrentsortproxtmodel.h torrentsortproxtmodel.cpp
+
+
+
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET transmission-control APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

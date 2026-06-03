@@ -43,10 +43,9 @@ void rpc_client::replyFinished(QNetworkReply * reply)
             QJsonValue torrentsObj = dObj["torrents"];
             rpc_client::torrentList = torrentsObj.toArray();
             rpc_client::torrentVector.clear();
-            foreach (const QJsonValue &obj, rpc_client::torrentList)
+            for (const auto &obj : rpc_client::torrentList)
             {
-                torrent tor(obj);
-                rpc_client::torrentVector.append(tor);
+                rpc_client::torrentVector.append(torrent(obj));
             }
             qDebug() << "List updated";
             emit listUpdated();
@@ -122,50 +121,192 @@ void rpc_client::getTorrentList()
 
 
 // QTableView methods
-int rpc_client::rowCount(const QModelIndex & /*parent*/) const
+int rpc_client::rowCount(const QModelIndex &parent) const
 {
-    qDebug() << "rowCount" << countTorrents();
-    return 20;
+    //qDebug() << "rowCount" << countTorrents();
+    qDebug() << (parent.isValid() ? 0 : torrentVector.size());
+    return parent.isValid() ? 0 : torrentVector.size();
 }
 
 
-int rpc_client::columnCount(const QModelIndex & /*parent*/) const
+int rpc_client::columnCount(const QModelIndex &parent) const
 {
-    return 8;
+    qDebug() << (parent.isValid() ? 0 : ColumnCount);
+    return parent.isValid() ? 0 : ColumnCount;
 }
 
 QVariant rpc_client::data(const QModelIndex &index, int role) const
 {
-    if (role == Qt::DisplayRole)
-        return QString("Row%1, Column%2")
-            .arg(index.row() + 1)
-            .arg(index.column() +1);
+    if (!index.isValid() || index.row() < 0 || index.row() >= torrentVector.size()) {
+        return {};
+    }
 
-    return QVariant();
+    const torrent &t = torrentVector.at(index.row());
+
+    if (role == Qt::DisplayRole)
+        switch (index.column()) {
+        case IdColumn:           return t.getId();
+        case NameColumn:         return t.getName();
+        case PercentDoneColumn:  return QString::number(t.getPercentDone(), 'f', 1) + "%";
+        case StatusColumn:       return t.getStatus();
+        case RateDownloadColumn: return t.getRateDownload();
+        case RateUploadColumn:   return t.getRateUpload();
+        case UploadRatioColumn:  return t.getUploadRatio();
+        case EtaColumn:          return t.getEta();
+        default:                 return {};
+        }
+
+    if (role == Qt::UserRole) {
+        return t.getId();
+    }
+
+    if (role == Qt::UserRole + 1) {
+        switch (index.column()) {
+        case IdColumn:           return t.getId();
+        case NameColumn:         return t.getName();
+        case PercentDoneColumn:  return t.getPercentDone();
+        case StatusColumn:       return t.getStatus();
+        case RateDownloadColumn: return t.getRateDownload();
+        case RateUploadColumn:   return t.getRateUpload();
+        case UploadRatioColumn:  return t.getUploadRatio();
+        case EtaColumn:          return t.getEta();
+        default:                 return {};
+        }
+    }
+
+    if (role == Qt::TextAlignmentRole) {
+        switch (index.column()) {
+        case IdColumn:
+        case PercentDoneColumn:
+        case RateDownloadColumn:
+        case RateUploadColumn:
+        case UploadRatioColumn:
+        case EtaColumn:
+            return static_cast<int>(Qt::AlignRight | Qt::AlignVCenter);
+        default:
+            return static_cast<int>(Qt::AlignLeft | Qt::AlignVCenter);
+        }
+    }
+
+    return {};
 }
 
 QVariant rpc_client::headerData(int section, Qt::Orientation orientation, int role) const
 {
+    if (role != Qt::DisplayRole) {
+        return {};
+    }
+
     if (role == Qt::DisplayRole && orientation == Qt::Horizontal) {
         switch (section) {
-        case 0:
-            return QString("Name");
-        case 1:
-            return QString("Completed");
-        case 2:
-            return QString("Status");
-        case 3:
-            return QString("Download");
-        case 4:
-            return QString("Upload");
-        case 5:
-            return QString("Ratio");
-        case 6:
-            return QString("ETA");
-        case 7:
-            return QString("ID");
+        case IdColumn:           return "ID";
+        case NameColumn:         return "Name";
+        case PercentDoneColumn:  return "Done";
+        case StatusColumn:       return "Status";
+        case RateDownloadColumn: return "Down";
+        case RateUploadColumn:   return "Up";
+        case UploadRatioColumn:  return "Ratio";
+        case EtaColumn:          return "ETA";
+        default:                 return {};
         }
     }
-    return QVariant();
+    return section + 1;
     // "Name" << "Completed" << "Status" << "Download" << "Upload" << "Ratio" << "ETA";
+}
+
+int rpc_client::rowForId(int id) const
+{
+    return m_rowById.value(id, -1);
+}
+
+bool rpc_client::updateFromJson(const QByteArray &json)
+{
+    QJsonParseError error;
+    const QJsonDocument doc = QJsonDocument::fromJson(json, &error);
+    if (error.error != QJsonParseError::NoError || doc.isNull()) {
+        return false;
+    }
+
+    QJsonArray array;
+    if (doc.isArray()) {
+        array = doc.array();
+    } else if (doc.isObject()) {
+        array = doc.object().value("torrents").toArray();
+    } else {
+        return false;
+    }
+
+    QVector<torrent> incoming;
+    incoming.reserve(array.size());
+    for (const auto &value : array) {
+        incoming.append(torrent(value));
+    }
+
+    applyUpdate(incoming);
+    return true;
+}
+
+void rpc_client::rebuildIndex()
+{
+    m_rowById.clear();
+    m_rowById.reserve(torrentVector.size());
+    for (int row = 0; row < torrentVector.size(); ++row) {
+        m_rowById.insert(torrentVector.at(row).getId(), row);
+    }
+}
+
+void rpc_client::applyUpdate(const QVector<torrent> &incoming)
+{
+    QHash<int, torrent> incomingById;
+    incomingById.reserve(incoming.size());
+    QSet<int> incomingIds;
+    incomingIds.reserve(incoming.size());
+
+    for (const torrent &t : incoming) {
+        incomingById.insert(t.getId(), t);
+        incomingIds.insert(t.getId());
+    }
+
+    // Remove rows that disappeared. Remove from back to front.
+    for (int row = torrentVector.size() - 1; row >= 0; --row) {
+        const int id = torrentVector.at(row).getId();
+        if (!incomingIds.contains(id)) {
+            beginRemoveRows(QModelIndex(), row, row);
+            torrentVector.removeAt(row);
+            endRemoveRows();
+        }
+    }
+
+    rebuildIndex();
+
+    // Update existing rows in place.
+    for (int row = 0; row < torrentVector.size(); ++row) {
+        const int id = torrentVector.at(row).getId();
+        auto it = incomingById.constFind(id);
+        if (it == incomingById.cend()) {
+            continue;
+        }
+
+        const torrent &updated = it.value();
+
+        if (!torrentVector.at(row).sameDisplayData(updated)) {
+            torrentVector[row] = updated;
+            emit dataChanged(index(row, 0), index(row, ColumnCount - 1));
+        }
+    }
+
+    rebuildIndex();
+
+    // Insert new rows. Appending is simplest; proxy handles sorted view order.
+    for (const torrent &t : incoming) {
+        if (!m_rowById.contains(t.getId())) {
+            const int row = torrentVector.size();
+            beginInsertRows(QModelIndex(), row, row);
+            torrentVector.append(t);
+            endInsertRows();
+            m_rowById.insert(t.getId(), row);
+        }
+    }
+
+    rebuildIndex();
 }

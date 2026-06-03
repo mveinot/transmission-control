@@ -1,54 +1,69 @@
 #include "torrent.h"
 
-torrent::torrent(QJsonValue val, QObject *parent)
+torrent::torrent(const QJsonValue &val)
 {
-    id = val["id"].toInt();
-    name = val["name"].toString();
-    eta = val["eta"].toInt();
-    percentDone = val["percentDone"].toDouble()*100;
-    status = val["status"].toInt(0);
-    rateDownload = val["rateDownload"].toDouble();
-    rateUpload = val["rateUpload"].toDouble();
-    uploadRatio = val["uploadRatio"].toDouble();
-    files = val["files"];
-    peers = val["peers"];
+    const QJsonObject obj = val.toObject();
+
+    id = obj.value("id").toInt();
+    name = obj.value("name").toString();
+    eta = obj.value("eta").toInt();
+    percentDone = obj.value("percentDone").toDouble() * 100.0;
+    status = statusFromInt(obj.value("status").toInt());
+    rateDownload = obj.value("rateDownload").toDouble();
+    rateUpload = obj.value("rateUpload").toDouble();
+    uploadRatio = obj.value("uploadRatio").toDouble();
+    files = obj.value("files");
+    peers = obj.value("peers");
 }
 
-QString torrent::getName()
+
+torrent::Status torrent::statusFromInt(int value)
 {
-    return name;
+    switch (value) {
+    case 0: return Status::Paused;
+    case 1: return Status::WaitingToVerify;
+    case 2: return Status::Verifying;
+    case 3: return Status::Queued;
+    case 4: return Status::Downloading;
+    case 5: return Status::WaitingToSeed;
+    case 6: return Status::Seeding;
+    default: return Status::Unknown;
+    }
 }
 
-double torrent::getPercentDone()
-{
-    return percentDone;
-}
+int torrent::getId() const { return id; }
+QString torrent::getName() const { return name; }
+double torrent::getPercentDone() const { return percentDone; }
 
-QString torrent::getStatus()
+QString torrent::statusToString(Status status)
 {
-    switch(status) {
-    case 0:
+    switch (status) {
+    case Status::Paused:
         return "Paused";
-    case 1:
+    case Status::WaitingToVerify:
         return "Waiting to Verify";
-    case 2:
+    case Status::Verifying:
         return "Verifying";
-    case 3:
+    case Status::Queued:
         return "Queued";
-    case 4:
+    case Status::Downloading:
         return "Downloading";
-    case 5:
+    case Status::WaitingToSeed:
         return "Waiting to Seed";
-    case 6:
+    case Status::Seeding:
         return "Seeding";
+    case Status::Unknown:
     default:
         return "Unknown";
     }
-
-    return "Error";
 }
 
-QString torrent::getRateDownload()
+QString torrent::getStatus() const
+{
+    return statusToString(status);
+}
+
+QString torrent::getRateDownload() const
 {
     if (rateDownload == 0)
         return "";
@@ -58,7 +73,7 @@ QString torrent::getRateDownload()
     return rateDownloadStr;
 }
 
-QString torrent::getRateUpload()
+QString torrent::getRateUpload() const
 {
     if (rateUpload == 0)
         return "";
@@ -68,19 +83,12 @@ QString torrent::getRateUpload()
     return rateUploadStr;
 }
 
-QString torrent::getUploadRatio()
+QString torrent::getUploadRatio() const
 {
-    //QString ret;
-    //ret.spr
     return QString("%1").arg(uploadRatio,5, 'f', 3);
 }
 
-int torrent::getId()
-{
-    return id;
-}
-
-QString torrent::getEta()
+QString torrent::getEta() const
 {
     int seconds = 0;
     int minutes = 0;
@@ -90,8 +98,6 @@ QString torrent::getEta()
 
     if (n <= 0)
         return "";
-
-    //qDebug() << "eta" << n;
 
     days = n / (24 * 3600);
     n = n % (24 * 3600);
@@ -112,3 +118,17 @@ QString torrent::getEta()
 
     return QString::number(seconds)+"s";
 }
+
+bool torrent::sameDisplayData(const torrent &other) const
+{
+    return id == other.id
+           && name == other.name
+           && percentDone == other.percentDone
+           && rateDownload == other.rateDownload
+           && rateUpload == other.rateUpload
+           && uploadRatio == other.uploadRatio
+           && status == other.status
+           && eta == other.eta;
+}
+
+
