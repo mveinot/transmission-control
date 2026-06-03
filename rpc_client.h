@@ -2,6 +2,7 @@
 #define RPC_CLIENT_H
 
 #include <QApplication>
+#include <QAbstractTableModel>
 #include <QDebug>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -11,19 +12,24 @@
 #include <QUrl>
 #include "torrent.h"
 
-class rpc_client: public QObject
+class rpc_client: public QAbstractTableModel
 {
     Q_OBJECT
 
 public:
-    rpc_client();
+    rpc_client(QObject *parent);
     void init();
     void getTorrentList();
     QJsonArray torrents();
     bool isClientReady();
-    int countTorrents();
+    int countTorrents() const;
     QString authString();
     torrent getTorrent(int item);
+    QString getServer();
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+    QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
 
 signals:
     void listUpdated();

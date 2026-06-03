@@ -1,6 +1,7 @@
 #include "rpc_client.h"
 
-rpc_client::rpc_client()
+rpc_client::rpc_client(QObject *parent)
+    : QAbstractTableModel(parent)
 //   : QObject{parent}
 {
 }
@@ -47,7 +48,11 @@ void rpc_client::replyFinished(QNetworkReply * reply)
                 torrent tor(obj);
                 rpc_client::torrentVector.append(tor);
             }
+            qDebug() << "List updated";
             emit listUpdated();
+            QModelIndex topLeft = createIndex(0,0);
+            QModelIndex bottomRight = createIndex(8,8);
+            emit dataChanged(topLeft,bottomRight);
         }
         } else {
         QString err = reply->errorString();
@@ -75,9 +80,9 @@ torrent rpc_client::getTorrent(int item)
     return rpc_client::torrentVector[item];
 }
 
-int rpc_client::countTorrents()
+int rpc_client::countTorrents() const
 {
-    return rpc_client::torrentVector.count();
+    return torrentVector.count();
 }
 
 QJsonArray rpc_client::torrents()
@@ -100,6 +105,11 @@ QUrl rpc_client::transmissionURL()
     return QUrl(URL);
 }
 
+QString rpc_client::getServer()
+{
+    return server + ":" + QString::number(port);
+}
+
 void rpc_client::getTorrentList()
 {
     QNetworkRequest request = QNetworkRequest(transmissionURL());
@@ -108,4 +118,54 @@ void rpc_client::getTorrentList()
 
     QByteArray data("{\"method\":\"torrent-get\",\"arguments\": {\"fields\":[\"rateDownload\",\"rateUpload\",\"id\",\"percentDone\",\"status\",\"name\",\"uploadRatio\",\"eta\",\"files\",\"peers\"]}}");
     na_manager->post(request, data);
+}
+
+
+// QTableView methods
+int rpc_client::rowCount(const QModelIndex & /*parent*/) const
+{
+    qDebug() << "rowCount" << countTorrents();
+    return 20;
+}
+
+
+int rpc_client::columnCount(const QModelIndex & /*parent*/) const
+{
+    return 8;
+}
+
+QVariant rpc_client::data(const QModelIndex &index, int role) const
+{
+    if (role == Qt::DisplayRole)
+        return QString("Row%1, Column%2")
+            .arg(index.row() + 1)
+            .arg(index.column() +1);
+
+    return QVariant();
+}
+
+QVariant rpc_client::headerData(int section, Qt::Orientation orientation, int role) const
+{
+    if (role == Qt::DisplayRole && orientation == Qt::Horizontal) {
+        switch (section) {
+        case 0:
+            return QString("Name");
+        case 1:
+            return QString("Completed");
+        case 2:
+            return QString("Status");
+        case 3:
+            return QString("Download");
+        case 4:
+            return QString("Upload");
+        case 5:
+            return QString("Ratio");
+        case 6:
+            return QString("ETA");
+        case 7:
+            return QString("ID");
+        }
+    }
+    return QVariant();
+    // "Name" << "Completed" << "Status" << "Download" << "Upload" << "Ratio" << "ETA";
 }
