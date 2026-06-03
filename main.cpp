@@ -7,6 +7,8 @@
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+    QCoreApplication::setOrganizationName("mvgrafx");
+    QCoreApplication::setOrganizationDomain("mvgrafx.net");
     QCoreApplication::setApplicationName(QString("Planetary"));
     a.setWindowIcon(QIcon(":/icons/planetary.icns"));
     QTranslator translator;
