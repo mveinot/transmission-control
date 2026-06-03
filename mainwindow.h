@@ -4,6 +4,8 @@
 #include <QMainWindow>
 #include <QMenu>
 #include <QAction>
+#include <QSettings>
+#include "rpc_client.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -24,11 +26,16 @@ private slots:
 
     void on_tableWidget_cellClicked(int row, int column);
 
+    void on_actionDelete_Torrent_triggered();
+
 private:
     Ui::MainWindow *ui;
     QTimer *timer;
     QMenu *mainMenu;
     QAction *aboutAction;
     QMenuBar *mainMenuBar;
+    rpc_client *client;
+    int selected = 0;
+    QSettings settings;
 };
 #endif // MAINWINDOW_H

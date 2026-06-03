@@ -28,6 +28,9 @@
      <number>0</number>
     </property>
     <item>
+     <widget class="QTableView" name="tableView"/>
+    </item>
+    <item>
      <widget class="QTableWidget" name="tableWidget">
       <property name="font">
        <font>
@@ -36,6 +39,9 @@
       </property>
       <property name="alternatingRowColors">
        <bool>true</bool>
+      </property>
+      <property name="selectionMode">
+       <enum>QAbstractItemView::SingleSelection</enum>
       </property>
       <property name="selectionBehavior">
        <enum>QAbstractItemView::SelectRows</enum>
@@ -47,7 +53,7 @@
        <bool>false</bool>
       </property>
       <property name="columnCount">
-       <number>7</number>
+       <number>8</number>
       </property>
       <attribute name="horizontalHeaderStretchLastSection">
        <bool>true</bool>
@@ -55,6 +61,7 @@
       <attribute name="verticalHeaderVisible">
        <bool>false</bool>
       </attribute>
+      <column/>
       <column/>
       <column/>
       <column/>
@@ -73,7 +80,7 @@
        </size>
       </property>
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="generalInfo">
        <attribute name="title">
@@ -128,10 +135,19 @@
     <bool>false</bool>
    </attribute>
    <addaction name="action_Open_Torrent"/>
+   <addaction name="actionDelete_Torrent"/>
   </widget>
   <action name="action_Open_Torrent">
    <property name="text">
     <string>&amp;Open Torrent...</string>
+   </property>
+  </action>
+  <action name="actionDelete_Torrent">
+   <property name="text">
+    <string>Delete Torrent...</string>
+   </property>
+   <property name="shortcut">
+    <string>Del</string>
    </property>
   </action>
  </widget>
