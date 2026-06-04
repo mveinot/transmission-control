@@ -24,10 +24,7 @@ public:
 private slots:
     void updateTorrentList();
     void drawTorrentList();
-
-    //void on_tableWidget_cellClicked(int row, int column);
     void on_tableView_clicked(const QModelIndex &index);
-
     void on_actionDelete_Torrent_triggered();
 
 private:
