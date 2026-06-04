@@ -35,6 +35,7 @@ void rpc_client::replyFinished(QNetworkReply * reply)
         {
             QByteArray _token = reply->rawHeader("X-Transmission-Session-Id");
             rpc_client::setSessionToken(_token);
+            updateInProgress = false;
             getTorrentList();
         } else {
             QString contents = QString::fromUtf8(reply->readAll());
@@ -57,14 +58,22 @@ void rpc_client::replyFinished(QNetworkReply * reply)
             applyUpdate(incoming);
 
             qDebug() << "List updated";
+            updateInProgress = false;
             emit listUpdated();
+            emit updateFinished();
         }
         } else {
-        QString err = reply->errorString();
-        QString contents = QString::fromUtf8(reply->readAll());
-        qDebug() << "Network reply ERROR";
-        qDebug() << err;
-        qDebug() << contents;
+        if (reply->error() != QNetworkReply::NoError) {
+            const QString message = reply->errorString();
+            qDebug() << "Network reply ERROR:" << message;
+
+            emit updateFailed(message);
+            updateInProgress = false;
+            emit updateFinished();
+
+            reply->deleteLater();
+            return;
+        }
     }
 }
 
@@ -116,6 +125,12 @@ QString rpc_client::getServer()
 
 void rpc_client::getTorrentList()
 {
+    if (updateInProgress)
+        return;
+
+    updateInProgress = true;
+    emit updateStarted();
+
     QNetworkRequest request = QNetworkRequest(transmissionURL());
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setRawHeader(QByteArray("X-Transmission-Session-Id"), QByteArray(rpc_client::_session_token));

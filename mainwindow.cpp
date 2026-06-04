@@ -3,22 +3,72 @@
 #include "rpc_client.h"
 #include "dialogabout.h"
 #include <QTimer>
-#include <QProgressBar>
+//#include <QProgressBar>
+#include <QActionGroup>
 #include "version.h"
-#include "torrentsortproxtmodel.h"
+#include "torrentsortproxymodel.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     client = new rpc_client(this);
-    proxy = new TorrentSortProxtModel(this);
+    proxy = new TorrentSortProxyModel(this);
     proxy->setSourceModel(client);
 
     this->aboutAction = new QAction(0);
     this->aboutAction->setMenuRole(QAction::AboutRole);
 
     ui->setupUi(this);
+
+    auto *stateGroup = new QActionGroup(this);
+    stateGroup->setExclusive(true);
+
+    ui->actionAll->setCheckable(true);
+    ui->actionDownloading->setCheckable(true);
+    ui->actionCompleted->setCheckable(true);
+    ui->actionActive->setCheckable(true);
+    ui->actionInactive->setCheckable(true);
+    ui->actionStopped->setCheckable(true);
+    ui->actionError->setCheckable(true);
+
+    stateGroup->addAction(ui->actionAll);
+    stateGroup->addAction(ui->actionDownloading);
+    stateGroup->addAction(ui->actionCompleted);
+    stateGroup->addAction(ui->actionActive);
+    stateGroup->addAction(ui->actionInactive);
+    stateGroup->addAction(ui->actionStopped);
+    stateGroup->addAction(ui->actionError);
+
+    ui->actionAll->setChecked(true);
+
+    connect(ui->actionAll, &QAction::triggered, this, [this]() {
+        proxy->setStateFilter(TorrentSortProxyModel::StateFilter::All);
+    });
+
+    connect(ui->actionDownloading, &QAction::triggered, this, [this]() {
+        proxy->setStateFilter(TorrentSortProxyModel::StateFilter::Downloading);
+    });
+
+    connect(ui->actionCompleted, &QAction::triggered, this, [this]() {
+        proxy->setStateFilter(TorrentSortProxyModel::StateFilter::Completed);
+    });
+
+    connect(ui->actionActive, &QAction::triggered, this, [this]() {
+        proxy->setStateFilter(TorrentSortProxyModel::StateFilter::Active);
+    });
+
+    connect(ui->actionInactive, &QAction::triggered, this, [this]() {
+        proxy->setStateFilter(TorrentSortProxyModel::StateFilter::Inactive);
+    });
+
+    connect(ui->actionStopped, &QAction::triggered, this, [this]() {
+        proxy->setStateFilter(TorrentSortProxyModel::StateFilter::Stopped);
+    });
+
+    connect(ui->actionError, &QAction::triggered, this, [this]() {
+        proxy->setStateFilter(TorrentSortProxyModel::StateFilter::Error);
+    });
 
     MainWindow::setWindowTitle(QCoreApplication::applicationName());
 
@@ -28,13 +78,20 @@ MainWindow::MainWindow(QWidget *parent)
     this->setMenuBar(this->menuBar());
 
     timer = new QTimer(this);
+    ui->statusbar->showMessage("Connected to " + client->getServer());
 
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTorrentList);
     connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
+    connect(client, &rpc_client::updateStarted, this, [this]() {
+        ui->statusbar->showMessage("Updating...");
+    });
 
-    timer->start(5000);
+    connect(client, &rpc_client::updateFinished, this, [this]() {
+        ui->statusbar->showMessage("Connected to " + client->getServer());
+    });
+
+    timer->start(10000);
     client->init();
-    ui->statusbar->showMessage("Planetary " + QString(__PLANETARY_VERSION__) + " connected to " + client->getServer());
     ui->tableView->setModel(proxy);
     ui->tableView->hideColumn(rpc_client::IdColumn);
     ui->tableView->setSortingEnabled(true);

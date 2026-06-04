@@ -57,7 +57,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         appsettings.h
         appsettings.cpp
         Resources/icons/planetary.png
-        torrentsortproxtmodel.h torrentsortproxtmodel.cpp
+        torrentsortproxymodel.h torrentsortproxymodel.cpp
 
 
 

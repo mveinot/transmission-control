@@ -6,7 +6,7 @@
 #include <QAction>
 #include <QSettings>
 #include "rpc_client.h"
-#include "torrentsortproxtmodel.h"
+#include "torrentsortproxymodel.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -37,7 +37,7 @@ private:
     QAction *aboutAction;
     QMenuBar *mainMenuBar;
     rpc_client *client = nullptr;
-    TorrentSortProxtModel *proxy = nullptr;
+    TorrentSortProxyModel *proxy = nullptr;
     int currentTorrentId() const;
     int currentSourceRow() const;
 

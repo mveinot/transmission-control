@@ -47,11 +47,15 @@ public:
 
 signals:
     void listUpdated();
+    void updateStarted();
+    void updateFinished();
+    void updateFailed(const QString &message);
 
 private:
     QString username = "vmark";
     QString password = "8kfkfvq9";
     bool _clientReady = false;
+    bool updateInProgress = false;
     QByteArray _session_token;
     QNetworkAccessManager *na_manager;
     void setSessionToken(QByteArray token);
