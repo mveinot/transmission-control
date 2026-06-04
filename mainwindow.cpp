@@ -2,10 +2,13 @@
 #include "./ui_mainwindow.h"
 #include "rpc_client.h"
 #include "dialogabout.h"
+#include "serverconfig.h"
 #include <QTimer>
 //#include <QProgressBar>
 #include <QActionGroup>
-#include "version.h"
+#include <QHeaderView>
+#include <QSettings>
+//#include "version.h"
 #include "torrentsortproxymodel.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -70,6 +73,8 @@ MainWindow::MainWindow(QWidget *parent)
         proxy->setStateFilter(TorrentSortProxyModel::StateFilter::Error);
     });
 
+    connect(ui->actionServer_Setup, &QAction::triggered, this, &MainWindow::onServerSetupTriggered);
+
     MainWindow::setWindowTitle(QCoreApplication::applicationName());
 
     this->mainMenu = new QMenu(0);
@@ -98,10 +103,12 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->tableView->sortByColumn(rpc_client::NameColumn, Qt::AscendingOrder);
+    restoreTableViewState();
 }
 
 MainWindow::~MainWindow()
 {
+    //saveTableViewState();
     delete ui;
 }
 
@@ -196,4 +203,51 @@ void MainWindow::on_actionDelete_Torrent_triggered()
 
     // Later:
     // client->deleteTorrent(torrentId);
+}
+
+void MainWindow::saveTableViewState()
+{
+    QSettings settings;
+
+    settings.setValue(
+        "ui/tableView/horizontalHeaderState",
+        ui->tableView->horizontalHeader()->saveState()
+        );
+
+    settings.setValue(
+        "ui/tableView/verticalHeaderState",
+        ui->tableView->verticalHeader()->saveState()
+        );
+}
+
+void MainWindow::restoreTableViewState()
+{
+    QSettings settings;
+
+    const QByteArray horizontalState =
+        settings.value("ui/tableView/horizontalHeaderState").toByteArray();
+
+    if (!horizontalState.isEmpty()) {
+        ui->tableView->horizontalHeader()->restoreState(horizontalState);
+    }
+
+    const QByteArray verticalState =
+        settings.value("ui/tableView/verticalHeaderState").toByteArray();
+
+    if (!verticalState.isEmpty()) {
+        ui->tableView->verticalHeader()->restoreState(verticalState);
+    }
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    saveTableViewState();
+
+    QMainWindow::closeEvent(event);
+}
+
+void MainWindow::onServerSetupTriggered()
+{
+    ServerConfig *sc = new ServerConfig(this);
+    sc->show();
 }

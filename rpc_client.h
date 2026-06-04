@@ -52,6 +52,14 @@ signals:
     void updateFailed(const QString &message);
 
 private:
+    struct TransmissionServer
+    {
+        QString name;
+        QString rpcUrl;
+        QString username;
+        QString password;
+    };
+
     QString username = "vmark";
     QString password = "8kfkfvq9";
     bool _clientReady = false;

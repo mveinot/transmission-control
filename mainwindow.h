@@ -5,6 +5,7 @@
 #include <QMenu>
 #include <QAction>
 #include <QSettings>
+#include <QCloseEvent>
 #include "rpc_client.h"
 #include "torrentsortproxymodel.h"
 
@@ -26,6 +27,7 @@ private slots:
     void drawTorrentList();
     void on_tableView_clicked(const QModelIndex &index);
     void on_actionDelete_Torrent_triggered();
+    void onServerSetupTriggered();
 
 private:
     Ui::MainWindow *ui;
@@ -37,8 +39,12 @@ private:
     TorrentSortProxyModel *proxy = nullptr;
     int currentTorrentId() const;
     int currentSourceRow() const;
-
     int selected = 0;
     QSettings settings;
+    void saveTableViewState();
+    void restoreTableViewState();
+
+protected:
+    void closeEvent(QCloseEvent *event) override;
 };
 #endif // MAINWINDOW_H

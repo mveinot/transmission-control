@@ -92,6 +92,7 @@
      <string>File</string>
     </property>
     <addaction name="action_Open_Torrent"/>
+    <addaction name="actionServer_Setup"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -180,6 +181,11 @@
   <action name="actionError">
    <property name="text">
     <string>Error</string>
+   </property>
+  </action>
+  <action name="actionServer_Setup">
+   <property name="text">
+    <string>Server Setup...</string>
    </property>
   </action>
  </widget>
