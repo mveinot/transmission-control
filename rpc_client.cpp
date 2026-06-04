@@ -41,17 +41,27 @@ void rpc_client::replyFinished(QNetworkReply * reply)
             QJsonDocument doc = QJsonDocument::fromJson(contents.toUtf8());
             QJsonValue dObj = doc["arguments"];
             QJsonValue torrentsObj = dObj["torrents"];
+            QJsonArray newTorrentList = dObj["torrents"].toArray();
+
+            QVector<torrent> incoming;
+            incoming.reserve(newTorrentList.size());
+
             rpc_client::torrentList = torrentsObj.toArray();
             rpc_client::torrentVector.clear();
-            for (const auto &obj : rpc_client::torrentList)
+
+            //for (const auto &obj : rpc_client::torrentList)
+            for (const auto &obj : newTorrentList)
             {
-                rpc_client::torrentVector.append(torrent(obj));
+                incoming.append(torrent(obj));
             }
+
+            torrentList = newTorrentList;
+            applyUpdate(incoming);
             qDebug() << "List updated";
             emit listUpdated();
-            QModelIndex topLeft = createIndex(0,0);
-            QModelIndex bottomRight = createIndex(8,8);
-            emit dataChanged(topLeft,bottomRight);
+            //QModelIndex topLeft = createIndex(0,0);
+            //QModelIndex bottomRight = createIndex(8,8);
+            //emit dataChanged(topLeft,bottomRight);
         }
         } else {
         QString err = reply->errorString();

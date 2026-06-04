@@ -12,7 +12,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     client = new rpc_client(this);
-    auto *proxy = new TorrentSortProxtModel(this);
+    proxy = new TorrentSortProxtModel(this);
     proxy->setSourceModel(client);
 
     this->aboutAction = new QAction(0);
