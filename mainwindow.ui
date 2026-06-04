@@ -29,6 +29,12 @@
     </property>
     <item>
      <widget class="QTableView" name="tableView">
+      <property name="gridStyle">
+       <enum>Qt::PenStyle::NoPen</enum>
+      </property>
+      <attribute name="horizontalHeaderStretchLastSection">
+       <bool>false</bool>
+      </attribute>
       <attribute name="verticalHeaderVisible">
        <bool>false</bool>
       </attribute>
@@ -87,7 +93,26 @@
     </property>
     <addaction name="action_Open_Torrent"/>
    </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>View</string>
+    </property>
+    <widget class="QMenu" name="menuTorrent_State">
+     <property name="title">
+      <string>Torrent State</string>
+     </property>
+     <addaction name="actionAll"/>
+     <addaction name="actionDownloading"/>
+     <addaction name="actionCompleted"/>
+     <addaction name="actionActive"/>
+     <addaction name="actionInactive"/>
+     <addaction name="actionStopped"/>
+     <addaction name="actionError"/>
+    </widget>
+    <addaction name="menuTorrent_State"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuView"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
@@ -114,6 +139,47 @@
    </property>
    <property name="shortcut">
     <string>Del</string>
+   </property>
+  </action>
+  <action name="actionAll">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>All</string>
+   </property>
+  </action>
+  <action name="actionDownloading">
+   <property name="text">
+    <string>Downloading</string>
+   </property>
+  </action>
+  <action name="actionCompleted">
+   <property name="text">
+    <string>Completed</string>
+   </property>
+  </action>
+  <action name="actionActive">
+   <property name="text">
+    <string>Active</string>
+   </property>
+  </action>
+  <action name="actionInactive">
+   <property name="text">
+    <string>Inactive</string>
+   </property>
+  </action>
+  <action name="actionStopped">
+   <property name="text">
+    <string>Stopped</string>
+   </property>
+  </action>
+  <action name="actionError">
+   <property name="text">
+    <string>Error</string>
    </property>
   </action>
  </widget>
