@@ -31,22 +31,10 @@ MainWindow::MainWindow(QWidget *parent)
     timer = new QTimer(this);
 
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTorrentList);
-    //connect(client, &rpc_client::listUpdated, this, &MainWindow::drawTorrentList);
     connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
 
     timer->start(5000);
     client->init();
-    //QStringList tableHeaders;
-    //tableHeaders << "Name" << "Completed" << "Status" << "Download" << "Upload" << "Ratio" << "ETA";
-    //ui->tableWidget->setHorizontalHeaderLabels(tableHeaders);
-    //ui->tableWidget->setColumnWidth(0, 450);
-    //ui->tableWidget->setColumnWidth(1,100);
-    //ui->tableWidget->setColumnWidth(2, 100);
-    //ui->tableWidget->setColumnHidden(7, true);
-    //ui->tableWidget->setSortingEnabled(true);
-    //QHeaderView *verticalHeader = ui->tableWidget->verticalHeader();
-    //verticalHeader->setSectionResizeMode(QHeaderView::Fixed);
-    //verticalHeader->setDefaultSectionSize(16);
     ui->statusbar->showMessage("Planetary " + QString(__PLANETARY_VERSION__) + " connected to " + client->getServer());
     ui->tableView->setModel(proxy);
     ui->tableView->hideColumn(rpc_client::IdColumn);
@@ -74,29 +62,6 @@ void MainWindow::updateTorrentList()
 
 void MainWindow::drawTorrentList()
 {
-    //qDebug() << "reload";
-    /*
-    ui->tableWidget->clearContents();
-    ui->tableWidget->setRowCount(client->countTorrents());
-    for (int i = 0; i < client->countTorrents(); i++)
-    {
-        QProgressBar *pgbar = new QProgressBar();
-        pgbar->setRange(0, 100);
-        pgbar->setValue((int) client->getTorrent(i).getPercentDone());
-
-        ui->tableWidget->setItem(i, 0, new QTableWidgetItem(client->getTorrent(i).getName()));
-        ui->tableWidget->setCellWidget(i, 1, pgbar);
-        ui->tableWidget->setItem(i, 2, new QTableWidgetItem(client->getTorrent(i).getStatus()));
-        ui->tableWidget->setItem(i, 3, new QTableWidgetItem(client->getTorrent(i).getRateDownload()));
-        ui->tableWidget->setItem(i, 4, new QTableWidgetItem(client->getTorrent(i).getRateUpload()));
-        ui->tableWidget->setItem(i, 5, new QTableWidgetItem(client->getTorrent(i).getUploadRatio()));
-        ui->tableWidget->setItem(i, 6, new QTableWidgetItem(client->getTorrent(i).getEta()));
-        ui->tableWidget->setItem(i, 7, new QTableWidgetItem(QString::number(client->getTorrent(i).getId())));
-        ui->tableWidget->resizeColumnToContents(0);
-    }
-    if (ui->tableWidget->selectedItems().isEmpty())
-        ui->tableWidget->selectRow(selected);
-*/
 }
 
 void MainWindow::showAbout()
