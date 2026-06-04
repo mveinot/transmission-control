@@ -6,6 +6,7 @@
 #include <QProgressBar>
 #include "version.h"
 #include "torrentsortproxtmodel.h"
+#include "progressbardelegate.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -30,24 +31,31 @@ MainWindow::MainWindow(QWidget *parent)
     timer = new QTimer(this);
 
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTorrentList);
-    connect(client, &rpc_client::listUpdated, this, &MainWindow::drawTorrentList);
+    //connect(client, &rpc_client::listUpdated, this, &MainWindow::drawTorrentList);
     connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
 
     timer->start(5000);
     client->init();
-    QStringList tableHeaders;
-    tableHeaders << "Name" << "Completed" << "Status" << "Download" << "Upload" << "Ratio" << "ETA";
-    ui->tableWidget->setHorizontalHeaderLabels(tableHeaders);
-    ui->tableWidget->setColumnWidth(0, 450);
-    ui->tableWidget->setColumnWidth(1,100);
-    ui->tableWidget->setColumnWidth(2, 100);
-    ui->tableWidget->setColumnHidden(7, true);
+    //QStringList tableHeaders;
+    //tableHeaders << "Name" << "Completed" << "Status" << "Download" << "Upload" << "Ratio" << "ETA";
+    //ui->tableWidget->setHorizontalHeaderLabels(tableHeaders);
+    //ui->tableWidget->setColumnWidth(0, 450);
+    //ui->tableWidget->setColumnWidth(1,100);
+    //ui->tableWidget->setColumnWidth(2, 100);
+    //ui->tableWidget->setColumnHidden(7, true);
     //ui->tableWidget->setSortingEnabled(true);
-    QHeaderView *verticalHeader = ui->tableWidget->verticalHeader();
-    verticalHeader->setSectionResizeMode(QHeaderView::Fixed);
-    verticalHeader->setDefaultSectionSize(16);
+    //QHeaderView *verticalHeader = ui->tableWidget->verticalHeader();
+    //verticalHeader->setSectionResizeMode(QHeaderView::Fixed);
+    //verticalHeader->setDefaultSectionSize(16);
     ui->statusbar->showMessage("Planetary " + QString(__PLANETARY_VERSION__) + " connected to " + client->getServer());
     ui->tableView->setModel(proxy);
+    ui->tableView->hideColumn(rpc_client::IdColumn);
+
+    ui->tableView->setItemDelegateForColumn(
+                     rpc_client::PercentDoneColumn,
+                     new ProgressBarDelegate(ui->tableView)
+        );
+
     ui->tableView->setSortingEnabled(true);
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -67,6 +75,7 @@ void MainWindow::updateTorrentList()
 void MainWindow::drawTorrentList()
 {
     //qDebug() << "reload";
+    /*
     ui->tableWidget->clearContents();
     ui->tableWidget->setRowCount(client->countTorrents());
     for (int i = 0; i < client->countTorrents(); i++)
@@ -87,6 +96,7 @@ void MainWindow::drawTorrentList()
     }
     if (ui->tableWidget->selectedItems().isEmpty())
         ui->tableWidget->selectRow(selected);
+*/
 }
 
 void MainWindow::showAbout()
@@ -97,13 +107,13 @@ void MainWindow::showAbout()
 
 void MainWindow::on_tableWidget_cellClicked(int row, int column)
 {
-    selected = row;
-    qDebug() << client->getTorrent(row).getName() << client->getTorrent(row).getId();
+    //selected = row;
+    //qDebug() << client->getTorrent(row).getName() << client->getTorrent(row).getId();
 }
 
 
 void MainWindow::on_actionDelete_Torrent_triggered()
 {
-    qDebug() << client->getTorrent(ui->tableWidget->currentRow()).getId();
+    //qDebug() << client->getTorrent(ui->tableWidget->currentRow()).getId();
 }
 

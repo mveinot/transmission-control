@@ -47,7 +47,7 @@ void rpc_client::replyFinished(QNetworkReply * reply)
             incoming.reserve(newTorrentList.size());
 
             rpc_client::torrentList = torrentsObj.toArray();
-            rpc_client::torrentVector.clear();
+            //rpc_client::torrentVector.clear();
 
             //for (const auto &obj : rpc_client::torrentList)
             for (const auto &obj : newTorrentList)
@@ -209,7 +209,7 @@ QVariant rpc_client::headerData(int section, Qt::Orientation orientation, int ro
         switch (section) {
         case IdColumn:           return "ID";
         case NameColumn:         return "Name";
-        case PercentDoneColumn:  return "Done";
+        case PercentDoneColumn:  return "Completed";
         case StatusColumn:       return "Status";
         case RateDownloadColumn: return "Down";
         case RateUploadColumn:   return "Up";
