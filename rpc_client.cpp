@@ -42,7 +42,7 @@ void rpc_client::replyFinished(QNetworkReply * reply)
             QJsonDocument doc = QJsonDocument::fromJson(contents.toUtf8());
             QJsonValue dObj = doc["arguments"];
             QJsonValue torrentsObj = dObj["torrents"];
-            QJsonArray newTorrentList = dObj["torrents"].toArray();
+            const QJsonArray newTorrentList = dObj["torrents"].toArray();
 
             QVector<torrent> incoming;
             incoming.reserve(newTorrentList.size());
@@ -57,7 +57,7 @@ void rpc_client::replyFinished(QNetworkReply * reply)
             torrentList = newTorrentList;
             applyUpdate(incoming);
 
-            qDebug() << "List updated";
+            //qDebug() << "List updated";
             updateInProgress = false;
             emit listUpdated();
             emit updateFinished();
@@ -139,19 +139,15 @@ void rpc_client::getTorrentList()
     na_manager->post(request, data);
 }
 
-
 // QTableView methods
 int rpc_client::rowCount(const QModelIndex &parent) const
 {
-    //qDebug() << "rowCount" << countTorrents();
-    //qDebug() << (parent.isValid() ? 0 : torrentVector.size());
     return parent.isValid() ? 0 : torrentVector.size();
 }
 
 
 int rpc_client::columnCount(const QModelIndex &parent) const
 {
-    //qDebug() << (parent.isValid() ? 0 : ColumnCount);
     return parent.isValid() ? 0 : ColumnCount;
 }
 
@@ -258,7 +254,7 @@ bool rpc_client::updateFromJson(const QByteArray &json)
 
     QVector<torrent> incoming;
     incoming.reserve(array.size());
-    for (const auto &value : array) {
+    for (const auto &value : std::as_const(array)) {
         incoming.append(torrent(value));
     }
 
