@@ -25,7 +25,8 @@ private slots:
     void updateTorrentList();
     void drawTorrentList();
 
-    void on_tableWidget_cellClicked(int row, int column);
+    //void on_tableWidget_cellClicked(int row, int column);
+    void on_tableView_clicked(const QModelIndex &index);
 
     void on_actionDelete_Torrent_triggered();
 
@@ -37,6 +38,8 @@ private:
     QMenuBar *mainMenuBar;
     rpc_client *client = nullptr;
     TorrentSortProxtModel *proxy = nullptr;
+    int currentTorrentId() const;
+    int currentSourceRow() const;
 
     int selected = 0;
     QSettings settings;

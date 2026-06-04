@@ -6,7 +6,6 @@
 #include <QProgressBar>
 #include "version.h"
 #include "torrentsortproxtmodel.h"
-#include "progressbardelegate.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -38,12 +37,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->statusbar->showMessage("Planetary " + QString(__PLANETARY_VERSION__) + " connected to " + client->getServer());
     ui->tableView->setModel(proxy);
     ui->tableView->hideColumn(rpc_client::IdColumn);
-/*
-    ui->tableView->setItemDelegateForColumn(
-                     rpc_client::PercentDoneColumn,
-                     new ProgressBarDelegate(ui->tableView)
-        );
-*/
     ui->tableView->setSortingEnabled(true);
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -70,15 +63,80 @@ void MainWindow::showAbout()
     about->show();
 }
 
+/*
 void MainWindow::on_tableWidget_cellClicked(int row, int column)
 {
     //selected = row;
     //qDebug() << client->getTorrent(row).getName() << client->getTorrent(row).getId();
 }
+*/
 
+void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
+{
+    if (!proxyIndex.isValid())
+        return;
+
+    QModelIndex sourceIndex = proxy->mapToSource(proxyIndex);
+    if (!sourceIndex.isValid())
+        return;
+
+    const int sourceRow = sourceIndex.row();
+    const int torrentId = client->data(
+                                    client->index(sourceRow, rpc_client::IdColumn),
+                                    Qt::UserRole
+                                    ).toInt();
+
+    selected = sourceRow;
+
+    qDebug() << "Selected source row:" << sourceRow
+             << "torrent id:" << torrentId
+             << "name:" << client->data(
+                                     client->index(sourceRow, rpc_client::NameColumn),
+                                     Qt::DisplayRole
+                                     ).toString();
+}
+
+int MainWindow::currentSourceRow() const
+{
+    const QModelIndex proxyIndex = ui->tableView->currentIndex();
+
+    if (!proxyIndex.isValid())
+        return -1;
+
+    const QModelIndex sourceIndex = proxy->mapToSource(proxyIndex);
+
+    if (!sourceIndex.isValid())
+        return -1;
+
+    return sourceIndex.row();
+}
+
+int MainWindow::currentTorrentId() const
+{
+    const QModelIndex proxyIndex = ui->tableView->currentIndex();
+
+    if (!proxyIndex.isValid())
+        return -1;
+
+    const QModelIndex sourceIndex = proxy->mapToSource(proxyIndex);
+
+    if (!sourceIndex.isValid())
+        return -1;
+
+    return sourceIndex.data(Qt::UserRole).toInt();
+}
 
 void MainWindow::on_actionDelete_Torrent_triggered()
 {
-    //qDebug() << client->getTorrent(ui->tableWidget->currentRow()).getId();
-}
+    const int torrentId = currentTorrentId();
 
+    if (torrentId < 0) {
+        qDebug() << "No torrent selected";
+        return;
+    }
+
+    qDebug() << "Delete torrent id:" << torrentId;
+
+    // Later:
+    // client->deleteTorrent(torrentId);
+}
