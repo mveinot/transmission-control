@@ -47,9 +47,7 @@ void rpc_client::replyFinished(QNetworkReply * reply)
             incoming.reserve(newTorrentList.size());
 
             rpc_client::torrentList = torrentsObj.toArray();
-            //rpc_client::torrentVector.clear();
 
-            //for (const auto &obj : rpc_client::torrentList)
             for (const auto &obj : newTorrentList)
             {
                 incoming.append(torrent(obj));
@@ -79,7 +77,6 @@ void rpc_client::setSessionToken(QByteArray token)
 {
     _session_token = token;
     _clientReady = true;
-    //qDebug() << _session_token;
 }
 
 torrent rpc_client::getTorrent(int item)
@@ -132,14 +129,14 @@ void rpc_client::getTorrentList()
 int rpc_client::rowCount(const QModelIndex &parent) const
 {
     //qDebug() << "rowCount" << countTorrents();
-    qDebug() << (parent.isValid() ? 0 : torrentVector.size());
+    //qDebug() << (parent.isValid() ? 0 : torrentVector.size());
     return parent.isValid() ? 0 : torrentVector.size();
 }
 
 
 int rpc_client::columnCount(const QModelIndex &parent) const
 {
-    qDebug() << (parent.isValid() ? 0 : ColumnCount);
+    //qDebug() << (parent.isValid() ? 0 : ColumnCount);
     return parent.isValid() ? 0 : ColumnCount;
 }
 
