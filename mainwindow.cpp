@@ -38,12 +38,12 @@ MainWindow::MainWindow(QWidget *parent)
     ui->statusbar->showMessage("Planetary " + QString(__PLANETARY_VERSION__) + " connected to " + client->getServer());
     ui->tableView->setModel(proxy);
     ui->tableView->hideColumn(rpc_client::IdColumn);
-
+/*
     ui->tableView->setItemDelegateForColumn(
                      rpc_client::PercentDoneColumn,
                      new ProgressBarDelegate(ui->tableView)
         );
-
+*/
     ui->tableView->setSortingEnabled(true);
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
