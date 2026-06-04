@@ -57,11 +57,9 @@ void rpc_client::replyFinished(QNetworkReply * reply)
 
             torrentList = newTorrentList;
             applyUpdate(incoming);
+
             qDebug() << "List updated";
             emit listUpdated();
-            //QModelIndex topLeft = createIndex(0,0);
-            //QModelIndex bottomRight = createIndex(8,8);
-            //emit dataChanged(topLeft,bottomRight);
         }
         } else {
         QString err = reply->errorString();
