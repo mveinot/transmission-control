@@ -88,15 +88,13 @@ MainWindow::MainWindow(QWidget *parent)
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTorrentList);
     connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
     connect(client, &rpc_client::updateStarted, this, [this]() {
-        ui->statusbar->showMessage("Updating...");
+        ui->statusbar->showMessage("Connected to " + client->getServer() + " (updating)");
     });
 
     connect(client, &rpc_client::updateFinished, this, [this]() {
         ui->statusbar->showMessage("Connected to " + client->getServer());
     });
 
-    timer->start(10000);
-    client->init();
     ui->tableView->setModel(proxy);
     ui->tableView->hideColumn(rpc_client::IdColumn);
     ui->tableView->setSortingEnabled(true);
@@ -104,11 +102,13 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->tableView->sortByColumn(rpc_client::NameColumn, Qt::AscendingOrder);
     restoreTableViewState();
+
+    client->init();
+    timer->start(10000);
 }
 
 MainWindow::~MainWindow()
 {
-    //saveTableViewState();
     delete ui;
 }
 
@@ -126,14 +126,6 @@ void MainWindow::showAbout()
     DialogAbout *about = new DialogAbout(this);
     about->show();
 }
-
-/*
-void MainWindow::on_tableWidget_cellClicked(int row, int column)
-{
-    //selected = row;
-    //qDebug() << client->getTorrent(row).getName() << client->getTorrent(row).getId();
-}
-*/
 
 void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
 {
