@@ -441,3 +441,19 @@ void rpc_client::addTorrentFromFile(const QString &filePath)
         makeRpcPayload("torrent-add", arguments)
         );
 }
+
+void rpc_client::addTorrentFromMagnet(const QString &magnetLink)
+{
+    if (magnetLink.trimmed().isEmpty()) {
+        qWarning() << "Empty magnet link";
+        return;
+    }
+
+    QJsonObject arguments;
+    arguments["filename"] = magnetLink.trimmed();
+
+    na_manager->post(
+        makeRequest(),
+        makeRpcPayload("torrent-add", arguments)
+        );
+}

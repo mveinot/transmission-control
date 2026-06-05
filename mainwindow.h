@@ -41,6 +41,8 @@ private slots:
 
     void on_action_Open_Torrent_triggered();
 
+    void on_actionAdd_Torrent_from_Magnet_Link_triggered();
+
 private:
     Ui::MainWindow *ui;
     QTimer *timer;
@@ -54,6 +56,7 @@ private:
     void startSelectedTorrent();
     void stopSelectedTorrent();
     void addTorrentFromFile();
+    void addTorrentFromMagnet();
     int currentSourceRow() const;
     int selected = 0;
     QSettings settings;

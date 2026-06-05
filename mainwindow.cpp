@@ -17,7 +17,13 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QFileDialog>
+#include <QInputDialog>
 #include <QMenu>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFormLayout>
+#include <QLineEdit>
+#include <QVBoxLayout>
 #include "torrentsortproxymodel.h"
 #include "percentfilldelegate.h"
 
@@ -690,6 +696,67 @@ void MainWindow::addTorrentFromFile()
     QTimer::singleShot(750, client, &rpc_client::getTorrentList);
 }
 
+void MainWindow::addTorrentFromMagnet()
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle("Add Torrent from Magnet Link");
+    dialog.resize(720, 120);
+
+    auto *layout = new QVBoxLayout(&dialog);
+
+    auto *formLayout = new QFormLayout();
+    auto *magnetEdit = new QLineEdit(&dialog);
+
+    magnetEdit->setPlaceholderText("magnet:?xt=urn:btih:...");
+    magnetEdit->setMinimumWidth(640);
+    magnetEdit->setClearButtonEnabled(true);
+
+    formLayout->addRow("Magnet link:", magnetEdit);
+    layout->addLayout(formLayout);
+
+    auto *buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+        &dialog
+        );
+
+    layout->addWidget(buttons);
+
+    connect(buttons, &QDialogButtonBox::accepted,
+            &dialog, &QDialog::accept);
+
+    connect(buttons, &QDialogButtonBox::rejected,
+            &dialog, &QDialog::reject);
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    const QString magnetLink = magnetEdit->text().trimmed();
+
+    if (magnetLink.isEmpty()) {
+        QMessageBox::information(
+            this,
+            "Add Torrent from Magnet Link",
+            "No magnet link was entered."
+            );
+        return;
+    }
+
+    if (!magnetLink.startsWith("magnet:", Qt::CaseInsensitive)) {
+        QMessageBox::warning(
+            this,
+            "Add Torrent from Magnet Link",
+            "That does not look like a magnet link."
+            );
+        return;
+    }
+
+    client->addTorrentFromMagnet(magnetLink);
+
+    statusBar()->showMessage("Adding torrent...", 3000);
+
+    QTimer::singleShot(750, client, &rpc_client::getTorrentList);
+}
+
 void MainWindow::on_actionStart_Torrent_triggered()
 {
     startSelectedTorrent();
@@ -721,4 +788,9 @@ QString MainWindow::currentTorrentName() const
         .siblingAtColumn(rpc_client::NameColumn)
         .data(Qt::DisplayRole)
         .toString();
+}
+
+void MainWindow::on_actionAdd_Torrent_from_Magnet_Link_triggered()
+{
+    addTorrentFromMagnet();
 }
