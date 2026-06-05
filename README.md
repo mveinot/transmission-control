@@ -1,4 +1,5 @@
-# transmission-control
+# Planetary
+(Previously "transmission-control")
 
 This project aims to re-implement Transmission Remote GUI (https://github.com/transmission-remote-gui/transgui) - a remote GUI for the Transmission torrent daemon
 
