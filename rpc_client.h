@@ -47,6 +47,8 @@ public:
     int rowForId(int id) const;
     bool updateFromJson(const QByteArray &json);
     void removeTorrent(int id, bool deleteLocalData);
+    void startTorrent(int id);
+    void stopTorrent(int id);
 
 signals:
     void listUpdated();

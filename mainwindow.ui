@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1562</width>
-    <height>862</height>
+    <height>832</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -279,6 +279,9 @@
     <bool>false</bool>
    </attribute>
    <addaction name="action_Open_Torrent"/>
+   <addaction name="actionAdd_Torrent_from_Magnet_Link"/>
+   <addaction name="actionStart_Torrent"/>
+   <addaction name="actionStop_Torrent"/>
    <addaction name="actionDelete_Torrent"/>
   </widget>
   <action name="action_Open_Torrent">
@@ -344,6 +347,39 @@
   <action name="actionServer_Setup">
    <property name="text">
     <string>Server Setup...</string>
+   </property>
+  </action>
+  <action name="actionStart_Torrent">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::MediaPlaybackStart"/>
+   </property>
+   <property name="text">
+    <string>Start Torrent</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::TextHeuristicRole</enum>
+   </property>
+  </action>
+  <action name="actionStop_Torrent">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::MediaPlaybackPause"/>
+   </property>
+   <property name="text">
+    <string>Stop Torrent</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::TextHeuristicRole</enum>
+   </property>
+  </action>
+  <action name="actionAdd_Torrent_from_Magnet_Link">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::InsertLink"/>
+   </property>
+   <property name="text">
+    <string>Add Torrent from Magnet Link</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::TextHeuristicRole</enum>
    </property>
   </action>
  </widget>

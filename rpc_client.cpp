@@ -390,3 +390,25 @@ void rpc_client::removeTorrent(int id, bool deleteLocalData)
         makeRpcPayload("torrent-remove", arguments)
         );
 }
+
+void rpc_client::startTorrent(int id)
+{
+    QJsonObject arguments;
+    arguments["ids"] = QJsonArray { id };
+
+    na_manager->post(
+        makeRequest(),
+        makeRpcPayload("torrent-start", arguments)
+        );
+}
+
+void rpc_client::stopTorrent(int id)
+{
+    QJsonObject arguments;
+    arguments["ids"] = QJsonArray { id };
+
+    na_manager->post(
+        makeRequest(),
+        makeRpcPayload("torrent-stop", arguments)
+        );
+}

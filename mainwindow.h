@@ -36,6 +36,8 @@ private slots:
     void on_actionDelete_Torrent_triggered();
     void onServerSetupTriggered();
     void showTorrentContextMenu(const QPoint &pos);
+    void on_actionStart_Torrent_triggered();
+    void on_actionStop_Torrent_triggered();
 
 private:
     Ui::MainWindow *ui;
@@ -46,6 +48,8 @@ private:
     rpc_client *client = nullptr;
     TorrentSortProxyModel *proxy = nullptr;
     int currentTorrentId() const;
+    void startSelectedTorrent();
+    void stopSelectedTorrent();
     int currentSourceRow() const;
     int selected = 0;
     QSettings settings;

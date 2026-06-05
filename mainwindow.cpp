@@ -165,6 +165,20 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
     ui->tableView->setModel(proxy);
+    ui->actionStart_Torrent->setEnabled(false);
+    ui->actionStop_Torrent->setEnabled(false);
+    ui->actionDelete_Torrent->setEnabled(false);
+
+    connect(ui->tableView->selectionModel(),
+            &QItemSelectionModel::selectionChanged,
+            this,
+            [this]() {
+                const bool hasSelection = ui->tableView->currentIndex().isValid();
+
+                ui->actionStart_Torrent->setEnabled(hasSelection);
+                ui->actionStop_Torrent->setEnabled(hasSelection);
+                ui->actionDelete_Torrent->setEnabled(hasSelection);
+            });
     ui->tableView->hideColumn(rpc_client::IdColumn);
     ui->tableView->setSortingEnabled(true);
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -616,4 +630,47 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
     menu.addAction(ui->actionDelete_Torrent);
 
     menu.exec(ui->tableView->viewport()->mapToGlobal(pos));
+}
+
+void MainWindow::startSelectedTorrent()
+{
+    const int torrentId = currentTorrentId();
+
+    if (torrentId < 0) {
+        statusBar()->showMessage("No torrent selected.", 3000);
+        return;
+    }
+
+    client->startTorrent(torrentId);
+
+    statusBar()->showMessage("Starting torrent...", 3000);
+
+    // Simple refresh approach, same spirit as your delete action.
+    QTimer::singleShot(500, client, &rpc_client::getTorrentList);
+}
+
+void MainWindow::stopSelectedTorrent()
+{
+    const int torrentId = currentTorrentId();
+
+    if (torrentId < 0) {
+        statusBar()->showMessage("No torrent selected.", 3000);
+        return;
+    }
+
+    client->stopTorrent(torrentId);
+
+    statusBar()->showMessage("Stopping torrent...", 3000);
+
+    QTimer::singleShot(500, client, &rpc_client::getTorrentList);
+}
+
+void MainWindow::on_actionStart_Torrent_triggered()
+{
+    startSelectedTorrent();
+}
+
+void MainWindow::on_actionStop_Torrent_triggered()
+{
+    stopSelectedTorrent();
 }
