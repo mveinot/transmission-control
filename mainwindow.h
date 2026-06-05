@@ -50,6 +50,7 @@ private:
     rpc_client *client = nullptr;
     TorrentSortProxyModel *proxy = nullptr;
     int currentTorrentId() const;
+    QString currentTorrentName() const;
     void startSelectedTorrent();
     void stopSelectedTorrent();
     void addTorrentFromFile();

@@ -278,52 +278,57 @@ int MainWindow::currentTorrentId() const
 
 void MainWindow::on_actionDelete_Torrent_triggered()
 {
-    {
-        const int torrentId = currentTorrentId();
+    const int torrentId = currentTorrentId();
+    const QString torrentName = currentTorrentName();
 
-        if (torrentId < 0) {
-            QMessageBox::information(
-                this,
-                "Delete Torrent",
-                "No torrent is selected."
-                );
-            return;
-        }
+    if (torrentId < 0) {
+        QMessageBox::information(
+            this,
+            "Delete Torrent",
+            "No torrent is selected."
+            );
+        return;
+    }
 
-        QMessageBox msgBox(this);
-        msgBox.setWindowTitle("Delete Torrent");
-        msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setText("Delete the selected torrent?");
-        msgBox.setInformativeText(
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("Delete Torrent");
+    msgBox.setIcon(QMessageBox::Warning);
+
+    msgBox.setText("Delete the selected torrent?");
+
+    msgBox.setInformativeText(
+        QString(
+            "Torrent:\n%1\n\n"
             "Choose whether to remove only the torrent from Transmission, "
             "or also delete the downloaded data."
-            );
+            ).arg(torrentName)
+        );
 
-        QPushButton *noButton =
-            msgBox.addButton("No", QMessageBox::RejectRole);
+    QPushButton *noButton =
+        msgBox.addButton("No", QMessageBox::RejectRole);
 
-        QPushButton *torrentOnlyButton =
-            msgBox.addButton("Yes: torrent only", QMessageBox::AcceptRole);
+    QPushButton *torrentOnlyButton =
+        msgBox.addButton("Yes: torrent only", QMessageBox::AcceptRole);
 
-        QPushButton *torrentAndDataButton =
-            msgBox.addButton("Yes, torrent and data", QMessageBox::DestructiveRole);
+    QPushButton *torrentAndDataButton =
+        msgBox.addButton("Yes, torrent and data", QMessageBox::DestructiveRole);
 
-        msgBox.setDefaultButton(noButton);
-        msgBox.exec();
+    msgBox.setDefaultButton(noButton);
+    msgBox.exec();
 
-        if (msgBox.clickedButton() == noButton) {
-            return;
-        }
+    if (msgBox.clickedButton() == noButton)
+        return;
 
-        if (msgBox.clickedButton() == torrentOnlyButton) {
-            client->removeTorrent(torrentId, false);
-            return;
-        }
+    if (msgBox.clickedButton() == torrentOnlyButton) {
+        client->removeTorrent(torrentId, false);
+        QTimer::singleShot(500, client, &rpc_client::getTorrentList);
+        return;
+    }
 
-        if (msgBox.clickedButton() == torrentAndDataButton) {
-            client->removeTorrent(torrentId, true);
-            return;
-        }
+    if (msgBox.clickedButton() == torrentAndDataButton) {
+        client->removeTorrent(torrentId, true);
+        QTimer::singleShot(500, client, &rpc_client::getTorrentList);
+        return;
     }
 }
 
@@ -700,3 +705,20 @@ void MainWindow::on_action_Open_Torrent_triggered()
     addTorrentFromFile();
 }
 
+QString MainWindow::currentTorrentName() const
+{
+    const QModelIndex proxyIndex = ui->tableView->currentIndex();
+
+    if (!proxyIndex.isValid())
+        return {};
+
+    const QModelIndex sourceIndex = proxy->mapToSource(proxyIndex);
+
+    if (!sourceIndex.isValid())
+        return {};
+
+    return sourceIndex
+        .siblingAtColumn(rpc_client::NameColumn)
+        .data(Qt::DisplayRole)
+        .toString();
+}
