@@ -1,3 +1,6 @@
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonObject>
 #include "rpc_client.h"
 
 rpc_client::rpc_client(QObject *parent)
@@ -410,5 +413,31 @@ void rpc_client::stopTorrent(int id)
     na_manager->post(
         makeRequest(),
         makeRpcPayload("torrent-stop", arguments)
+        );
+}
+
+void rpc_client::addTorrentFromFile(const QString &filePath)
+{
+    QFile file(filePath);
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "Could not open torrent file:" << filePath << file.errorString();
+        return;
+    }
+
+    const QByteArray torrentData = file.readAll();
+    file.close();
+
+    if (torrentData.isEmpty()) {
+        qWarning() << "Torrent file is empty:" << filePath;
+        return;
+    }
+
+    QJsonObject arguments;
+    arguments["metainfo"] = QString::fromLatin1(torrentData.toBase64());
+
+    na_manager->post(
+        makeRequest(),
+        makeRpcPayload("torrent-add", arguments)
         );
 }

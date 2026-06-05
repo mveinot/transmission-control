@@ -49,6 +49,7 @@ public:
     void removeTorrent(int id, bool deleteLocalData);
     void startTorrent(int id);
     void stopTorrent(int id);
+    void addTorrentFromFile(const QString &filePath);
 
 signals:
     void listUpdated();

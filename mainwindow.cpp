@@ -16,6 +16,7 @@
 #include <QJsonValue>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QFileDialog>
 #include <QMenu>
 #include "torrentsortproxymodel.h"
 #include "percentfilldelegate.h"
@@ -665,6 +666,25 @@ void MainWindow::stopSelectedTorrent()
     QTimer::singleShot(500, client, &rpc_client::getTorrentList);
 }
 
+void MainWindow::addTorrentFromFile()
+{
+    const QString filePath = QFileDialog::getOpenFileName(
+        this,
+        "Add Torrent File",
+        QString(),
+        "Torrent Files (*.torrent);;All Files (*)"
+        );
+
+    if (filePath.isEmpty())
+        return;
+
+    client->addTorrentFromFile(filePath);
+
+    statusBar()->showMessage("Adding torrent...", 3000);
+
+    QTimer::singleShot(750, client, &rpc_client::getTorrentList);
+}
+
 void MainWindow::on_actionStart_Torrent_triggered()
 {
     startSelectedTorrent();
@@ -674,3 +694,9 @@ void MainWindow::on_actionStop_Torrent_triggered()
 {
     stopSelectedTorrent();
 }
+
+void MainWindow::on_action_Open_Torrent_triggered()
+{
+    addTorrentFromFile();
+}
+
