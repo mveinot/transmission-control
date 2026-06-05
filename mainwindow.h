@@ -6,6 +6,13 @@
 #include <QAction>
 #include <QSettings>
 #include <QCloseEvent>
+#include <QTreeWidget>
+#include <QTreeWidgetItem>
+#include <QLocale>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonValue>
+#include <QPoint>
 #include "rpc_client.h"
 #include "torrentsortproxymodel.h"
 
@@ -28,6 +35,7 @@ private slots:
     void on_tableView_clicked(const QModelIndex &index);
     void on_actionDelete_Torrent_triggered();
     void onServerSetupTriggered();
+    void showTorrentContextMenu(const QPoint &pos);
 
 private:
     Ui::MainWindow *ui;
@@ -43,6 +51,21 @@ private:
     QSettings settings;
     void saveTableViewState();
     void restoreTableViewState();
+    void setTorrentStateFilter(TorrentSortProxyModel::StateFilter filter);
+    QTreeWidgetItem *findOrCreateChild(QTreeWidgetItem *parent,
+                                       const QString &name,
+                                       bool isFolder);
+    QTreeWidgetItem *findOrCreateTopLevelItem(const QString &name);
+    void populateFileTree(const QJsonArray &files);
+    void populatePeerTable(const QJsonArray &peers);
+    enum FileTreeColumn {
+        FileNameColumn = 0,
+        FileSizeColumn,
+        FileDoneColumn,
+        FilePercentColumn,
+        FileColumnCount
+    };
+
 
 protected:
     void closeEvent(QCloseEvent *event) override;

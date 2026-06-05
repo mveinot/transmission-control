@@ -39,6 +39,8 @@ bool TorrentSortProxyModel::lessThan(const QModelIndex &left, const QModelIndex 
     case rpc_client::RateUploadColumn:
     case rpc_client::UploadRatioColumn:
         return lhs.toDouble() < rhs.toDouble();
+    case rpc_client::SizeColumn:
+        return lhs.toLongLong() < rhs.toLongLong();
 
     case rpc_client::NameColumn:
     default:
