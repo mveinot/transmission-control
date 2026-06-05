@@ -1,4 +1,4 @@
-# Planetary
+# <img src="Resources/icons/planetary.png" alt="Planetary icon" width="32"> Planetary
 (Previously "transmission-control")
 
 This project aims to re-implement Transmission Remote GUI (https://github.com/transmission-remote-gui/transgui) - a remote GUI for the Transmission torrent daemon
