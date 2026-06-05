@@ -131,12 +131,60 @@ void rpc_client::getTorrentList()
     updateInProgress = true;
     emit updateStarted();
 
-    QNetworkRequest request = QNetworkRequest(transmissionURL());
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    request.setRawHeader(QByteArray("X-Transmission-Session-Id"), QByteArray(rpc_client::_session_token));
+    QJsonObject arguments;
+    arguments["fields"] = QJsonArray {
+        "id",
+        "name",
+        "percentDone",
+        "status",
+        "rateDownload",
+        "rateUpload",
+        "uploadRatio",
+        "eta",
+        "sizeWhenDone",
+        "files",
+        "peers"
+    };
 
-    QByteArray data("{\"method\":\"torrent-get\",\"arguments\": {\"fields\":[\"rateDownload\",\"rateUpload\",\"id\",\"percentDone\",\"status\",\"name\",\"uploadRatio\",\"eta\",\"files\",\"peers\"]}}");
-    na_manager->post(request, data);
+    na_manager->post(
+        makeRequest(),
+        makeRpcPayload("torrent-get", arguments)
+        );
+}
+
+QByteArray rpc_client::makeRpcPayload(const QString &method,
+                                      const QJsonObject &arguments) const
+{
+    QJsonObject root;
+    root["method"] = method;
+
+    if (!arguments.isEmpty())
+        root["arguments"] = arguments;
+
+    return QJsonDocument(root).toJson(QJsonDocument::Compact);
+}
+
+QNetworkRequest rpc_client::makeRequest() const
+{
+    QNetworkRequest request((QUrl(rpcUrl)));
+
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    if (!_session_token.isEmpty()) {
+        request.setRawHeader(
+            "X-Transmission-Session-Id",
+            _session_token
+            );
+    }
+
+    if (!username.isEmpty() || !password.isEmpty()) {
+        const QByteArray auth =
+            QString("%1:%2").arg(username, password).toUtf8().toBase64();
+
+        request.setRawHeader("Authorization", "Basic " + auth);
+    }
+
+    return request;
 }
 
 // QTableView methods
@@ -169,6 +217,7 @@ QVariant rpc_client::data(const QModelIndex &index, int role) const
         case RateUploadColumn:   return t.getRateUpload();
         case UploadRatioColumn:  return t.getUploadRatio();
         case EtaColumn:          return t.getEta();
+        case SizeColumn:         return t.getSize();
         default:                 return {};
         }
 
@@ -186,6 +235,7 @@ QVariant rpc_client::data(const QModelIndex &index, int role) const
         case RateUploadColumn:   return t.getRateUpload();
         case UploadRatioColumn:  return t.getUploadRatio();
         case EtaColumn:          return t.getEta();
+        case SizeColumn:         return t.getSizeBytes();
         default:                 return {};
         }
     }
@@ -197,6 +247,7 @@ QVariant rpc_client::data(const QModelIndex &index, int role) const
         case RateDownloadColumn:
         case RateUploadColumn:
         case UploadRatioColumn:
+        case SizeColumn:
         case EtaColumn:
             return static_cast<int>(Qt::AlignRight | Qt::AlignVCenter);
         default:
@@ -223,6 +274,7 @@ QVariant rpc_client::headerData(int section, Qt::Orientation orientation, int ro
         case RateUploadColumn:   return "Up";
         case UploadRatioColumn:  return "Ratio";
         case EtaColumn:          return "ETA";
+        case SizeColumn:         return "Size";
         default:                 return {};
         }
     }
@@ -325,4 +377,16 @@ void rpc_client::applyUpdate(const QVector<torrent> &incoming)
     }
 
     rebuildIndex();
+}
+
+void rpc_client::removeTorrent(int id, bool deleteLocalData)
+{
+    QJsonObject arguments;
+    arguments["ids"] = QJsonArray { id };
+    arguments["delete-local-data"] = deleteLocalData;
+
+    na_manager->post(
+        makeRequest(),
+        makeRpcPayload("torrent-remove", arguments)
+        );
 }

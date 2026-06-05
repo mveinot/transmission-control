@@ -9,6 +9,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QByteArray>
 #include <QUrl>
 #include "torrent.h"
 
@@ -17,6 +18,19 @@ class rpc_client: public QAbstractTableModel
     Q_OBJECT
 
 public:
+    enum Column
+    {
+        IdColumn,
+        NameColumn,
+        SizeColumn,
+        PercentDoneColumn,
+        StatusColumn,
+        RateDownloadColumn,
+        RateUploadColumn,
+        UploadRatioColumn,
+        EtaColumn,
+        ColumnCount
+    };
     rpc_client(QObject *parent);
     void init();
     void getTorrentList();
@@ -32,18 +46,7 @@ public:
     QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
     int rowForId(int id) const;
     bool updateFromJson(const QByteArray &json);
-    enum Column
-    {
-        IdColumn,
-        NameColumn,
-        PercentDoneColumn,
-        StatusColumn,
-        RateDownloadColumn,
-        RateUploadColumn,
-        UploadRatioColumn,
-        EtaColumn,
-        ColumnCount
-    };
+    void removeTorrent(int id, bool deleteLocalData);
 
 signals:
     void listUpdated();
@@ -76,7 +79,11 @@ private:
     QString server = "nas2.mvgrafx.net";
     int port = 9091;
     QString serverPath = "/transmission/rpc";
-    QUrl transmissionURL();// = QUrl("http://nas2.mvgrafx.net:9091/transmission/rpc");
+    QUrl transmissionURL();
+    QString rpcUrl = "http://nas2.mvgrafx.net:9091/transmission/rpc";
+    QByteArray makeRpcPayload(const QString &method,
+                              const QJsonObject &arguments = {}) const;
+    QNetworkRequest makeRequest() const;
 
 
 public slots:
