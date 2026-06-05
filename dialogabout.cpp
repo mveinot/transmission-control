@@ -11,10 +11,10 @@ DialogAbout::DialogAbout(QWidget *parent) :
     ui(new Ui::DialogAbout)
 {
     ui->setupUi(this);
+    setFixedSize(size());
+
     ui->versionValue->setText(__PLANETARY_VERSION__);
     ui->builtValue->setText(QString(__BUILD_TIME__) + " on " + QString(__BUILD_DATE__));
-    ui->image->show();
-    ui->image->setVisible(true);
 }
 
 DialogAbout::~DialogAbout()

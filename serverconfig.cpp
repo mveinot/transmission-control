@@ -6,6 +6,7 @@ ServerConfig::ServerConfig(QWidget *parent)
     , ui(new Ui::ServerConfig)
 {
     ui->setupUi(this);
+    setFixedSize(size());
 }
 
 ServerConfig::~ServerConfig()
