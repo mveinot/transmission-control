@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QLocale>
+#include <QJsonArray>
 
 class torrent
 {
@@ -29,8 +30,12 @@ public:
     QString getRateUpload() const;
     QString getUploadRatio() const;
     QString getEta() const;
+    QString getSize() const;
+    qint64 getSizeBytes() const;
     bool sameDisplayData(const torrent &other) const;
     int getId() const;
+    QJsonArray getFiles() const;
+    QJsonArray getPeers() const;
 
 private:
     static Status statusFromInt(int value);
@@ -40,11 +45,12 @@ private:
     double percentDone = 0.0;
     double rateDownload = 0.0;
     double rateUpload = 0.0;
-    double uploadRatio =0.0;
+    double uploadRatio = 0.0;
     QJsonValue files;
     QJsonValue peers;
     Status status = Status::Unknown;
     int eta = 0;
+    double sizeWhenDone = 0.0;
 
 signals:
 

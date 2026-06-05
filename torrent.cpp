@@ -14,6 +14,7 @@ torrent::torrent(const QJsonValue &val)
     uploadRatio = obj.value("uploadRatio").toDouble();
     files = obj.value("files");
     peers = obj.value("peers");
+    sizeWhenDone = obj.value("sizeWhenDone").toDouble();
 }
 
 
@@ -88,6 +89,21 @@ QString torrent::getUploadRatio() const
     return QString("%1").arg(uploadRatio,5, 'f', 3);
 }
 
+QString torrent::getSize() const
+{
+    //return QString("%1").arg(sizeWhenDone,5, 'f', 1);
+    return QLocale().formattedDataSize(
+        sizeWhenDone,
+        1,
+        QLocale::DataSizeIecFormat
+        );
+}
+
+qint64 torrent::getSizeBytes() const
+{
+    return sizeWhenDone;
+}
+
 QString torrent::getEta() const
 {
     int seconds = 0;
@@ -119,6 +135,16 @@ QString torrent::getEta() const
     return QString::number(seconds)+"s";
 }
 
+QJsonArray torrent::getFiles() const
+{
+    return files.toArray();
+}
+
+QJsonArray torrent::getPeers() const
+{
+    return peers.toArray();
+}
+
 bool torrent::sameDisplayData(const torrent &other) const
 {
     return id == other.id
@@ -128,7 +154,8 @@ bool torrent::sameDisplayData(const torrent &other) const
            && rateUpload == other.rateUpload
            && uploadRatio == other.uploadRatio
            && status == other.status
-           && eta == other.eta;
+           && eta == other.eta
+           && sizeWhenDone == other.sizeWhenDone;
 }
 
 
