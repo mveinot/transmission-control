@@ -180,11 +180,12 @@ void rpc_client::replyFinished(QNetworkReply *reply)
     finishTorrentGet();
 }
 
+/*
 bool rpc_client::isClientReady()
 {
     return _clientReady;
 }
-
+*/
 void rpc_client::setSessionToken(QByteArray token)
 {
     _session_token = token;
@@ -195,7 +196,7 @@ torrent rpc_client::getTorrent(int item)
 {
     return rpc_client::torrentVector[item];
 }
-
+/*
 int rpc_client::countTorrents() const
 {
     return torrentVector.count();
@@ -205,7 +206,7 @@ QJsonArray rpc_client::torrents()
 {
     return rpc_client::torrentList;
 }
-
+*/
 rpc_client::TransmissionServer rpc_client::readServerFromSettings(int index, bool *ok)
 {
     if (ok)
@@ -467,7 +468,7 @@ int rpc_client::rowForId(int id) const
 {
     return m_rowById.value(id, -1);
 }
-
+/*
 bool rpc_client::updateFromJson(const QByteArray &json)
 {
     QJsonParseError error;
@@ -494,6 +495,7 @@ bool rpc_client::updateFromJson(const QByteArray &json)
     applyUpdate(incoming);
     return true;
 }
+*/
 
 void rpc_client::rebuildIndex()
 {

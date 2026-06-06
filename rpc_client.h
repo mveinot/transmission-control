@@ -50,9 +50,9 @@ public:
     rpc_client(QObject *parent);
     void init();
     void getTorrentList();
-    QJsonArray torrents();
-    bool isClientReady();
-    int countTorrents() const;
+    //QJsonArray torrents();
+    //bool isClientReady();
+    //int countTorrents() const;
     torrent getTorrent(int item);
     QString getServer();
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -60,7 +60,7 @@ public:
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
     int rowForId(int id) const;
-    bool updateFromJson(const QByteArray &json);
+    //bool updateFromJson(const QByteArray &json);
     void removeTorrent(int id, bool deleteLocalData);
     void startTorrent(int id);
     void stopTorrent(int id);

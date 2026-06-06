@@ -70,7 +70,7 @@ private:
     void stopSelectedTorrent();
     void addTorrentFromFile();
     void addTorrentFromMagnet();
-    int currentSourceRow() const;
+    //int currentSourceRow() const;
     void saveTableViewState();
     void restoreTableViewState();
     void setTorrentStateFilter(TorrentSortProxyModel::StateFilter filter);

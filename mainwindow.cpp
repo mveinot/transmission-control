@@ -286,6 +286,7 @@ void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
     populatePeerTable(t.getPeers());
 }
 
+/*
 int MainWindow::currentSourceRow() const
 {
     const QModelIndex proxyIndex = ui->tableView->currentIndex();
@@ -300,7 +301,7 @@ int MainWindow::currentSourceRow() const
 
     return sourceIndex.row();
 }
-
+*/
 int MainWindow::currentTorrentId() const
 {
     const QModelIndex proxyIndex = ui->tableView->currentIndex();
