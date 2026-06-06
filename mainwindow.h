@@ -42,6 +42,8 @@ private slots:
     void on_actionAdd_Torrent_from_Magnet_Link_triggered();
     void on_actionReannounce_triggered();
 
+    void on_actionAbout_triggered();
+
 private:
     Ui::MainWindow *ui;
     QTimer *timer;

@@ -4,7 +4,6 @@
 #include "dialogabout.h"
 #include "serverconfig.h"
 #include <QTimer>
-//#include <QProgressBar>
 #include <QActionGroup>
 #include <QHeaderView>
 #include <QSettings>
@@ -817,4 +816,10 @@ void MainWindow::reannounceSelectedTorrent()
 void MainWindow::on_actionReannounce_triggered()
 {
     reannounceSelectedTorrent();
+}
+
+void MainWindow::on_actionAbout_triggered()
+{
+    DialogAbout *about = new DialogAbout(this);
+    about->show();
 }
