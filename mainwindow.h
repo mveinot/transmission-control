@@ -41,8 +41,8 @@ private slots:
     void on_action_Open_Torrent_triggered();
     void on_actionAdd_Torrent_from_Magnet_Link_triggered();
     void on_actionReannounce_triggered();
-
     void on_actionAbout_triggered();
+    void on_actionVerify_Torrent_triggered();
 
 private:
     Ui::MainWindow *ui;
@@ -79,6 +79,7 @@ private:
     void populateFileTree(const QJsonArray &files);
     void populatePeerTable(const QJsonArray &peers);
     void reannounceSelectedTorrent();
+    void verifySelectedTorrent();
 
 
 protected:

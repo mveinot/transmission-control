@@ -570,3 +570,16 @@ void rpc_client::reannounceTorrent(int id)
 
     postRpc("torrent-reannounce", arguments, RpcRequestType::Command);
 }
+
+void rpc_client::verifyTorrent(int id)
+{
+    if (id < 0) {
+        qWarning() << "Invalid torrent id for verify:" << id;
+        return;
+    }
+
+    QJsonObject arguments;
+    arguments["ids"] = QJsonArray { id };
+
+    postRpc("torrent-verify", arguments, RpcRequestType::Command);
+}

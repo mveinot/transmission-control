@@ -202,6 +202,7 @@ MainWindow::MainWindow(QWidget *parent)
                 ui->actionStart_Torrent->setEnabled(hasSelection);
                 ui->actionStop_Torrent->setEnabled(hasSelection);
                 ui->actionReannounce->setEnabled(hasSelection);
+                ui->actionVerify_Torrent->setEnabled(hasSelection);
                 ui->actionDelete_Torrent->setEnabled(hasSelection);
             });
 
@@ -332,7 +333,7 @@ void MainWindow::on_actionDelete_Torrent_triggered()
 
     if (msgBox.clickedButton() == torrentAndDataButton) {
         client->removeTorrent(torrentId, true);
-        QTimer::singleShot(500, client, &rpc_client::getTorrentList);
+        //QTimer::singleShot(500, client, &rpc_client::getTorrentList);
         return;
     }
 }
@@ -641,6 +642,8 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
 
     menu.addAction(ui->actionStart_Torrent);
     menu.addAction(ui->actionStop_Torrent);
+    menu.addSeparator();
+    menu.addAction(ui->actionVerify_Torrent);
     menu.addAction(ui->actionReannounce);
     menu.addSeparator();
     menu.addAction(ui->actionDelete_Torrent);
@@ -662,7 +665,7 @@ void MainWindow::startSelectedTorrent()
     statusBar()->showMessage("Starting torrent...", 3000);
 
     // Simple refresh approach, same spirit as your delete action.
-    QTimer::singleShot(500, client, &rpc_client::getTorrentList);
+    //QTimer::singleShot(500, client, &rpc_client::getTorrentList);
 }
 
 void MainWindow::stopSelectedTorrent()
@@ -678,7 +681,7 @@ void MainWindow::stopSelectedTorrent()
 
     statusBar()->showMessage("Stopping torrent...", 3000);
 
-    QTimer::singleShot(500, client, &rpc_client::getTorrentList);
+    //QTimer::singleShot(500, client, &rpc_client::getTorrentList);
 }
 
 void MainWindow::addTorrentFromFile()
@@ -697,7 +700,7 @@ void MainWindow::addTorrentFromFile()
 
     statusBar()->showMessage("Adding torrent...", 3000);
 
-    QTimer::singleShot(750, client, &rpc_client::getTorrentList);
+    //QTimer::singleShot(750, client, &rpc_client::getTorrentList);
 }
 
 void MainWindow::addTorrentFromMagnet()
@@ -758,7 +761,7 @@ void MainWindow::addTorrentFromMagnet()
 
     statusBar()->showMessage("Adding torrent...", 3000);
 
-    QTimer::singleShot(750, client, &rpc_client::getTorrentList);
+    //QTimer::singleShot(750, client, &rpc_client::getTorrentList);
 }
 
 void MainWindow::on_actionStart_Torrent_triggered()
@@ -811,7 +814,21 @@ void MainWindow::reannounceSelectedTorrent()
     client->reannounceTorrent(torrentId);
     statusBar()->showMessage("Reannouncing torrent...", 3000);
 
-    QTimer::singleShot(750, client, &rpc_client::getTorrentList);
+    //QTimer::singleShot(750, client, &rpc_client::getTorrentList);
+}
+
+void MainWindow::verifySelectedTorrent()
+{
+    const int torrentId = currentTorrentId();
+
+    if (torrentId < 0) {
+        statusBar()->showMessage("No torrent selected.", 3000);
+        return;
+    }
+
+    client->verifyTorrent(torrentId);
+
+    statusBar()->showMessage("Verifying torrent...", 3000);
 }
 
 void MainWindow::on_actionReannounce_triggered()
@@ -824,3 +841,9 @@ void MainWindow::on_actionAbout_triggered()
     DialogAbout *about = new DialogAbout(this);
     about->show();
 }
+
+void MainWindow::on_actionVerify_Torrent_triggered()
+{
+    verifySelectedTorrent();
+}
+

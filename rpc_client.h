@@ -52,6 +52,7 @@ public:
     void addTorrentFromFile(const QString &filePath);
     void addTorrentFromMagnet(const QString &magnetLink);
     void reannounceTorrent(int id);
+    void verifyTorrent(int id);
 
 signals:
     void listUpdated();

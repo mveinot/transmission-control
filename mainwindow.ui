@@ -236,7 +236,7 @@
      <x>0</x>
      <y>0</y>
      <width>1562</width>
-     <height>23</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -289,6 +289,8 @@
    <addaction name="actionAdd_Torrent_from_Magnet_Link"/>
    <addaction name="actionStart_Torrent"/>
    <addaction name="actionStop_Torrent"/>
+   <addaction name="actionVerify_Torrent"/>
+   <addaction name="actionReannounce"/>
    <addaction name="actionDelete_Torrent"/>
   </widget>
   <action name="action_Open_Torrent">
@@ -403,6 +405,17 @@
   <action name="actionAbout">
    <property name="text">
     <string>About</string>
+   </property>
+  </action>
+  <action name="actionVerify_Torrent">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::SyncSynchronizing"/>
+   </property>
+   <property name="text">
+    <string>Verify Torrent</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
  </widget>
