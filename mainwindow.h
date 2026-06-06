@@ -38,10 +38,9 @@ private slots:
     void showTorrentContextMenu(const QPoint &pos);
     void on_actionStart_Torrent_triggered();
     void on_actionStop_Torrent_triggered();
-
     void on_action_Open_Torrent_triggered();
-
     void on_actionAdd_Torrent_from_Magnet_Link_triggered();
+    void on_actionReannounce_triggered();
 
 private:
     Ui::MainWindow *ui;
@@ -49,8 +48,18 @@ private:
     QMenu *mainMenu;
     QAction *aboutAction;
     QMenuBar *mainMenuBar;
+    int selected = 0;
+    QSettings settings;
     rpc_client *client = nullptr;
     TorrentSortProxyModel *proxy = nullptr;
+    enum FileTreeColumn {
+        FileNameColumn = 0,
+        FileSizeColumn,
+        FileDoneColumn,
+        FilePercentColumn,
+        FileColumnCount
+    };
+
     int currentTorrentId() const;
     QString currentTorrentName() const;
     void startSelectedTorrent();
@@ -58,8 +67,6 @@ private:
     void addTorrentFromFile();
     void addTorrentFromMagnet();
     int currentSourceRow() const;
-    int selected = 0;
-    QSettings settings;
     void saveTableViewState();
     void restoreTableViewState();
     void setTorrentStateFilter(TorrentSortProxyModel::StateFilter filter);
@@ -69,13 +76,7 @@ private:
     QTreeWidgetItem *findOrCreateTopLevelItem(const QString &name);
     void populateFileTree(const QJsonArray &files);
     void populatePeerTable(const QJsonArray &peers);
-    enum FileTreeColumn {
-        FileNameColumn = 0,
-        FileSizeColumn,
-        FileDoneColumn,
-        FilePercentColumn,
-        FileColumnCount
-    };
+    void reannounceSelectedTorrent();
 
 
 protected:

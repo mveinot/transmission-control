@@ -31,6 +31,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
+    timer = new QTimer(this);
     client = new rpc_client(this);
     proxy = new TorrentSortProxyModel(this);
     proxy->setSourceModel(client);
@@ -42,6 +43,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     auto *stateGroup = new QActionGroup(this);
     stateGroup->setExclusive(true);
+
+    MainWindow::setWindowTitle(QCoreApplication::applicationName());
+
+    ui->tableView->setModel(proxy);
+    ui->actionStart_Torrent->setEnabled(false);
+    ui->actionStop_Torrent->setEnabled(false);
+    ui->actionDelete_Torrent->setEnabled(false);
 
     ui->fileTreeWidget->setColumnCount(3);
     ui->fileTreeWidget->setHeaderLabels({ "Name", "Size", "Done", "Completed" });
@@ -63,7 +71,6 @@ MainWindow::MainWindow(QWidget *parent)
     stateGroup->addAction(ui->actionInactive);
     stateGroup->addAction(ui->actionStopped);
     stateGroup->addAction(ui->actionError);
-
     ui->actionAll->setChecked(true);
 
     ui->peerTableWidget->setColumnCount(8);
@@ -77,12 +84,33 @@ MainWindow::MainWindow(QWidget *parent)
         "Encrypted",
         "Incoming"
     });
-
     ui->peerTableWidget->setAlternatingRowColors(true);
     ui->peerTableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->peerTableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->peerTableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->peerTableWidget->setSortingEnabled(true);
+
+    ui->tableView->hideColumn(rpc_client::IdColumn);
+    ui->tableView->setSortingEnabled(true);
+    ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->tableView->sortByColumn(rpc_client::NameColumn, Qt::AscendingOrder);
+    ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
+    ui->tableView->setItemDelegateForColumn(
+        rpc_client::PercentDoneColumn,
+        new PercentFillDelegate(
+            rpc_client::PercentDoneColumn,
+            Qt::UserRole + 1,
+            ui->tableView
+            )
+        );
+
+    ui->fileTreeWidget->setItemDelegateForColumn(
+        FilePercentColumn,
+        new PercentFillDelegate(FilePercentColumn, Qt::UserRole, ui->fileTreeWidget)
+        );
+
+    ui->statusbar->showMessage(client->getServer());
 
     connect(ui->actionAll, &QAction::triggered, this, [this]() {
         setTorrentStateFilter(TorrentSortProxyModel::StateFilter::All);
@@ -151,15 +179,10 @@ MainWindow::MainWindow(QWidget *parent)
                 }
             });
 
-    MainWindow::setWindowTitle(QCoreApplication::applicationName());
-
     this->mainMenu = new QMenu(0);
     this->menuBar()->addMenu(this->mainMenu);
     this->mainMenu->addAction(this->aboutAction);
     this->setMenuBar(this->menuBar());
-
-    timer = new QTimer(this);
-    ui->statusbar->showMessage("Connected to " + client->getServer());
 
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTorrentList);
     connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
@@ -171,11 +194,6 @@ MainWindow::MainWindow(QWidget *parent)
         ui->statusbar->showMessage(client->getServer());
     });
 
-    ui->tableView->setModel(proxy);
-    ui->actionStart_Torrent->setEnabled(false);
-    ui->actionStop_Torrent->setEnabled(false);
-    ui->actionDelete_Torrent->setEnabled(false);
-
     connect(ui->tableView->selectionModel(),
             &QItemSelectionModel::selectionChanged,
             this,
@@ -186,29 +204,10 @@ MainWindow::MainWindow(QWidget *parent)
                 ui->actionStop_Torrent->setEnabled(hasSelection);
                 ui->actionDelete_Torrent->setEnabled(hasSelection);
             });
-    ui->tableView->hideColumn(rpc_client::IdColumn);
-    ui->tableView->setSortingEnabled(true);
-    ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
-    ui->tableView->sortByColumn(rpc_client::NameColumn, Qt::AscendingOrder);
-    ui->tableView->setItemDelegateForColumn(
-        rpc_client::PercentDoneColumn,
-        new PercentFillDelegate(
-            rpc_client::PercentDoneColumn,
-            Qt::UserRole + 1,
-            ui->tableView
-            )
-        );
-
-    ui->fileTreeWidget->setItemDelegateForColumn(
-        FilePercentColumn,
-        new PercentFillDelegate(FilePercentColumn, Qt::UserRole, ui->fileTreeWidget)
-        );
-
-    ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
 
     connect(ui->tableView, &QTableView::customContextMenuRequested,
             this, &MainWindow::showTorrentContextMenu);
+
     restoreTableViewState();
 
     client->init();
@@ -639,6 +638,11 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
     ui->tableView->setCurrentIndex(index);
 
     QMenu menu(this);
+
+    menu.addAction(ui->actionStart_Torrent);
+    menu.addAction(ui->actionStop_Torrent);
+    menu.addAction(ui->actionReannounce);
+    menu.addSeparator();
     menu.addAction(ui->actionDelete_Torrent);
 
     menu.exec(ui->tableView->viewport()->mapToGlobal(pos));
@@ -793,4 +797,24 @@ QString MainWindow::currentTorrentName() const
 void MainWindow::on_actionAdd_Torrent_from_Magnet_Link_triggered()
 {
     addTorrentFromMagnet();
+}
+
+void MainWindow::reannounceSelectedTorrent()
+{
+    const int torrentId = currentTorrentId();
+
+    if (torrentId < 0) {
+        statusBar()->showMessage("No torrent selected.", 3000);
+        return;
+    }
+
+    client->reannounceTorrent(torrentId);
+    statusBar()->showMessage("Reannouncing torrent...", 3000);
+
+    QTimer::singleShot(750, client, &rpc_client::getTorrentList);
+}
+
+void MainWindow::on_actionReannounce_triggered()
+{
+    reannounceSelectedTorrent();
 }

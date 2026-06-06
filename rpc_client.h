@@ -3,13 +3,13 @@
 
 #include <QApplication>
 #include <QAbstractTableModel>
+#include <QByteArray>
 #include <QDebug>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
-#include <QByteArray>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
 #include <QUrl>
 #include "torrent.h"
 
@@ -51,6 +51,7 @@ public:
     void stopTorrent(int id);
     void addTorrentFromFile(const QString &filePath);
     void addTorrentFromMagnet(const QString &magnetLink);
+    void reannounceTorrent(int id);
 
 signals:
     void listUpdated();
@@ -73,18 +74,19 @@ private:
     bool updateInProgress = false;
     QByteArray _session_token;
     QNetworkAccessManager *na_manager;
-    void setSessionToken(QByteArray token);
     QJsonArray torrentList;
     QVector<torrent> torrentVector;
-    void rebuildIndex();
-    void applyUpdate(const QVector<torrent> &incoming);
     QHash<int, int> m_rowById;
     bool useSSL = false;
     QString server = "nas2.mvgrafx.net";
     int port = 9091;
     QString serverPath = "/transmission/rpc";
-    QUrl transmissionURL();
     QString rpcUrl = "http://nas2.mvgrafx.net:9091/transmission/rpc";
+
+    void setSessionToken(QByteArray token);
+    void rebuildIndex();
+    void applyUpdate(const QVector<torrent> &incoming);
+    QUrl transmissionURL();
     QByteArray makeRpcPayload(const QString &method,
                               const QJsonObject &arguments = {}) const;
     QNetworkRequest makeRequest() const;

@@ -457,3 +457,14 @@ void rpc_client::addTorrentFromMagnet(const QString &magnetLink)
         makeRpcPayload("torrent-add", arguments)
         );
 }
+
+void rpc_client::reannounceTorrent(int id)
+{
+    QJsonObject arguments;
+    arguments["ids"] = QJsonArray { id };
+
+    na_manager->post(
+        makeRequest(),
+        makeRpcPayload("torrent-reannounce", arguments)
+        );
+}
