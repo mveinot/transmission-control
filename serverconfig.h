@@ -2,6 +2,8 @@
 #define SERVERCONFIG_H
 
 #include <QDialog>
+#include <QStringListModel>
+#include <QVector>
 
 namespace Ui {
 class ServerConfig;
@@ -16,7 +18,33 @@ public:
     ~ServerConfig();
 
 private:
+    struct TransmissionServer
+    {
+        QString name;
+        QString rpcUrl;
+        QString username;
+        QString password;
+    };
+
     Ui::ServerConfig *ui;
+
+    QVector<TransmissionServer> servers;
+    QStringListModel *serverListModel = nullptr;
+
+    int currentServerIndex() const;
+
+    void loadServers();
+    void saveServers();
+
+    void refreshServerList();
+    void loadServerIntoEditor(int index);
+    void saveEditorToServer(int index);
+    void clearEditor();
+    void setEditorEnabled(bool enabled);
+
+    void addServer();
+    void removeSelectedServer();
+    void saveSelectedServer();
 };
 
 #endif // SERVERCONFIG_H
