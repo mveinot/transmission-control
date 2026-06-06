@@ -21,6 +21,7 @@ ServerConfig::ServerConfig(QWidget *parent)
     setEditorEnabled(false);
     ui->buttonSaveServer->setEnabled(false);
     ui->buttonRemoveServer->setEnabled(false);
+    ui->buttonSetDefaultServer->setEnabled(false);
 
     loadServers();
     refreshServerList();
@@ -36,6 +37,7 @@ ServerConfig::ServerConfig(QWidget *parent)
                     setEditorEnabled(false);
                     ui->buttonSaveServer->setEnabled(false);
                     ui->buttonRemoveServer->setEnabled(false);
+                    ui->buttonSetDefaultServer->setEnabled(false);
                     return;
                 }
 
@@ -43,6 +45,7 @@ ServerConfig::ServerConfig(QWidget *parent)
                 setEditorEnabled(true);
                 ui->buttonSaveServer->setEnabled(true);
                 ui->buttonRemoveServer->setEnabled(true);
+                ui->buttonSetDefaultServer->setEnabled(true);
             });
 
     connect(ui->buttonAddServer, &QPushButton::clicked,
@@ -53,6 +56,11 @@ ServerConfig::ServerConfig(QWidget *parent)
     connect(ui->buttonRemoveServer, &QPushButton::clicked,
             this, [this]() {
                 removeSelectedServer();
+            });
+
+    connect(ui->buttonSetDefaultServer, &QPushButton::clicked,
+            this, [this]() {
+                setSelectedServerAsDefault();
             });
 
     connect(ui->buttonSaveServer, &QPushButton::clicked,
@@ -121,6 +129,11 @@ void ServerConfig::loadServers()
     }
 
     settings.endArray();
+
+    defaultServerIndex = settings.value("servers/defaultIndex", -1).toInt();
+
+    if (defaultServerIndex >= servers.size())
+        defaultServerIndex = servers.isEmpty() ? -1 : 0;
 }
 
 void ServerConfig::saveServers()
@@ -144,6 +157,8 @@ void ServerConfig::saveServers()
     if (current >= 0)
         settings.setValue("servers/currentIndex", current);
 
+    settings.setValue("servers/defaultIndex", defaultServerIndex);
+
     settings.sync();
 }
 
@@ -151,12 +166,16 @@ void ServerConfig::refreshServerList()
 {
     QStringList names;
 
-    for (const TransmissionServer &server : std::as_const(servers)) {
-        if (server.name.trimmed().isEmpty()) {
-            names.append("(unnamed server)");
-        } else {
-            names.append(server.name);
-        }
+    for (int i = 0; i < servers.size(); ++i) {
+        QString name = servers.at(i).name.trimmed();
+
+        if (name.isEmpty())
+            name = "(unnamed server)";
+
+        if (i == defaultServerIndex)
+            name += " (default)";
+
+        names.append(name);
     }
 
     serverListModel->setStringList(names);
@@ -221,6 +240,9 @@ void ServerConfig::addServer()
 
     servers.append(server);
 
+    if (defaultServerIndex < 0)
+        defaultServerIndex = 0;
+
     refreshServerList();
 
     const int newIndex = servers.size() - 1;
@@ -257,6 +279,14 @@ void ServerConfig::removeSelectedServer()
         return;
 
     servers.removeAt(index);
+
+    if (servers.isEmpty()) {
+        defaultServerIndex = -1;
+    } else if (index == defaultServerIndex) {
+        defaultServerIndex = qMin(index, servers.size() - 1);
+    } else if (index < defaultServerIndex) {
+        --defaultServerIndex;
+    }
 
     refreshServerList();
 
@@ -298,5 +328,22 @@ void ServerConfig::saveSelectedServer()
     }
 
     saveEditorToServer(index);
+    saveServers();
+}
+
+void ServerConfig::setSelectedServerAsDefault()
+{
+    const int index = currentServerIndex();
+
+    if (index < 0)
+        return;
+
+    saveEditorToServer(index);
+
+    defaultServerIndex = index;
+
+    refreshServerList();
+    ui->listServers->setCurrentIndex(serverListModel->index(index, 0));
+
     saveServers();
 }

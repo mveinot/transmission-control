@@ -45,6 +45,8 @@ private:
     void addServer();
     void removeSelectedServer();
     void saveSelectedServer();
+    int defaultServerIndex = -1;
+    void setSelectedServerAsDefault();
 };
 
 #endif // SERVERCONFIG_H

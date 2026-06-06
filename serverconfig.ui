@@ -122,6 +122,22 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="buttonSetDefaultServer">
+            <property name="minimumSize">
+             <size>
+              <width>90</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="toolTip">
+             <string>Use selected server by default</string>
+            </property>
+            <property name="text">
+             <string>Set Default</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="horizontalSpacerLeftButtons">
             <property name="orientation">
              <enum>Qt::Orientation::Horizontal</enum>

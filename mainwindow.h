@@ -28,6 +28,8 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
     void showAbout();
+    void loadServerCombo();
+    void saveSelectedServerFromCombo();
 
 private slots:
     void updateTorrentList();

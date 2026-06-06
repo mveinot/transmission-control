@@ -23,6 +23,8 @@
 #include <QFormLayout>
 #include <QLineEdit>
 #include <QVBoxLayout>
+#include <QSignalBlocker>
+#include <QComboBox>
 #include "torrentsortproxymodel.h"
 #include "percentfilldelegate.h"
 
@@ -208,6 +210,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->tableView, &QTableView::customContextMenuRequested,
             this, &MainWindow::showTorrentContextMenu);
+
+    loadServerCombo();
+
+    connect(ui->comboServers,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this,
+            [this](int) {
+                saveSelectedServerFromCombo();
+            });
 
     restoreTableViewState();
 
@@ -405,8 +416,11 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::onServerSetupTriggered()
 {
-    ServerConfig *sc = new ServerConfig(this);
-    sc->show();
+    ServerConfig sc(this);
+
+    if (sc.exec() == QDialog::Accepted) {
+        loadServerCombo();
+    }
 }
 
 void MainWindow::setTorrentStateFilter(TorrentSortProxyModel::StateFilter filter)
@@ -847,3 +861,92 @@ void MainWindow::on_actionVerify_Torrent_triggered()
     verifySelectedTorrent();
 }
 
+void MainWindow::loadServerCombo()
+{
+    QSettings settings;
+
+    const int previouslySelectedServerIndex =
+        ui->comboServers->currentData().toInt();
+
+    const bool hadPreviousSelection =
+        ui->comboServers->currentIndex() >= 0 &&
+        previouslySelectedServerIndex >= 0;
+
+    const int defaultIndex =
+        settings.value("servers/defaultIndex", -1).toInt();
+
+    const int savedCurrentIndex =
+        settings.value("servers/currentIndex", defaultIndex).toInt();
+
+    QSignalBlocker blocker(ui->comboServers);
+
+    ui->comboServers->clear();
+
+    const int count = settings.beginReadArray("servers");
+
+    for (int i = 0; i < count; ++i) {
+        settings.setArrayIndex(i);
+
+        QString name = settings.value("name").toString().trimmed();
+        const QString rpcUrl = settings.value("rpcUrl").toString().trimmed();
+
+        if (name.isEmpty()) {
+            name = rpcUrl.isEmpty()
+            ? QStringLiteral("(unnamed server)")
+            : rpcUrl;
+        }
+
+        if (i == defaultIndex)
+            name += QStringLiteral("  ★");
+
+        ui->comboServers->addItem(name, i);
+    }
+
+    settings.endArray();
+
+    if (ui->comboServers->count() == 0) {
+        ui->comboServers->addItem("No servers configured", -1);
+        ui->comboServers->setEnabled(false);
+        return;
+    }
+
+    ui->comboServers->setEnabled(true);
+
+    int comboIndex = -1;
+
+    // First preference: keep whatever the combo was already showing.
+    if (hadPreviousSelection)
+        comboIndex = ui->comboServers->findData(previouslySelectedServerIndex);
+
+    // First-load fallback: saved current server.
+    if (comboIndex < 0)
+        comboIndex = ui->comboServers->findData(savedCurrentIndex);
+
+    // Next fallback: default server.
+    if (comboIndex < 0)
+        comboIndex = ui->comboServers->findData(defaultIndex);
+
+    // Last fallback: first server.
+    if (comboIndex < 0)
+        comboIndex = 0;
+
+    ui->comboServers->setCurrentIndex(comboIndex);
+}
+
+void MainWindow::saveSelectedServerFromCombo()
+{
+    const int serverIndex =
+        ui->comboServers->currentData().toInt();
+
+    if (serverIndex < 0)
+        return;
+
+    QSettings settings;
+    settings.setValue("servers/currentIndex", serverIndex);
+    settings.sync();
+
+    statusBar()->showMessage(
+        QString("Selected server: %1").arg(ui->comboServers->currentText()),
+        3000
+        );
+}
