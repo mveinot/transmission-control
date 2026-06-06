@@ -65,6 +65,16 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
 
 
     )
+
+find_program(IWYU_PATH NAMES include-what-you-use iwyu)
+
+#if(IWYU_PATH)
+#    set_property(TARGET Planetary PROPERTY
+#        CXX_INCLUDE_WHAT_YOU_USE
+#        "${IWYU_PATH};-Xiwyu;--no_comments"
+#    )
+#endif()
+
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET transmission-control APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
 #                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
