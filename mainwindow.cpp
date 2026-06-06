@@ -50,7 +50,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->actionStop_Torrent->setEnabled(false);
     ui->actionDelete_Torrent->setEnabled(false);
 
-    ui->fileTreeWidget->setColumnCount(3);
+    ui->fileTreeWidget->setColumnCount(FileColumnCount);
     ui->fileTreeWidget->setHeaderLabels({ "Name", "Size", "Done", "Completed" });
     ui->fileTreeWidget->setAlternatingRowColors(true);
     ui->fileTreeWidget->setRootIsDecorated(true);
@@ -357,7 +357,7 @@ void MainWindow::saveTableViewState()
         );
 
     settings.setValue(
-        "ui/peerTableWidget/horizontalHeaderState/v1",
+        "ui/peerTableWidget/horizontalHeaderState",
         ui->peerTableWidget->horizontalHeader()->saveState()
         );
 }
@@ -381,14 +381,14 @@ void MainWindow::restoreTableViewState()
     }
 
     const QByteArray fileTreeHeaderState =
-        settings.value("ui/fileTreeWidget/headerState/v1").toByteArray();
+        settings.value("ui/fileTreeWidget/headerState").toByteArray();
 
     if (!fileTreeHeaderState.isEmpty()) {
         ui->fileTreeWidget->header()->restoreState(fileTreeHeaderState);
     }
 
     const QByteArray peerTableHeaderState =
-        settings.value("ui/peerTableWidget/horizontalHeaderState/v1").toByteArray();
+        settings.value("ui/peerTableWidget/horizontalHeaderState").toByteArray();
 
     if (!peerTableHeaderState.isEmpty()) {
         ui->peerTableWidget->horizontalHeader()->restoreState(peerTableHeaderState);

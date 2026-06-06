@@ -3,9 +3,30 @@
 #include <QJsonObject>
 #include "rpc_client.h"
 
+namespace {
+constexpr QNetworkRequest::Attribute RpcRequestTypeAttribute =
+    QNetworkRequest::User;
+}
+
+void rpc_client::postRpc(const QString &method,
+                         const QJsonObject &arguments,
+                         RpcRequestType type)
+{
+    QNetworkRequest request = makeRequest();
+
+    request.setAttribute(
+        RpcRequestTypeAttribute,
+        static_cast<int>(type)
+        );
+
+    na_manager->post(
+        request,
+        makeRpcPayload(method, arguments)
+        );
+}
+
 rpc_client::rpc_client(QObject *parent)
     : QAbstractTableModel(parent)
-//   : QObject{parent}
 {
 }
 
@@ -15,9 +36,12 @@ void rpc_client::init()
     QObject::connect(na_manager,&QNetworkAccessManager::finished, this, &rpc_client::replyFinished);
 
     // make request
+    /*
     QNetworkRequest request = QNetworkRequest(transmissionURL());
     request.setRawHeader("Authorization", rpc_client::authString().toLocal8Bit());
     na_manager->get(request);
+    */
+    getTorrentList();
 }
 
 QString rpc_client::authString()
@@ -29,55 +53,137 @@ QString rpc_client::authString()
     return headerData;
 }
 
-void rpc_client::replyFinished(QNetworkReply * reply)
+void rpc_client::replyFinished(QNetworkReply *reply)
 {
-    if(reply->error() == QNetworkReply::NoError || reply->error() == QNetworkReply::ContentConflictError){
-        //qDebug() << "Network reply OK";
-        //qDebug() << reply->error();
-        if (_session_token.isEmpty())
-        {
-            QByteArray _token = reply->rawHeader("X-Transmission-Session-Id");
-            rpc_client::setSessionToken(_token);
+    const auto requestType =
+        static_cast<RpcRequestType>(
+            reply->request()
+                .attribute(
+                    RpcRequestTypeAttribute,
+                    static_cast<int>(RpcRequestType::Command)
+                    )
+                .toInt()
+            );
+
+    const bool isTorrentGet =
+        requestType == RpcRequestType::TorrentGet;
+
+    const auto finishTorrentGet = [this, isTorrentGet]() {
+        if (isTorrentGet) {
             updateInProgress = false;
-            getTorrentList();
-        } else {
-            QString contents = QString::fromUtf8(reply->readAll());
-            QJsonDocument doc = QJsonDocument::fromJson(contents.toUtf8());
-            QJsonValue dObj = doc["arguments"];
-            QJsonValue torrentsObj = dObj["torrents"];
-            const QJsonArray newTorrentList = dObj["torrents"].toArray();
+            emit updateFinished();
+        }
+    };
 
-            QVector<torrent> incoming;
-            incoming.reserve(newTorrentList.size());
+    if (reply->error() == QNetworkReply::ContentConflictError) {
+        const QByteArray token =
+            reply->rawHeader("X-Transmission-Session-Id");
 
-            rpc_client::torrentList = torrentsObj.toArray();
+        reply->deleteLater();
 
-            for (const auto &obj : newTorrentList)
-            {
-                incoming.append(torrent(obj));
+        if (token.isEmpty()) {
+            if (isTorrentGet) {
+                emit updateFailed("Transmission returned 409 without a session token.");
             }
 
-            torrentList = newTorrentList;
-            applyUpdate(incoming);
-
-            //qDebug() << "List updated";
-            updateInProgress = false;
-            emit listUpdated();
-            emit updateFinished();
-        }
-        } else {
-        if (reply->error() != QNetworkReply::NoError) {
-            const QString message = reply->errorString();
-            qDebug() << "Network reply ERROR:" << message;
-
-            emit updateFailed(message);
-            updateInProgress = false;
-            emit updateFinished();
-
-            reply->deleteLater();
+            finishTorrentGet();
             return;
         }
+
+        setSessionToken(token);
+
+        if (isTorrentGet) {
+            updateInProgress = false;
+            getTorrentList();
+        }
+
+        return;
     }
+
+    if (reply->error() != QNetworkReply::NoError) {
+        const QString message = reply->errorString();
+
+        qDebug() << "Network reply ERROR:" << message;
+
+        if (isTorrentGet) {
+            emit updateFailed(message);
+        }
+
+        reply->deleteLater();
+        finishTorrentGet();
+        return;
+    }
+
+    const QByteArray body = reply->readAll();
+    reply->deleteLater();
+
+    QJsonParseError parseError;
+    const QJsonDocument doc = QJsonDocument::fromJson(body, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
+        qDebug() << "Invalid JSON response:" << parseError.errorString();
+
+        if (isTorrentGet) {
+            emit updateFailed("Invalid JSON response from Transmission.");
+        }
+
+        finishTorrentGet();
+        return;
+    }
+
+    const QJsonObject root = doc.object();
+    const QString result = root.value("result").toString();
+
+    if (result != "success") {
+        const QString message =
+            result.isEmpty()
+                ? QStringLiteral("Transmission RPC call failed.")
+                : result;
+
+        qDebug() << "Transmission RPC error:" << message;
+
+        if (isTorrentGet) {
+            emit updateFailed(message);
+        }
+
+        finishTorrentGet();
+        return;
+    }
+
+    if (!isTorrentGet) {
+        return;
+    }
+
+    const QJsonObject arguments =
+        root.value("arguments").toObject();
+
+    const QJsonValue torrentsValue =
+        arguments.value("torrents");
+
+    if (!torrentsValue.isArray()) {
+        qDebug() << "torrent-get response did not contain arguments.torrents";
+
+        emit updateFailed("Torrent list response did not contain torrents.");
+        finishTorrentGet();
+        return;
+    }
+
+    const QJsonArray newTorrentList =
+        torrentsValue.toArray();
+
+    QVector<torrent> incoming;
+    incoming.reserve(newTorrentList.size());
+
+    for (const QJsonValue &obj : newTorrentList) {
+        incoming.append(torrent(obj));
+    }
+
+    torrentList = newTorrentList;
+    applyUpdate(incoming);
+
+    emit listUpdated();
+
+    finishTorrentGet();
 }
 
 bool rpc_client::isClientReady()
@@ -149,10 +255,7 @@ void rpc_client::getTorrentList()
         "peers"
     };
 
-    na_manager->post(
-        makeRequest(),
-        makeRpcPayload("torrent-get", arguments)
-        );
+    postRpc("torrent-get", arguments, RpcRequestType::TorrentGet);
 }
 
 QByteArray rpc_client::makeRpcPayload(const QString &method,
@@ -172,12 +275,10 @@ QNetworkRequest rpc_client::makeRequest() const
     QNetworkRequest request((QUrl(rpcUrl)));
 
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    request.setTransferTimeout(15000);
 
     if (!_session_token.isEmpty()) {
-        request.setRawHeader(
-            "X-Transmission-Session-Id",
-            _session_token
-            );
+        request.setRawHeader("X-Transmission-Session-Id", _session_token);
     }
 
     if (!username.isEmpty() || !password.isEmpty()) {
@@ -282,7 +383,6 @@ QVariant rpc_client::headerData(int section, Qt::Orientation orientation, int ro
         }
     }
     return section + 1;
-    // "Name" << "Completed" << "Status" << "Download" << "Upload" << "Ratio" << "ETA";
 }
 
 int rpc_client::rowForId(int id) const
@@ -360,8 +460,19 @@ void rpc_client::applyUpdate(const QVector<torrent> &incoming)
 
         const torrent &updated = it.value();
 
+        /*
         if (!torrentVector.at(row).sameDisplayData(updated)) {
             torrentVector[row] = updated;
+            emit dataChanged(index(row, 0), index(row, ColumnCount - 1));
+        }
+        */
+
+        const bool displayChanged =
+            !torrentVector.at(row).sameDisplayData(updated);
+
+        torrentVector[row] = updated;
+
+        if (displayChanged) {
             emit dataChanged(index(row, 0), index(row, ColumnCount - 1));
         }
     }
@@ -388,10 +499,7 @@ void rpc_client::removeTorrent(int id, bool deleteLocalData)
     arguments["ids"] = QJsonArray { id };
     arguments["delete-local-data"] = deleteLocalData;
 
-    na_manager->post(
-        makeRequest(),
-        makeRpcPayload("torrent-remove", arguments)
-        );
+    postRpc("torrent-remove", arguments, RpcRequestType::Command);
 }
 
 void rpc_client::startTorrent(int id)
@@ -399,21 +507,16 @@ void rpc_client::startTorrent(int id)
     QJsonObject arguments;
     arguments["ids"] = QJsonArray { id };
 
-    na_manager->post(
-        makeRequest(),
-        makeRpcPayload("torrent-start", arguments)
-        );
+    postRpc("torrent-start", arguments, RpcRequestType::Command);
 }
+
 
 void rpc_client::stopTorrent(int id)
 {
     QJsonObject arguments;
     arguments["ids"] = QJsonArray { id };
 
-    na_manager->post(
-        makeRequest(),
-        makeRpcPayload("torrent-stop", arguments)
-        );
+    postRpc("torrent-stop", arguments, RpcRequestType::Command);
 }
 
 void rpc_client::addTorrentFromFile(const QString &filePath)
@@ -421,12 +524,13 @@ void rpc_client::addTorrentFromFile(const QString &filePath)
     QFile file(filePath);
 
     if (!file.open(QIODevice::ReadOnly)) {
-        qWarning() << "Could not open torrent file:" << filePath << file.errorString();
+        qWarning() << "Could not open torrent file:"
+                   << filePath
+                   << file.errorString();
         return;
     }
 
     const QByteArray torrentData = file.readAll();
-    file.close();
 
     if (torrentData.isEmpty()) {
         qWarning() << "Torrent file is empty:" << filePath;
@@ -436,35 +540,33 @@ void rpc_client::addTorrentFromFile(const QString &filePath)
     QJsonObject arguments;
     arguments["metainfo"] = QString::fromLatin1(torrentData.toBase64());
 
-    na_manager->post(
-        makeRequest(),
-        makeRpcPayload("torrent-add", arguments)
-        );
+    postRpc("torrent-add", arguments, RpcRequestType::Command);
 }
 
 void rpc_client::addTorrentFromMagnet(const QString &magnetLink)
 {
-    if (magnetLink.trimmed().isEmpty()) {
+    const QString trimmedLink = magnetLink.trimmed();
+
+    if (trimmedLink.isEmpty()) {
         qWarning() << "Empty magnet link";
         return;
     }
 
     QJsonObject arguments;
-    arguments["filename"] = magnetLink.trimmed();
+    arguments["filename"] = trimmedLink;
 
-    na_manager->post(
-        makeRequest(),
-        makeRpcPayload("torrent-add", arguments)
-        );
+    postRpc("torrent-add", arguments, RpcRequestType::Command);
 }
 
 void rpc_client::reannounceTorrent(int id)
 {
+    if (id < 0) {
+        qWarning() << "Invalid torrent id for reannounce:" << id;
+        return;
+    }
+
     QJsonObject arguments;
     arguments["ids"] = QJsonArray { id };
 
-    na_manager->post(
-        makeRequest(),
-        makeRpcPayload("torrent-reannounce", arguments)
-        );
+    postRpc("torrent-reannounce", arguments, RpcRequestType::Command);
 }

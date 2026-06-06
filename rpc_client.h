@@ -68,6 +68,11 @@ private:
         QString password;
     };
 
+    enum class RpcRequestType {
+        TorrentGet,
+        Command
+    };
+
     QString username = "vmark";
     QString password = "8kfkfvq9";
     bool _clientReady = false;
@@ -90,6 +95,9 @@ private:
     QByteArray makeRpcPayload(const QString &method,
                               const QJsonObject &arguments = {}) const;
     QNetworkRequest makeRequest() const;
+    void postRpc(const QString &method,
+                 const QJsonObject &arguments,
+                 RpcRequestType type);
 
 
 public slots:
