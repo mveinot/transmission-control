@@ -31,13 +31,28 @@ public:
         EtaColumn,
         ColumnCount
     };
+    struct TransmissionServer
+    {
+        QString name;
+        QString rpcUrl;
+        QString username;
+        QString password;
+
+        bool isValid() const
+        {
+            return !rpcUrl.trimmed().isEmpty();
+        }
+    };
+
+    bool loadCurrentServerFromSettings();
+    bool setServerFromSettingsIndex(int index);
+    void setServer(const TransmissionServer &server);
     rpc_client(QObject *parent);
     void init();
     void getTorrentList();
     QJsonArray torrents();
     bool isClientReady();
     int countTorrents() const;
-    QString authString();
     torrent getTorrent(int item);
     QString getServer();
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -61,21 +76,13 @@ signals:
     void updateFailed(const QString &message);
 
 private:
-    struct TransmissionServer
-    {
-        QString name;
-        QString rpcUrl;
-        QString username;
-        QString password;
-    };
-
     enum class RpcRequestType {
         TorrentGet,
         Command
     };
 
-    QString username = "vmark";
-    QString password = "8kfkfvq9";
+    QString username;
+    QString password;
     bool _clientReady = false;
     bool updateInProgress = false;
     QByteArray _session_token;
@@ -83,16 +90,16 @@ private:
     QJsonArray torrentList;
     QVector<torrent> torrentVector;
     QHash<int, int> m_rowById;
-    bool useSSL = false;
-    QString server = "nas2.mvgrafx.net";
-    int port = 9091;
-    QString serverPath = "/transmission/rpc";
-    QString rpcUrl = "http://nas2.mvgrafx.net:9091/transmission/rpc";
+    QString serverName;
+    QString rpcUrl;
 
     void setSessionToken(QByteArray token);
     void rebuildIndex();
     void applyUpdate(const QVector<torrent> &incoming);
-    QUrl transmissionURL();
+
+    static TransmissionServer readServerFromSettings(int index, bool *ok = nullptr);
+    void clearTorrents();
+
     QByteArray makeRpcPayload(const QString &method,
                               const QJsonObject &arguments = {}) const;
     QNetworkRequest makeRequest() const;

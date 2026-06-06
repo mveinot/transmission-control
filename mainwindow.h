@@ -82,6 +82,7 @@ private:
     void populatePeerTable(const QJsonArray &peers);
     void reannounceSelectedTorrent();
     void verifySelectedTorrent();
+    void updateTorrentActionState();
 
 
 protected:

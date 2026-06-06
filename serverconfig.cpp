@@ -153,9 +153,11 @@ void ServerConfig::saveServers()
 
     settings.endArray();
 
+    /*
     const int current = currentServerIndex();
     if (current >= 0)
         settings.setValue("servers/currentIndex", current);
+*/
 
     settings.setValue("servers/defaultIndex", defaultServerIndex);
 

@@ -48,9 +48,30 @@ MainWindow::MainWindow(QWidget *parent)
     MainWindow::setWindowTitle(QCoreApplication::applicationName());
 
     ui->tableView->setModel(proxy);
+
+    updateTorrentActionState();
+
+    connect(ui->tableView->selectionModel(),
+            &QItemSelectionModel::selectionChanged,
+            this,
+            [this]() {
+                updateTorrentActionState();
+            });
+
+    connect(ui->tableView->selectionModel(),
+            &QItemSelectionModel::currentChanged,
+            this,
+            [this]() {
+                updateTorrentActionState();
+            });
+
+    /*
     ui->actionStart_Torrent->setEnabled(false);
     ui->actionStop_Torrent->setEnabled(false);
     ui->actionDelete_Torrent->setEnabled(false);
+    ui->actionVerify_Torrent->setEnabled(false);
+    ui->actionReannounce->setEnabled(false);
+    */
 
     ui->fileTreeWidget->setColumnCount(FileColumnCount);
     ui->fileTreeWidget->setHeaderLabels({ "Name", "Size", "Done", "Completed" });
@@ -195,6 +216,7 @@ MainWindow::MainWindow(QWidget *parent)
         ui->statusbar->showMessage(client->getServer());
     });
 
+    /*
     connect(ui->tableView->selectionModel(),
             &QItemSelectionModel::selectionChanged,
             this,
@@ -207,6 +229,7 @@ MainWindow::MainWindow(QWidget *parent)
                 ui->actionVerify_Torrent->setEnabled(hasSelection);
                 ui->actionDelete_Torrent->setEnabled(hasSelection);
             });
+*/
 
     connect(ui->tableView, &QTableView::customContextMenuRequested,
             this, &MainWindow::showTorrentContextMenu);
@@ -344,7 +367,6 @@ void MainWindow::on_actionDelete_Torrent_triggered()
 
     if (msgBox.clickedButton() == torrentAndDataButton) {
         client->removeTorrent(torrentId, true);
-        //QTimer::singleShot(500, client, &rpc_client::getTorrentList);
         return;
     }
 }
@@ -420,6 +442,15 @@ void MainWindow::onServerSetupTriggered()
 
     if (sc.exec() == QDialog::Accepted) {
         loadServerCombo();
+
+        const int serverIndex =
+            ui->comboServers->currentData().toInt();
+
+        if (serverIndex >= 0) {
+            client->setServerFromSettingsIndex(serverIndex);
+            statusBar()->showMessage(client->getServer());
+            client->getTorrentList();
+        }
     }
 }
 
@@ -897,7 +928,7 @@ void MainWindow::loadServerCombo()
         }
 
         if (i == defaultIndex)
-            name += QStringLiteral("  ★");
+            name += QStringLiteral(" (default)");
 
         ui->comboServers->addItem(name, i);
     }
@@ -945,8 +976,33 @@ void MainWindow::saveSelectedServerFromCombo()
     settings.setValue("servers/currentIndex", serverIndex);
     settings.sync();
 
+    if (!client->setServerFromSettingsIndex(serverIndex)) {
+        statusBar()->showMessage("Could not switch server.", 5000);
+        return;
+    }
+
+    ui->fileTreeWidget->clear();
+    ui->peerTableWidget->clearContents();
+    ui->peerTableWidget->setRowCount(0);
+    updateTorrentActionState();
+
     statusBar()->showMessage(
-        QString("Selected server: %1").arg(ui->comboServers->currentText()),
+        QString("Selected server: %1").arg(client->getServer()),
         3000
         );
+
+    client->getTorrentList();
+}
+
+void MainWindow::updateTorrentActionState()
+{
+    const bool hasSelection =
+        ui->tableView->selectionModel() &&
+        ui->tableView->currentIndex().isValid();
+
+    ui->actionStart_Torrent->setEnabled(hasSelection);
+    ui->actionStop_Torrent->setEnabled(hasSelection);
+    ui->actionDelete_Torrent->setEnabled(hasSelection);
+    ui->actionVerify_Torrent->setEnabled(hasSelection);
+    ui->actionReannounce->setEnabled(hasSelection);
 }

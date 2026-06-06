@@ -1,6 +1,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonObject>
+#include <QSettings>
 #include "rpc_client.h"
 
 namespace {
@@ -32,25 +33,18 @@ rpc_client::rpc_client(QObject *parent)
 
 void rpc_client::init()
 {
-    na_manager = new QNetworkAccessManager;
-    QObject::connect(na_manager,&QNetworkAccessManager::finished, this, &rpc_client::replyFinished);
+    na_manager = new QNetworkAccessManager(this);
 
-    // make request
-    /*
-    QNetworkRequest request = QNetworkRequest(transmissionURL());
-    request.setRawHeader("Authorization", rpc_client::authString().toLocal8Bit());
-    na_manager->get(request);
-    */
+    connect(na_manager, &QNetworkAccessManager::finished,
+            this, &rpc_client::replyFinished);
+
+    if (!loadCurrentServerFromSettings()) {
+        qWarning() << "No valid Transmission server configured.";
+        emit updateFailed("No valid Transmission server configured.");
+        return;
+    }
+
     getTorrentList();
-}
-
-QString rpc_client::authString()
-{
-    QString concatenated = username+':'+password;
-    QByteArray data = concatenated.toLocal8Bit().toBase64();
-    QString headerData = "Basic " + data;
-
-    return headerData;
 }
 
 void rpc_client::replyFinished(QNetworkReply *reply)
@@ -212,28 +206,99 @@ QJsonArray rpc_client::torrents()
     return rpc_client::torrentList;
 }
 
-QUrl rpc_client::transmissionURL()
+rpc_client::TransmissionServer rpc_client::readServerFromSettings(int index, bool *ok)
 {
-    QString URL;
-    if (useSSL)
-    {
-        URL += "https://";
-    } else {
-        URL += "http://";
+    if (ok)
+        *ok = false;
+
+    QSettings settings;
+
+    const int count = settings.beginReadArray("servers");
+
+    if (index < 0 || index >= count) {
+        settings.endArray();
+        return {};
     }
 
-    URL += server + ":" + QString::number(port) + serverPath;
+    settings.setArrayIndex(index);
 
-    return QUrl(URL);
+    TransmissionServer server;
+    server.name = settings.value("name").toString().trimmed();
+    server.rpcUrl = settings.value("rpcUrl").toString().trimmed();
+    server.username = settings.value("username").toString();
+    server.password = settings.value("password").toString();
+
+    settings.endArray();
+
+    if (ok)
+        *ok = server.isValid();
+
+    return server;
+}
+
+bool rpc_client::loadCurrentServerFromSettings()
+{
+    QSettings settings;
+
+    const int defaultIndex =
+        settings.value("servers/defaultIndex", -1).toInt();
+
+    const int currentIndex =
+        settings.value("servers/currentIndex", defaultIndex).toInt();
+
+    if (setServerFromSettingsIndex(currentIndex))
+        return true;
+
+    if (defaultIndex != currentIndex)
+        return setServerFromSettingsIndex(defaultIndex);
+
+    return false;
+}
+
+bool rpc_client::setServerFromSettingsIndex(int index)
+{
+    bool ok = false;
+    const TransmissionServer server = readServerFromSettings(index, &ok);
+
+    if (!ok)
+        return false;
+
+    setServer(server);
+    return true;
+}
+
+void rpc_client::setServer(const TransmissionServer &server)
+{
+    serverName = server.name;
+    rpcUrl = server.rpcUrl;
+    username = server.username;
+    password = server.password;
+
+    _session_token.clear();
+    _clientReady = false;
+    updateInProgress = false;
+
+    clearTorrents();
 }
 
 QString rpc_client::getServer()
 {
-    return server + ":" + QString::number(port);
+    if (!serverName.isEmpty())
+        return serverName;
+
+    if (!rpcUrl.isEmpty())
+        return rpcUrl;
+
+    return "No server configured";
 }
 
 void rpc_client::getTorrentList()
 {
+    if (rpcUrl.trimmed().isEmpty()) {
+        emit updateFailed("No Transmission server configured.");
+        return;
+    }
+
     if (updateInProgress)
         return;
 
@@ -256,6 +321,19 @@ void rpc_client::getTorrentList()
     };
 
     postRpc("torrent-get", arguments, RpcRequestType::TorrentGet);
+}
+
+void rpc_client::clearTorrents()
+{
+    beginResetModel();
+
+    torrentList = {};
+    torrentVector.clear();
+    m_rowById.clear();
+
+    endResetModel();
+
+    emit listUpdated();
 }
 
 QByteArray rpc_client::makeRpcPayload(const QString &method,
