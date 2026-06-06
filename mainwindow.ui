@@ -390,8 +390,11 @@
    </property>
   </action>
   <action name="actionReannounce">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::DocumentRevert"/>
+   </property>
    <property name="text">
-    <string>Reannounce</string>
+    <string>Reannounce Torrent</string>
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>
