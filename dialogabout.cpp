@@ -1,10 +1,6 @@
 #include "dialogabout.h"
 #include "ui_dialogabout.h"
 #include "version.h"
-#include <QImageReader>
-#include <QtDebug>
-#include <QPixmap>
-#include <QFile>
 
 DialogAbout::DialogAbout(QWidget *parent) :
     QDialog(parent),
