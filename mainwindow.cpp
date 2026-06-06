@@ -201,6 +201,7 @@ MainWindow::MainWindow(QWidget *parent)
 
                 ui->actionStart_Torrent->setEnabled(hasSelection);
                 ui->actionStop_Torrent->setEnabled(hasSelection);
+                ui->actionReannounce->setEnabled(hasSelection);
                 ui->actionDelete_Torrent->setEnabled(hasSelection);
             });
 
