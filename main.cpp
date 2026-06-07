@@ -20,6 +20,8 @@ int main(int argc, char *argv[])
             break;
         }
     }
+    QApplication::setQuitOnLastWindowClosed(false);
+
     MainWindow w;
     w.show();
 

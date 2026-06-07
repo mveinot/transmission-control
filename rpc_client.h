@@ -64,10 +64,15 @@ public:
     void removeTorrent(int id, bool deleteLocalData);
     void startTorrent(int id);
     void stopTorrent(int id);
-    void addTorrentFromFile(const QString &filePath);
+    void addTorrentFromFile(const QString &filePath, bool deleteFileOnSuccess);
     void addTorrentFromMagnet(const QString &magnetLink);
     void reannounceTorrent(int id);
     void verifyTorrent(int id);
+    void startTorrents(const QList<int> &ids);
+    void stopTorrents(const QList<int> &ids);
+    void removeTorrents(const QList<int> &ids, bool deleteLocalData);
+    void verifyTorrents(const QList<int> &ids);
+    void reannounceTorrents(const QList<int> &ids);
 
 signals:
     void listUpdated();

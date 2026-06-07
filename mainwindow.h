@@ -13,6 +13,8 @@
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QPoint>
+#include <QSystemTrayIcon>
+#include <QEvent>
 #include "rpc_client.h"
 #include "torrentsortproxymodel.h"
 
@@ -30,6 +32,13 @@ public:
     void showAbout();
     void loadServerCombo();
     void saveSelectedServerFromCombo();
+    QSystemTrayIcon *trayIcon = nullptr;
+    QMenu *trayMenu = nullptr;
+    bool reallyQuit = false;
+
+    void setupTrayIcon();
+    void showMainWindow();
+    void quitApplication();
 
 private slots:
     void updateTorrentList();
@@ -45,6 +54,8 @@ private slots:
     void on_actionReannounce_triggered();
     void on_actionAbout_triggered();
     void on_actionVerify_Torrent_triggered();
+
+    void on_actionSettings_triggered();
 
 private:
     Ui::MainWindow *ui;
@@ -65,6 +76,8 @@ private:
     };
 
     int currentTorrentId() const;
+    QList<int> selectedTorrentIds() const;
+    QStringList selectedTorrentNames() const;
     QString currentTorrentName() const;
     void startSelectedTorrent();
     void stopSelectedTorrent();
@@ -83,9 +96,12 @@ private:
     void reannounceSelectedTorrent();
     void verifySelectedTorrent();
     void updateTorrentActionState();
+    int updateIntervalMs() const;
+    void applyUpdateInterval();
 
 
 protected:
     void closeEvent(QCloseEvent *event) override;
+    void changeEvent(QEvent *event) override;
 };
 #endif // MAINWINDOW_H

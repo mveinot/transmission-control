@@ -17,6 +17,9 @@ public:
 
 private:
     Ui::AppSettings *ui;
+
+    void loadSettings();
+    void saveSettings();
 };
 
 #endif // APPSETTINGS_H

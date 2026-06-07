@@ -1,8 +1,5 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
-#include "rpc_client.h"
-#include "dialogabout.h"
-#include "serverconfig.h"
 #include <QTimer>
 #include <QActionGroup>
 #include <QHeaderView>
@@ -25,8 +22,26 @@
 #include <QVBoxLayout>
 #include <QSignalBlocker>
 #include <QComboBox>
+#include <QSystemTrayIcon>
+#include <QAction>
+#include <QCloseEvent>
+#include <QEvent>
+#include <QApplication>
+#include <QIcon>
+#include "rpc_client.h"
+#include "dialogabout.h"
+#include "serverconfig.h"
+#include "appsettings.h"
 #include "torrentsortproxymodel.h"
 #include "percentfilldelegate.h"
+
+namespace {
+constexpr const char *DeleteTorrentOnAddKey = "app/deleteTorrentFileOnSuccessfulAdd";
+constexpr const char *UpdateIntervalKey = "app/updateIntervalSeconds";
+constexpr int DefaultUpdateIntervalSeconds = 10;
+constexpr int MinimumUpdateIntervalSeconds = 1;
+constexpr int MaximumUpdateIntervalSeconds = 3600;
+}
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -64,14 +79,6 @@ MainWindow::MainWindow(QWidget *parent)
             [this]() {
                 updateTorrentActionState();
             });
-
-    /*
-    ui->actionStart_Torrent->setEnabled(false);
-    ui->actionStop_Torrent->setEnabled(false);
-    ui->actionDelete_Torrent->setEnabled(false);
-    ui->actionVerify_Torrent->setEnabled(false);
-    ui->actionReannounce->setEnabled(false);
-    */
 
     ui->fileTreeWidget->setColumnCount(FileColumnCount);
     ui->fileTreeWidget->setHeaderLabels({ "Name", "Size", "Done", "Completed" });
@@ -115,7 +122,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tableView->hideColumn(rpc_client::IdColumn);
     ui->tableView->setSortingEnabled(true);
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
     ui->tableView->sortByColumn(rpc_client::NameColumn, Qt::AscendingOrder);
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     ui->tableView->setItemDelegateForColumn(
@@ -216,21 +223,6 @@ MainWindow::MainWindow(QWidget *parent)
         ui->statusbar->showMessage(client->getServer());
     });
 
-    /*
-    connect(ui->tableView->selectionModel(),
-            &QItemSelectionModel::selectionChanged,
-            this,
-            [this]() {
-                const bool hasSelection = ui->tableView->currentIndex().isValid();
-
-                ui->actionStart_Torrent->setEnabled(hasSelection);
-                ui->actionStop_Torrent->setEnabled(hasSelection);
-                ui->actionReannounce->setEnabled(hasSelection);
-                ui->actionVerify_Torrent->setEnabled(hasSelection);
-                ui->actionDelete_Torrent->setEnabled(hasSelection);
-            });
-*/
-
     connect(ui->tableView, &QTableView::customContextMenuRequested,
             this, &MainWindow::showTorrentContextMenu);
 
@@ -245,8 +237,11 @@ MainWindow::MainWindow(QWidget *parent)
 
     restoreTableViewState();
 
+    setWindowIcon(QIcon(":/icons/planetary.png"));
+
+    setupTrayIcon();
     client->init();
-    timer->start(10000);
+    applyUpdateInterval();
 }
 
 MainWindow::~MainWindow()
@@ -319,10 +314,10 @@ int MainWindow::currentTorrentId() const
 
 void MainWindow::on_actionDelete_Torrent_triggered()
 {
-    const int torrentId = currentTorrentId();
-    const QString torrentName = currentTorrentName();
+    const QList<int> ids = selectedTorrentIds();
+    const QStringList names = selectedTorrentNames();
 
-    if (torrentId < 0) {
+    if (ids.isEmpty()) {
         QMessageBox::information(
             this,
             "Delete Torrent",
@@ -335,15 +330,33 @@ void MainWindow::on_actionDelete_Torrent_triggered()
     msgBox.setWindowTitle("Delete Torrent");
     msgBox.setIcon(QMessageBox::Warning);
 
-    msgBox.setText("Delete the selected torrent?");
+    if (ids.size() == 1) {
+        msgBox.setText("Delete the selected torrent?");
+        msgBox.setInformativeText(
+            QString(
+                "Torrent:\n%1\n\n"
+                "Choose whether to remove only the torrent from Transmission, "
+                "or also delete the downloaded data."
+                ).arg(names.value(0))
+            );
+    } else {
+        QString preview = names.mid(0, 8).join("\n");
 
-    msgBox.setInformativeText(
-        QString(
-            "Torrent:\n%1\n\n"
-            "Choose whether to remove only the torrent from Transmission, "
-            "or also delete the downloaded data."
-            ).arg(torrentName)
-        );
+        if (names.size() > 8)
+            preview += QString("\n… and %1 more").arg(names.size() - 8);
+
+        msgBox.setText(
+            QString("Delete %1 selected torrents?").arg(ids.size())
+            );
+
+        msgBox.setInformativeText(
+            QString(
+                "Torrents:\n%1\n\n"
+                "Choose whether to remove only the torrents from Transmission, "
+                "or also delete the downloaded data."
+                ).arg(preview)
+            );
+    }
 
     QPushButton *noButton =
         msgBox.addButton("No", QMessageBox::RejectRole);
@@ -361,13 +374,12 @@ void MainWindow::on_actionDelete_Torrent_triggered()
         return;
 
     if (msgBox.clickedButton() == torrentOnlyButton) {
-        client->removeTorrent(torrentId, false);
-        QTimer::singleShot(500, client, &rpc_client::getTorrentList);
+        client->removeTorrents(ids, false);
         return;
     }
 
     if (msgBox.clickedButton() == torrentAndDataButton) {
-        client->removeTorrent(torrentId, true);
+        client->removeTorrents(ids, true);
         return;
     }
 }
@@ -434,7 +446,24 @@ void MainWindow::closeEvent(QCloseEvent *event)
 {
     saveTableViewState();
 
-    QMainWindow::closeEvent(event);
+    if (reallyQuit) {
+        event->accept();
+        return;
+    }
+
+    hide();
+    event->ignore();
+
+    /*
+    if (trayIcon) {
+        trayIcon->showMessage(
+            "Planetary",
+            "Planetary is still running in the menu bar.",
+            QSystemTrayIcon::Information,
+            2500
+            );
+    }
+*/
 }
 
 void MainWindow::onServerSetupTriggered()
@@ -677,12 +706,16 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
     if (!index.isValid())
         return;
 
-    ui->tableView->selectionModel()->select(
-        index,
-        QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows
-        );
+    QItemSelectionModel *selection = ui->tableView->selectionModel();
 
-    ui->tableView->setCurrentIndex(index);
+    if (!selection->isSelected(index)) {
+        selection->select(
+            index,
+            QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows
+            );
+
+        ui->tableView->setCurrentIndex(index);
+    }
 
     QMenu menu(this);
 
@@ -699,35 +732,36 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
 
 void MainWindow::startSelectedTorrent()
 {
-    const int torrentId = currentTorrentId();
+    const QList<int> ids = selectedTorrentIds();
 
-    if (torrentId < 0) {
+    if (ids.isEmpty()) {
         statusBar()->showMessage("No torrent selected.", 3000);
         return;
     }
 
-    client->startTorrent(torrentId);
+    client->startTorrents(ids);
 
-    statusBar()->showMessage("Starting torrent...", 3000);
-
-    // Simple refresh approach, same spirit as your delete action.
-    //QTimer::singleShot(500, client, &rpc_client::getTorrentList);
+    statusBar()->showMessage(
+        QString("Starting %1 torrent(s)...").arg(ids.size()),
+        3000
+        );
 }
 
 void MainWindow::stopSelectedTorrent()
 {
-    const int torrentId = currentTorrentId();
+    const QList<int> ids = selectedTorrentIds();
 
-    if (torrentId < 0) {
+    if (ids.isEmpty()) {
         statusBar()->showMessage("No torrent selected.", 3000);
         return;
     }
 
-    client->stopTorrent(torrentId);
+    client->stopTorrents(ids);
 
-    statusBar()->showMessage("Stopping torrent...", 3000);
-
-    //QTimer::singleShot(500, client, &rpc_client::getTorrentList);
+    statusBar()->showMessage(
+        QString("Stopping %1 torrent(s)...").arg(ids.size()),
+        3000
+        );
 }
 
 void MainWindow::addTorrentFromFile()
@@ -742,11 +776,14 @@ void MainWindow::addTorrentFromFile()
     if (filePath.isEmpty())
         return;
 
-    client->addTorrentFromFile(filePath);
+    QSettings settings;
+
+    const bool deleteTorrentOnAdd =
+        settings.value("app/deleteTorrentFileOnSuccessfulAdd", false).toBool();
+
+    client->addTorrentFromFile(filePath, deleteTorrentOnAdd);
 
     statusBar()->showMessage("Adding torrent...", 3000);
-
-    //QTimer::singleShot(750, client, &rpc_client::getTorrentList);
 }
 
 void MainWindow::addTorrentFromMagnet()
@@ -850,31 +887,36 @@ void MainWindow::on_actionAdd_Torrent_from_Magnet_Link_triggered()
 
 void MainWindow::reannounceSelectedTorrent()
 {
-    const int torrentId = currentTorrentId();
+    const QList<int> ids = selectedTorrentIds();
 
-    if (torrentId < 0) {
+    if (ids.isEmpty()) {
         statusBar()->showMessage("No torrent selected.", 3000);
         return;
     }
 
-    client->reannounceTorrent(torrentId);
-    statusBar()->showMessage("Reannouncing torrent...", 3000);
+    client->reannounceTorrents(ids);
 
-    //QTimer::singleShot(750, client, &rpc_client::getTorrentList);
+    statusBar()->showMessage(
+        QString("Reannouncing %1 torrent(s)...").arg(ids.size()),
+        3000
+        );
 }
 
 void MainWindow::verifySelectedTorrent()
 {
-    const int torrentId = currentTorrentId();
+    const QList<int> ids = selectedTorrentIds();
 
-    if (torrentId < 0) {
+    if (ids.isEmpty()) {
         statusBar()->showMessage("No torrent selected.", 3000);
         return;
     }
 
-    client->verifyTorrent(torrentId);
+    client->verifyTorrents(ids);
 
-    statusBar()->showMessage("Verifying torrent...", 3000);
+    statusBar()->showMessage(
+        QString("Verifying %1 torrent(s)...").arg(ids.size()),
+        3000
+        );
 }
 
 void MainWindow::on_actionReannounce_triggered()
@@ -999,11 +1041,171 @@ void MainWindow::updateTorrentActionState()
 {
     const bool hasSelection =
         ui->tableView->selectionModel() &&
-        ui->tableView->currentIndex().isValid();
+        !ui->tableView->selectionModel()->selectedRows().isEmpty();
 
     ui->actionStart_Torrent->setEnabled(hasSelection);
     ui->actionStop_Torrent->setEnabled(hasSelection);
     ui->actionDelete_Torrent->setEnabled(hasSelection);
     ui->actionVerify_Torrent->setEnabled(hasSelection);
     ui->actionReannounce->setEnabled(hasSelection);
+}
+void MainWindow::setupTrayIcon()
+{
+    if (!QSystemTrayIcon::isSystemTrayAvailable()) {
+        qWarning() << "System tray is not available.";
+        return;
+    }
+
+    trayMenu = new QMenu(this);
+
+    QAction *showAction = trayMenu->addAction("Show Planetary");
+    connect(showAction, &QAction::triggered,
+            this, &MainWindow::showMainWindow);
+
+    trayMenu->addSeparator();
+
+    QAction *quitAction = trayMenu->addAction("Quit");
+    connect(quitAction, &QAction::triggered,
+            this, &MainWindow::quitApplication);
+
+    trayIcon = new QSystemTrayIcon(this);
+
+    // Uses the app/window icon. If this is blank, use QIcon(":/icons/planetary.png")
+    trayIcon->setIcon(windowIcon());
+    trayIcon->setToolTip("Planetary");
+    trayIcon->setContextMenu(trayMenu);
+
+    connect(trayIcon, &QSystemTrayIcon::activated,
+            this,
+            [this](QSystemTrayIcon::ActivationReason reason) {
+                if (reason == QSystemTrayIcon::Trigger ||
+                    reason == QSystemTrayIcon::DoubleClick) {
+                    showMainWindow();
+                }
+            });
+
+    trayIcon->show();
+}
+
+void MainWindow::showMainWindow()
+{
+    show();
+    setWindowState(windowState() & ~Qt::WindowMinimized);
+    raise();
+    activateWindow();
+}
+
+void MainWindow::quitApplication()
+{
+    reallyQuit = true;
+
+    if (trayIcon)
+        trayIcon->hide();
+
+    close();
+    qApp->quit();
+}
+
+void MainWindow::changeEvent(QEvent *event)
+{
+    QMainWindow::changeEvent(event);
+
+    if (event->type() == QEvent::WindowStateChange) {
+        if (isMinimized()) {
+            QTimer::singleShot(0, this, [this]() {
+                hide();
+            });
+        }
+    }
+}
+
+int MainWindow::updateIntervalMs() const
+{
+    QSettings settings;
+
+    const int seconds =
+        settings.value(UpdateIntervalKey, DefaultUpdateIntervalSeconds).toInt();
+
+    const int boundedSeconds =
+        qBound(MinimumUpdateIntervalSeconds,
+               seconds,
+               MaximumUpdateIntervalSeconds);
+
+    return boundedSeconds * 1000;
+}
+
+void MainWindow::applyUpdateInterval()
+{
+    timer->setInterval(updateIntervalMs());
+
+    if (!timer->isActive())
+        timer->start();
+
+    statusBar()->showMessage(
+        QString("Update interval: %1 seconds").arg(timer->interval() / 1000),
+        3000
+        );
+}
+void MainWindow::on_actionSettings_triggered()
+{
+    AppSettings dialog(this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        applyUpdateInterval();
+    }
+}
+
+QList<int> MainWindow::selectedTorrentIds() const
+{
+    QList<int> ids;
+
+    const QItemSelectionModel *selection = ui->tableView->selectionModel();
+
+    if (!selection)
+        return ids;
+
+    const QModelIndexList proxyRows = selection->selectedRows();
+
+    for (const QModelIndex &proxyIndex : proxyRows) {
+        const QModelIndex sourceIndex = proxy->mapToSource(proxyIndex);
+
+        if (!sourceIndex.isValid())
+            continue;
+
+        const int id = sourceIndex.data(Qt::UserRole).toInt();
+
+        if (id >= 0)
+            ids.append(id);
+    }
+
+    return ids;
+}
+
+QStringList MainWindow::selectedTorrentNames() const
+{
+    QStringList names;
+
+    const QItemSelectionModel *selection = ui->tableView->selectionModel();
+
+    if (!selection)
+        return names;
+
+    const QModelIndexList proxyRows = selection->selectedRows();
+
+    for (const QModelIndex &proxyIndex : proxyRows) {
+        const QModelIndex sourceIndex = proxy->mapToSource(proxyIndex);
+
+        if (!sourceIndex.isValid())
+            continue;
+
+        const QString name = sourceIndex
+                                 .siblingAtColumn(rpc_client::NameColumn)
+                                 .data(Qt::DisplayRole)
+                                 .toString();
+
+        if (!name.isEmpty())
+            names.append(name);
+    }
+
+    return names;
 }

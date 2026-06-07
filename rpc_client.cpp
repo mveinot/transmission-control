@@ -7,6 +7,25 @@
 namespace {
 constexpr QNetworkRequest::Attribute RpcRequestTypeAttribute =
     QNetworkRequest::User;
+
+constexpr QNetworkRequest::Attribute RpcMethodAttribute =
+    static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 1);
+
+constexpr QNetworkRequest::Attribute TorrentFilePathAttribute =
+    static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 2);
+
+constexpr QNetworkRequest::Attribute DeleteTorrentFileOnSuccessAttribute =
+    static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 3);
+}
+
+static QJsonArray idsToJsonArray(const QList<int> &ids)
+{
+    QJsonArray array;
+
+    for (int id : ids)
+        array.append(id);
+
+    return array;
 }
 
 void rpc_client::postRpc(const QString &method,
@@ -19,6 +38,8 @@ void rpc_client::postRpc(const QString &method,
         RpcRequestTypeAttribute,
         static_cast<int>(type)
         );
+
+    request.setAttribute(RpcMethodAttribute, method);
 
     na_manager->post(
         request,
@@ -145,6 +166,31 @@ void rpc_client::replyFinished(QNetworkReply *reply)
     }
 
     if (!isTorrentGet) {
+        const QString method =
+            reply->request().attribute(RpcMethodAttribute).toString();
+
+        if (method == "torrent-add") {
+            const bool deleteFileOnSuccess =
+                reply->request()
+                    .attribute(DeleteTorrentFileOnSuccessAttribute, false)
+                    .toBool();
+
+            const QString torrentFilePath =
+                reply->request()
+                    .attribute(TorrentFilePathAttribute)
+                    .toString();
+
+            if (deleteFileOnSuccess && !torrentFilePath.isEmpty()) {
+                if (QFile::remove(torrentFilePath)) {
+                    qDebug() << "Deleted torrent file after successful add:"
+                             << torrentFilePath;
+                } else {
+                    qWarning() << "Could not delete torrent file after add:"
+                               << torrentFilePath;
+                }
+            }
+        }
+
         return;
     }
 
@@ -575,31 +621,22 @@ void rpc_client::applyUpdate(const QVector<torrent> &incoming)
 
 void rpc_client::removeTorrent(int id, bool deleteLocalData)
 {
-    QJsonObject arguments;
-    arguments["ids"] = QJsonArray { id };
-    arguments["delete-local-data"] = deleteLocalData;
-
-    postRpc("torrent-remove", arguments, RpcRequestType::Command);
+    removeTorrents({ id }, deleteLocalData);
 }
 
 void rpc_client::startTorrent(int id)
 {
-    QJsonObject arguments;
-    arguments["ids"] = QJsonArray { id };
-
-    postRpc("torrent-start", arguments, RpcRequestType::Command);
+    startTorrents({ id });
 }
 
 
 void rpc_client::stopTorrent(int id)
 {
-    QJsonObject arguments;
-    arguments["ids"] = QJsonArray { id };
-
-    postRpc("torrent-stop", arguments, RpcRequestType::Command);
+    stopTorrents({ id });
 }
 
-void rpc_client::addTorrentFromFile(const QString &filePath)
+void rpc_client::addTorrentFromFile(const QString &filePath,
+                                    bool deleteFileOnSuccess)
 {
     QFile file(filePath);
 
@@ -620,7 +657,21 @@ void rpc_client::addTorrentFromFile(const QString &filePath)
     QJsonObject arguments;
     arguments["metainfo"] = QString::fromLatin1(torrentData.toBase64());
 
-    postRpc("torrent-add", arguments, RpcRequestType::Command);
+    QNetworkRequest request = makeRequest();
+
+    request.setAttribute(
+        RpcRequestTypeAttribute,
+        static_cast<int>(RpcRequestType::Command)
+        );
+
+    request.setAttribute(RpcMethodAttribute, QStringLiteral("torrent-add"));
+    request.setAttribute(TorrentFilePathAttribute, filePath);
+    request.setAttribute(DeleteTorrentFileOnSuccessAttribute, deleteFileOnSuccess);
+
+    na_manager->post(
+        request,
+        makeRpcPayload("torrent-add", arguments)
+        );
 }
 
 void rpc_client::addTorrentFromMagnet(const QString &magnetLink)
@@ -640,26 +691,66 @@ void rpc_client::addTorrentFromMagnet(const QString &magnetLink)
 
 void rpc_client::reannounceTorrent(int id)
 {
-    if (id < 0) {
-        qWarning() << "Invalid torrent id for reannounce:" << id;
-        return;
-    }
-
-    QJsonObject arguments;
-    arguments["ids"] = QJsonArray { id };
-
-    postRpc("torrent-reannounce", arguments, RpcRequestType::Command);
+    reannounceTorrents({ id });
 }
 
 void rpc_client::verifyTorrent(int id)
 {
-    if (id < 0) {
-        qWarning() << "Invalid torrent id for verify:" << id;
+    verifyTorrents({ id });
+}
+
+void rpc_client::startTorrents(const QList<int> &ids)
+{
+    if (ids.isEmpty())
         return;
-    }
 
     QJsonObject arguments;
-    arguments["ids"] = QJsonArray { id };
+    arguments["ids"] = idsToJsonArray(ids);
+
+    postRpc("torrent-start", arguments, RpcRequestType::Command);
+}
+
+void rpc_client::stopTorrents(const QList<int> &ids)
+{
+    if (ids.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments["ids"] = idsToJsonArray(ids);
+
+    postRpc("torrent-stop", arguments, RpcRequestType::Command);
+}
+
+void rpc_client::removeTorrents(const QList<int> &ids, bool deleteLocalData)
+{
+    if (ids.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments["ids"] = idsToJsonArray(ids);
+    arguments["delete-local-data"] = deleteLocalData;
+
+    postRpc("torrent-remove", arguments, RpcRequestType::Command);
+}
+
+void rpc_client::verifyTorrents(const QList<int> &ids)
+{
+    if (ids.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments["ids"] = idsToJsonArray(ids);
 
     postRpc("torrent-verify", arguments, RpcRequestType::Command);
+}
+
+void rpc_client::reannounceTorrents(const QList<int> &ids)
+{
+    if (ids.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments["ids"] = idsToJsonArray(ids);
+
+    postRpc("torrent-reannounce", arguments, RpcRequestType::Command);
 }
