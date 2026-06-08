@@ -17,6 +17,7 @@
 #include <QEvent>
 #include "rpc_client.h"
 #include "torrentsortproxymodel.h"
+#include "torrentmodel.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -65,6 +66,7 @@ private:
     QMenuBar *mainMenuBar;
     int selected = 0;
     QSettings settings;
+    TorrentModel *torrentModel = nullptr;
     rpc_client *client = nullptr;
     TorrentSortProxyModel *proxy = nullptr;
     enum FileTreeColumn {

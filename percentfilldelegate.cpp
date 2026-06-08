@@ -1,5 +1,6 @@
 #include "percentfilldelegate.h"
-#include "rpc_client.h"
+//#include "rpc_client.h"
+#include "torrentmodel.h"
 #include <QApplication>
 #include <QPainter>
 #include <QStyle>
@@ -43,7 +44,7 @@ void PercentFillDelegate::paint(QPainter *painter,
                                 const QStyleOptionViewItem &option,
                                 const QModelIndex &index) const
 {
-    if (index.column() != rpc_client::PercentDoneColumn) {
+    if (index.column() != TorrentModel::PercentDoneColumn) {
         QStyledItemDelegate::paint(painter, option, index);
         return;
     }

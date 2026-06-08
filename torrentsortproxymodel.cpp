@@ -1,5 +1,6 @@
 #include "torrentsortproxymodel.h"
-#include "rpc_client.h"
+//#include "rpc_client.h"
+#include "torrentmodel.h"
 #include <QtWidgets/qtableview.h>
 
 TorrentSortProxyModel::TorrentSortProxyModel(QObject *parent)
@@ -29,20 +30,20 @@ bool TorrentSortProxyModel::lessThan(const QModelIndex &left, const QModelIndex 
     const QVariant rhs = sourceModel()->data(right, Qt::UserRole + 1);
 
     switch (left.column()) {
-    case rpc_client::IdColumn:
-    case rpc_client::StatusColumn:
-    case rpc_client::EtaColumn:
+    case TorrentModel::IdColumn:
+    case TorrentModel::StatusColumn:
+    case TorrentModel::EtaColumn:
         return lhs.toInt() < rhs.toInt();
 
-    case rpc_client::PercentDoneColumn:
-    case rpc_client::RateDownloadColumn:
-    case rpc_client::RateUploadColumn:
-    case rpc_client::UploadRatioColumn:
+    case TorrentModel::PercentDoneColumn:
+    case TorrentModel::RateDownloadColumn:
+    case TorrentModel::RateUploadColumn:
+    case TorrentModel::UploadRatioColumn:
         return lhs.toDouble() < rhs.toDouble();
-    case rpc_client::SizeColumn:
+    case TorrentModel::SizeColumn:
         return lhs.toLongLong() < rhs.toLongLong();
 
-    case rpc_client::NameColumn:
+    case TorrentModel::NameColumn:
     default:
         return QString::localeAwareCompare(lhs.toString(), rhs.toString()) < 0;
     }
@@ -77,10 +78,10 @@ bool TorrentSortProxyModel::filterAcceptsRow(int sourceRow,
         return true;
 
     const QModelIndex statusIndex =
-        sourceModel()->index(sourceRow, rpc_client::StatusColumn, sourceParent);
+        sourceModel()->index(sourceRow, TorrentModel::StatusColumn, sourceParent);
 
     const QModelIndex percentIndex =
-        sourceModel()->index(sourceRow, rpc_client::PercentDoneColumn, sourceParent);
+        sourceModel()->index(sourceRow, TorrentModel::PercentDoneColumn, sourceParent);
 
     const QString status =
         sourceModel()->data(statusIndex, Qt::DisplayRole).toString();
@@ -122,7 +123,7 @@ bool TorrentSortProxyModel::filterAcceptsRow(int sourceRow,
 
 static void restoreSelectionByIds(
     QTableView *view,
-    rpc_client *sourceModel,
+    TorrentModel *sourceModel,
     QSortFilterProxyModel *proxyModel,
     const QList<int> &selectedIds,
     int currentId)

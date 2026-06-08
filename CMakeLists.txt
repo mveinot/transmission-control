@@ -60,6 +60,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         torrentsortproxymodel.h torrentsortproxymodel.cpp
         serverconfig.h serverconfig.cpp serverconfig.ui
         percentfilldelegate.h percentfilldelegate.cpp
+        torrentmodel.h torrentmodel.cpp
 
 
 

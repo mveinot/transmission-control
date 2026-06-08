@@ -48,7 +48,7 @@ void rpc_client::postRpc(const QString &method,
 }
 
 rpc_client::rpc_client(QObject *parent)
-    : QAbstractTableModel(parent)
+    : QObject(parent)
 {
 }
 
@@ -218,8 +218,7 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         incoming.append(torrent(obj));
     }
 
-    torrentList = newTorrentList;
-    applyUpdate(incoming);
+    emit torrentsReceived(incoming);
 
     emit listUpdated();
 
@@ -238,10 +237,12 @@ void rpc_client::setSessionToken(QByteArray token)
     _clientReady = true;
 }
 
+/*
 torrent rpc_client::getTorrent(int item)
 {
     return rpc_client::torrentVector[item];
 }
+*/
 /*
 int rpc_client::countTorrents() const
 {
@@ -325,7 +326,8 @@ void rpc_client::setServer(const TransmissionServer &server)
     _clientReady = false;
     updateInProgress = false;
 
-    clearTorrents();
+    //clearTorrents();
+    emit serverChanged();
 }
 
 QString rpc_client::getServer()
@@ -369,7 +371,7 @@ void rpc_client::getTorrentList()
 
     postRpc("torrent-get", arguments, RpcRequestType::TorrentGet);
 }
-
+/*
 void rpc_client::clearTorrents()
 {
     beginResetModel();
@@ -382,6 +384,7 @@ void rpc_client::clearTorrents()
 
     emit listUpdated();
 }
+*/
 
 QByteArray rpc_client::makeRpcPayload(const QString &method,
                                       const QJsonObject &arguments) const
@@ -417,11 +420,11 @@ QNetworkRequest rpc_client::makeRequest() const
 }
 
 // QTableView methods
+/*
 int rpc_client::rowCount(const QModelIndex &parent) const
 {
     return parent.isValid() ? 0 : torrentVector.size();
 }
-
 
 int rpc_client::columnCount(const QModelIndex &parent) const
 {
@@ -514,6 +517,7 @@ int rpc_client::rowForId(int id) const
 {
     return m_rowById.value(id, -1);
 }
+*/
 /*
 bool rpc_client::updateFromJson(const QByteArray &json)
 {
@@ -542,7 +546,7 @@ bool rpc_client::updateFromJson(const QByteArray &json)
     return true;
 }
 */
-
+/*
 void rpc_client::rebuildIndex()
 {
     m_rowById.clear();
@@ -586,12 +590,12 @@ void rpc_client::applyUpdate(const QVector<torrent> &incoming)
 
         const torrent &updated = it.value();
 
-        /*
+
         if (!torrentVector.at(row).sameDisplayData(updated)) {
             torrentVector[row] = updated;
             emit dataChanged(index(row, 0), index(row, ColumnCount - 1));
         }
-        */
+
 
         const bool displayChanged =
             !torrentVector.at(row).sameDisplayData(updated);
@@ -618,6 +622,7 @@ void rpc_client::applyUpdate(const QVector<torrent> &incoming)
 
     rebuildIndex();
 }
+*/
 
 void rpc_client::removeTorrent(int id, bool deleteLocalData)
 {

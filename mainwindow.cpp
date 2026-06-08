@@ -49,8 +49,10 @@ MainWindow::MainWindow(QWidget *parent)
 {
     timer = new QTimer(this);
     client = new rpc_client(this);
+    torrentModel = new TorrentModel(this);
+
     proxy = new TorrentSortProxyModel(this);
-    proxy->setSourceModel(client);
+    proxy->setSourceModel(torrentModel);
 
     this->aboutAction = new QAction(0);
     this->aboutAction->setMenuRole(QAction::AboutRole);
@@ -65,6 +67,12 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tableView->setModel(proxy);
 
     updateTorrentActionState();
+
+    connect(client, &rpc_client::torrentsReceived,
+            torrentModel, &TorrentModel::applyUpdate);
+
+    connect(torrentModel, &TorrentModel::listUpdated,
+            this, &MainWindow::drawTorrentList);
 
     connect(ui->tableView->selectionModel(),
             &QItemSelectionModel::selectionChanged,
@@ -119,16 +127,16 @@ MainWindow::MainWindow(QWidget *parent)
     ui->peerTableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->peerTableWidget->setSortingEnabled(true);
 
-    ui->tableView->hideColumn(rpc_client::IdColumn);
+    ui->tableView->hideColumn(TorrentModel::IdColumn);
     ui->tableView->setSortingEnabled(true);
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    ui->tableView->sortByColumn(rpc_client::NameColumn, Qt::AscendingOrder);
+    ui->tableView->sortByColumn(TorrentModel::NameColumn, Qt::AscendingOrder);
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     ui->tableView->setItemDelegateForColumn(
-        rpc_client::PercentDoneColumn,
+        TorrentModel::PercentDoneColumn,
         new PercentFillDelegate(
-            rpc_client::PercentDoneColumn,
+            TorrentModel::PercentDoneColumn,
             Qt::UserRole + 1,
             ui->tableView
             )
@@ -140,6 +148,9 @@ MainWindow::MainWindow(QWidget *parent)
         );
 
     ui->statusbar->showMessage(client->getServer());
+
+    connect(client, &rpc_client::serverChanged,
+            torrentModel, &TorrentModel::clear);
 
     connect(ui->actionAll, &QAction::triggered, this, [this]() {
         setTorrentStateFilter(TorrentSortProxyModel::StateFilter::All);
@@ -275,7 +286,7 @@ void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
         return;
 
     const int sourceRow = sourceIndex.row();
-    const torrent t = client->getTorrent(sourceRow);
+    const torrent t = torrentModel->getTorrent(sourceRow);
 
     populateFileTree(t.getFiles());
     populatePeerTable(t.getPeers());
@@ -875,7 +886,7 @@ QString MainWindow::currentTorrentName() const
         return {};
 
     return sourceIndex
-        .siblingAtColumn(rpc_client::NameColumn)
+        .siblingAtColumn(TorrentModel::NameColumn)
         .data(Qt::DisplayRole)
         .toString();
 }
@@ -1199,7 +1210,7 @@ QStringList MainWindow::selectedTorrentNames() const
             continue;
 
         const QString name = sourceIndex
-                                 .siblingAtColumn(rpc_client::NameColumn)
+                                 .siblingAtColumn(TorrentModel::NameColumn)
                                  .data(Qt::DisplayRole)
                                  .toString();
 
