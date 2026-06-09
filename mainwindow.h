@@ -19,6 +19,7 @@
 #include "rpc_client.h"
 #include "torrentsortproxymodel.h"
 #include "torrentmodel.h"
+#include "geoipservice.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -70,6 +71,7 @@ private:
     TorrentModel *torrentModel = nullptr;
     rpc_client *client = nullptr;
     TorrentSortProxyModel *proxy = nullptr;
+    GeoIpService *geoIpService = nullptr;
     enum FileTreeColumn {
         FileNameColumn = 0,
         FileSizeColumn,

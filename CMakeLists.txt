@@ -61,6 +61,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         serverconfig.h serverconfig.cpp serverconfig.ui
         percentfilldelegate.h percentfilldelegate.cpp
         torrentmodel.h torrentmodel.cpp
+        Resources/icons/planetary_menu.png
+        geoipservice.h geoipservice.cpp
 
 
 

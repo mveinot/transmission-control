@@ -28,6 +28,7 @@
 #include <QEvent>
 #include <QApplication>
 #include <QIcon>
+#include <QUrl>
 #include "rpc_client.h"
 #include "dialogabout.h"
 #include "serverconfig.h"
@@ -43,6 +44,37 @@ constexpr int MinimumUpdateIntervalSeconds = 1;
 constexpr int MaximumUpdateIntervalSeconds = 3600;
 }
 
+static bool looksLikeUrl(const QString &text)
+{
+    const QString trimmed = text.trimmed();
+
+    if (trimmed.isEmpty())
+        return false;
+
+    const QUrl url = QUrl::fromUserInput(trimmed);
+
+    return url.isValid() &&
+           !url.scheme().isEmpty() &&
+           !url.host().isEmpty();
+}
+
+void MainWindow::clearGeneralTab()
+{
+    ui->labelGeneralName->clear();
+    ui->labelGeneralTotalSize->clear();
+    ui->labelGeneralCreator->clear();
+    ui->labelGeneralCreated->clear();
+    ui->labelGeneralDownloadDir->clear();
+    ui->labelGeneralHash->clear();
+    ui->lineGeneralMagnet->clear();
+}
+
+void MainWindow::clearTrackerTable()
+{
+    ui->trackerTableWidget->clearContents();
+    ui->trackerTableWidget->setRowCount(0);
+}
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -53,6 +85,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     proxy = new TorrentSortProxyModel(this);
     proxy->setSourceModel(torrentModel);
+
+    geoIpService = new GeoIpService(this);
 
     this->aboutAction = new QAction(0);
     this->aboutAction->setMenuRole(QAction::AboutRole);
@@ -112,8 +146,9 @@ MainWindow::MainWindow(QWidget *parent)
     stateGroup->addAction(ui->actionError);
     ui->actionAll->setChecked(true);
 
-    ui->peerTableWidget->setColumnCount(8);
+    ui->peerTableWidget->setColumnCount(9);
     ui->peerTableWidget->setHorizontalHeaderLabels({
+        "Country",
         "Address",
         "Port",
         "Client",
@@ -464,6 +499,11 @@ void MainWindow::saveTableViewState()
         "ui/peerTableWidget/horizontalHeaderState",
         ui->peerTableWidget->horizontalHeader()->saveState()
         );
+
+    settings.setValue(
+        "ui/trackerTableWidget/headerState",
+        ui->trackerTableWidget->horizontalHeader()->saveState()
+        );
 }
 
 void MainWindow::restoreTableViewState()
@@ -496,6 +536,13 @@ void MainWindow::restoreTableViewState()
 
     if (!peerTableHeaderState.isEmpty()) {
         ui->peerTableWidget->horizontalHeader()->restoreState(peerTableHeaderState);
+    }
+
+    const QByteArray headerState =
+        settings.value("ui/trackerTableWidget/headerState").toByteArray();
+
+    if (!headerState.isEmpty()) {
+        ui->trackerTableWidget->horizontalHeader()->restoreState(headerState);
     }
 }
 
@@ -684,6 +731,10 @@ void MainWindow::populatePeerTable(const QJsonArray &peers)
         const QJsonObject peer = peerValue.toObject();
 
         const QString address = peer.value("address").toString();
+
+        const GeoIpResult geoIp =
+            geoIpService ? geoIpService->lookup(address) : GeoIpResult {};
+
         const int port = peer.value("port").toInt();
 
         const QString clientName =
@@ -701,6 +752,14 @@ void MainWindow::populatePeerTable(const QJsonArray &peers)
 
         const bool isEncrypted = peer.value("isEncrypted").toBool();
         const bool isIncoming = peer.value("isIncoming").toBool();
+
+        auto *countryItem = new QTableWidgetItem(geoIp.displayText());
+        countryItem->setToolTip(
+            geoIp.found
+                ? QString("%1 (%2)").arg(geoIp.countryName, address)
+                : QString("%1").arg(address)
+            );
+        countryItem->setData(Qt::UserRole, geoIp.countryCode);
 
         auto *addressItem = new QTableWidgetItem(address);
 
@@ -741,14 +800,15 @@ void MainWindow::populatePeerTable(const QJsonArray &peers)
             new QTableWidgetItem(isIncoming ? "Yes" : "No");
         incomingItem->setData(Qt::UserRole, isIncoming);
 
-        ui->peerTableWidget->setItem(row, 0, addressItem);
-        ui->peerTableWidget->setItem(row, 1, portItem);
-        ui->peerTableWidget->setItem(row, 2, clientItem);
-        ui->peerTableWidget->setItem(row, 3, progressItem);
-        ui->peerTableWidget->setItem(row, 4, downloadItem);
-        ui->peerTableWidget->setItem(row, 5, uploadItem);
-        ui->peerTableWidget->setItem(row, 6, encryptedItem);
-        ui->peerTableWidget->setItem(row, 7, incomingItem);
+        ui->peerTableWidget->setItem(row, 0, countryItem);
+        ui->peerTableWidget->setItem(row, 1, addressItem);
+        ui->peerTableWidget->setItem(row, 2, portItem);
+        ui->peerTableWidget->setItem(row, 3, clientItem);
+        ui->peerTableWidget->setItem(row, 4, progressItem);
+        ui->peerTableWidget->setItem(row, 5, downloadItem);
+        ui->peerTableWidget->setItem(row, 6, uploadItem);
+        ui->peerTableWidget->setItem(row, 7, encryptedItem);
+        ui->peerTableWidget->setItem(row, 8, incomingItem);
 
         ++row;
     }
@@ -1127,8 +1187,11 @@ void MainWindow::setupTrayIcon()
 
     trayIcon = new QSystemTrayIcon(this);
 
-    // Uses the app/window icon. If this is blank, use QIcon(":/icons/planetary.png")
-    trayIcon->setIcon(windowIcon());
+    QIcon menuBarIcon(":/icons/planetary_menu.png");
+    menuBarIcon.setIsMask(true);
+
+    trayIcon->setIcon(menuBarIcon);
+
     trayIcon->setToolTip("Planetary");
     trayIcon->setContextMenu(trayMenu);
 
@@ -1354,9 +1417,21 @@ void MainWindow::populateGeneralTab(const QJsonObject &details)
     ui->labelGeneralHash->setText(hashString);
     ui->lineGeneralMagnet->setText(magnetLink);
 
-    ui->labelGeneralComment->setText(
-        comment.isEmpty() ? QStringLiteral("None") : comment
-        );
+    const QString trimmedComment = comment.trimmed();
+
+    if (trimmedComment.isEmpty()) {
+        ui->labelGeneralComment->setText("None");
+    } else if (looksLikeUrl(trimmedComment)) {
+        const QUrl url = QUrl::fromUserInput(trimmedComment);
+
+        ui->labelGeneralComment->setText(
+            QString("<a href=\"%1\">%2</a>")
+                .arg(url.toString().toHtmlEscaped(),
+                     trimmedComment.toHtmlEscaped())
+            );
+    } else {
+        ui->labelGeneralComment->setText(trimmedComment.toHtmlEscaped());
+    }
 
     ui->labelGeneralTotalSize->setText(
         QLocale().formattedDataSize(
@@ -1376,23 +1451,6 @@ void MainWindow::populateGeneralTab(const QJsonObject &details)
     } else {
         ui->labelGeneralCreated->setText("Unknown");
     }
-}
-
-void MainWindow::clearGeneralTab()
-{
-    ui->labelGeneralName->clear();
-    ui->labelGeneralTotalSize->clear();
-    ui->labelGeneralCreator->clear();
-    ui->labelGeneralCreated->clear();
-    ui->labelGeneralDownloadDir->clear();
-    ui->labelGeneralHash->clear();
-    ui->lineGeneralMagnet->clear();
-}
-
-void MainWindow::clearTrackerTable()
-{
-    ui->trackerTableWidget->clearContents();
-    ui->trackerTableWidget->setRowCount(0);
 }
 
 void MainWindow::populateTrackerTable(const QJsonObject &details)
