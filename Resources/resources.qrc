@@ -2,5 +2,6 @@
     <qresource prefix="/">
         <file>icons/planetary.icns</file>
         <file>icons/planetary.png</file>
+        <file>icons/planetary_menu.png</file>
     </qresource>
 </RCC>
