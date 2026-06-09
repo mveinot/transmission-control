@@ -59,6 +59,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->setupUi(this);
 
+    setupConnectionStatusIndicator();
+
     auto *stateGroup = new QActionGroup(this);
     stateGroup->setExclusive(true);
 
@@ -226,13 +228,47 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTorrentList);
     connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
-    connect(client, &rpc_client::updateStarted, this, [this]() {
-        ui->statusbar->showMessage(client->getServer() + " (updating)");
-    });
 
-    connect(client, &rpc_client::updateFinished, this, [this]() {
-        ui->statusbar->showMessage(client->getServer());
-    });
+    connect(client, &rpc_client::torrentDetailsReceived,
+            this,
+            [this](int torrentId, const QJsonObject &details) {
+                if (torrentId != currentTorrentId())
+                    return;
+
+                populateFileTree(details.value("files").toArray());
+                populatePeerTable(details.value("peers").toArray());
+
+                // Later:
+                // priorities = details.value("priorities").toArray();
+                // wanted = details.value("wanted").toArray();
+            });
+
+    connect(client, &rpc_client::updateStarted,
+            this,
+            [this]() {
+                connectionStatusLabel->setStyleSheet("");
+                connectionStatusLabel->setText("Updating...");
+            });
+
+    connect(client, &rpc_client::updateFailed,
+            this,
+            [this](const QString &message) {
+                connectionStatusLabel->setStyleSheet("color: #ff6b6b;");
+                connectionStatusLabel->setText(
+                    QString("Connection error: %1").arg(message)
+                    );
+            });
+
+    connect(client, &rpc_client::torrentsReceived,
+            this,
+            [this](const QVector<torrent> &torrents) {
+                connectionStatusLabel->setStyleSheet("");
+                connectionStatusLabel->setText(
+                    QString("Connected: %1 · %2 torrent(s)")
+                        .arg(client->getServer())
+                        .arg(torrents.size())
+                    );
+            });
 
     connect(ui->tableView, &QTableView::customContextMenuRequested,
             this, &MainWindow::showTorrentContextMenu);
@@ -285,29 +321,15 @@ void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
     if (!sourceIndex.isValid())
         return;
 
-    const int sourceRow = sourceIndex.row();
-    const torrent t = torrentModel->getTorrent(sourceRow);
+    const int torrentId = sourceIndex.data(Qt::UserRole).toInt();
 
-    populateFileTree(t.getFiles());
-    populatePeerTable(t.getPeers());
+    ui->fileTreeWidget->clear();
+    ui->peerTableWidget->clearContents();
+    ui->peerTableWidget->setRowCount(0);
+
+    client->getTorrentDetails(torrentId);
 }
 
-/*
-int MainWindow::currentSourceRow() const
-{
-    const QModelIndex proxyIndex = ui->tableView->currentIndex();
-
-    if (!proxyIndex.isValid())
-        return -1;
-
-    const QModelIndex sourceIndex = proxy->mapToSource(proxyIndex);
-
-    if (!sourceIndex.isValid())
-        return -1;
-
-    return sourceIndex.row();
-}
-*/
 int MainWindow::currentTorrentId() const
 {
     const QModelIndex proxyIndex = ui->tableView->currentIndex();
@@ -1219,4 +1241,59 @@ QStringList MainWindow::selectedTorrentNames() const
     }
 
     return names;
+}
+
+void MainWindow::setupConnectionStatusIndicator()
+{
+    connectionStatusLabel = new QLabel(this);
+    connectionStatusLabel->setText("Not connected");
+
+    connectionStatusLabel->setMinimumWidth(260);
+    connectionStatusLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+    ui->statusbar->addPermanentWidget(connectionStatusLabel);
+
+    connect(client, &rpc_client::updateStarted,
+            this,
+            [this]() {
+                connectionStatusLabel->setText("Updating...");
+            });
+
+    connect(client, &rpc_client::updateFailed,
+            this,
+            [this](const QString &message) {
+                QString displayMessage = message;
+
+                if (message.contains("timed out", Qt::CaseInsensitive)) {
+                    displayMessage = "Timed out contacting Transmission";
+                } else if (message.contains("connection refused", Qt::CaseInsensitive)) {
+                    displayMessage = "Connection refused by Transmission";
+                } else if (message.contains("host not found", Qt::CaseInsensitive)) {
+                    displayMessage = "Host not found";
+                } else if (message.contains("network", Qt::CaseInsensitive)) {
+                    displayMessage = message;
+                }
+
+                connectionStatusLabel->setText(
+                    QString("Connection error: %1").arg(displayMessage)
+                    );
+            });
+
+    connect(client, &rpc_client::torrentsReceived,
+            this,
+            [this](const QVector<torrent> &torrents) {
+                connectionStatusLabel->setText(
+                    QString("Connected: %1 · %2 torrent(s)")
+                        .arg(client->getServer())
+                        .arg(torrents.size())
+                    );
+            });
+
+    connect(client, &rpc_client::serverChanged,
+            this,
+            [this]() {
+                connectionStatusLabel->setText(
+                    QString("Server changed: %1").arg(client->getServer())
+                    );
+            });
 }

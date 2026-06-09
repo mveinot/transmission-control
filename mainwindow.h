@@ -15,6 +15,7 @@
 #include <QPoint>
 #include <QSystemTrayIcon>
 #include <QEvent>
+#include <QLabel>
 #include "rpc_client.h"
 #include "torrentsortproxymodel.h"
 #include "torrentmodel.h"
@@ -81,11 +82,11 @@ private:
     QList<int> selectedTorrentIds() const;
     QStringList selectedTorrentNames() const;
     QString currentTorrentName() const;
+    QLabel *connectionStatusLabel = nullptr;
     void startSelectedTorrent();
     void stopSelectedTorrent();
     void addTorrentFromFile();
     void addTorrentFromMagnet();
-    //int currentSourceRow() const;
     void saveTableViewState();
     void restoreTableViewState();
     void setTorrentStateFilter(TorrentSortProxyModel::StateFilter filter);
@@ -100,6 +101,7 @@ private:
     void updateTorrentActionState();
     int updateIntervalMs() const;
     void applyUpdateInterval();
+    void setupConnectionStatusIndicator();
 
 
 protected:

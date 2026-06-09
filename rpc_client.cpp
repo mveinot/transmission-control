@@ -32,19 +32,31 @@ void rpc_client::postRpc(const QString &method,
                          const QJsonObject &arguments,
                          RpcRequestType type)
 {
+    RpcRequestContext context;
+    context.method = method;
+    context.arguments = arguments;
+    context.type = type;
+
+    postRpc(context);
+}
+
+void rpc_client::postRpc(const RpcRequestContext &context)
+{
     QNetworkRequest request = makeRequest();
 
     request.setAttribute(
         RpcRequestTypeAttribute,
-        static_cast<int>(type)
+        static_cast<int>(context.type)
         );
 
-    request.setAttribute(RpcMethodAttribute, method);
+    request.setAttribute(RpcMethodAttribute, context.method);
 
-    na_manager->post(
+    QNetworkReply *reply = na_manager->post(
         request,
-        makeRpcPayload(method, arguments)
+        makeRpcPayload(context.method, context.arguments)
         );
+
+    pendingRequests.insert(reply, context);
 }
 
 rpc_client::rpc_client(QObject *parent)
@@ -70,6 +82,7 @@ void rpc_client::init()
 
 void rpc_client::replyFinished(QNetworkReply *reply)
 {
+    /*
     const auto requestType =
         static_cast<RpcRequestType>(
             reply->request()
@@ -82,6 +95,23 @@ void rpc_client::replyFinished(QNetworkReply *reply)
 
     const bool isTorrentGet =
         requestType == RpcRequestType::TorrentGet;
+
+    const auto finishTorrentGet = [this, isTorrentGet]() {
+        if (isTorrentGet) {
+            updateInProgress = false;
+            emit updateFinished();
+        }
+    };
+*/
+    RpcRequestContext context =
+        pendingRequests.take(reply);
+
+    const RpcRequestType requestType = context.type;
+    const bool isTorrentGet =
+        requestType == RpcRequestType::TorrentGet;
+
+    const bool isTorrentDetails =
+        requestType == RpcRequestType::TorrentDetails;
 
     const auto finishTorrentGet = [this, isTorrentGet]() {
         if (isTorrentGet) {
@@ -107,10 +137,21 @@ void rpc_client::replyFinished(QNetworkReply *reply)
 
         setSessionToken(token);
 
-        if (isTorrentGet) {
-            updateInProgress = false;
-            getTorrentList();
+        if (context.retriedAfterAuth) {
+            if (isTorrentGet) {
+                emit updateFailed("Transmission session token retry failed.");
+            }
+
+            finishTorrentGet();
+            return;
         }
+
+        context.retriedAfterAuth = true;
+
+        if (isTorrentGet)
+            updateInProgress = false;
+
+        postRpc(context);
 
         return;
     }
@@ -211,49 +252,47 @@ void rpc_client::replyFinished(QNetworkReply *reply)
     const QJsonArray newTorrentList =
         torrentsValue.toArray();
 
-    QVector<torrent> incoming;
-    incoming.reserve(newTorrentList.size());
+    if (requestType == RpcRequestType::TorrentDetails) {
+        if (!newTorrentList.isEmpty()) {
+            const QJsonObject detail = newTorrentList.first().toObject();
+            const int torrentId = detail.value("id").toInt(-1);
 
-    for (const QJsonValue &obj : newTorrentList) {
-        incoming.append(torrent(obj));
+            if (torrentId >= 0) {
+                emit torrentDetailsReceived(torrentId, detail);
+            }
+        }
+
+        return;
     }
 
-    emit torrentsReceived(incoming);
+    if (requestType == RpcRequestType::TorrentGet) {
+        QVector<torrent> incoming;
+        incoming.reserve(newTorrentList.size());
 
-    emit listUpdated();
+        for (const QJsonValue &obj : newTorrentList) {
+            incoming.append(torrent(obj));
+        }
 
-    finishTorrentGet();
+        emit torrentsReceived(incoming);
+
+        emit listUpdated();
+
+        finishTorrentGet();
+        return;
+    }
+
+    if (requestType == RpcRequestType::Command) {
+        emit commandSucceeded(context.method);
+        return;
+    }
 }
 
-/*
-bool rpc_client::isClientReady()
-{
-    return _clientReady;
-}
-*/
 void rpc_client::setSessionToken(QByteArray token)
 {
     _session_token = token;
     _clientReady = true;
 }
 
-/*
-torrent rpc_client::getTorrent(int item)
-{
-    return rpc_client::torrentVector[item];
-}
-*/
-/*
-int rpc_client::countTorrents() const
-{
-    return torrentVector.count();
-}
-
-QJsonArray rpc_client::torrents()
-{
-    return rpc_client::torrentList;
-}
-*/
 rpc_client::TransmissionServer rpc_client::readServerFromSettings(int index, bool *ok)
 {
     if (ok)
@@ -358,33 +397,19 @@ void rpc_client::getTorrentList()
     arguments["fields"] = QJsonArray {
         "id",
         "name",
-        "percentDone",
+        "percent_done",
         "status",
-        "rateDownload",
-        "rateUpload",
-        "uploadRatio",
+        "rate_download",
+        "rate_upload",
+        "upload_ratio",
         "eta",
-        "sizeWhenDone",
-        "files",
-        "peers"
+        "size_when_done"
+//        "files",
+//        "peers"
     };
 
     postRpc("torrent-get", arguments, RpcRequestType::TorrentGet);
 }
-/*
-void rpc_client::clearTorrents()
-{
-    beginResetModel();
-
-    torrentList = {};
-    torrentVector.clear();
-    m_rowById.clear();
-
-    endResetModel();
-
-    emit listUpdated();
-}
-*/
 
 QByteArray rpc_client::makeRpcPayload(const QString &method,
                                       const QJsonObject &arguments) const
@@ -418,211 +443,6 @@ QNetworkRequest rpc_client::makeRequest() const
 
     return request;
 }
-
-// QTableView methods
-/*
-int rpc_client::rowCount(const QModelIndex &parent) const
-{
-    return parent.isValid() ? 0 : torrentVector.size();
-}
-
-int rpc_client::columnCount(const QModelIndex &parent) const
-{
-    return parent.isValid() ? 0 : ColumnCount;
-}
-
-QVariant rpc_client::data(const QModelIndex &index, int role) const
-{
-    if (!index.isValid() || index.row() < 0 || index.row() >= torrentVector.size()) {
-        return {};
-    }
-
-    const torrent &t = torrentVector.at(index.row());
-
-    if (role == Qt::DisplayRole)
-        switch (index.column()) {
-        case IdColumn:           return t.getId();
-        case NameColumn:         return t.getName();
-        case PercentDoneColumn:  return QString::number(t.getPercentDone(), 'f', 1) + "%";
-        case StatusColumn:       return t.getStatus();
-        case RateDownloadColumn: return t.getRateDownload();
-        case RateUploadColumn:   return t.getRateUpload();
-        case UploadRatioColumn:  return t.getUploadRatio();
-        case EtaColumn:          return t.getEta();
-        case SizeColumn:         return t.getSize();
-        default:                 return {};
-        }
-
-    if (role == Qt::UserRole) {
-        return t.getId();
-    }
-
-    if (role == Qt::UserRole + 1) {
-        switch (index.column()) {
-        case IdColumn:           return t.getId();
-        case NameColumn:         return t.getName();
-        case PercentDoneColumn:  return t.getPercentDone();
-        case StatusColumn:       return t.getStatus();
-        case RateDownloadColumn: return t.getRateDownload();
-        case RateUploadColumn:   return t.getRateUpload();
-        case UploadRatioColumn:  return t.getUploadRatio();
-        case EtaColumn:          return t.getEta();
-        case SizeColumn:         return t.getSizeBytes();
-        default:                 return {};
-        }
-    }
-
-    if (role == Qt::TextAlignmentRole) {
-        switch (index.column()) {
-        case IdColumn:
-        case PercentDoneColumn:
-        case RateDownloadColumn:
-        case RateUploadColumn:
-        case UploadRatioColumn:
-        case SizeColumn:
-        case EtaColumn:
-            return static_cast<int>(Qt::AlignRight | Qt::AlignVCenter);
-        default:
-            return static_cast<int>(Qt::AlignLeft | Qt::AlignVCenter);
-        }
-    }
-
-    return {};
-}
-
-QVariant rpc_client::headerData(int section, Qt::Orientation orientation, int role) const
-{
-    if (role != Qt::DisplayRole) {
-        return {};
-    }
-
-    if (role == Qt::DisplayRole && orientation == Qt::Horizontal) {
-        switch (section) {
-        case IdColumn:           return "ID";
-        case NameColumn:         return "Name";
-        case PercentDoneColumn:  return "Completed";
-        case StatusColumn:       return "Status";
-        case RateDownloadColumn: return "Down";
-        case RateUploadColumn:   return "Up";
-        case UploadRatioColumn:  return "Ratio";
-        case EtaColumn:          return "ETA";
-        case SizeColumn:         return "Size";
-        default:                 return {};
-        }
-    }
-    return section + 1;
-}
-
-int rpc_client::rowForId(int id) const
-{
-    return m_rowById.value(id, -1);
-}
-*/
-/*
-bool rpc_client::updateFromJson(const QByteArray &json)
-{
-    QJsonParseError error;
-    const QJsonDocument doc = QJsonDocument::fromJson(json, &error);
-    if (error.error != QJsonParseError::NoError || doc.isNull()) {
-        return false;
-    }
-
-    QJsonArray array;
-    if (doc.isArray()) {
-        array = doc.array();
-    } else if (doc.isObject()) {
-        array = doc.object().value("torrents").toArray();
-    } else {
-        return false;
-    }
-
-    QVector<torrent> incoming;
-    incoming.reserve(array.size());
-    for (const auto &value : std::as_const(array)) {
-        incoming.append(torrent(value));
-    }
-
-    applyUpdate(incoming);
-    return true;
-}
-*/
-/*
-void rpc_client::rebuildIndex()
-{
-    m_rowById.clear();
-    m_rowById.reserve(torrentVector.size());
-    for (int row = 0; row < torrentVector.size(); ++row) {
-        m_rowById.insert(torrentVector.at(row).getId(), row);
-    }
-}
-
-void rpc_client::applyUpdate(const QVector<torrent> &incoming)
-{
-    QHash<int, torrent> incomingById;
-    incomingById.reserve(incoming.size());
-    QSet<int> incomingIds;
-    incomingIds.reserve(incoming.size());
-
-    for (const torrent &t : incoming) {
-        incomingById.insert(t.getId(), t);
-        incomingIds.insert(t.getId());
-    }
-
-    // Remove rows that disappeared. Remove from back to front.
-    for (int row = torrentVector.size() - 1; row >= 0; --row) {
-        const int id = torrentVector.at(row).getId();
-        if (!incomingIds.contains(id)) {
-            beginRemoveRows(QModelIndex(), row, row);
-            torrentVector.removeAt(row);
-            endRemoveRows();
-        }
-    }
-
-    rebuildIndex();
-
-    // Update existing rows in place.
-    for (int row = 0; row < torrentVector.size(); ++row) {
-        const int id = torrentVector.at(row).getId();
-        auto it = incomingById.constFind(id);
-        if (it == incomingById.cend()) {
-            continue;
-        }
-
-        const torrent &updated = it.value();
-
-
-        if (!torrentVector.at(row).sameDisplayData(updated)) {
-            torrentVector[row] = updated;
-            emit dataChanged(index(row, 0), index(row, ColumnCount - 1));
-        }
-
-
-        const bool displayChanged =
-            !torrentVector.at(row).sameDisplayData(updated);
-
-        torrentVector[row] = updated;
-
-        if (displayChanged) {
-            emit dataChanged(index(row, 0), index(row, ColumnCount - 1));
-        }
-    }
-
-    rebuildIndex();
-
-    // Insert new rows. Appending is simplest; proxy handles sorted view order.
-    for (const torrent &t : incoming) {
-        if (!m_rowById.contains(t.getId())) {
-            const int row = torrentVector.size();
-            beginInsertRows(QModelIndex(), row, row);
-            torrentVector.append(t);
-            endInsertRows();
-            m_rowById.insert(t.getId(), row);
-        }
-    }
-
-    rebuildIndex();
-}
-*/
 
 void rpc_client::removeTorrent(int id, bool deleteLocalData)
 {
@@ -662,21 +482,14 @@ void rpc_client::addTorrentFromFile(const QString &filePath,
     QJsonObject arguments;
     arguments["metainfo"] = QString::fromLatin1(torrentData.toBase64());
 
-    QNetworkRequest request = makeRequest();
+    RpcRequestContext context;
+    context.method = "torrent-add";
+    context.arguments = arguments;
+    context.type = RpcRequestType::Command;
+    context.torrentFilePath = filePath;
+    context.deleteTorrentFileOnSuccess = deleteFileOnSuccess;
 
-    request.setAttribute(
-        RpcRequestTypeAttribute,
-        static_cast<int>(RpcRequestType::Command)
-        );
-
-    request.setAttribute(RpcMethodAttribute, QStringLiteral("torrent-add"));
-    request.setAttribute(TorrentFilePathAttribute, filePath);
-    request.setAttribute(DeleteTorrentFileOnSuccessAttribute, deleteFileOnSuccess);
-
-    na_manager->post(
-        request,
-        makeRpcPayload("torrent-add", arguments)
-        );
+    postRpc(context);
 }
 
 void rpc_client::addTorrentFromMagnet(const QString &magnetLink)
@@ -758,4 +571,26 @@ void rpc_client::reannounceTorrents(const QList<int> &ids)
     arguments["ids"] = idsToJsonArray(ids);
 
     postRpc("torrent-reannounce", arguments, RpcRequestType::Command);
+}
+
+void rpc_client::getTorrentDetails(int id)
+{
+    if (id < 0)
+        return;
+
+    QJsonObject arguments;
+    arguments["ids"] = QJsonArray { id };
+
+    arguments["fields"] = QJsonArray {
+        "id",
+        "files",
+        "peers",
+        "priorities",
+        "wanted",
+        "downloadDir",
+        "trackers",
+        "trackerStats"
+    };
+
+    postRpc("torrent-get", arguments, RpcRequestType::TorrentDetails);
 }
