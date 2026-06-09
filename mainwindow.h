@@ -102,7 +102,10 @@ private:
     int updateIntervalMs() const;
     void applyUpdateInterval();
     void setupConnectionStatusIndicator();
-
+    void populateGeneralTab(const QJsonObject &details);
+    void populateTrackerTable(const QJsonObject &details);
+    void clearGeneralTab();
+    void clearTrackerTable();
 
 protected:
     void closeEvent(QCloseEvent *event) override;

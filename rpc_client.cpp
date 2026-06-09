@@ -206,32 +206,21 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         return;
     }
 
-    if (!isTorrentGet) {
-        const QString method =
-            reply->request().attribute(RpcMethodAttribute).toString();
+    if (requestType == RpcRequestType::Command) {
+        if (context.method == "torrent-add" &&
+            context.deleteTorrentFileOnSuccess &&
+            !context.torrentFilePath.isEmpty()) {
 
-        if (method == "torrent-add") {
-            const bool deleteFileOnSuccess =
-                reply->request()
-                    .attribute(DeleteTorrentFileOnSuccessAttribute, false)
-                    .toBool();
-
-            const QString torrentFilePath =
-                reply->request()
-                    .attribute(TorrentFilePathAttribute)
-                    .toString();
-
-            if (deleteFileOnSuccess && !torrentFilePath.isEmpty()) {
-                if (QFile::remove(torrentFilePath)) {
-                    qDebug() << "Deleted torrent file after successful add:"
-                             << torrentFilePath;
-                } else {
-                    qWarning() << "Could not delete torrent file after add:"
-                               << torrentFilePath;
-                }
+            if (QFile::remove(context.torrentFilePath)) {
+                qDebug() << "Deleted torrent file after successful add:"
+                         << context.torrentFilePath;
+            } else {
+                qWarning() << "Could not delete torrent file after add:"
+                           << context.torrentFilePath;
             }
         }
 
+        emit commandSucceeded(context.method);
         return;
     }
 
@@ -397,15 +386,13 @@ void rpc_client::getTorrentList()
     arguments["fields"] = QJsonArray {
         "id",
         "name",
-        "percent_done",
+        "percentDone",
         "status",
-        "rate_download",
-        "rate_upload",
-        "upload_ratio",
+        "rateDownload",
+        "rateUpload",
+        "uploadRatio",
         "eta",
-        "size_when_done"
-//        "files",
-//        "peers"
+        "sizeWhenDone"
     };
 
     postRpc("torrent-get", arguments, RpcRequestType::TorrentGet);
@@ -583,13 +570,22 @@ void rpc_client::getTorrentDetails(int id)
 
     arguments["fields"] = QJsonArray {
         "id",
+        "name",
+        "comment",
+        "creator",
+        "dateCreated",
+        "downloadDir",
+        "hashString",
+        "magnetLink",
+        "totalSize",
+
+        "trackers",
+        "trackerStats",
+
         "files",
         "peers",
         "priorities",
-        "wanted",
-        "downloadDir",
-        "trackers",
-        "trackerStats"
+        "wanted"
     };
 
     postRpc("torrent-get", arguments, RpcRequestType::TorrentDetails);

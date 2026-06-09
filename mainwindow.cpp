@@ -144,6 +144,22 @@ MainWindow::MainWindow(QWidget *parent)
             )
         );
 
+    ui->trackerTableWidget->setColumnCount(6);
+    ui->trackerTableWidget->setHorizontalHeaderLabels({
+        "Host",
+        "Announce",
+        "Seeds",
+        "Leechers",
+        "Last Announce",
+        "Result"
+    });
+
+    ui->trackerTableWidget->setAlternatingRowColors(true);
+    ui->trackerTableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->trackerTableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->trackerTableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->trackerTableWidget->horizontalHeader()->setStretchLastSection(true);
+
     ui->fileTreeWidget->setItemDelegateForColumn(
         FilePercentColumn,
         new PercentFillDelegate(FilePercentColumn, Qt::UserRole, ui->fileTreeWidget)
@@ -235,6 +251,8 @@ MainWindow::MainWindow(QWidget *parent)
                 if (torrentId != currentTorrentId())
                     return;
 
+                populateGeneralTab(details);
+                populateTrackerTable(details);
                 populateFileTree(details.value("files").toArray());
                 populatePeerTable(details.value("peers").toArray());
 
@@ -323,6 +341,12 @@ void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
 
     const int torrentId = sourceIndex.data(Qt::UserRole).toInt();
 
+    ui->fileTreeWidget->clear();
+    ui->peerTableWidget->clearContents();
+    ui->peerTableWidget->setRowCount(0);
+
+    clearGeneralTab();
+    clearTrackerTable();
     ui->fileTreeWidget->clear();
     ui->peerTableWidget->clearContents();
     ui->peerTableWidget->setRowCount(0);
@@ -1296,4 +1320,146 @@ void MainWindow::setupConnectionStatusIndicator()
                     QString("Server changed: %1").arg(client->getServer())
                     );
             });
+}
+
+void MainWindow::populateGeneralTab(const QJsonObject &details)
+{
+    const QString name =
+        details.value("name").toString();
+
+    const QString comment =
+        details.value("comment").toString();
+
+    const QString creator =
+        details.value("creator").toString();
+
+    const QString downloadDir =
+        details.value("downloadDir").toString();
+
+    const QString hashString =
+        details.value("hashString").toString();
+
+    const QString magnetLink =
+        details.value("magnetLink").toString();
+
+    const qint64 totalSize =
+        details.value("totalSize").toVariant().toLongLong();
+
+    const qint64 dateCreated =
+        details.value("dateCreated").toVariant().toLongLong();
+
+    ui->labelGeneralName->setText(name);
+    ui->labelGeneralCreator->setText(creator);
+    ui->labelGeneralDownloadDir->setText(downloadDir);
+    ui->labelGeneralHash->setText(hashString);
+    ui->lineGeneralMagnet->setText(magnetLink);
+
+    ui->labelGeneralComment->setText(
+        comment.isEmpty() ? QStringLiteral("None") : comment
+        );
+
+    ui->labelGeneralTotalSize->setText(
+        QLocale().formattedDataSize(
+            totalSize,
+            1,
+            QLocale::DataSizeIecFormat
+            )
+        );
+
+    if (dateCreated > 0) {
+        const QDateTime created =
+            QDateTime::fromSecsSinceEpoch(dateCreated);
+
+        ui->labelGeneralCreated->setText(
+            QLocale().toString(created, QLocale::ShortFormat)
+            );
+    } else {
+        ui->labelGeneralCreated->setText("Unknown");
+    }
+}
+
+void MainWindow::clearGeneralTab()
+{
+    ui->labelGeneralName->clear();
+    ui->labelGeneralTotalSize->clear();
+    ui->labelGeneralCreator->clear();
+    ui->labelGeneralCreated->clear();
+    ui->labelGeneralDownloadDir->clear();
+    ui->labelGeneralHash->clear();
+    ui->lineGeneralMagnet->clear();
+}
+
+void MainWindow::clearTrackerTable()
+{
+    ui->trackerTableWidget->clearContents();
+    ui->trackerTableWidget->setRowCount(0);
+}
+
+void MainWindow::populateTrackerTable(const QJsonObject &details)
+{
+    const QJsonArray trackerStats =
+        details.value("trackerStats").toArray();
+
+    ui->trackerTableWidget->setSortingEnabled(false);
+    ui->trackerTableWidget->clearContents();
+    ui->trackerTableWidget->setRowCount(trackerStats.size());
+
+    int row = 0;
+
+    for (const QJsonValue &value : trackerStats) {
+        const QJsonObject tracker = value.toObject();
+
+        const QString host =
+            tracker.value("host").toString();
+
+        const QString announce =
+            tracker.value("announce").toString();
+
+        const int seeders =
+            tracker.value("seederCount").toInt(-1);
+
+        const int leechers =
+            tracker.value("leecherCount").toInt(-1);
+
+        const QString lastAnnounceTime =
+            tracker.value("lastAnnounceTime").toVariant().toLongLong() > 0
+                ? QLocale().toString(
+                      QDateTime::fromSecsSinceEpoch(
+                          tracker.value("lastAnnounceTime").toVariant().toLongLong()
+                          ),
+                      QLocale::ShortFormat
+                      )
+                : QStringLiteral("Never");
+
+        const QString lastAnnounceResult =
+            tracker.value("lastAnnounceResult").toString();
+
+        auto *hostItem = new QTableWidgetItem(host);
+        auto *announceItem = new QTableWidgetItem(announce);
+
+        auto *seedersItem = new QTableWidgetItem(
+            seeders >= 0 ? QString::number(seeders) : QStringLiteral("Unknown")
+            );
+
+        auto *leechersItem = new QTableWidgetItem(
+            leechers >= 0 ? QString::number(leechers) : QStringLiteral("Unknown")
+            );
+
+        auto *lastAnnounceItem = new QTableWidgetItem(lastAnnounceTime);
+        auto *resultItem = new QTableWidgetItem(lastAnnounceResult);
+
+        seedersItem->setData(Qt::UserRole, seeders);
+        leechersItem->setData(Qt::UserRole, leechers);
+
+        ui->trackerTableWidget->setItem(row, 0, hostItem);
+        ui->trackerTableWidget->setItem(row, 1, announceItem);
+        ui->trackerTableWidget->setItem(row, 2, seedersItem);
+        ui->trackerTableWidget->setItem(row, 3, leechersItem);
+        ui->trackerTableWidget->setItem(row, 4, lastAnnounceItem);
+        ui->trackerTableWidget->setItem(row, 5, resultItem);
+
+        ++row;
+    }
+
+    ui->trackerTableWidget->setSortingEnabled(true);
 }
