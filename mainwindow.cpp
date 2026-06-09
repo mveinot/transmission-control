@@ -501,7 +501,7 @@ void MainWindow::saveTableViewState()
         );
 
     settings.setValue(
-        "ui/trackerTableWidget/headerState",
+        "ui/trackerTableWidget/headerState/v2",
         ui->trackerTableWidget->horizontalHeader()->saveState()
         );
 }
@@ -539,7 +539,7 @@ void MainWindow::restoreTableViewState()
     }
 
     const QByteArray headerState =
-        settings.value("ui/trackerTableWidget/headerState").toByteArray();
+        settings.value("ui/trackerTableWidget/headerState/v2").toByteArray();
 
     if (!headerState.isEmpty()) {
         ui->trackerTableWidget->horizontalHeader()->restoreState(headerState);
@@ -557,17 +557,6 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
     hide();
     event->ignore();
-
-    /*
-    if (trayIcon) {
-        trayIcon->showMessage(
-            "Planetary",
-            "Planetary is still running in the menu bar.",
-            QSystemTrayIcon::Information,
-            2500
-            );
-    }
-*/
 }
 
 void MainWindow::onServerSetupTriggered()
