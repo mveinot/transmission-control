@@ -63,11 +63,22 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         torrentmodel.h torrentmodel.cpp
         Resources/icons/planetary_menu.png
         geoipservice.h geoipservice.cpp
+        Resources/geoip/dbip-country-lite-2026-06.mmdb
 
 
 
 
     )
+
+find_library(MAXMINDDB_LIBRARY maxminddb)
+find_path(MAXMINDDB_INCLUDE_DIR maxminddb.h)
+
+if(NOT MAXMINDDB_LIBRARY OR NOT MAXMINDDB_INCLUDE_DIR)
+    message(WARNING "libmaxminddb not found; GeoIP MMDB lookup will not build")
+else()
+    message(STATUS "Found libmaxminddb: ${MAXMINDDB_LIBRARY}")
+    message(STATUS "Found maxminddb.h: ${MAXMINDDB_INCLUDE_DIR}")
+endif()
 
 find_program(IWYU_PATH NAMES include-what-you-use iwyu)
 
@@ -82,6 +93,16 @@ find_program(IWYU_PATH NAMES include-what-you-use iwyu)
 #    set_property(TARGET transmission-control APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
 #                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
 # For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
+
+find_library(MAXMINDDB_LIBRARY maxminddb)
+find_path(MAXMINDDB_INCLUDE_DIR maxminddb.h)
+
+if(NOT MAXMINDDB_LIBRARY OR NOT MAXMINDDB_INCLUDE_DIR)
+    message(WARNING "libmaxminddb not found; GeoIP MMDB lookup will not build")
+else()
+    message(STATUS "Found libmaxminddb: ${MAXMINDDB_LIBRARY}")
+    message(STATUS "Found maxminddb.h: ${MAXMINDDB_INCLUDE_DIR}")
+endif()
 
     qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 else()
