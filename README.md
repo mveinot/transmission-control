@@ -10,3 +10,7 @@ This implementation is in C++/Qt and will be compatible with Windows/macOS/Linux
 The intention of this project is to achieve feature parity with Transmission Remote GUI at which point it will be christened with version 1.0.0
 
 From there the future remains to be seen.
+
+## Screenshots
+
+<img src="images/screen1.png" alt=" Torrent list with peers">
