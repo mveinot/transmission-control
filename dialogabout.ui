@@ -9,157 +9,207 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>282</width>
-    <height>197</height>
+    <width>640</width>
+    <height>480</height>
    </rect>
   </property>
   <property name="contextMenuPolicy">
    <enum>Qt::ContextMenuPolicy::NoContextMenu</enum>
   </property>
   <property name="windowTitle">
-   <string>Planetary</string>
+   <string>About Planetary</string>
   </property>
   <property name="modal">
    <bool>true</bool>
   </property>
-  <widget class="QLabel" name="description">
-   <property name="geometry">
-    <rect>
-     <x>100</x>
-     <y>50</y>
-     <width>171</width>
-     <height>16</height>
-    </rect>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>12</number>
    </property>
-   <property name="text">
-    <string>Transmission Control</string>
+   <property name="topMargin">
+    <number>12</number>
    </property>
-  </widget>
-  <widget class="QPushButton" name="pushButton">
-   <property name="geometry">
-    <rect>
-     <x>200</x>
-     <y>160</y>
-     <width>69</width>
-     <height>32</height>
-    </rect>
+   <property name="rightMargin">
+    <number>12</number>
    </property>
-   <property name="text">
-    <string>OK</string>
+   <property name="bottomMargin">
+    <number>12</number>
    </property>
-  </widget>
-  <widget class="QLabel" name="planetary">
-   <property name="geometry">
-    <rect>
-     <x>100</x>
-     <y>10</y>
-     <width>171</width>
-     <height>41</height>
-    </rect>
-   </property>
-   <property name="maximumSize">
-    <size>
-     <width>178</width>
-     <height>64</height>
-    </size>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>28</pointsize>
-    </font>
-   </property>
-   <property name="text">
-    <string>Planetary</string>
-   </property>
-  </widget>
-  <widget class="QLabel" name="image">
-   <property name="geometry">
-    <rect>
-     <x>20</x>
-     <y>20</y>
-     <width>64</width>
-     <height>64</height>
-    </rect>
-   </property>
-   <property name="maximumSize">
-    <size>
-     <width>64</width>
-     <height>64</height>
-    </size>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-   <property name="pixmap">
-    <pixmap resource="Resources/resources.qrc">:/icons/planetary.png</pixmap>
-   </property>
-   <property name="scaledContents">
-    <bool>true</bool>
-   </property>
-  </widget>
-  <widget class="QLabel" name="versionLabel">
-   <property name="geometry">
-    <rect>
-     <x>20</x>
-     <y>110</y>
-     <width>58</width>
-     <height>16</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Version:</string>
-   </property>
-  </widget>
-  <widget class="QLabel" name="builtLabel">
-   <property name="geometry">
-    <rect>
-     <x>20</x>
-     <y>130</y>
-     <width>58</width>
-     <height>16</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Built:</string>
-   </property>
-  </widget>
-  <widget class="QLabel" name="versionValue">
-   <property name="geometry">
-    <rect>
-     <x>100</x>
-     <y>110</y>
-     <width>171</width>
-     <height>16</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>TextLabel</string>
-   </property>
-  </widget>
-  <widget class="QLabel" name="builtValue">
-   <property name="geometry">
-    <rect>
-     <x>100</x>
-     <y>130</y>
-     <width>171</width>
-     <height>16</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>TextLabel</string>
-   </property>
-  </widget>
-  <zorder>description</zorder>
-  <zorder>pushButton</zorder>
-  <zorder>planetary</zorder>
-  <zorder>versionLabel</zorder>
-  <zorder>builtLabel</zorder>
-  <zorder>versionValue</zorder>
-  <zorder>builtValue</zorder>
-  <zorder>image</zorder>
+   <item>
+    <widget class="QTabWidget" name="aboutTabWidget">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+
+     <widget class="QWidget" name="tabAbout">
+      <attribute name="title">
+       <string>About</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayoutAbout">
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayoutAboutHeader">
+         <item>
+          <widget class="QLabel" name="image">
+           <property name="minimumSize">
+            <size>
+             <width>64</width>
+             <height>64</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>64</width>
+             <height>64</height>
+            </size>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="pixmap">
+            <pixmap resource="resources.qrc">:/icons/planetary.png</pixmap>
+           </property>
+           <property name="scaledContents">
+            <bool>true</bool>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignmentFlag::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QTextBrowser" name="textAbout">
+           <property name="frameShape">
+            <enum>QFrame::Shape::NoFrame</enum>
+           </property>
+           <property name="openExternalLinks">
+            <bool>true</bool>
+           </property>
+           <property name="html">
+            <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body&gt;
+&lt;h2&gt;Planetary&lt;/h2&gt;
+&lt;p&gt;A native Qt Transmission remote client.&lt;/p&gt;
+&lt;p&gt;Version information is loaded at runtime.&lt;/p&gt;
+&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <spacer name="verticalSpacerAbout">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+
+     <widget class="QWidget" name="tabCredits">
+      <attribute name="title">
+       <string>Credits / Libraries</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayoutCredits">
+       <item>
+        <widget class="QTextBrowser" name="textCredits">
+         <property name="openExternalLinks">
+          <bool>true</bool>
+         </property>
+         <property name="html">
+          <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body&gt;
+&lt;p&gt;Third-party notices are loaded at runtime.&lt;/p&gt;
+&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+
+     <widget class="QWidget" name="tabLicense">
+      <attribute name="title">
+       <string>License</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayoutLicense">
+       <item>
+        <widget class="QPlainTextEdit" name="textLicense">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+         <property name="lineWrapMode">
+          <enum>QPlainTextEdit::LineWrapMode::WidgetWidth</enum>
+         </property>
+         <property name="plainText">
+          <string>License text is loaded at runtime.</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="aboutButtonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+     <property name="centerButtons">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
  </widget>
  <resources>
-  <include location="Resources/resources.qrc"/>
+  <include location="resources.qrc"/>
  </resources>
- <connections/>
+ <connections>
+  <connection>
+   <sender>aboutButtonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>DialogAbout</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>590</x>
+     <y>450</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>320</x>
+     <y>240</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>aboutButtonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>DialogAbout</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>590</x>
+     <y>450</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>320</x>
+     <y>240</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

@@ -1,0 +1,15 @@
+Planetary uses the following third-party components and data:
+
+Qt
+Copyright (C) The Qt Company Ltd. and other contributors.
+Used under the applicable Qt open-source licensing terms.
+
+libmaxminddb
+Copyright (c) MaxMind, Inc.
+Licensed under the Apache License, Version 2.0.
+https://github.com/maxmind/libmaxminddb
+
+DB-IP Lite Country Database
+IP geolocation data provided by DB-IP.com.
+Licensed under Creative Commons Attribution 4.0 International.
+https://db-ip.com/
