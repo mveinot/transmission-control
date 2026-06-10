@@ -61,8 +61,8 @@ private slots:
     void on_actionReannounce_triggered();
     void on_actionAbout_triggered();
     void on_actionVerify_Torrent_triggered();
-
     void on_actionSettings_triggered();
+    void handleTorrentsReceived(const QVector<torrent> &torrents);
 
 private:
     Ui::MainWindow *ui;

@@ -335,16 +335,13 @@ MainWindow::MainWindow(QWidget *parent)
                     );
             });
 
+    // Data path: required for the table to show anything
     connect(client, &rpc_client::torrentsReceived,
-            this,
-            [this](const QVector<torrent> &torrents) {
-                connectionStatusLabel->setStyleSheet("");
-                connectionStatusLabel->setText(
-                    QString("Connected: %1 · %2 torrent(s)")
-                        .arg(client->getServer())
-                        .arg(torrents.size())
-                    );
-            });
+                torrentModel, &TorrentModel::applyUpdate);
+
+    // Side effects: notifications/status only
+    connect(client, &rpc_client::torrentsReceived,
+            this, &MainWindow::handleTorrentsReceived);
 
     connect(ui->tableView, &QTableView::customContextMenuRequested,
             this, &MainWindow::showTorrentContextMenu);
@@ -1641,4 +1638,18 @@ void MainWindow::processFinishedTorrentNotifications(const QVector<torrent> &tor
     }
 
     knownCompletedTorrentIds = currentlyCompleted;
+}
+
+void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
+{
+    processFinishedTorrentNotifications(torrents);
+
+    if (connectionStatusLabel) {
+        connectionStatusLabel->setStyleSheet({});
+
+        connectionStatusLabel->setText(
+            QString("Connected · %1 torrent(s)")
+                .arg(torrents.size())
+            );
+    }
 }
