@@ -3,5 +3,6 @@
         <file>icons/planetary.icns</file>
         <file>icons/planetary.png</file>
         <file>icons/planetary_menu.png</file>
+        <file>icons/planetary-512px.png</file>
     </qresource>
 </RCC>
