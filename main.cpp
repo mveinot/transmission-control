@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "singleinstanceguard.h"
 #include "version.h"
 
 #include <QApplication>
@@ -8,10 +9,12 @@
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+
     QCoreApplication::setOrganizationName("mvgrafx");
     QCoreApplication::setOrganizationDomain("mvgrafx.net");
     QCoreApplication::setApplicationName(QString("Planetary"));
     QCoreApplication::setApplicationVersion(__PLANETARY_VERSION__);
+
     a.setWindowIcon(QIcon(":/icons/planetary.icns"));
     QTranslator translator;
     const QStringList uiLanguages = QLocale::system().uiLanguages();
@@ -22,9 +25,24 @@ int main(int argc, char *argv[])
             break;
         }
     }
+
     QApplication::setQuitOnLastWindowClosed(false);
 
+    const QString instanceServerName =
+        QStringLiteral("com.mvgrafx.Planetary.singleInstance");
+
+    SingleInstanceGuard instanceGuard(instanceServerName);
+
+    if (!instanceGuard.tryStartPrimaryInstance()) {
+        instanceGuard.notifyPrimaryInstance();
+        return 0;
+    }
+
     MainWindow w;
+
+    QObject::connect(&instanceGuard, &SingleInstanceGuard::activationRequested,
+                     &w, &MainWindow::bringToFront);
+
     w.show();
 
     return a.exec();

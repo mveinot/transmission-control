@@ -43,6 +43,9 @@ public:
     void showMainWindow();
     void quitApplication();
 
+public slots:
+    void bringToFront();
+
 private slots:
     void updateTorrentList();
     void drawTorrentList();

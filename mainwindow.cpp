@@ -1518,3 +1518,16 @@ void MainWindow::populateTrackerTable(const QJsonObject &details)
 
     ui->trackerTableWidget->setSortingEnabled(true);
 }
+
+void MainWindow::bringToFront()
+{
+    show();
+
+    if (isMinimized())
+        showNormal();
+
+    raise();
+    activateWindow();
+
+    //QApplication::setActiveWindow(this);
+}

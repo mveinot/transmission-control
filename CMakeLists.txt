@@ -64,6 +64,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         Resources/icons/planetary_menu.png
         geoipservice.h geoipservice.cpp
         Resources/geoip/country.mmdb
+        singleinstanceguard.h singleinstanceguard.cpp
     )
 
 find_library(MAXMINDDB_LIBRARY maxminddb)
