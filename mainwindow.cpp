@@ -345,7 +345,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     restoreTableViewState();
 
-    setWindowIcon(QIcon(":/icons/planetary.png"));
+    setWindowIcon(QIcon(":/icons/planetary-512px.png"));
 
     setupTrayIcon();
     client->init();
@@ -558,13 +558,13 @@ void MainWindow::closeEvent(QCloseEvent *event)
 {
     saveTableViewState();
 
-    if (reallyQuit) {
-        event->accept();
+    if (!reallyQuit && trayIcon && trayIcon->isVisible()) {
+        event->ignore();
+        hide();
         return;
     }
 
-    hide();
-    event->ignore();
+    QMainWindow::closeEvent(event);
 }
 
 void MainWindow::onServerSetupTriggered()
@@ -1197,7 +1197,7 @@ void MainWindow::setupTrayIcon()
             [this](QSystemTrayIcon::ActivationReason reason) {
                 if (reason == QSystemTrayIcon::Trigger ||
                     reason == QSystemTrayIcon::DoubleClick) {
-                    showMainWindow();
+                    bringToFront();
                 }
             });
 
@@ -1226,7 +1226,7 @@ void MainWindow::quitApplication()
 void MainWindow::changeEvent(QEvent *event)
 {
     QMainWindow::changeEvent(event);
-
+/*
     if (event->type() == QEvent::WindowStateChange) {
         if (isMinimized()) {
             QTimer::singleShot(0, this, [this]() {
@@ -1234,6 +1234,7 @@ void MainWindow::changeEvent(QEvent *event)
             });
         }
     }
+*/
 }
 
 int MainWindow::updateIntervalMs() const
@@ -1521,11 +1522,7 @@ void MainWindow::populateTrackerTable(const QJsonObject &details)
 
 void MainWindow::bringToFront()
 {
-    show();
-
-    if (isMinimized())
-        showNormal();
-
+    showNormal();
     raise();
     activateWindow();
 
