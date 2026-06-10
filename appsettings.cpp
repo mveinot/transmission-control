@@ -100,4 +100,8 @@ void AppSettings::updateTrayOptionAvailability()
     const bool trayIconEnabled = ui->showTrayIcon->isChecked();
 
     ui->showNotifications->setEnabled(trayIconEnabled);
+
+    if (!trayIconEnabled) {
+        ui->showNotifications->setChecked(false);
+    }
 }

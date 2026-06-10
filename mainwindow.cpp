@@ -113,23 +113,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     updateTorrentActionState();
 
-    connect(client, &rpc_client::torrentsReceived,
-            torrentModel, &TorrentModel::applyUpdate);
-
-    connect(client, &rpc_client::torrentsReceived,
-            this,
-            [this](const QVector<torrent> &torrents) {
-                processFinishedTorrentNotifications(torrents);
-/*
-                connectionStatusLabel->setStyleSheet({});
-                connectionStatusLabel->setText(
-                    QString("Connected: %1 · %2 torrent(s)")
-                        .arg(client->getServer().serverName,
-                             QString::number(torrents.size()))
-                    );
-*/
-            });
-
     connect(torrentModel, &TorrentModel::listUpdated,
             this, &MainWindow::drawTorrentList);
 
@@ -380,8 +363,17 @@ void MainWindow::drawTorrentList()
 
 void MainWindow::showAbout()
 {
-    DialogAbout *about = new DialogAbout(this);
-    about->show();
+    qDebug() << "ABOUT ACTION TRIGGERED";
+
+    showTrayNotification(
+        QStringLiteral("Torrent finished"),
+        QStringLiteral("Test notification"),
+        QSystemTrayIcon::Information,
+        5000
+        );
+
+    DialogAbout dialog(this);
+    dialog.exec();
 }
 
 void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
@@ -1050,11 +1042,12 @@ void MainWindow::on_actionReannounce_triggered()
     reannounceSelectedTorrent();
 }
 
+/*
 void MainWindow::on_actionAbout_triggered()
 {
-    DialogAbout *about = new DialogAbout(this);
-    about->show();
+
 }
+*/
 
 void MainWindow::on_actionVerify_Torrent_triggered()
 {
@@ -1581,11 +1574,42 @@ void MainWindow::showTrayNotification(const QString &title,
                                       QSystemTrayIcon::MessageIcon icon,
                                       int millisecondsTimeoutHint)
 {
+    /*
     if (!trayIcon || !trayIcon->isVisible())
         return;
 
     if (!trayNotificationsEnabled())
         return;
+*/
+
+        qDebug() << "Notification requested:"
+                 << "title:" << title
+                 << "message:" << message
+                 << "trayIcon exists:" << static_cast<bool>(trayIcon)
+                 << "trayIcon visible:" << (trayIcon && trayIcon->isVisible())
+                 << "supports messages:" << QSystemTrayIcon::supportsMessages()
+                 << "tray notifications enabled:" << trayNotificationsEnabled()
+                 << "tray icon enabled:" << trayIconEnabled();
+
+        if (!trayIcon) {
+            qWarning() << "Notification skipped: trayIcon is null";
+            return;
+        }
+
+        if (!trayIcon->isVisible()) {
+            qWarning() << "Notification skipped: trayIcon is not visible";
+            return;
+        }
+
+        if (!QSystemTrayIcon::supportsMessages()) {
+            qWarning() << "Notification skipped: QSystemTrayIcon messages not supported";
+            return;
+        }
+
+        if (!trayNotificationsEnabled()) {
+            qWarning() << "Notification skipped: tray notifications disabled in settings";
+            return;
+        }
 
     trayIcon->showMessage(title, message, icon, millisecondsTimeoutHint);
 }
