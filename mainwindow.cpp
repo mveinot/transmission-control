@@ -1093,13 +1093,13 @@ void MainWindow::loadServerCombo()
     if (hadPreviousSelection)
         comboIndex = ui->comboServers->findData(previouslySelectedServerIndex);
 
-    // First-load fallback: saved current server.
-    if (comboIndex < 0)
-        comboIndex = ui->comboServers->findData(savedCurrentIndex);
-
     // Next fallback: default server.
     if (comboIndex < 0)
         comboIndex = ui->comboServers->findData(defaultIndex);
+
+    // First-load fallback: saved current server.
+    if (comboIndex < 0)
+        comboIndex = ui->comboServers->findData(savedCurrentIndex);
 
     // Last fallback: first server.
     if (comboIndex < 0)

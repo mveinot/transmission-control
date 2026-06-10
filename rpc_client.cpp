@@ -82,27 +82,6 @@ void rpc_client::init()
 
 void rpc_client::replyFinished(QNetworkReply *reply)
 {
-    /*
-    const auto requestType =
-        static_cast<RpcRequestType>(
-            reply->request()
-                .attribute(
-                    RpcRequestTypeAttribute,
-                    static_cast<int>(RpcRequestType::Command)
-                    )
-                .toInt()
-            );
-
-    const bool isTorrentGet =
-        requestType == RpcRequestType::TorrentGet;
-
-    const auto finishTorrentGet = [this, isTorrentGet]() {
-        if (isTorrentGet) {
-            updateInProgress = false;
-            emit updateFinished();
-        }
-    };
-*/
     RpcRequestContext context =
         pendingRequests.take(reply);
 
@@ -319,16 +298,26 @@ bool rpc_client::loadCurrentServerFromSettings()
     const int defaultIndex =
         settings.value("servers/defaultIndex", -1).toInt();
 
-    const int currentIndex =
-        settings.value("servers/currentIndex", defaultIndex).toInt();
-
-    if (setServerFromSettingsIndex(currentIndex))
+    if (setServerFromSettingsIndex(defaultIndex))
         return true;
 
-    if (defaultIndex != currentIndex)
-        return setServerFromSettingsIndex(defaultIndex);
+    /*
+     * Backward-compatible fallback:
+     * If no valid default exists, try the old currentIndex setting.
+     * This is only for older preferences, not normal startup behavior.
+     */
+    const int legacyCurrentIndex =
+        settings.value("servers/currentIndex", -1).toInt();
 
-    return false;
+    if (legacyCurrentIndex != defaultIndex &&
+        setServerFromSettingsIndex(legacyCurrentIndex)) {
+        return true;
+    }
+
+    /*
+     * Last fallback: first valid configured server.
+     */
+    return setServerFromSettingsIndex(0);
 }
 
 bool rpc_client::setServerFromSettingsIndex(int index)
