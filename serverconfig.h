@@ -44,7 +44,7 @@ private:
 
     void addServer();
     void removeSelectedServer();
-    void saveSelectedServer();
+    bool saveSelectedServer();
     int defaultServerIndex = -1;
     void setSelectedServerAsDefault();
 };

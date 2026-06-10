@@ -68,17 +68,13 @@ ServerConfig::ServerConfig(QWidget *parent)
                 saveSelectedServer();
             });
 
-    connect(ui->scButtonBox, &QDialogButtonBox::accepted,
-            this, [this]() {
-                saveSelectedServer();
-                saveServers();
-                accept();
-            });
+    connect(ui->scButtonBox, &QDialogButtonBox::accepted, this, [this]() {
+        if (saveSelectedServer())
+            accept();
+    });
 
     connect(ui->scButtonBox, &QDialogButtonBox::rejected,
-            this, [this]() {
-                reject();
-            });
+            this, &QDialog::reject);
 
     if (!servers.isEmpty()) {
         ui->listServers->setCurrentIndex(serverListModel->index(0, 0));
@@ -304,12 +300,12 @@ void ServerConfig::removeSelectedServer()
     ui->listServers->setCurrentIndex(serverListModel->index(nextIndex, 0));
 }
 
-void ServerConfig::saveSelectedServer()
+bool ServerConfig::saveSelectedServer()
 {
     const int index = currentServerIndex();
 
     if (index < 0)
-        return;
+        return true;
 
     if (ui->editServerName->text().trimmed().isEmpty()) {
         QMessageBox::warning(
@@ -317,7 +313,7 @@ void ServerConfig::saveSelectedServer()
             "Server Configuration",
             "Server name cannot be empty."
             );
-        return;
+        return false;
     }
 
     if (ui->editServerUrl->text().trimmed().isEmpty()) {
@@ -326,11 +322,13 @@ void ServerConfig::saveSelectedServer()
             "Server Configuration",
             "RPC URL cannot be empty."
             );
-        return;
+        return false;
     }
 
     saveEditorToServer(index);
     saveServers();
+
+    return true;
 }
 
 void ServerConfig::setSelectedServerAsDefault()

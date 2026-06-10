@@ -354,38 +354,4 @@
   </layout>
  </widget>
  <resources/>
- <connections>
-  <connection>
-   <sender>scButtonBox</sender>
-   <signal>accepted()</signal>
-   <receiver>ServerConfig</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>624</x>
-     <y>400</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>379</x>
-     <y>214</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>scButtonBox</sender>
-   <signal>rejected()</signal>
-   <receiver>ServerConfig</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>706</x>
-     <y>400</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>379</x>
-     <y>214</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
 </ui>

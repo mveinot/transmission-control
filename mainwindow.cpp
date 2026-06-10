@@ -38,8 +38,6 @@
 #include "settingskeys.h"
 
 namespace {
-constexpr const char *DeleteTorrentOnAddKey = "app/deleteTorrentFileOnSuccessfulAdd";
-constexpr const char *UpdateIntervalKey = "app/updateIntervalSeconds";
 constexpr int DefaultUpdateIntervalSeconds = 10;
 constexpr int MinimumUpdateIntervalSeconds = 1;
 constexpr int MaximumUpdateIntervalSeconds = 3600;
@@ -484,22 +482,22 @@ void MainWindow::saveTableViewState()
     QSettings settings;
 
     settings.setValue(
-        "ui/tableView/horizontalHeaderState",
+        "ui/tableView/horizontalHeaderState/v2",
         ui->tableView->horizontalHeader()->saveState()
         );
 
     settings.setValue(
-        "ui/tableView/verticalHeaderState",
+        "ui/tableView/verticalHeaderState/v2",
         ui->tableView->verticalHeader()->saveState()
         );
 
     settings.setValue(
-        "ui/fileTreeWidget/headerState",
+        "ui/fileTreeWidget/headerState/v2",
         ui->fileTreeWidget->header()->saveState()
         );
 
     settings.setValue(
-        "ui/peerTableWidget/horizontalHeaderState",
+        "ui/peerTableWidget/horizontalHeaderState/v2",
         ui->peerTableWidget->horizontalHeader()->saveState()
         );
 
@@ -514,28 +512,28 @@ void MainWindow::restoreTableViewState()
     QSettings settings;
 
     const QByteArray horizontalState =
-        settings.value("ui/tableView/horizontalHeaderState").toByteArray();
+        settings.value("ui/tableView/horizontalHeaderState/v2").toByteArray();
 
     if (!horizontalState.isEmpty()) {
         ui->tableView->horizontalHeader()->restoreState(horizontalState);
     }
 
     const QByteArray verticalState =
-        settings.value("ui/tableView/verticalHeaderState").toByteArray();
+        settings.value("ui/tableView/verticalHeaderState/v2").toByteArray();
 
     if (!verticalState.isEmpty()) {
         ui->tableView->verticalHeader()->restoreState(verticalState);
     }
 
     const QByteArray fileTreeHeaderState =
-        settings.value("ui/fileTreeWidget/headerState").toByteArray();
+        settings.value("ui/fileTreeWidget/headerState/v2").toByteArray();
 
     if (!fileTreeHeaderState.isEmpty()) {
         ui->fileTreeWidget->header()->restoreState(fileTreeHeaderState);
     }
 
     const QByteArray peerTableHeaderState =
-        settings.value("ui/peerTableWidget/horizontalHeaderState").toByteArray();
+        settings.value("ui/peerTableWidget/horizontalHeaderState/v2").toByteArray();
 
     if (!peerTableHeaderState.isEmpty()) {
         ui->peerTableWidget->horizontalHeader()->restoreState(peerTableHeaderState);
