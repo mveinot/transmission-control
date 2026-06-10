@@ -1378,6 +1378,7 @@ void MainWindow::setupConnectionStatusIndicator()
                     );
             });
 
+    /*
     connect(client, &rpc_client::torrentsReceived,
             this,
             [this](const QVector<torrent> &torrents) {
@@ -1387,7 +1388,7 @@ void MainWindow::setupConnectionStatusIndicator()
                         .arg(torrents.size())
                     );
             });
-
+    */
     connect(client, &rpc_client::serverChanged,
             this,
             [this]() {
@@ -1646,10 +1647,10 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
 
     if (connectionStatusLabel) {
         connectionStatusLabel->setStyleSheet({});
-
         connectionStatusLabel->setText(
-            QString("Connected · %1 torrent(s)")
-                .arg(torrents.size())
+            QString("Connected: %1 · %2 torrent(s)")
+                .arg(client->getServer(),
+                     QString::number(torrents.size()))
             );
     }
 }
