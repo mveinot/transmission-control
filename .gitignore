@@ -19,6 +19,8 @@
 *.*#
 core
 build/
+build-release/
+dmg-root/
 !core/
 tags
 .DS_Store
