@@ -30,9 +30,17 @@ bool SingleInstanceGuard::tryStartPrimaryInstance()
         return true;
 
     /*
-     * A stale local-server socket can be left behind after a crash.
-     * Try removing it, then listen again. If another app is genuinely
-     * running, this second listen should still fail.
+     * If listen failed, first check whether another live instance owns
+     * the server name. If yes, this is definitely not the primary.
+     */
+    if (canContactPrimaryInstance()) {
+        server->deleteLater();
+        server = nullptr;
+        return false;
+    }
+
+    /*
+     * Only now assume the server name is stale from a crash.
      */
     QLocalServer::removeServer(serverName);
 
@@ -91,4 +99,12 @@ void SingleInstanceGuard::handleNewConnection()
             socket->disconnectFromServer();
         });
     }
+}
+
+bool SingleInstanceGuard::canContactPrimaryInstance() const
+{
+    QLocalSocket socket;
+    socket.connectToServer(serverName, QIODevice::WriteOnly);
+
+    return socket.waitForConnected(300);
 }

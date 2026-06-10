@@ -25,6 +25,7 @@ private:
     QLocalServer *server = nullptr;
 
     void handleNewConnection();
+    bool canContactPrimaryInstance() const;
 };
 
 #endif // SINGLEINSTANCEGUARD_H

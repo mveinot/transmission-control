@@ -65,6 +65,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         geoipservice.h geoipservice.cpp
         Resources/geoip/country.mmdb
         singleinstanceguard.h singleinstanceguard.cpp
+        settingskeys.h
     )
 
 find_library(MAXMINDDB_LIBRARY maxminddb)

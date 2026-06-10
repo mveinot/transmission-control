@@ -1,12 +1,11 @@
 #include "appsettings.h"
 #include "ui_appsettings.h"
+#include "settingskeys.h"
 
 #include <QPushButton>
 #include <QSettings>
 
 namespace {
-constexpr const char *DeleteTorrentOnAddKey = "app/deleteTorrentFileOnSuccessfulAdd";
-constexpr const char *UpdateIntervalKey = "app/updateIntervalSeconds";
 constexpr int DefaultUpdateIntervalSeconds = 10;
 constexpr int MinimumUpdateIntervalSeconds = 1;
 constexpr int MaximumUpdateIntervalSeconds = 3600;
@@ -25,19 +24,19 @@ AppSettings::AppSettings(QWidget *parent)
     ui->updateInterval->setSuffix(" seconds");
 
     loadSettings();
+    updateTrayOptionAvailability();
 
-    connect(ui->settingsOK, &QPushButton::clicked,
-            this,
-            [this]() {
-                saveSettings();
-                accept();
-            });
+    connect(ui->showTrayIcon, &QCheckBox::toggled,
+            this, &AppSettings::updateTrayOptionAvailability);
 
-    connect(ui->settingsCancel, &QPushButton::clicked,
-            this,
-            [this]() {
-                reject();
-            });
+    connect(ui->settingsOK, &QPushButton::clicked, this, [this]() {
+        saveSettings();
+        accept();
+    });
+
+    connect(ui->settingsCancel, &QPushButton::clicked, this, [this]() {
+        reject();
+    });
 }
 
 AppSettings::~AppSettings()
@@ -50,7 +49,8 @@ void AppSettings::loadSettings()
     QSettings settings;
 
     const int intervalSeconds =
-        settings.value(UpdateIntervalKey, DefaultUpdateIntervalSeconds).toInt();
+        settings.value(SettingsKeys::UpdateInterval,
+                       DefaultUpdateIntervalSeconds).toInt();
 
     ui->updateInterval->setValue(
         qBound(MinimumUpdateIntervalSeconds,
@@ -59,7 +59,15 @@ void AppSettings::loadSettings()
         );
 
     ui->deleteTorrentOnAdd->setChecked(
-        settings.value(DeleteTorrentOnAddKey, false).toBool()
+        settings.value(SettingsKeys::DeleteTorrentOnAdd, false).toBool()
+        );
+
+    ui->showTrayIcon->setChecked(
+        settings.value(SettingsKeys::ShowTrayIcon, true).toBool()
+        );
+
+    ui->showNotifications->setChecked(
+        settings.value(SettingsKeys::ShowTrayNotifications, true).toBool()
         );
 }
 
@@ -67,12 +75,29 @@ void AppSettings::saveSettings()
 {
     QSettings settings;
 
-    settings.setValue(UpdateIntervalKey, ui->updateInterval->value());
+    const bool trayIconEnabled = ui->showTrayIcon->isChecked();
 
-    settings.setValue(
-        DeleteTorrentOnAddKey,
-        ui->deleteTorrentOnAdd->isChecked()
-        );
+    settings.setValue(SettingsKeys::UpdateInterval,
+                      ui->updateInterval->value());
+
+    settings.setValue(SettingsKeys::DeleteTorrentOnAdd,
+                      ui->deleteTorrentOnAdd->isChecked());
+
+    settings.setValue(SettingsKeys::ShowTrayIcon,
+                      trayIconEnabled);
+
+    settings.setValue(SettingsKeys::ShowTrayNotifications,
+                      trayIconEnabled && ui->showNotifications->isChecked());
+
+    settings.setValue(SettingsKeys::HideApplicationIcon,
+                      trayIconEnabled && false);
 
     settings.sync();
+}
+
+void AppSettings::updateTrayOptionAvailability()
+{
+    const bool trayIconEnabled = ui->showTrayIcon->isChecked();
+
+    ui->showNotifications->setEnabled(trayIconEnabled);
 }

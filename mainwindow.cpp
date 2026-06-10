@@ -35,6 +35,7 @@
 #include "appsettings.h"
 #include "torrentsortproxymodel.h"
 #include "percentfilldelegate.h"
+#include "settingskeys.h"
 
 namespace {
 constexpr const char *DeleteTorrentOnAddKey = "app/deleteTorrentFileOnSuccessfulAdd";
@@ -114,6 +115,20 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(client, &rpc_client::torrentsReceived,
             torrentModel, &TorrentModel::applyUpdate);
+
+    connect(client, &rpc_client::torrentsReceived,
+            this,
+            [this](const QVector<torrent> &torrents) {
+                processFinishedTorrentNotifications(torrents);
+/*
+                connectionStatusLabel->setStyleSheet({});
+                connectionStatusLabel->setText(
+                    QString("Connected: %1 · %2 torrent(s)")
+                        .arg(client->getServer().serverName,
+                             QString::number(torrents.size()))
+                    );
+*/
+            });
 
     connect(torrentModel, &TorrentModel::listUpdated,
             this, &MainWindow::drawTorrentList);
@@ -349,7 +364,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     setupTrayIcon();
     client->init();
-    applyUpdateInterval();
+    applyAppSettings();
 }
 
 MainWindow::~MainWindow()
@@ -893,7 +908,7 @@ void MainWindow::addTorrentFromFile()
     QSettings settings;
 
     const bool deleteTorrentOnAdd =
-        settings.value("app/deleteTorrentFileOnSuccessfulAdd", false).toBool();
+        settings.value(SettingsKeys::DeleteTorrentOnAdd, false).toBool();
 
     client->addTorrentFromFile(filePath, deleteTorrentOnAdd);
 
@@ -1163,24 +1178,11 @@ void MainWindow::updateTorrentActionState()
     ui->actionVerify_Torrent->setEnabled(hasSelection);
     ui->actionReannounce->setEnabled(hasSelection);
 }
+
 void MainWindow::setupTrayIcon()
 {
-    if (!QSystemTrayIcon::isSystemTrayAvailable()) {
-        qWarning() << "System tray is not available.";
+    if (!QSystemTrayIcon::isSystemTrayAvailable())
         return;
-    }
-
-    trayMenu = new QMenu(this);
-
-    QAction *showAction = trayMenu->addAction("Show Planetary");
-    connect(showAction, &QAction::triggered,
-            this, &MainWindow::showMainWindow);
-
-    trayMenu->addSeparator();
-
-    QAction *quitAction = trayMenu->addAction("Quit");
-    connect(quitAction, &QAction::triggered,
-            this, &MainWindow::quitApplication);
 
     trayIcon = new QSystemTrayIcon(this);
 
@@ -1188,8 +1190,22 @@ void MainWindow::setupTrayIcon()
     menuBarIcon.setIsMask(true);
 
     trayIcon->setIcon(menuBarIcon);
-
     trayIcon->setToolTip("Planetary");
+
+    trayMenu = new QMenu(this);
+
+    QAction *showAction = trayMenu->addAction("Show Planetary");
+    QAction *quitAction = trayMenu->addAction("Quit");
+
+    connect(showAction, &QAction::triggered,
+            this, &MainWindow::showMainWindow);
+
+    connect(quitAction, &QAction::triggered,
+            this, [this]() {
+                reallyQuit = true;
+                close();
+            });
+
     trayIcon->setContextMenu(trayMenu);
 
     connect(trayIcon, &QSystemTrayIcon::activated,
@@ -1197,11 +1213,11 @@ void MainWindow::setupTrayIcon()
             [this](QSystemTrayIcon::ActivationReason reason) {
                 if (reason == QSystemTrayIcon::Trigger ||
                     reason == QSystemTrayIcon::DoubleClick) {
-                    bringToFront();
+                    showMainWindow();
                 }
             });
 
-    trayIcon->show();
+    updateTrayIconVisibility();
 }
 
 void MainWindow::showMainWindow()
@@ -1242,7 +1258,7 @@ int MainWindow::updateIntervalMs() const
     QSettings settings;
 
     const int seconds =
-        settings.value(UpdateIntervalKey, DefaultUpdateIntervalSeconds).toInt();
+        settings.value(SettingsKeys::UpdateInterval, DefaultUpdateIntervalSeconds).toInt();
 
     const int boundedSeconds =
         qBound(MinimumUpdateIntervalSeconds,
@@ -1264,12 +1280,13 @@ void MainWindow::applyUpdateInterval()
         3000
         );
 }
+
 void MainWindow::on_actionSettings_triggered()
 {
     AppSettings dialog(this);
 
     if (dialog.exec() == QDialog::Accepted) {
-        applyUpdateInterval();
+        applyAppSettings();
     }
 }
 
@@ -1525,6 +1542,103 @@ void MainWindow::bringToFront()
     showNormal();
     raise();
     activateWindow();
+}
 
-    //QApplication::setActiveWindow(this);
+bool MainWindow::trayIconEnabled() const
+{
+    QSettings settings;
+    return settings.value(SettingsKeys::ShowTrayIcon, true).toBool();
+}
+
+bool MainWindow::trayNotificationsEnabled() const
+{
+    QSettings settings;
+
+    return trayIconEnabled() &&
+           settings.value(SettingsKeys::ShowTrayNotifications, true).toBool();
+}
+
+bool MainWindow::hideApplicationIconEnabled() const
+{
+    QSettings settings;
+
+    return trayIconEnabled() &&
+           settings.value(SettingsKeys::HideApplicationIcon, false).toBool();
+}
+
+void MainWindow::updateTrayIconVisibility()
+{
+    if (!trayIcon)
+        return;
+
+    if (trayIconEnabled()) {
+        trayIcon->show();
+    } else {
+        trayIcon->hide();
+    }
+}
+
+void MainWindow::showTrayNotification(const QString &title,
+                                      const QString &message,
+                                      QSystemTrayIcon::MessageIcon icon,
+                                      int millisecondsTimeoutHint)
+{
+    if (!trayIcon || !trayIcon->isVisible())
+        return;
+
+    if (!trayNotificationsEnabled())
+        return;
+
+    trayIcon->showMessage(title, message, icon, millisecondsTimeoutHint);
+}
+
+void MainWindow::applyAppSettings()
+{
+    applyUpdateInterval();
+    updateTrayIconVisibility();
+}
+
+bool MainWindow::isTorrentCompleteForNotification(const torrent &torrentItem)
+{
+    const QString status = torrentItem.getStatus();
+
+    return torrentItem.getPercentDone() >= 100.0 ||
+           status == QStringLiteral("Seeding") ||
+           status == QStringLiteral("Waiting to Seed");
+}
+
+void MainWindow::processFinishedTorrentNotifications(const QVector<torrent> &torrents)
+{
+    QSet<int> currentlyCompleted;
+
+    for (const torrent &torrentItem : torrents) {
+        if (isTorrentCompleteForNotification(torrentItem)) {
+            currentlyCompleted.insert(torrentItem.getId());
+        }
+    }
+
+    if (!completedTorrentNotificationBaselineLoaded) {
+        knownCompletedTorrentIds = currentlyCompleted;
+        completedTorrentNotificationBaselineLoaded = true;
+        return;
+    }
+
+    for (const torrent &torrentItem : torrents) {
+        const int id = torrentItem.getId();
+
+        if (!currentlyCompleted.contains(id))
+            continue;
+
+        if (knownCompletedTorrentIds.contains(id))
+            continue;
+
+        showTrayNotification(
+            QStringLiteral("Torrent finished"),
+            torrentItem.getName(),
+            QSystemTrayIcon::Information,
+            5000
+            );
+    }
+
+    knownCompletedTorrentIds = currentlyCompleted;
 }

@@ -20,6 +20,7 @@ private:
 
     void loadSettings();
     void saveSettings();
+    void updateTrayOptionAvailability();
 };
 
 #endif // APPSETTINGS_H

@@ -16,6 +16,7 @@
 #include <QSystemTrayIcon>
 #include <QEvent>
 #include <QLabel>
+#include <QSet>
 #include "rpc_client.h"
 #include "torrentsortproxymodel.h"
 #include "torrentmodel.h"
@@ -111,6 +112,22 @@ private:
     void populateTrackerTable(const QJsonObject &details);
     void clearGeneralTab();
     void clearTrackerTable();
+    bool trayIconEnabled() const;
+    bool trayNotificationsEnabled() const;
+    bool hideApplicationIconEnabled() const;
+
+    void applyAppSettings();
+    void updateTrayIconVisibility();
+    void showTrayNotification(const QString &title,
+                              const QString &message,
+                              QSystemTrayIcon::MessageIcon icon =
+                              QSystemTrayIcon::Information,
+                              int millisecondsTimeoutHint = 5000);
+
+    QSet<int> knownCompletedTorrentIds;
+    void processFinishedTorrentNotifications(const QVector<torrent> &torrents);
+    static bool isTorrentCompleteForNotification(const torrent &torrentItem);
+    bool completedTorrentNotificationBaselineLoaded = false;
 
 protected:
     void closeEvent(QCloseEvent *event) override;
