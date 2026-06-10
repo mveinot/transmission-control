@@ -63,11 +63,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         torrentmodel.h torrentmodel.cpp
         Resources/icons/planetary_menu.png
         geoipservice.h geoipservice.cpp
-        Resources/geoip/dbip-country-lite-2026-06.mmdb
-
-
-
-
+        Resources/geoip/country.mmdb
     )
 
 find_library(MAXMINDDB_LIBRARY maxminddb)
@@ -94,16 +90,6 @@ find_program(IWYU_PATH NAMES include-what-you-use iwyu)
 #                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
 # For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
 
-find_library(MAXMINDDB_LIBRARY maxminddb)
-find_path(MAXMINDDB_INCLUDE_DIR maxminddb.h)
-
-if(NOT MAXMINDDB_LIBRARY OR NOT MAXMINDDB_INCLUDE_DIR)
-    message(WARNING "libmaxminddb not found; GeoIP MMDB lookup will not build")
-else()
-    message(STATUS "Found libmaxminddb: ${MAXMINDDB_LIBRARY}")
-    message(STATUS "Found maxminddb.h: ${MAXMINDDB_INCLUDE_DIR}")
-endif()
-
     qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 else()
     if(ANDROID)
@@ -119,6 +105,66 @@ else()
     endif()
 
     qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
+endif()
+
+find_library(MAXMINDDB_LIBRARY maxminddb)
+find_path(MAXMINDDB_INCLUDE_DIR maxminddb.h)
+
+if(MAXMINDDB_LIBRARY AND MAXMINDDB_INCLUDE_DIR)
+    message(STATUS "Found libmaxminddb: ${MAXMINDDB_LIBRARY}")
+    message(STATUS "Found maxminddb.h: ${MAXMINDDB_INCLUDE_DIR}")
+
+    target_compile_definitions(Planetary PRIVATE PLANETARY_HAVE_MAXMINDDB)
+    target_include_directories(Planetary PRIVATE ${MAXMINDDB_INCLUDE_DIR})
+    target_link_libraries(Planetary PRIVATE ${MAXMINDDB_LIBRARY})
+else()
+    message(WARNING "libmaxminddb not found; GeoIP MMDB lookup will be disabled")
+endif()
+
+set(GEOIP_DB_SOURCE
+    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/geoip/country.mmdb"
+)
+
+if(EXISTS "${GEOIP_DB_SOURCE}")
+    set_source_files_properties("${GEOIP_DB_SOURCE}" PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources/geoip"
+    )
+
+    target_sources(Planetary PRIVATE
+        "${GEOIP_DB_SOURCE}"
+    )
+else()
+    message(WARNING "GeoIP database not found at ${GEOIP_DB_SOURCE}")
+endif()
+
+set(APP_LICENSE_FILE
+    "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+)
+
+if(EXISTS "${APP_LICENSE_FILE}")
+    set_source_files_properties("${APP_LICENSE_FILE}" PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources/licenses"
+    )
+
+    target_sources(Planetary PRIVATE
+        "${APP_LICENSE_FILE}"
+    )
+else()
+    message(WARNING "LICENSE file not found at ${APP_LICENSE_FILE}")
+endif()
+
+set(THIRD_PARTY_NOTICES_FILE
+    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/THIRD_PARTY_NOTICES.txt"
+)
+
+if(EXISTS "${THIRD_PARTY_NOTICES_FILE}")
+    set_source_files_properties("${THIRD_PARTY_NOTICES_FILE}" PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources/licenses"
+    )
+
+    target_sources(Planetary PRIVATE
+        "${THIRD_PARTY_NOTICES_FILE}"
+    )
 endif()
 
 target_link_libraries(Planetary PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt6::Network)

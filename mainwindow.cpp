@@ -88,6 +88,14 @@ MainWindow::MainWindow(QWidget *parent)
 
     geoIpService = new GeoIpService(this);
 
+    const QString geoIpPath =
+        QCoreApplication::applicationDirPath()
+        + "/../Resources/geoip/country.mmdb";
+
+    if (!geoIpService->loadDatabase(geoIpPath)) {
+        qWarning() << "GeoIP database could not be loaded; using dummy lookup";
+    }
+
     this->aboutAction = new QAction(0);
     this->aboutAction->setMenuRole(QAction::AboutRole);
 
