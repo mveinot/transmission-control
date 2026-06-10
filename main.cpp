@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "version.h"
 
 #include <QApplication>
 #include <QLocale>
@@ -10,6 +11,7 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationName("mvgrafx");
     QCoreApplication::setOrganizationDomain("mvgrafx.net");
     QCoreApplication::setApplicationName(QString("Planetary"));
+    QCoreApplication::setApplicationVersion(__PLANETARY_VERSION__);
     a.setWindowIcon(QIcon(":/icons/planetary.icns"));
     QTranslator translator;
     const QStringList uiLanguages = QLocale::system().uiLanguages();
