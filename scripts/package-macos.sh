@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ARCH="$(uname -m)"
 APP_NAME="Planetary"
 QT_DIR="$HOME/Qt/6.11.1/macos"
 BUILD_DIR="build-release"
 APP_PATH="$BUILD_DIR/$APP_NAME.app"
 DMG_ROOT="$BUILD_DIR/dmg-root"
-DMG_PATH="$BUILD_DIR/$APP_NAME.dmg"
+DMG_PATH="$BUILD_DIR/${APP_NAME}-macOS-${ARCH}.dmg"
 
 cmake -S . -B "$BUILD_DIR" \
   -DCMAKE_BUILD_TYPE=Release \
