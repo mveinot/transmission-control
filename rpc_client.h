@@ -50,6 +50,13 @@ public:
     void removeTorrents(const QList<int> &ids, bool deleteLocalData);
     void verifyTorrents(const QList<int> &ids);
     void reannounceTorrents(const QList<int> &ids);
+    void setTorrentFilesWanted(int torrentId,
+                               const QList<int> &fileIndices,
+                               bool wanted);
+
+    void setTorrentFilesPriority(int torrentId,
+                                 const QList<int> &fileIndices,
+                                 int priority);
 
 signals:
     void listUpdated();

@@ -77,10 +77,19 @@ private:
     GeoIpService *geoIpService = nullptr;
     enum FileTreeColumn {
         FileNameColumn = 0,
+        FileWantedColumn,
+        FilePriorityColumn,
         FileSizeColumn,
         FileDoneColumn,
         FilePercentColumn,
         FileColumnCount
+    };
+
+    enum FileTreeRole {
+        FileKindRole = Qt::UserRole,
+        FileIndexRole,
+        FileWantedRole,
+        FilePriorityRole
     };
 
     int currentTorrentId() const;
@@ -99,7 +108,9 @@ private:
                                        const QString &name,
                                        bool isFolder);
     QTreeWidgetItem *findOrCreateTopLevelItem(const QString &name);
-    void populateFileTree(const QJsonArray &files);
+    void populateFileTree(const QJsonArray &files,
+                          const QJsonArray &wanted,
+                          const QJsonArray &priorities);
     void populatePeerTable(const QJsonArray &peers);
     void reannounceSelectedTorrent();
     void verifySelectedTorrent();
@@ -114,6 +125,16 @@ private:
     bool trayIconEnabled() const;
     bool trayNotificationsEnabled() const;
     bool hideApplicationIconEnabled() const;
+
+    void updateFolderWantedStates();
+    void updateFolderWantedState(QTreeWidgetItem *item);
+
+    QList<int> fileIndicesForItem(QTreeWidgetItem *item) const;
+    QList<int> selectedFileIndicesForContextItem(QTreeWidgetItem *item) const;
+
+    void showFileContextMenu(const QPoint &pos);
+    void setSelectedFilesWanted(bool wanted);
+    void setSelectedFilesPriority(int priority);
 
     void applyAppSettings();
     void updateTrayIconVisibility();

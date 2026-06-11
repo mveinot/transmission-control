@@ -579,3 +579,47 @@ void rpc_client::getTorrentDetails(int id)
 
     postRpc("torrent-get", arguments, RpcRequestType::TorrentDetails);
 }
+
+void rpc_client::setTorrentFilesWanted(int torrentId,
+                                       const QList<int> &fileIndices,
+                                       bool wanted)
+{
+    if (torrentId < 0 || fileIndices.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments["ids"] = QJsonArray { torrentId };
+
+    if (wanted)
+        arguments["files-wanted"] = idsToJsonArray(fileIndices);
+    else
+        arguments["files-unwanted"] = idsToJsonArray(fileIndices);
+
+    postRpc("torrent-set", arguments, RpcRequestType::Command);
+}
+
+void rpc_client::setTorrentFilesPriority(int torrentId,
+                                         const QList<int> &fileIndices,
+                                         int priority)
+{
+    if (torrentId < 0 || fileIndices.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments["ids"] = QJsonArray { torrentId };
+
+    switch (priority) {
+    case 1:
+        arguments["priority-high"] = idsToJsonArray(fileIndices);
+        break;
+    case -1:
+        arguments["priority-low"] = idsToJsonArray(fileIndices);
+        break;
+    case 0:
+    default:
+        arguments["priority-normal"] = idsToJsonArray(fileIndices);
+        break;
+    }
+
+    postRpc("torrent-set", arguments, RpcRequestType::Command);
+}

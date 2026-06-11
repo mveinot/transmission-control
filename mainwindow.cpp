@@ -29,6 +29,8 @@
 #include <QApplication>
 #include <QIcon>
 #include <QUrl>
+#include <functional>
+#include <algorithm>
 #include "rpc_client.h"
 #include "dialogabout.h"
 #include "serverconfig.h"
@@ -72,6 +74,19 @@ void MainWindow::clearTrackerTable()
 {
     ui->trackerTableWidget->clearContents();
     ui->trackerTableWidget->setRowCount(0);
+}
+
+static QString priorityToString(int priority)
+{
+    switch (priority) {
+    case 1:
+        return QStringLiteral("High");
+    case -1:
+        return QStringLiteral("Low");
+    case 0:
+    default:
+        return QStringLiteral("Normal");
+    }
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -129,7 +144,20 @@ MainWindow::MainWindow(QWidget *parent)
             });
 
     ui->fileTreeWidget->setColumnCount(FileColumnCount);
-    ui->fileTreeWidget->setHeaderLabels({ "Name", "Size", "Done", "Completed" });
+    ui->fileTreeWidget->setHeaderLabels({
+        "Name",
+        "Wanted",
+        "Priority",
+        "Size",
+        "Done",
+        "Completed"
+    });
+
+    ui->fileTreeWidget->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    connect(ui->fileTreeWidget, &QTreeWidget::customContextMenuRequested,
+            this, &MainWindow::showFileContextMenu);
+
     ui->fileTreeWidget->setAlternatingRowColors(true);
     ui->fileTreeWidget->setRootIsDecorated(true);
 
@@ -292,7 +320,11 @@ MainWindow::MainWindow(QWidget *parent)
 
                 populateGeneralTab(details);
                 populateTrackerTable(details);
-                populateFileTree(details.value("files").toArray());
+                populateFileTree(
+                    details.value("files").toArray(),
+                    details.value("wanted").toArray(),
+                    details.value("priorities").toArray()
+                    );
                 populatePeerTable(details.value("peers").toArray());
 
                 // Later:
@@ -492,7 +524,7 @@ void MainWindow::saveTableViewState()
         );
 
     settings.setValue(
-        "ui/fileTreeWidget/headerState/v2",
+        "ui/fileTreeWidget/headerState/v3",
         ui->fileTreeWidget->header()->saveState()
         );
 
@@ -526,7 +558,7 @@ void MainWindow::restoreTableViewState()
     }
 
     const QByteArray fileTreeHeaderState =
-        settings.value("ui/fileTreeWidget/headerState/v2").toByteArray();
+        settings.value("ui/fileTreeWidget/headerState/v3").toByteArray();
 
     if (!fileTreeHeaderState.isEmpty()) {
         ui->fileTreeWidget->header()->restoreState(fileTreeHeaderState);
@@ -633,7 +665,8 @@ QTreeWidgetItem *MainWindow::findOrCreateTopLevelItem(const QString &name)
 
     auto *item = new QTreeWidgetItem(ui->fileTreeWidget);
     item->setText(0, name);
-    item->setData(0, Qt::UserRole, "folder");
+    item->setData(FileNameColumn, FileKindRole, QStringLiteral("folder"));
+    //item->setData(0, Qt::UserRole, "folder");
 
     return item;
 }
@@ -651,23 +684,36 @@ QTreeWidgetItem *MainWindow::findOrCreateChild(QTreeWidgetItem *parent,
 
     auto *child = new QTreeWidgetItem(parent);
     child->setText(0, name);
-    child->setData(0, Qt::UserRole, isFolder ? "folder" : "file");
+    child->setData(FileNameColumn,
+                   FileKindRole,
+                   isFolder ? QStringLiteral("folder") : QStringLiteral("file"));
+    //child->setData(0, Qt::UserRole, isFolder ? "folder" : "file");
 
     return child;
 }
 
-void MainWindow::populateFileTree(const QJsonArray &files)
+void MainWindow::populateFileTree(const QJsonArray &files,
+                                  const QJsonArray &wanted,
+                                  const QJsonArray &priorities)
 {
     ui->fileTreeWidget->clear();
 
-    for (const QJsonValue &fileValue : files) {
-        const QJsonObject file = fileValue.toObject();
+    for (int fileIndex = 0; fileIndex < files.size(); ++fileIndex) {
+        const QJsonObject file = files.at(fileIndex).toObject();
 
         const QString path = file.value("name").toString();
-        const qint64 length =
-            file.value("length").toVariant().toLongLong();
-        const qint64 bytesCompleted =
-            file.value("bytesCompleted").toVariant().toLongLong();
+        const qint64 length = file.value("length").toVariant().toLongLong();
+        const qint64 bytesCompleted = file.value("bytesCompleted").toVariant().toLongLong();
+
+        const bool isWanted =
+            fileIndex < wanted.size()
+                ? wanted.at(fileIndex).toBool(true)
+                : true;
+
+        const int priority =
+            fileIndex < priorities.size()
+                ? priorities.at(fileIndex).toInt(0)
+                : 0;
 
         const QStringList parts = path.split('/', Qt::SkipEmptyParts);
 
@@ -686,17 +732,19 @@ void MainWindow::populateFileTree(const QJsonArray &files)
                 ? (static_cast<double>(bytesCompleted) / static_cast<double>(length)) * 100.0
                 : 0.0;
 
+        current->setData(FileNameColumn, FileKindRole, QStringLiteral("file"));
+        current->setData(FileNameColumn, FileIndexRole, fileIndex);
+        current->setData(FileNameColumn, FileWantedRole, isWanted);
+        current->setData(FileNameColumn, FilePriorityRole, priority);
+
+        current->setText(FileWantedColumn, isWanted ? QStringLiteral("Yes") : QStringLiteral("No"));
+        current->setText(FilePriorityColumn, priorityToString(priority));
+
         current->setText(FileSizeColumn, QLocale().formattedDataSize(
-                                             length,
-                                             1,
-                                             QLocale::DataSizeIecFormat
-                                             ));
+                                             length, 1, QLocale::DataSizeIecFormat));
 
         current->setText(FileDoneColumn, QLocale().formattedDataSize(
-                                             bytesCompleted,
-                                             1,
-                                             QLocale::DataSizeIecFormat
-                                             ));
+                                             bytesCompleted, 1, QLocale::DataSizeIecFormat));
 
         current->setText(FilePercentColumn, QString("%1%").arg(percentDone, 0, 'f', 1));
 
@@ -705,8 +753,10 @@ void MainWindow::populateFileTree(const QJsonArray &files)
         current->setData(FilePercentColumn, Qt::UserRole, percentDone);
     }
 
+    updateFolderWantedStates();
+
     ui->fileTreeWidget->expandToDepth(0);
-    ui->fileTreeWidget->resizeColumnToContents(0);
+    ui->fileTreeWidget->resizeColumnToContents(FileNameColumn);
 }
 
 void MainWindow::populatePeerTable(const QJsonArray &peers)
@@ -1617,4 +1667,260 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
                      QString::number(torrents.size()))
             );
     }
+}
+
+void MainWindow::updateFolderWantedStates()
+{
+    for (int i = 0; i < ui->fileTreeWidget->topLevelItemCount(); ++i) {
+        updateFolderWantedState(ui->fileTreeWidget->topLevelItem(i));
+    }
+}
+
+void MainWindow::updateFolderWantedState(QTreeWidgetItem *item)
+{
+    if (!item)
+        return;
+
+    const QString kind =
+        item->data(FileNameColumn, FileKindRole).toString();
+
+    if (kind == QStringLiteral("file"))
+        return;
+
+    int wantedCount = 0;
+    int unwantedCount = 0;
+
+    std::function<void(QTreeWidgetItem *)> scan = [&](QTreeWidgetItem *node) {
+        if (!node)
+            return;
+
+        const QString nodeKind =
+            node->data(FileNameColumn, FileKindRole).toString();
+
+        if (nodeKind == QStringLiteral("file")) {
+            const QVariant wantedValue =
+                node->data(FileNameColumn, FileWantedRole);
+
+            const bool wanted =
+                wantedValue.isValid() ? wantedValue.toBool() : true;
+
+            if (wanted)
+                ++wantedCount;
+            else
+                ++unwantedCount;
+
+            return;
+        }
+
+        for (int i = 0; i < node->childCount(); ++i)
+            scan(node->child(i));
+    };
+
+    scan(item);
+
+    if (wantedCount > 0 && unwantedCount > 0) {
+        item->setText(FileWantedColumn, QStringLiteral("Mixed"));
+    } else if (wantedCount > 0) {
+        item->setText(FileWantedColumn, QStringLiteral("Yes"));
+    } else if (unwantedCount > 0) {
+        item->setText(FileWantedColumn, QStringLiteral("No"));
+    } else {
+        item->setText(FileWantedColumn, QString());
+    }
+
+    item->setText(FilePriorityColumn, QString());
+}
+
+QList<int> MainWindow::fileIndicesForItem(QTreeWidgetItem *item) const
+{
+    QList<int> indices;
+
+    if (!item)
+        return indices;
+
+    const QString kind =
+        item->data(FileNameColumn, FileKindRole).toString();
+
+    if (kind == QStringLiteral("file")) {
+        const QVariant fileIndexValue =
+            item->data(FileNameColumn, FileIndexRole);
+
+        const int fileIndex =
+            fileIndexValue.isValid() ? fileIndexValue.toInt() : -1;
+
+        if (fileIndex >= 0)
+            indices.append(fileIndex);
+
+        return indices;
+    }
+
+    for (int i = 0; i < item->childCount(); ++i) {
+        indices.append(fileIndicesForItem(item->child(i)));
+    }
+
+    return indices;
+}
+
+QList<int> MainWindow::selectedFileIndicesForContextItem(QTreeWidgetItem *item) const
+{
+    if (!item)
+        return {};
+
+    /*
+     * If the user right-clicks one of several selected items, operate on
+     * all selected items. Otherwise operate on the clicked item only.
+     */
+    QList<QTreeWidgetItem *> items;
+
+    if (item->isSelected()) {
+        items = ui->fileTreeWidget->selectedItems();
+    } else {
+        items.append(item);
+    }
+
+    QSet<int> uniqueIndices;
+
+    for (QTreeWidgetItem *selectedItem : items) {
+        const QList<int> indices = fileIndicesForItem(selectedItem);
+
+        for (int index : indices)
+            uniqueIndices.insert(index);
+    }
+
+    QList<int> result = uniqueIndices.values();
+    std::sort(result.begin(), result.end());
+
+    return result;
+}
+
+void MainWindow::showFileContextMenu(const QPoint &pos)
+{
+    QTreeWidgetItem *item = ui->fileTreeWidget->itemAt(pos);
+
+    if (!item)
+        return;
+
+    if (!item->isSelected()) {
+        ui->fileTreeWidget->clearSelection();
+        item->setSelected(true);
+        ui->fileTreeWidget->setCurrentItem(item);
+    }
+
+    const QList<int> fileIndices =
+        selectedFileIndicesForContextItem(item);
+
+    if (fileIndices.isEmpty())
+        return;
+
+    const bool clickedIsFile =
+        item->data(FileNameColumn, FileKindRole).toString()
+        == QStringLiteral("file");
+
+    QMenu menu(this);
+
+    QMenu *wantedMenu = menu.addMenu(QStringLiteral("Wanted"));
+    QAction *wantedAction =
+        wantedMenu->addAction(QStringLiteral("Download"));
+    QAction *unwantedAction =
+        wantedMenu->addAction(QStringLiteral("Do Not Download"));
+
+    connect(wantedAction, &QAction::triggered,
+            this, [this]() { setSelectedFilesWanted(true); });
+
+    connect(unwantedAction, &QAction::triggered,
+            this, [this]() { setSelectedFilesWanted(false); });
+
+    QMenu *priorityMenu = menu.addMenu(QStringLiteral("Priority"));
+
+    QAction *highPriorityAction =
+        priorityMenu->addAction(QStringLiteral("High"));
+    QAction *normalPriorityAction =
+        priorityMenu->addAction(QStringLiteral("Normal"));
+    QAction *lowPriorityAction =
+        priorityMenu->addAction(QStringLiteral("Low"));
+
+    priorityMenu->setEnabled(clickedIsFile);
+
+    connect(highPriorityAction, &QAction::triggered,
+            this, [this]() { setSelectedFilesPriority(1); });
+
+    connect(normalPriorityAction, &QAction::triggered,
+            this, [this]() { setSelectedFilesPriority(0); });
+
+    connect(lowPriorityAction, &QAction::triggered,
+            this, [this]() { setSelectedFilesPriority(-1); });
+
+    menu.exec(ui->fileTreeWidget->viewport()->mapToGlobal(pos));
+}
+
+void MainWindow::setSelectedFilesWanted(bool wanted)
+{
+    const int torrentId = currentTorrentId();
+
+    if (torrentId < 0)
+        return;
+
+    QTreeWidgetItem *item = ui->fileTreeWidget->currentItem();
+
+    if (!item)
+        return;
+
+    const QList<int> fileIndices =
+        selectedFileIndicesForContextItem(item);
+
+    if (fileIndices.isEmpty())
+        return;
+
+    client->setTorrentFilesWanted(torrentId, fileIndices, wanted);
+
+    statusBar()->showMessage(
+        QString("%1 %2 file(s)...")
+            .arg(wanted ? QStringLiteral("Marking wanted")
+                        : QStringLiteral("Marking unwanted"),
+                 QString::number(fileIndices.size())),
+        3000
+        );
+
+    client->getTorrentDetails(torrentId);
+}
+
+void MainWindow::setSelectedFilesPriority(int priority)
+{
+    const int torrentId = currentTorrentId();
+
+    if (torrentId < 0)
+        return;
+
+    QTreeWidgetItem *item = ui->fileTreeWidget->currentItem();
+
+    if (!item)
+        return;
+
+    QList<int> fileIndices =
+        selectedFileIndicesForContextItem(item);
+
+    /*
+     * Priority should only apply to real files.
+     * selectedFileIndicesForContextItem() already expands folders, so if a folder
+     * somehow gets through, this would affect descendants. For now, block folder
+     * current item because that matches your requested behavior.
+     */
+    const QString kind =
+        item->data(FileNameColumn, FileKindRole).toString();
+
+    if (kind != QStringLiteral("file"))
+        return;
+
+    if (fileIndices.isEmpty())
+        return;
+
+    client->setTorrentFilesPriority(torrentId, fileIndices, priority);
+
+    statusBar()->showMessage(
+        QString("Setting priority for %1 file(s)...")
+            .arg(fileIndices.size()),
+        3000
+        );
+
+    client->getTorrentDetails(torrentId);
 }
