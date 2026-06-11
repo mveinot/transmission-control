@@ -1812,9 +1812,11 @@ void MainWindow::showFileContextMenu(const QPoint &pos)
     if (fileIndices.isEmpty())
         return;
 
+    /*
     const bool clickedIsFile =
         item->data(FileNameColumn, FileKindRole).toString()
         == QStringLiteral("file");
+*/
 
     QMenu menu(this);
 
@@ -1839,7 +1841,7 @@ void MainWindow::showFileContextMenu(const QPoint &pos)
     QAction *lowPriorityAction =
         priorityMenu->addAction(QStringLiteral("Low"));
 
-    priorityMenu->setEnabled(clickedIsFile);
+    //priorityMenu->setEnabled(clickedIsFile);
 
     connect(highPriorityAction, &QAction::triggered,
             this, [this]() { setSelectedFilesPriority(1); });
