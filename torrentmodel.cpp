@@ -58,6 +58,9 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
         case EtaColumn:
             return t.getEta();
 
+        case QueueColumn:
+            return t.getQueuePosition();
+
         default:
             return {};
         }
@@ -111,6 +114,9 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
 
         case EtaColumn:
             return t.getEta();
+
+        case QueueColumn:
+            return t.getQueuePosition();
 
         default:
             return {};

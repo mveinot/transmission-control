@@ -136,6 +136,11 @@ private:
     void setSelectedFilesWanted(bool wanted);
     void setSelectedFilesPriority(int priority);
 
+    void queueMoveSelectedTop();
+    void queueMoveSelectedUp();
+    void queueMoveSelectedDown();
+    void queueMoveSelectedBottom();
+
     void applyAppSettings();
     void updateTrayIconVisibility();
     void showTrayNotification(const QString &title,

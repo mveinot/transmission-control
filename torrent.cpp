@@ -15,8 +15,8 @@ torrent::torrent(const QJsonValue &val)
     files = obj.value("files");
     peers = obj.value("peers");
     sizeWhenDone = obj.value("sizeWhenDone").toDouble();
+    queuePosition = obj.value("queuePosition").toInt();
 }
-
 
 torrent::Status torrent::statusFromInt(int value)
 {
@@ -35,6 +35,7 @@ torrent::Status torrent::statusFromInt(int value)
 int torrent::getId() const { return id; }
 QString torrent::getName() const { return name; }
 double torrent::getPercentDone() const { return percentDone; }
+int torrent::getQueuePosition() const { return queuePosition; };
 
 QString torrent::statusToString(Status status)
 {

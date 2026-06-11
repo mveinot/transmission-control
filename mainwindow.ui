@@ -782,6 +782,50 @@
     <string>Settings...</string>
    </property>
   </action>
+  <action name="moveTopAction">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::MediaSkipBackward"/>
+   </property>
+   <property name="text">
+    <string>Move to top</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="moveUpAction">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::MediaSeekBackward"/>
+   </property>
+   <property name="text">
+    <string>Move up</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="moveDownAction">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::MediaSeekForward"/>
+   </property>
+   <property name="text">
+    <string>Move down</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="moveBottomAction">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::MediaSkipForward"/>
+   </property>
+   <property name="text">
+    <string>Move to bottom</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

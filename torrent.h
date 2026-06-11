@@ -32,6 +32,7 @@ public:
     QString getEta() const;
     QString getSize() const;
     qint64 getSizeBytes() const;
+    int getQueuePosition() const;
     bool sameDisplayData(const torrent &other) const;
     int getId() const;
     QJsonArray getFiles() const;
@@ -51,6 +52,7 @@ private:
     Status status = Status::Unknown;
     int eta = 0;
     double sizeWhenDone = 0.0;
+    int queuePosition = 0;
 
 signals:
 

@@ -381,7 +381,8 @@ void rpc_client::getTorrentList()
         "rateUpload",
         "uploadRatio",
         "eta",
-        "sizeWhenDone"
+        "sizeWhenDone",
+        "queuePosition"
     };
 
     postRpc("torrent-get", arguments, RpcRequestType::TorrentGet);
@@ -622,4 +623,48 @@ void rpc_client::setTorrentFilesPriority(int torrentId,
     }
 
     postRpc("torrent-set", arguments, RpcRequestType::Command);
+}
+
+void rpc_client::queueMoveTop(const QList<int> &ids)
+{
+    if (ids.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments["ids"] = idsToJsonArray(ids);
+
+    postRpc("queue-move-top", arguments, RpcRequestType::Command);
+}
+
+void rpc_client::queueMoveUp(const QList<int> &ids)
+{
+    if (ids.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments["ids"] = idsToJsonArray(ids);
+
+    postRpc("queue-move-up", arguments, RpcRequestType::Command);
+}
+
+void rpc_client::queueMoveDown(const QList<int> &ids)
+{
+    if (ids.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments["ids"] = idsToJsonArray(ids);
+
+    postRpc("queue-move-down", arguments, RpcRequestType::Command);
+}
+
+void rpc_client::queueMoveBottom(const QList<int> &ids)
+{
+    if (ids.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments["ids"] = idsToJsonArray(ids);
+
+    postRpc("queue-move-bottom", arguments, RpcRequestType::Command);
 }

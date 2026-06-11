@@ -58,6 +58,11 @@ public:
                                  const QList<int> &fileIndices,
                                  int priority);
 
+    void queueMoveTop(const QList<int> &ids);
+    void queueMoveUp(const QList<int> &ids);
+    void queueMoveDown(const QList<int> &ids);
+    void queueMoveBottom(const QList<int> &ids);
+
 signals:
     void listUpdated();
     void updateStarted();

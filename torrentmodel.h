@@ -23,7 +23,8 @@ public:
         RateUploadColumn,
         UploadRatioColumn,
         EtaColumn,
-        ColumnCount
+        ColumnCount,
+        QueueColumn
     };
 
     explicit TorrentModel(QObject *parent = nullptr);

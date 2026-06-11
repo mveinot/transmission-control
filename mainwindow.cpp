@@ -514,7 +514,7 @@ void MainWindow::saveTableViewState()
     QSettings settings;
 
     settings.setValue(
-        "ui/tableView/horizontalHeaderState/v2",
+        "ui/tableView/horizontalHeaderState/v3",
         ui->tableView->horizontalHeader()->saveState()
         );
 
@@ -544,7 +544,7 @@ void MainWindow::restoreTableViewState()
     QSettings settings;
 
     const QByteArray horizontalState =
-        settings.value("ui/tableView/horizontalHeaderState/v2").toByteArray();
+        settings.value("ui/tableView/horizontalHeaderState/v3").toByteArray();
 
     if (!horizontalState.isEmpty()) {
         ui->tableView->horizontalHeader()->restoreState(horizontalState);
@@ -883,6 +883,32 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
     menu.addAction(ui->actionReannounce);
     menu.addSeparator();
     menu.addAction(ui->actionDelete_Torrent);
+
+    QMenu *queueMenu = menu.addMenu(QStringLiteral("Queue"));
+
+    QAction *moveTopAction =
+        queueMenu->addAction(QStringLiteral("Move to Top"));
+
+    QAction *moveUpAction =
+        queueMenu->addAction(QStringLiteral("Move Up"));
+
+    QAction *moveDownAction =
+        queueMenu->addAction(QStringLiteral("Move Down"));
+
+    QAction *moveBottomAction =
+        queueMenu->addAction(QStringLiteral("Move to Bottom"));
+
+    connect(moveTopAction, &QAction::triggered,
+            this, &MainWindow::queueMoveSelectedTop);
+
+    connect(moveUpAction, &QAction::triggered,
+            this, &MainWindow::queueMoveSelectedUp);
+
+    connect(moveDownAction, &QAction::triggered,
+            this, &MainWindow::queueMoveSelectedDown);
+
+    connect(moveBottomAction, &QAction::triggered,
+            this, &MainWindow::queueMoveSelectedBottom);
 
     menu.exec(ui->tableView->viewport()->mapToGlobal(pos));
 }
@@ -1780,7 +1806,7 @@ QList<int> MainWindow::selectedFileIndicesForContextItem(QTreeWidgetItem *item) 
 
     QSet<int> uniqueIndices;
 
-    for (QTreeWidgetItem *selectedItem : items) {
+    for (QTreeWidgetItem *selectedItem : std::as_const(items)) {
         const QList<int> indices = fileIndicesForItem(selectedItem);
 
         for (int index : indices)
@@ -1901,17 +1927,8 @@ void MainWindow::setSelectedFilesPriority(int priority)
     QList<int> fileIndices =
         selectedFileIndicesForContextItem(item);
 
-    /*
-     * Priority should only apply to real files.
-     * selectedFileIndicesForContextItem() already expands folders, so if a folder
-     * somehow gets through, this would affect descendants. For now, block folder
-     * current item because that matches your requested behavior.
-     */
     const QString kind =
         item->data(FileNameColumn, FileKindRole).toString();
-
-    if (kind != QStringLiteral("file"))
-        return;
 
     if (fileIndices.isEmpty())
         return;
@@ -1925,4 +1942,44 @@ void MainWindow::setSelectedFilesPriority(int priority)
         );
 
     client->getTorrentDetails(torrentId);
+}
+
+void MainWindow::queueMoveSelectedTop()
+{
+    const QList<int> ids = selectedTorrentIds();
+
+    if (ids.isEmpty())
+        return;
+
+    client->queueMoveTop(ids);
+}
+
+void MainWindow::queueMoveSelectedUp()
+{
+    const QList<int> ids = selectedTorrentIds();
+
+    if (ids.isEmpty())
+        return;
+
+    client->queueMoveUp(ids);
+}
+
+void MainWindow::queueMoveSelectedDown()
+{
+    const QList<int> ids = selectedTorrentIds();
+
+    if (ids.isEmpty())
+        return;
+
+    client->queueMoveDown(ids);
+}
+
+void MainWindow::queueMoveSelectedBottom()
+{
+    const QList<int> ids = selectedTorrentIds();
+
+    if (ids.isEmpty())
+        return;
+
+    client->queueMoveBottom(ids);
 }
