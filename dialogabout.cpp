@@ -2,6 +2,7 @@
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
+#include <QMouseEvent>
 #include "dialogabout.h"
 #include "ui_dialogabout.h"
 #include "version.h"
@@ -79,9 +80,37 @@ DialogAbout::DialogAbout(QWidget *parent)
 
     connect(ui->aboutButtonBox, &QDialogButtonBox::rejected,
             this, &QDialog::reject);
+
+    ui->image->installEventFilter(this);
+    //ui->image->setCursor(Qt::PointingHandCursor);
+    //ui->image->setToolTip(QStringLiteral("Planetary"));
 }
 
 DialogAbout::~DialogAbout()
 {
     delete ui;
+}
+
+bool DialogAbout::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == ui->image &&
+        event->type() == QEvent::MouseButtonDblClick) {
+            triggerEasterEgg();
+            return true;
+    }
+
+    return QDialog::eventFilter(watched, event);
+}
+
+void DialogAbout::triggerEasterEgg()
+{
+    ui->textAbout->setHtml(QString(
+                               "<h2>Diagnostics:</h2>"
+                               "<p>Qt: %1</p>"
+                               "<p>Build: %2 %3</p>"
+                               "<p>Caffeine level: Unhealthy</p>"
+                               )
+                               .arg(QStringLiteral(QT_VERSION_STR),
+                                    QStringLiteral(__DATE__),
+                                    QStringLiteral(__TIME__)));
 }

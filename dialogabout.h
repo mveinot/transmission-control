@@ -17,6 +17,10 @@ public:
 
 private:
     Ui::DialogAbout *ui;
+    void triggerEasterEgg();
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
 };
 
 #endif // DIALOGABOUT_H
