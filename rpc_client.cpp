@@ -174,6 +174,20 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         return;
     }
 
+    if (requestType == RpcRequestType::FreeSpace) {
+        const QJsonObject arguments =
+            doc.object().value(QStringLiteral("arguments")).toObject();
+
+        const QString path =
+            arguments.value(QStringLiteral("path")).toString();
+
+        const qint64 sizeBytes =
+            static_cast<qint64>(arguments.value(QStringLiteral("size-bytes")).toDouble());
+
+        emit freeSpaceReceived(path, sizeBytes);
+        return;
+    }
+
     const QJsonObject root = doc.object();
     const QString result = root.value("result").toString();
 
@@ -728,4 +742,15 @@ void rpc_client::setSessionSettings(const QJsonObject &settings)
         return;
 
     postRpc("session-set", settings, RpcRequestType::Command);
+}
+
+void rpc_client::getFreeSpace(const QString &path)
+{
+    if (path.trimmed().isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments["path"] = path;
+
+    postRpc(QStringLiteral("free-space"), arguments, RpcRequestType::FreeSpace);
 }

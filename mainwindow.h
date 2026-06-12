@@ -155,6 +155,13 @@ private:
     void processFinishedTorrentNotifications(const QVector<torrent> &torrents);
     static bool isTorrentCompleteForNotification(const torrent &torrentItem);
     bool completedTorrentNotificationBaselineLoaded = false;
+    bool openSessionSettingsWhenReceived = false;
+    QString remoteDownloadDir;
+    qint64 remoteFreeSpaceBytes = -1;
+    int lastTorrentCount = 0;
+
+    void updateConnectionStatus(int torrentCount);
+    QString formatBytes(qint64 bytes) const;
 
 protected:
     void closeEvent(QCloseEvent *event) override;

@@ -64,6 +64,7 @@ public:
     void queueMoveBottom(const QList<int> &ids);
     void getSessionSettings();
     void setSessionSettings(const QJsonObject &settings);
+    void getFreeSpace(const QString &path);
 
 signals:
     void listUpdated();
@@ -76,6 +77,7 @@ signals:
     void commandFailed(const QString &method, const QString &message);
     void serverChanged();
     void sessionSettingsReceived(const QJsonObject &settings);
+    void freeSpaceReceived(const QString &path, qint64 sizeBytes);
 
 private:
     enum class RpcRequestType {
@@ -83,7 +85,8 @@ private:
         TorrentDetails,
         Command,
         SessionGet,
-        SessionSet
+        SessionSet,
+        FreeSpace
     };
 
     struct RpcRequestContext

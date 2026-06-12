@@ -333,10 +333,6 @@ MainWindow::MainWindow(QWidget *parent)
                     details.value("priorities").toArray()
                     );
                 populatePeerTable(details.value("peers").toArray());
-
-                // Later:
-                // priorities = details.value("priorities").toArray();
-                // wanted = details.value("wanted").toArray();
             });
 
     connect(client, &rpc_client::updateStarted,
@@ -375,6 +371,12 @@ MainWindow::MainWindow(QWidget *parent)
                 saveSelectedServerFromCombo();
             });
 
+    connect(client, &rpc_client::freeSpaceReceived,
+            this, [this](const QString &, qint64 sizeBytes) {
+                remoteFreeSpaceBytes = sizeBytes;
+                updateConnectionStatus(lastTorrentCount);
+            });
+
     restoreTableViewState();
 
     setWindowIcon(QIcon(":/icons/planetary-512px.png"));
@@ -382,6 +384,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupTrayIcon();
     client->init();
     applyAppSettings();
+    client->getSessionSettings();
 }
 
 MainWindow::~MainWindow()
@@ -1219,6 +1222,13 @@ void MainWindow::saveSelectedServerFromCombo()
         );
 
     client->getTorrentList();
+
+    remoteDownloadDir.clear();
+    remoteFreeSpaceBytes = -1;
+    lastTorrentCount = 0;
+    updateConnectionStatus(0);
+
+    client->getSessionSettings();
 }
 
 void MainWindow::updateTorrentActionState()
@@ -1692,14 +1702,10 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
 {
     processFinishedTorrentNotifications(torrents);
 
-    if (connectionStatusLabel) {
-        connectionStatusLabel->setStyleSheet({});
-        connectionStatusLabel->setText(
-            QString("Connected: %1 · %2 torrent(s)")
-                .arg(client->getServer(),
-                     QString::number(torrents.size()))
-            );
-    }
+    updateConnectionStatus(torrents.size());
+
+    if (!remoteDownloadDir.isEmpty())
+        client->getFreeSpace(remoteDownloadDir);
 }
 
 void MainWindow::updateFolderWantedStates()
@@ -1993,12 +1999,29 @@ void MainWindow::queueMoveSelectedBottom()
 
 void MainWindow::showSessionSettings()
 {
-    statusBar()->showMessage(QStringLiteral("Loading session settings..."), 3000);
+    openSessionSettingsWhenReceived = true;
+
+    statusBar()->showMessage(
+        QStringLiteral("Loading Transmission session settings..."),
+        3000
+        );
+
     client->getSessionSettings();
 }
 
 void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSettings)
 {
+    remoteDownloadDir =
+        sessionSettings.value(QStringLiteral("download-dir")).toString();
+
+    if (!remoteDownloadDir.isEmpty())
+        client->getFreeSpace(remoteDownloadDir);
+
+    if (!openSessionSettingsWhenReceived)
+        return;
+
+    openSessionSettingsWhenReceived = false;
+
     SessionSettingsDialog dialog(this);
     dialog.setSessionSettings(sessionSettings);
 
@@ -2008,11 +2031,49 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     const QJsonObject changes = dialog.changedSettings();
 
     if (changes.isEmpty()) {
-        statusBar()->showMessage(QStringLiteral("No session settings changed"), 3000);
+        statusBar()->showMessage(
+            QStringLiteral("No Transmission session settings changed"),
+            3000
+            );
         return;
     }
 
     client->setSessionSettings(changes);
-    statusBar()->showMessage(QStringLiteral("Saving session settings..."), 3000);
+
+    if (changes.contains(QStringLiteral("download-dir"))) {
+        remoteDownloadDir =
+            changes.value(QStringLiteral("download-dir")).toString();
+
+        if (!remoteDownloadDir.isEmpty())
+            client->getFreeSpace(remoteDownloadDir);
+    }
+
+    statusBar()->showMessage(
+        QStringLiteral("Saving Transmission session settings..."),
+        3000
+        );
 }
 
+void MainWindow::updateConnectionStatus(int torrentCount)
+{
+    lastTorrentCount = torrentCount;
+
+    QString text = QStringLiteral("Connected: %1 · %2 torrent(s)")
+                       .arg(client->getServer(),
+                            QString::number(torrentCount));
+
+    if (remoteFreeSpaceBytes >= 0) {
+        text += QStringLiteral(" · Free: %1").arg(
+            QLocale().formattedDataSize(
+                remoteFreeSpaceBytes,
+                1,
+                QLocale::DataSizeTraditionalFormat
+                )
+            );
+    }
+
+    if (connectionStatusLabel) {
+        connectionStatusLabel->setStyleSheet(QString());
+        connectionStatusLabel->setText(text);
+    }
+}
