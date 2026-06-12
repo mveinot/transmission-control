@@ -166,6 +166,14 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         return;
     }
 
+    if (requestType == RpcRequestType::SessionGet) {
+        const QJsonObject arguments =
+            doc.object().value("arguments").toObject();
+
+        emit sessionSettingsReceived(arguments);
+        return;
+    }
+
     const QJsonObject root = doc.object();
     const QString result = root.value("result").toString();
 
@@ -667,4 +675,57 @@ void rpc_client::queueMoveBottom(const QList<int> &ids)
     arguments["ids"] = idsToJsonArray(ids);
 
     postRpc("queue-move-bottom", arguments, RpcRequestType::Command);
+}
+
+void rpc_client::getSessionSettings()
+{
+    QJsonObject arguments;
+
+    arguments["fields"] = QJsonArray {
+        "peer-port",
+        "peer-port-random-on-start",
+        "port-forwarding-enabled",
+        "encryption",
+        "dht-enabled",
+        "pex-enabled",
+        "lpd-enabled",
+        "peer-limit-global",
+        "peer-limit-per-torrent",
+
+        "speed-limit-down-enabled",
+        "speed-limit-down",
+        "speed-limit-up-enabled",
+        "speed-limit-up",
+        "alt-speed-enabled",
+        "alt-speed-down",
+        "alt-speed-up",
+
+        "download-queue-enabled",
+        "download-queue-size",
+        "seed-queue-enabled",
+        "seed-queue-size",
+        "queue-stalled-enabled",
+        "queue-stalled-minutes",
+
+        "download-dir",
+        "incomplete-dir-enabled",
+        "incomplete-dir",
+        "rename-partial-files",
+        "start-added-torrents",
+
+        "seedRatioLimited",
+        "seedRatioLimit",
+        "idle-seeding-limit-enabled",
+        "idle-seeding-limit"
+    };
+
+    postRpc("session-get", arguments, RpcRequestType::SessionGet);
+}
+
+void rpc_client::setSessionSettings(const QJsonObject &settings)
+{
+    if (settings.isEmpty())
+        return;
+
+    postRpc("session-set", settings, RpcRequestType::Command);
 }

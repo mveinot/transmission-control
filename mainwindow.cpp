@@ -37,6 +37,7 @@
 #include "appsettings.h"
 #include "torrentsortproxymodel.h"
 #include "percentfilldelegate.h"
+#include "sessionsettingsdialog.h"
 #include "settingskeys.h"
 
 namespace {
@@ -264,6 +265,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionError, &QAction::triggered, this, [this]() {
         setTorrentStateFilter(TorrentSortProxyModel::StateFilter::Error);
     });
+
+    connect(client, &rpc_client::sessionSettingsReceived,
+            this, &MainWindow::handleSessionSettingsReceived);
+
+    connect(ui->actionTransmission_Settings, &QAction::triggered,
+            this, &MainWindow::showSessionSettings);
 
     connect(ui->actionServer_Setup, &QAction::triggered, this, &MainWindow::onServerSetupTriggered);
 
@@ -1983,3 +1990,29 @@ void MainWindow::queueMoveSelectedBottom()
 
     client->queueMoveBottom(ids);
 }
+
+void MainWindow::showSessionSettings()
+{
+    statusBar()->showMessage(QStringLiteral("Loading session settings..."), 3000);
+    client->getSessionSettings();
+}
+
+void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSettings)
+{
+    SessionSettingsDialog dialog(this);
+    dialog.setSessionSettings(sessionSettings);
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    const QJsonObject changes = dialog.changedSettings();
+
+    if (changes.isEmpty()) {
+        statusBar()->showMessage(QStringLiteral("No session settings changed"), 3000);
+        return;
+    }
+
+    client->setSessionSettings(changes);
+    statusBar()->showMessage(QStringLiteral("Saving session settings..."), 3000);
+}
+

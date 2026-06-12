@@ -1,0 +1,804 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SessionSettingsDialog</class>
+ <widget class="QDialog" name="SessionSettingsDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>620</width>
+    <height>520</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Transmission Session Settings</string>
+  </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
+
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="leftMargin">
+    <number>12</number>
+   </property>
+   <property name="topMargin">
+    <number>12</number>
+   </property>
+   <property name="rightMargin">
+    <number>12</number>
+   </property>
+   <property name="bottomMargin">
+    <number>12</number>
+   </property>
+
+   <item>
+    <widget class="QLabel" name="labelDescription">
+     <property name="text">
+      <string>Configure settings on the remote Transmission daemon. Paths are remote daemon paths, not local paths.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+
+   <item>
+    <widget class="QTabWidget" name="tabSettings">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+
+     <!-- Network Tab -->
+     <widget class="QWidget" name="tabNetwork">
+      <attribute name="title">
+       <string>Network</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="networkLayout">
+
+       <item>
+        <widget class="QGroupBox" name="groupListening">
+         <property name="title">
+          <string>Listening Port</string>
+         </property>
+         <layout class="QFormLayout" name="listeningForm">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
+          </property>
+
+          <item row="0" column="0">
+           <widget class="QLabel" name="labelPeerPort">
+            <property name="text">
+             <string>Listening port:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QSpinBox" name="spinPeerPort">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>65535</number>
+            </property>
+            <property name="value">
+             <number>51413</number>
+            </property>
+           </widget>
+          </item>
+
+          <item row="1" column="1">
+           <widget class="QCheckBox" name="checkRandomPortOnStart">
+            <property name="text">
+             <string>Randomize port on startup</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="2" column="1">
+           <widget class="QCheckBox" name="checkPortForwarding">
+            <property name="text">
+             <string>Use port forwarding / NAT-PMP / UPnP</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+
+       <item>
+        <widget class="QGroupBox" name="groupPeers">
+         <property name="title">
+          <string>Peers and Discovery</string>
+         </property>
+         <layout class="QFormLayout" name="peersForm">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
+          </property>
+
+          <item row="0" column="0">
+           <widget class="QLabel" name="labelEncryption">
+            <property name="text">
+             <string>Encryption:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QComboBox" name="comboEncryption">
+            <item>
+             <property name="text">
+              <string>Allowed</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Preferred</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Required</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+
+          <item row="1" column="1">
+           <widget class="QCheckBox" name="checkDht">
+            <property name="text">
+             <string>Enable DHT</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="2" column="1">
+           <widget class="QCheckBox" name="checkPex">
+            <property name="text">
+             <string>Enable peer exchange</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="3" column="1">
+           <widget class="QCheckBox" name="checkLpd">
+            <property name="text">
+             <string>Enable local peer discovery</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="4" column="0">
+           <widget class="QLabel" name="labelPeerLimitGlobal">
+            <property name="text">
+             <string>Global peer limit:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QSpinBox" name="spinPeerLimitGlobal">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>10000</number>
+            </property>
+            <property name="value">
+             <number>200</number>
+            </property>
+           </widget>
+          </item>
+
+          <item row="5" column="0">
+           <widget class="QLabel" name="labelPeerLimitPerTorrent">
+            <property name="text">
+             <string>Peer limit per torrent:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QSpinBox" name="spinPeerLimitPerTorrent">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>1000</number>
+            </property>
+            <property name="value">
+             <number>50</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+
+       <item>
+        <spacer name="networkVerticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+
+     <!-- Speed Tab -->
+     <widget class="QWidget" name="tabSpeed">
+      <attribute name="title">
+       <string>Speed</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="speedLayout">
+
+       <item>
+        <widget class="QGroupBox" name="groupGlobalSpeed">
+         <property name="title">
+          <string>Global Speed Limits</string>
+         </property>
+         <layout class="QFormLayout" name="globalSpeedForm">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
+          </property>
+
+          <item row="0" column="0">
+           <widget class="QCheckBox" name="checkDownloadLimit">
+            <property name="text">
+             <string>Limit download speed</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QSpinBox" name="spinDownloadLimit">
+            <property name="suffix">
+             <string> KB/s</string>
+            </property>
+            <property name="minimum">
+             <number>0</number>
+            </property>
+            <property name="maximum">
+             <number>10000000</number>
+            </property>
+            <property name="value">
+             <number>100</number>
+            </property>
+           </widget>
+          </item>
+
+          <item row="1" column="0">
+           <widget class="QCheckBox" name="checkUploadLimit">
+            <property name="text">
+             <string>Limit upload speed</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="spinUploadLimit">
+            <property name="suffix">
+             <string> KB/s</string>
+            </property>
+            <property name="minimum">
+             <number>0</number>
+            </property>
+            <property name="maximum">
+             <number>10000000</number>
+            </property>
+            <property name="value">
+             <number>100</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+
+       <item>
+        <widget class="QGroupBox" name="groupAlternativeSpeed">
+         <property name="title">
+          <string>Alternative Speed Mode</string>
+         </property>
+         <layout class="QFormLayout" name="alternativeSpeedForm">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
+          </property>
+
+          <item row="0" column="1">
+           <widget class="QCheckBox" name="checkAltSpeed">
+            <property name="text">
+             <string>Enable alternative speed limits</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelAltDownloadLimit">
+            <property name="text">
+             <string>Alternative download limit:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="spinAltDownloadLimit">
+            <property name="suffix">
+             <string> KB/s</string>
+            </property>
+            <property name="minimum">
+             <number>0</number>
+            </property>
+            <property name="maximum">
+             <number>10000000</number>
+            </property>
+            <property name="value">
+             <number>50</number>
+            </property>
+           </widget>
+          </item>
+
+          <item row="2" column="0">
+           <widget class="QLabel" name="labelAltUploadLimit">
+            <property name="text">
+             <string>Alternative upload limit:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QSpinBox" name="spinAltUploadLimit">
+            <property name="suffix">
+             <string> KB/s</string>
+            </property>
+            <property name="minimum">
+             <number>0</number>
+            </property>
+            <property name="maximum">
+             <number>10000000</number>
+            </property>
+            <property name="value">
+             <number>50</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+
+       <item>
+        <spacer name="speedVerticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+
+     <!-- Queue Tab -->
+     <widget class="QWidget" name="tabQueue">
+      <attribute name="title">
+       <string>Queue</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="queueLayout">
+
+       <item>
+        <widget class="QGroupBox" name="groupDownloadQueue">
+         <property name="title">
+          <string>Download Queue</string>
+         </property>
+         <layout class="QFormLayout" name="downloadQueueForm">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
+          </property>
+
+          <item row="0" column="1">
+           <widget class="QCheckBox" name="checkDownloadQueue">
+            <property name="text">
+             <string>Enable download queue</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelDownloadQueueSize">
+            <property name="text">
+             <string>Maximum active downloads:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="spinDownloadQueueSize">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>999</number>
+            </property>
+            <property name="value">
+             <number>5</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+
+       <item>
+        <widget class="QGroupBox" name="groupSeedQueue">
+         <property name="title">
+          <string>Seed Queue</string>
+         </property>
+         <layout class="QFormLayout" name="seedQueueForm">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
+          </property>
+
+          <item row="0" column="1">
+           <widget class="QCheckBox" name="checkSeedQueue">
+            <property name="text">
+             <string>Enable seed queue</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelSeedQueueSize">
+            <property name="text">
+             <string>Maximum active seeds:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="spinSeedQueueSize">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>999</number>
+            </property>
+            <property name="value">
+             <number>5</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+
+       <item>
+        <widget class="QGroupBox" name="groupStalledQueue">
+         <property name="title">
+          <string>Stalled Torrents</string>
+         </property>
+         <layout class="QFormLayout" name="stalledQueueForm">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
+          </property>
+
+          <item row="0" column="1">
+           <widget class="QCheckBox" name="checkQueueStalled">
+            <property name="text">
+             <string>Treat stalled torrents as inactive</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelQueueStalledMinutes">
+            <property name="text">
+             <string>Stalled after:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="spinQueueStalledMinutes">
+            <property name="suffix">
+             <string> minutes</string>
+            </property>
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>10080</number>
+            </property>
+            <property name="value">
+             <number>30</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+
+       <item>
+        <spacer name="queueVerticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+
+     <!-- Folders Tab -->
+     <widget class="QWidget" name="tabFolders">
+      <attribute name="title">
+       <string>Folders</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="foldersLayout">
+
+       <item>
+        <widget class="QGroupBox" name="groupDownloadFolders">
+         <property name="title">
+          <string>Remote Download Folders</string>
+         </property>
+         <layout class="QFormLayout" name="downloadFoldersForm">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
+          </property>
+
+          <item row="0" column="0">
+           <widget class="QLabel" name="labelDownloadDir">
+            <property name="text">
+             <string>Download directory:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="editDownloadDir">
+            <property name="placeholderText">
+             <string>/path/on/remote/daemon</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="1" column="1">
+           <widget class="QCheckBox" name="checkIncompleteDir">
+            <property name="text">
+             <string>Use incomplete download directory</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="2" column="0">
+           <widget class="QLabel" name="labelIncompleteDir">
+            <property name="text">
+             <string>Incomplete directory:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLineEdit" name="editIncompleteDir">
+            <property name="placeholderText">
+             <string>/path/on/remote/daemon/incomplete</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="3" column="1">
+           <widget class="QCheckBox" name="checkRenamePartialFiles">
+            <property name="text">
+             <string>Append .part to incomplete files</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="4" column="1">
+           <widget class="QCheckBox" name="checkStartAddedTorrents">
+            <property name="text">
+             <string>Start newly added torrents</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+
+       <item>
+        <widget class="QLabel" name="labelRemotePathWarning">
+         <property name="text">
+          <string>These paths are interpreted by the remote Transmission daemon. Do not use local paths unless Planetary and Transmission are running on the same machine.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+
+       <item>
+        <spacer name="foldersVerticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+
+     <!-- Seeding Tab -->
+     <widget class="QWidget" name="tabSeeding">
+      <attribute name="title">
+       <string>Seeding</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="seedingLayout">
+
+       <item>
+        <widget class="QGroupBox" name="groupRatioLimit">
+         <property name="title">
+          <string>Ratio Limit</string>
+         </property>
+         <layout class="QFormLayout" name="ratioLimitForm">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
+          </property>
+
+          <item row="0" column="1">
+           <widget class="QCheckBox" name="checkSeedRatioLimit">
+            <property name="text">
+             <string>Stop seeding at ratio</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelSeedRatioLimit">
+            <property name="text">
+             <string>Ratio limit:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QDoubleSpinBox" name="spinSeedRatioLimit">
+            <property name="decimals">
+             <number>2</number>
+            </property>
+            <property name="minimum">
+             <double>0.000000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>999.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="value">
+             <double>2.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+
+       <item>
+        <widget class="QGroupBox" name="groupIdleSeeding">
+         <property name="title">
+          <string>Idle Seeding</string>
+         </property>
+         <layout class="QFormLayout" name="idleSeedingForm">
+          <property name="fieldGrowthPolicy">
+           <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
+          </property>
+
+          <item row="0" column="1">
+           <widget class="QCheckBox" name="checkIdleSeedingLimit">
+            <property name="text">
+             <string>Stop seeding when idle</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelIdleSeedingLimit">
+            <property name="text">
+             <string>Idle after:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="spinIdleSeedingLimit">
+            <property name="suffix">
+             <string> minutes</string>
+            </property>
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>10080</number>
+            </property>
+            <property name="value">
+             <number>30</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+
+       <item>
+        <spacer name="seedingVerticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+
+    </widget>
+   </item>
+
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+
+ <resources/>
+
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>SessionSettingsDialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>552</x>
+     <y>491</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>310</x>
+     <y>260</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>SessionSettingsDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>552</x>
+     <y>491</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>310</x>
+     <y>260</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

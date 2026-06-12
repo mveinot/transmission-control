@@ -62,6 +62,8 @@ private slots:
     void on_actionVerify_Torrent_triggered();
     void on_actionSettings_triggered();
     void handleTorrentsReceived(const QVector<torrent> &torrents);
+    void showSessionSettings();
+    void handleSessionSettingsReceived(const QJsonObject &settings);
 
 private:
     Ui::MainWindow *ui;

@@ -604,6 +604,7 @@
     <addaction name="action_Open_Torrent"/>
     <addaction name="actionServer_Setup"/>
     <addaction name="actionSettings"/>
+    <addaction name="actionTransmission_Settings"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -824,6 +825,11 @@
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionTransmission_Settings">
+   <property name="text">
+    <string>Transmission Settings...</string>
    </property>
   </action>
  </widget>

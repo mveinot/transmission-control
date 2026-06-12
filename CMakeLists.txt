@@ -66,6 +66,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         Resources/geoip/country.mmdb
         singleinstanceguard.h singleinstanceguard.cpp
         settingskeys.h
+        sessionsettingsdialog.h sessionsettingsdialog.cpp sessionsettingsdialog.ui
     )
 
 find_library(MAXMINDDB_LIBRARY maxminddb)
