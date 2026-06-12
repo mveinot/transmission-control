@@ -197,6 +197,20 @@ MainWindow::MainWindow(QWidget *parent)
     ui->peerTableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->peerTableWidget->setSortingEnabled(true);
 
+    ui->lineGeneralMagnet->setReadOnly(true);
+    ui->lineGeneralMagnet->setFrame(false);
+    ui->lineGeneralMagnet->setCursorPosition(0);
+    ui->lineGeneralMagnet->setTextMargins(0, 0, 0, 0);
+    ui->lineGeneralMagnet->setContextMenuPolicy(Qt::DefaultContextMenu);
+
+    ui->lineGeneralMagnet->setStyleSheet(QStringLiteral(
+        "QLineEdit {"
+        "  background: transparent;"
+        "  border: none;"
+        "  padding: 0px;"
+        "}"
+        ));
+
     ui->tableView->hideColumn(TorrentModel::IdColumn);
     ui->tableView->setSortingEnabled(true);
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
