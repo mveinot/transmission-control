@@ -13,7 +13,6 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QFileDialog>
-#include <QInputDialog>
 #include <QMenu>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -26,7 +25,6 @@
 #include <QAction>
 #include <QCloseEvent>
 #include <QEvent>
-#include <QApplication>
 #include <QIcon>
 #include <QUrl>
 #include <functional>
@@ -126,9 +124,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->tableView->setModel(proxy);
 
     updateTorrentActionState();
-
-    connect(torrentModel, &TorrentModel::listUpdated,
-            this, &MainWindow::drawTorrentList);
 
     connect(ui->tableView->selectionModel(),
             &QItemSelectionModel::selectionChanged,
@@ -411,10 +406,6 @@ void MainWindow::updateTorrentList()
     client->getTorrentList();
 }
 
-void MainWindow::drawTorrentList()
-{
-}
-
 void MainWindow::showAbout()
 {
     DialogAbout dialog(this);
@@ -436,12 +427,8 @@ void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
     ui->fileTreeWidget->clear();
     ui->peerTableWidget->clearContents();
     ui->peerTableWidget->setRowCount(0);
-
     clearGeneralTab();
     clearTrackerTable();
-    ui->fileTreeWidget->clear();
-    ui->peerTableWidget->clearContents();
-    ui->peerTableWidget->setRowCount(0);
 
     client->getTorrentDetails(torrentId);
 }
@@ -690,7 +677,6 @@ QTreeWidgetItem *MainWindow::findOrCreateTopLevelItem(const QString &name)
     auto *item = new QTreeWidgetItem(ui->fileTreeWidget);
     item->setText(0, name);
     item->setData(FileNameColumn, FileKindRole, QStringLiteral("folder"));
-    //item->setData(0, Qt::UserRole, "folder");
 
     return item;
 }
@@ -711,7 +697,6 @@ QTreeWidgetItem *MainWindow::findOrCreateChild(QTreeWidgetItem *parent,
     child->setData(FileNameColumn,
                    FileKindRole,
                    isFolder ? QStringLiteral("folder") : QStringLiteral("file"));
-    //child->setData(0, Qt::UserRole, isFolder ? "folder" : "file");
 
     return child;
 }
@@ -1050,8 +1035,6 @@ void MainWindow::addTorrentFromMagnet()
     client->addTorrentFromMagnet(magnetLink);
 
     statusBar()->showMessage("Adding torrent...", 3000);
-
-    //QTimer::singleShot(750, client, &rpc_client::getTorrentList);
 }
 
 void MainWindow::on_actionStart_Torrent_triggered()
@@ -1067,24 +1050,6 @@ void MainWindow::on_actionStop_Torrent_triggered()
 void MainWindow::on_action_Open_Torrent_triggered()
 {
     addTorrentFromFile();
-}
-
-QString MainWindow::currentTorrentName() const
-{
-    const QModelIndex proxyIndex = ui->tableView->currentIndex();
-
-    if (!proxyIndex.isValid())
-        return {};
-
-    const QModelIndex sourceIndex = proxy->mapToSource(proxyIndex);
-
-    if (!sourceIndex.isValid())
-        return {};
-
-    return sourceIndex
-        .siblingAtColumn(TorrentModel::NameColumn)
-        .data(Qt::DisplayRole)
-        .toString();
 }
 
 void MainWindow::on_actionAdd_Torrent_from_Magnet_Link_triggered()
@@ -1321,15 +1286,6 @@ void MainWindow::quitApplication()
 void MainWindow::changeEvent(QEvent *event)
 {
     QMainWindow::changeEvent(event);
-/*
-    if (event->type() == QEvent::WindowStateChange) {
-        if (isMinimized()) {
-            QTimer::singleShot(0, this, [this]() {
-                hide();
-            });
-        }
-    }
-*/
 }
 
 int MainWindow::updateIntervalMs() const
@@ -1627,14 +1583,6 @@ bool MainWindow::trayNotificationsEnabled() const
            settings.value(SettingsKeys::ShowTrayNotifications, true).toBool();
 }
 
-bool MainWindow::hideApplicationIconEnabled() const
-{
-    QSettings settings;
-
-    return trayIconEnabled() &&
-           settings.value(SettingsKeys::HideApplicationIcon, false).toBool();
-}
-
 void MainWindow::updateTrayIconVisibility()
 {
     if (!trayIcon)
@@ -1865,12 +1813,6 @@ void MainWindow::showFileContextMenu(const QPoint &pos)
     if (fileIndices.isEmpty())
         return;
 
-    /*
-    const bool clickedIsFile =
-        item->data(FileNameColumn, FileKindRole).toString()
-        == QStringLiteral("file");
-*/
-
     QMenu menu(this);
 
     QMenu *wantedMenu = menu.addMenu(QStringLiteral("Wanted"));
@@ -1893,8 +1835,6 @@ void MainWindow::showFileContextMenu(const QPoint &pos)
         priorityMenu->addAction(QStringLiteral("Normal"));
     QAction *lowPriorityAction =
         priorityMenu->addAction(QStringLiteral("Low"));
-
-    //priorityMenu->setEnabled(clickedIsFile);
 
     connect(highPriorityAction, &QAction::triggered,
             this, [this]() { setSelectedFilesPriority(1); });
@@ -1953,9 +1893,6 @@ void MainWindow::setSelectedFilesPriority(int priority)
 
     QList<int> fileIndices =
         selectedFileIndicesForContextItem(item);
-
-    const QString kind =
-        item->data(FileNameColumn, FileKindRole).toString();
 
     if (fileIndices.isEmpty())
         return;

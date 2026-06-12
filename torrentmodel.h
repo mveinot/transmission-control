@@ -23,8 +23,8 @@ public:
         RateUploadColumn,
         UploadRatioColumn,
         EtaColumn,
-        ColumnCount,
-        QueueColumn
+        QueueColumn,
+        ColumnCount
     };
 
     explicit TorrentModel(QObject *parent = nullptr);
@@ -45,9 +45,6 @@ public:
 public slots:
     void applyUpdate(const QVector<torrent> &incoming);
     void clear();
-
-signals:
-    void listUpdated();
 
 private:
     QVector<torrent> torrentVector;

@@ -2,7 +2,6 @@
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
-#include <QMouseEvent>
 #include "dialogabout.h"
 #include "ui_dialogabout.h"
 #include "version.h"
@@ -82,8 +81,6 @@ DialogAbout::DialogAbout(QWidget *parent)
             this, &QDialog::reject);
 
     ui->image->installEventFilter(this);
-    //ui->image->setCursor(Qt::PointingHandCursor);
-    //ui->image->setToolTip(QStringLiteral("Planetary"));
 }
 
 DialogAbout::~DialogAbout()

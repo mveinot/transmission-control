@@ -185,12 +185,6 @@ GeoIpResult GeoIpService::lookupInDatabase(const QString &ipAddress) const
         readUtf8Value(&lookupResult.entry, "country", "names", "en");
 
     if (countryCode.isEmpty())
-        countryCode = readUtf8Value(&lookupResult.entry, "country", "iso_code");
-
-    if (countryName.isEmpty())
-        countryName = readUtf8Value(&lookupResult.entry, "country", "names", "en");
-
-    if (countryCode.isEmpty())
         return result;
 
     result.countryCode = countryCode.toUpper();

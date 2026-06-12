@@ -1,15 +1,11 @@
 #ifndef RPC_CLIENT_H
 #define RPC_CLIENT_H
 
-#include <QApplication>
 #include <QByteArray>
-#include <QDebug>
-#include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
-#include <QUrl>
 #include "torrent.h"
 
 class rpc_client: public QObject
@@ -38,13 +34,8 @@ public:
     void getTorrentList();
     void getTorrentDetails(int id);
     QString getServer();
-    void removeTorrent(int id, bool deleteLocalData);
-    void startTorrent(int id);
-    void stopTorrent(int id);
     void addTorrentFromFile(const QString &filePath, bool deleteFileOnSuccess);
     void addTorrentFromMagnet(const QString &magnetLink);
-    void reannounceTorrent(int id);
-    void verifyTorrent(int id);
     void startTorrents(const QList<int> &ids);
     void stopTorrents(const QList<int> &ids);
     void removeTorrents(const QList<int> &ids, bool deleteLocalData);
@@ -67,7 +58,6 @@ public:
     void getFreeSpace(const QString &path);
 
 signals:
-    void listUpdated();
     void updateStarted();
     void updateFinished();
     void updateFailed(const QString &message);
@@ -85,7 +75,6 @@ private:
         TorrentDetails,
         Command,
         SessionGet,
-        SessionSet,
         FreeSpace
     };
 

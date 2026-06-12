@@ -1,7 +1,5 @@
 #include "torrentsortproxymodel.h"
-//#include "rpc_client.h"
 #include "torrentmodel.h"
-#include <QtWidgets/qtableview.h>
 
 TorrentSortProxyModel::TorrentSortProxyModel(QObject *parent)
     : QSortFilterProxyModel(parent)
@@ -33,6 +31,7 @@ bool TorrentSortProxyModel::lessThan(const QModelIndex &left, const QModelIndex 
     case TorrentModel::IdColumn:
     case TorrentModel::StatusColumn:
     case TorrentModel::EtaColumn:
+    case TorrentModel::QueueColumn:
         return lhs.toInt() < rhs.toInt();
 
     case TorrentModel::PercentDoneColumn:
@@ -47,28 +46,6 @@ bool TorrentSortProxyModel::lessThan(const QModelIndex &left, const QModelIndex 
     default:
         return QString::localeAwareCompare(lhs.toString(), rhs.toString()) < 0;
     }
-}
-
-static QList<int> selectedTorrentIds(const QTableView *view)
-{
-    QList<int> ids;
-    const auto rows = view->selectionModel()->selectedRows();
-    ids.reserve(rows.size());
-
-    for (const QModelIndex &proxyIndex : rows) {
-        ids.append(proxyIndex.data(Qt::UserRole).toInt());
-    }
-
-    return ids;
-}
-
-static int currentTorrentId(const QTableView *view)
-{
-    const QModelIndex current = view->currentIndex();
-    if (!current.isValid()) {
-        return -1;
-    }
-    return current.data(Qt::UserRole).toInt();
 }
 
 bool TorrentSortProxyModel::filterAcceptsRow(int sourceRow,
@@ -119,46 +96,4 @@ bool TorrentSortProxyModel::filterAcceptsRow(int sourceRow,
     }
 
     return true;
-}
-
-static void restoreSelectionByIds(
-    QTableView *view,
-    TorrentModel *sourceModel,
-    QSortFilterProxyModel *proxyModel,
-    const QList<int> &selectedIds,
-    int currentId)
-{
-    QItemSelectionModel *selectionModel = view->selectionModel();
-    selectionModel->clearSelection();
-
-    for (int id : selectedIds) {
-        const int sourceRow = sourceModel->rowForId(id);
-        if (sourceRow < 0) {
-            continue;
-        }
-
-        const QModelIndex sourceIndex = sourceModel->index(sourceRow, 0);
-        const QModelIndex proxyIndex = proxyModel->mapFromSource(sourceIndex);
-        if (!proxyIndex.isValid()) {
-            continue;
-        }
-
-        selectionModel->select(
-            proxyIndex,
-            QItemSelectionModel::Select | QItemSelectionModel::Rows);
-    }
-
-    if (currentId >= 0) {
-        const int sourceRow = sourceModel->rowForId(currentId);
-        if (sourceRow >= 0) {
-            const QModelIndex sourceIndex = sourceModel->index(sourceRow, 0);
-            const QModelIndex proxyIndex = proxyModel->mapFromSource(sourceIndex);
-            if (proxyIndex.isValid()) {
-                selectionModel->setCurrentIndex(
-                    proxyIndex,
-                    QItemSelectionModel::NoUpdate);
-                view->scrollTo(proxyIndex);
-            }
-        }
-    }
 }

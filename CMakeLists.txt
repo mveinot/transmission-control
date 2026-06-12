@@ -54,7 +54,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         ${app_icon_macos}
         appsettings.ui
         appsettings.h
-        appsettings.h
         appsettings.cpp
         Resources/icons/planetary.png
         torrentsortproxymodel.h torrentsortproxymodel.cpp
@@ -69,15 +68,15 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         sessionsettingsdialog.h sessionsettingsdialog.cpp sessionsettingsdialog.ui
     )
 
-find_library(MAXMINDDB_LIBRARY maxminddb)
-find_path(MAXMINDDB_INCLUDE_DIR maxminddb.h)
+#find_library(MAXMINDDB_LIBRARY maxminddb)
+#find_path(MAXMINDDB_INCLUDE_DIR maxminddb.h)
 
-if(NOT MAXMINDDB_LIBRARY OR NOT MAXMINDDB_INCLUDE_DIR)
-    message(WARNING "libmaxminddb not found; GeoIP MMDB lookup will not build")
-else()
-    message(STATUS "Found libmaxminddb: ${MAXMINDDB_LIBRARY}")
-    message(STATUS "Found maxminddb.h: ${MAXMINDDB_INCLUDE_DIR}")
-endif()
+#if(NOT MAXMINDDB_LIBRARY OR NOT MAXMINDDB_INCLUDE_DIR)
+#    message(WARNING "libmaxminddb not found; GeoIP MMDB lookup will not build")
+#else()
+#    message(STATUS "Found libmaxminddb: ${MAXMINDDB_LIBRARY}")
+#    message(STATUS "Found maxminddb.h: ${MAXMINDDB_INCLUDE_DIR}")
+#endif()
 
 find_program(IWYU_PATH NAMES include-what-you-use iwyu)
 
@@ -170,7 +169,11 @@ if(EXISTS "${THIRD_PARTY_NOTICES_FILE}")
     )
 endif()
 
-target_link_libraries(Planetary PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt6::Network)
+#target_link_libraries(Planetary PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt6::Network)
+target_link_libraries(Planetary PRIVATE
+    Qt${QT_VERSION_MAJOR}::Widgets
+    Qt${QT_VERSION_MAJOR}::Network
+)
 
 set_target_properties(Planetary PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER planetary.mvgrafx.net

@@ -92,7 +92,6 @@ QString torrent::getUploadRatio() const
 
 QString torrent::getSize() const
 {
-    //return QString("%1").arg(sizeWhenDone,5, 'f', 1);
     return QLocale().formattedDataSize(
         sizeWhenDone,
         1,
@@ -156,7 +155,6 @@ bool torrent::sameDisplayData(const torrent &other) const
            && uploadRatio == other.uploadRatio
            && status == other.status
            && eta == other.eta
-           && sizeWhenDone == other.sizeWhenDone;
+           && sizeWhenDone == other.sizeWhenDone
+           && queuePosition == other.queuePosition;
 }
-
-

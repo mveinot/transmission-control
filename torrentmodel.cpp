@@ -179,6 +179,9 @@ QVariant TorrentModel::headerData(int section,
         case EtaColumn:
             return "ETA";
 
+        case QueueColumn:
+            return "Queue";
+
         default:
             return {};
         }
@@ -209,8 +212,6 @@ void TorrentModel::clear()
     m_rowById.clear();
 
     endResetModel();
-
-    emit listUpdated();
 }
 
 void TorrentModel::rebuildIndex()
@@ -305,6 +306,4 @@ void TorrentModel::applyUpdate(const QVector<torrent> &incoming)
     }
 
     rebuildIndex();
-
-    emit listUpdated();
 }

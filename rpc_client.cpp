@@ -1,5 +1,4 @@
 #include <QFile>
-#include <QFileInfo>
 #include <QJsonObject>
 #include <QSettings>
 #include "rpc_client.h"
@@ -89,9 +88,10 @@ void rpc_client::replyFinished(QNetworkReply *reply)
     const bool isTorrentGet =
         requestType == RpcRequestType::TorrentGet;
 
+    /*
     const bool isTorrentDetails =
-        requestType == RpcRequestType::TorrentDetails;
-
+       requestType == RpcRequestType::TorrentDetails;
+*/
     const auto finishTorrentGet = [this, isTorrentGet]() {
         if (isTorrentGet) {
             updateInProgress = false;
@@ -265,7 +265,7 @@ void rpc_client::replyFinished(QNetworkReply *reply)
 
         emit torrentsReceived(incoming);
 
-        emit listUpdated();
+        //emit listUpdated();
 
         finishTorrentGet();
         return;
@@ -365,7 +365,6 @@ void rpc_client::setServer(const TransmissionServer &server)
     _clientReady = false;
     updateInProgress = false;
 
-    //clearTorrents();
     emit serverChanged();
 }
 
@@ -443,22 +442,6 @@ QNetworkRequest rpc_client::makeRequest() const
     return request;
 }
 
-void rpc_client::removeTorrent(int id, bool deleteLocalData)
-{
-    removeTorrents({ id }, deleteLocalData);
-}
-
-void rpc_client::startTorrent(int id)
-{
-    startTorrents({ id });
-}
-
-
-void rpc_client::stopTorrent(int id)
-{
-    stopTorrents({ id });
-}
-
 void rpc_client::addTorrentFromFile(const QString &filePath,
                                     bool deleteFileOnSuccess)
 {
@@ -504,16 +487,6 @@ void rpc_client::addTorrentFromMagnet(const QString &magnetLink)
     arguments["filename"] = trimmedLink;
 
     postRpc("torrent-add", arguments, RpcRequestType::Command);
-}
-
-void rpc_client::reannounceTorrent(int id)
-{
-    reannounceTorrents({ id });
-}
-
-void rpc_client::verifyTorrent(int id)
-{
-    verifyTorrents({ id });
 }
 
 void rpc_client::startTorrents(const QList<int> &ids)

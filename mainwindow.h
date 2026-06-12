@@ -4,7 +4,6 @@
 #include <QMainWindow>
 #include <QMenu>
 #include <QAction>
-#include <QSettings>
 #include <QCloseEvent>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
@@ -49,7 +48,6 @@ public slots:
 
 private slots:
     void updateTorrentList();
-    void drawTorrentList();
     void on_tableView_clicked(const QModelIndex &index);
     void on_actionDelete_Torrent_triggered();
     void onServerSetupTriggered();
@@ -70,9 +68,6 @@ private:
     QTimer *timer;
     QMenu *mainMenu;
     QAction *aboutAction;
-    QMenuBar *mainMenuBar;
-    int selected = 0;
-    QSettings settings;
     TorrentModel *torrentModel = nullptr;
     rpc_client *client = nullptr;
     TorrentSortProxyModel *proxy = nullptr;
@@ -97,7 +92,6 @@ private:
     int currentTorrentId() const;
     QList<int> selectedTorrentIds() const;
     QStringList selectedTorrentNames() const;
-    QString currentTorrentName() const;
     QLabel *connectionStatusLabel = nullptr;
     void startSelectedTorrent();
     void stopSelectedTorrent();
@@ -126,23 +120,17 @@ private:
     void clearTrackerTable();
     bool trayIconEnabled() const;
     bool trayNotificationsEnabled() const;
-    bool hideApplicationIconEnabled() const;
-
     void updateFolderWantedStates();
     void updateFolderWantedState(QTreeWidgetItem *item);
-
     QList<int> fileIndicesForItem(QTreeWidgetItem *item) const;
     QList<int> selectedFileIndicesForContextItem(QTreeWidgetItem *item) const;
-
     void showFileContextMenu(const QPoint &pos);
     void setSelectedFilesWanted(bool wanted);
     void setSelectedFilesPriority(int priority);
-
     void queueMoveSelectedTop();
     void queueMoveSelectedUp();
     void queueMoveSelectedDown();
     void queueMoveSelectedBottom();
-
     void applyAppSettings();
     void updateTrayIconVisibility();
     void showTrayNotification(const QString &title,
