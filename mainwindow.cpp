@@ -2028,3 +2028,14 @@ void MainWindow::updateConnectionStatus(int torrentCount)
         connectionStatusLabel->setText(text);
     }
 }
+void MainWindow::on_actionAbout_triggered()
+{
+    showAbout();
+}
+
+
+void MainWindow::on_actionQuit_triggered()
+{
+    quitApplication();
+}
+
