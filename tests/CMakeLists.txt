@@ -1,0 +1,51 @@
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Test Widgets Core)
+
+function(add_planetary_test target)
+    add_executable(${target}
+        ${ARGN}
+    )
+
+    target_include_directories(${target} PRIVATE
+        ${CMAKE_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}
+    )
+
+    target_link_libraries(${target} PRIVATE
+        Qt${QT_VERSION_MAJOR}::Core
+        Qt${QT_VERSION_MAJOR}::Widgets
+        Qt${QT_VERSION_MAJOR}::Test
+    )
+
+    add_test(NAME ${target} COMMAND ${target})
+endfunction()
+
+add_planetary_test(test_torrent
+    test_torrent.cpp
+    ${CMAKE_SOURCE_DIR}/torrent.cpp
+    ${CMAKE_SOURCE_DIR}/torrent.h
+)
+
+add_planetary_test(test_torrentmodel
+    test_torrentmodel.cpp
+    ${CMAKE_SOURCE_DIR}/torrent.cpp
+    ${CMAKE_SOURCE_DIR}/torrent.h
+    ${CMAKE_SOURCE_DIR}/torrentmodel.cpp
+    ${CMAKE_SOURCE_DIR}/torrentmodel.h
+)
+
+add_planetary_test(test_torrentsortproxymodel
+    test_torrentsortproxymodel.cpp
+    ${CMAKE_SOURCE_DIR}/torrent.cpp
+    ${CMAKE_SOURCE_DIR}/torrent.h
+    ${CMAKE_SOURCE_DIR}/torrentmodel.cpp
+    ${CMAKE_SOURCE_DIR}/torrentmodel.h
+    ${CMAKE_SOURCE_DIR}/torrentsortproxymodel.cpp
+    ${CMAKE_SOURCE_DIR}/torrentsortproxymodel.h
+)
+
+add_planetary_test(test_sessionsettingsdialog
+    test_sessionsettingsdialog.cpp
+    ${CMAKE_SOURCE_DIR}/sessionsettingsdialog.cpp
+    ${CMAKE_SOURCE_DIR}/sessionsettingsdialog.h
+    ${CMAKE_SOURCE_DIR}/sessionsettingsdialog.ui
+)
