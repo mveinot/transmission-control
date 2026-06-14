@@ -17,7 +17,11 @@ PercentFillDelegate::PercentFillDelegate(int percentColumn,
 
 static QColor readableFillColor(const QPalette &palette, bool selected)
 {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 6, 0)
     QColor fill = palette.color(QPalette::Accent);
+#else
+    QColor fill = palette.color(QPalette::Highlight);
+#endif
 
     if (!fill.isValid())
         fill = palette.color(QPalette::Highlight);

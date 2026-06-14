@@ -1,5 +1,7 @@
 #include <QFile>
 #include <QJsonObject>
+#include <QJsonDocument>
+#include <QJsonParseError>
 #include <QSettings>
 #include "rpc_client.h"
 

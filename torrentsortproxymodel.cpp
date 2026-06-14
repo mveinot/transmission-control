@@ -1,3 +1,4 @@
+#include <QtGlobal>
 #include "torrentsortproxymodel.h"
 #include "torrentmodel.h"
 
@@ -12,9 +13,14 @@ void TorrentSortProxyModel::setStateFilter(StateFilter filter)
     if (m_stateFilter == filter)
         return;
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
     beginFilterChange();
     m_stateFilter = filter;
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
+#else
+    m_stateFilter = filter;
+    invalidateFilter();
+#endif
 }
 
 TorrentSortProxyModel::StateFilter TorrentSortProxyModel::stateFilter() const
