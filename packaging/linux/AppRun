@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -e
+
+HERE="$(dirname "$(readlink -f "$0")")"
+
+export APPDIR="$HERE"
+export PATH="$APPDIR/usr/bin:$PATH"
+export LD_LIBRARY_PATH="$APPDIR/usr/lib:$APPDIR/usr/lib64:$APPDIR/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH"
+export QT_PLUGIN_PATH="$APPDIR/usr/plugins:$APPDIR/usr/lib/qt6/plugins:$APPDIR/usr/lib/x86_64-linux-gnu/qt6/plugins:$QT_PLUGIN_PATH"
+export QML2_IMPORT_PATH="$APPDIR/usr/qml:$QML2_IMPORT_PATH"
+
+exec "$APPDIR/usr/bin/Planetary" "$@"
