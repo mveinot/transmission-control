@@ -183,6 +183,37 @@ set_target_properties(Planetary PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
+include(GNUInstallDirs)
+
+install(TARGETS Planetary
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    BUNDLE DESTINATION .
+)
+
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/icons/planetary.png"
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/256x256/apps"
+    RENAME planetary.png
+)
+
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/packaging/linux/planetary.desktop"
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications"
+)
+
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/geoip/dbip-country-lite-2026-06.mmdb"
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/planetary/geoip"
+    OPTIONAL
+)
+
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+    "${CMAKE_CURRENT_SOURCE_DIR}/THIRD_PARTY_NOTICES.txt"
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/planetary/licenses"
+    OPTIONAL
+)
+
 install(TARGETS Planetary
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
