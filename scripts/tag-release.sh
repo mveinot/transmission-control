@@ -11,9 +11,9 @@ cd "$ROOT_DIR"
 echo "Preparing release tag for ${APP_NAME}"
 echo "Repo: $ROOT_DIR"
 
-if [[ ! -f "VERSION.txt" ]]; then
-  echo "Missing VERSION.txt"
-  echo "The current CMake versioning expects VERSION.txt at the repo root."
+if [[ ! -f "PLANETARY_VERSION" ]]; then
+  echo "Missing PLANETARY_VERSION"
+  echo "The current CMake versioning expects PLANETARY_VERSION at the repo root."
   exit 1
 fi
 
