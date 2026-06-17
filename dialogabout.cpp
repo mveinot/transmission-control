@@ -45,7 +45,7 @@ DialogAbout::DialogAbout(QWidget *parent)
                                "<p>Version: %1</p>"
                                "<p>Build date: %2</p>"
                                "<p>Copyright © Mark Veinot</p>"
-                               ).arg(QCoreApplication::applicationVersion(), QStringLiteral(__BUILD_DATE__)));
+                               ).arg(QCoreApplication::applicationVersion(), QStringLiteral(__DATE__)));
 
     const QString creditsPath =
         bundledResourcePath("licenses/THIRD_PARTY_NOTICES.txt");

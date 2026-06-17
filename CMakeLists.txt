@@ -2,11 +2,11 @@ cmake_minimum_required(VERSION 3.5)
 
 project(Planetary VERSION 0.1 LANGUAGES CXX)
 
-add_custom_target(gen_version ALL
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/make_version.pl
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Generating version.h"
-)
+#add_custom_target(gen_version ALL
+#    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/make_version.pl
+#    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+#    COMMENT "Generating version.h"
+#)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -32,7 +32,6 @@ set(PROJECT_SOURCES
         dialogabout.cpp
         dialogabout.h
         dialogabout.ui
-        version.h
         ${TS_FILES}
 )
 
@@ -45,6 +44,50 @@ set(MACOSX_BUNDLE_ICON_FILE planetary.icns)
 set(app_icon_macos "${CMAKE_CURRENT_SOURCE_DIR}/Resources/icons/planetary.icns")
 set_source_files_properties(${app_icon_macos} PROPERTIES
     MACOSX_PACKAGE_LOCATION "Resources")
+
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" PLANETARY_VERSION_BASE)
+string(STRIP "${PLANETARY_VERSION_BASE}" PLANETARY_VERSION_BASE)
+
+if(NOT PLANETARY_VERSION_BASE MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+    message(FATAL_ERROR "VERSION must be in major.minor.patch format, e.g. 0.8.0")
+endif()
+
+project(Planetary VERSION ${PLANETARY_VERSION_BASE} LANGUAGES CXX)
+
+set(PLANETARY_VERSION_BUILD "0")
+
+find_package(Git QUIET)
+
+if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" rev-list --count HEAD
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        OUTPUT_VARIABLE PLANETARY_VERSION_BUILD
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+endif()
+
+if(NOT PLANETARY_VERSION_BUILD MATCHES "^[0-9]+$")
+    set(PLANETARY_VERSION_BUILD "0")
+endif()
+
+set(PLANETARY_VERSION_FULL
+    "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}.${PLANETARY_VERSION_BUILD}"
+)
+
+message(STATUS "Planetary version: ${PLANETARY_VERSION_FULL}")
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/version.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/version.h"
+    @ONLY
+)
+
+file(WRITE
+    "${CMAKE_CURRENT_BINARY_DIR}/planetary-version.txt"
+    "${PLANETARY_VERSION_FULL}\n"
+)
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(Planetary
@@ -67,6 +110,10 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         settingskeys.h
         sessionsettingsdialog.h sessionsettingsdialog.cpp sessionsettingsdialog.ui
     )
+
+target_include_directories(Planetary PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}/generated"
+)
 
 #find_library(MAXMINDDB_LIBRARY maxminddb)
 #find_path(MAXMINDDB_INCLUDE_DIR maxminddb.h)
