@@ -37,6 +37,7 @@ public:
     void addTorrentFromFile(const QString &filePath, bool deleteFileOnSuccess);
     void addTorrentFromMagnet(const QString &magnetLink);
     void startTorrents(const QList<int> &ids);
+    void startTorrentsNow(const QList<int> &ids);
     void stopTorrents(const QList<int> &ids);
     void removeTorrents(const QList<int> &ids, bool deleteLocalData);
     void verifyTorrents(const QList<int> &ids);

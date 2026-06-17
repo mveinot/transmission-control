@@ -594,7 +594,7 @@
      <x>0</x>
      <y>0</y>
      <width>1562</width>
-     <height>23</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -837,6 +837,20 @@
   <action name="actionQuit">
    <property name="text">
     <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionForce_Start_Torrent">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::MediaRecord"/>
+   </property>
+   <property name="text">
+    <string>Force Start Torrent</string>
+   </property>
+   <property name="toolTip">
+    <string>Force Torrent to Start now</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
  </widget>

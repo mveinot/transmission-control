@@ -502,6 +502,19 @@ void rpc_client::startTorrents(const QList<int> &ids)
     postRpc("torrent-start", arguments, RpcRequestType::Command);
 }
 
+void rpc_client::startTorrentsNow(const QList<int> &ids)
+{
+    if (ids.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments["ids"] = idsToJsonArray(ids);
+
+    postRpc(QStringLiteral("torrent-start-now"),
+            arguments,
+            RpcRequestType::Command);
+}
+
 void rpc_client::stopTorrents(const QList<int> &ids)
 {
     if (ids.isEmpty())

@@ -113,6 +113,7 @@ private:
     void populatePeerTable(const QJsonArray &peers);
     void reannounceSelectedTorrent();
     void verifySelectedTorrent();
+    void forceStartSelectedTorrents();
     void updateTorrentActionState();
     int updateIntervalMs() const;
     void applyUpdateInterval();

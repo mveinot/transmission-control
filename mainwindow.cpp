@@ -886,12 +886,16 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
     QMenu menu(this);
 
     menu.addAction(ui->actionStart_Torrent);
+    menu.addAction(ui->actionForce_Start_Torrent);
     menu.addAction(ui->actionStop_Torrent);
     menu.addSeparator();
     menu.addAction(ui->actionVerify_Torrent);
     menu.addAction(ui->actionReannounce);
     menu.addSeparator();
     menu.addAction(ui->actionDelete_Torrent);
+
+    connect(ui->actionForce_Start_Torrent, &QAction::triggered,
+            this, &MainWindow::forceStartSelectedTorrents);
 
     QMenu *queueMenu = menu.addMenu(QStringLiteral("Queue"));
 
@@ -1221,6 +1225,7 @@ void MainWindow::updateTorrentActionState()
     ui->actionDelete_Torrent->setEnabled(hasSelection);
     ui->actionVerify_Torrent->setEnabled(hasSelection);
     ui->actionReannounce->setEnabled(hasSelection);
+    ui->actionForce_Start_Torrent->setEnabled(hasSelection);
 }
 
 void MainWindow::setupTrayIcon()
@@ -2039,3 +2044,22 @@ void MainWindow::on_actionQuit_triggered()
     quitApplication();
 }
 
+void MainWindow::forceStartSelectedTorrents()
+{
+    const QList<int> ids = selectedTorrentIds();
+
+    if (ids.isEmpty())
+        return;
+
+    client->startTorrentsNow(ids);
+
+    statusBar()->showMessage(
+        QStringLiteral("Force starting selected torrent(s)..."),
+        3000
+        );
+/*
+    QTimer::singleShot(500, this, [this]() {
+        client->getTorrents();
+    });
+*/
+}
