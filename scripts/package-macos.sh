@@ -7,13 +7,26 @@ QT_DIR="$HOME/Qt/6.11.1/macos"
 BUILD_DIR="build-release"
 APP_PATH="$BUILD_DIR/$APP_NAME.app"
 DMG_ROOT="$BUILD_DIR/dmg-root"
-DMG_PATH="$BUILD_DIR/${APP_NAME}-macOS-${ARCH}.dmg"
+VERSION_FILE="${BUILD_DIR}/planetary-version.txt"
 
 cmake -S . -B "$BUILD_DIR" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH="$QT_DIR"
 
 cmake --build "$BUILD_DIR" --config Release
+
+if [[ ! -f "$VERSION_FILE" ]]; then
+  echo "Missing version file: $VERSION_FILE"
+  echo "CMake configure may have failed, or planetary-version.txt is not being generated."
+  exit 1
+fi
+
+VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
+
+if [[ -z "$VERSION" ]]; then
+  echo "Version file is empty: $VERSION_FILE"
+  exit 1
+fi
 
 "$QT_DIR/bin/macdeployqt" "$APP_PATH" -verbose=2
 
@@ -38,8 +51,10 @@ mkdir -p "$DMG_ROOT"
 cp -R "$APP_PATH" "$DMG_ROOT/"
 ln -s /Applications "$DMG_ROOT/Applications"
 
+DMG_PATH="$BUILD_DIR/${APP_NAME}-${VERSION}-macOS-${ARCH}.dmg"
+
 hdiutil create \
-  -volname "$APP_NAME" \
+  -volname "$APP_NAME $VERSION" \
   -srcfolder "$DMG_ROOT" \
   -ov \
   -format UDZO \
