@@ -36,6 +36,13 @@ public:
     QString getServer();
     void addTorrentFromFile(const QString &filePath, bool deleteFileOnSuccess);
     void addTorrentFromMagnet(const QString &magnetLink);
+    void addTorrentFile(const QString &filePath,
+                        const QString &downloadDir = QString(),
+                        bool paused = false);
+
+    void addMagnetLink(const QString &magnetLink,
+                       const QString &downloadDir = QString(),
+                       bool paused = false);
     void startTorrents(const QList<int> &ids);
     void startTorrentsNow(const QList<int> &ids);
     void stopTorrents(const QList<int> &ids);

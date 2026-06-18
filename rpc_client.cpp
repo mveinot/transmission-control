@@ -3,6 +3,8 @@
 #include <QJsonDocument>
 #include <QJsonParseError>
 #include <QSettings>
+#include <QFile>
+#include <QFileInfo>
 #include "rpc_client.h"
 
 namespace {
@@ -741,4 +743,68 @@ void rpc_client::getFreeSpace(const QString &path)
     arguments["path"] = path;
 
     postRpc(QStringLiteral("free-space"), arguments, RpcRequestType::FreeSpace);
+}
+
+void rpc_client::addTorrentFile(const QString &filePath,
+                                const QString &downloadDir,
+                                bool paused)
+{
+    QFile file(filePath);
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        emit commandFailed(
+            QStringLiteral("torrent-add"),
+            QStringLiteral("Could not open torrent file: %1").arg(filePath)
+            );
+        return;
+    }
+
+    const QByteArray data = file.readAll();
+
+    if (data.isEmpty()) {
+        emit commandFailed(
+            QStringLiteral("torrent-add"),
+            QStringLiteral("Torrent file is empty: %1").arg(filePath)
+            );
+        return;
+    }
+
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("metainfo"),
+                     QString::fromLatin1(data.toBase64()));
+
+    if (!downloadDir.trimmed().isEmpty()) {
+        arguments.insert(QStringLiteral("download-dir"),
+                         downloadDir.trimmed());
+    }
+
+    arguments.insert(QStringLiteral("paused"), paused);
+
+    postRpc(QStringLiteral("torrent-add"),
+            arguments,
+            RpcRequestType::Command);
+}
+
+void rpc_client::addMagnetLink(const QString &magnetLink,
+                               const QString &downloadDir,
+                               bool paused)
+{
+    const QString trimmed = magnetLink.trimmed();
+
+    if (trimmed.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments.insert(QStringLiteral("filename"), trimmed);
+
+    if (!downloadDir.trimmed().isEmpty()) {
+        arguments.insert(QStringLiteral("download-dir"),
+                         downloadDir.trimmed());
+    }
+
+    arguments.insert(QStringLiteral("paused"), paused);
+
+    postRpc(QStringLiteral("torrent-add"),
+            arguments,
+            RpcRequestType::Command);
 }

@@ -25,6 +25,8 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
+class TorrentAddController;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -96,6 +98,7 @@ private:
     QList<int> selectedTorrentIds() const;
     QStringList selectedTorrentNames() const;
     QLabel *connectionStatusLabel = nullptr;
+    TorrentAddController *torrentAddController = nullptr;
     void startSelectedTorrent();
     void stopSelectedTorrent();
     void addTorrentFromFile();

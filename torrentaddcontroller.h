@@ -1,0 +1,47 @@
+#ifndef TORRENTADDCONTROLLER_H
+#define TORRENTADDCONTROLLER_H
+
+#include "torrentadddialog.h"
+
+#include <QObject>
+#include <QString>
+
+class QWidget;
+class rpc_client;
+
+class TorrentAddController : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit TorrentAddController(rpc_client *client,
+                                  QWidget *dialogParent,
+                                  QObject *parent = nullptr);
+
+    void setDefaultDownloadDir(const QString &downloadDir);
+
+public slots:
+    void addTorrentFile(const QString &filePath);
+    void addMagnetLink(const QString &magnetLink);
+
+signals:
+    void addStarted();
+    void addCancelled();
+    void addFailed(const QString &message);
+
+private:
+    rpc_client *m_client = nullptr;
+    QWidget *m_dialogParent = nullptr;
+
+    QString m_defaultDownloadDir;
+
+    bool promptAndAdd(TorrentAddDialog::SourceType sourceType,
+                      const QString &source);
+
+    QString savedDownloadDir() const;
+    bool savedStartPaused() const;
+
+    void saveOptions(const QString &downloadDir, bool startPaused);
+};
+
+#endif // TORRENTADDCONTROLLER_H

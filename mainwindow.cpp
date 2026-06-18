@@ -24,6 +24,7 @@
 #include <QSystemTrayIcon>
 #include <QAction>
 #include <QCloseEvent>
+#include <QInputDialog>
 #include <QEvent>
 #include <QIcon>
 #include <QUrl>
@@ -37,6 +38,7 @@
 #include "percentfilldelegate.h"
 #include "sessionsettingsdialog.h"
 #include "settingskeys.h"
+#include "torrentaddcontroller.h"
 
 namespace {
 constexpr int DefaultUpdateIntervalSeconds = 10;
@@ -108,6 +110,25 @@ MainWindow::MainWindow(QWidget *parent)
     if (!geoIpService->loadDatabase(geoIpPath)) {
         qWarning() << "GeoIP database could not be loaded; using dummy lookup";
     }
+
+    torrentAddController = new TorrentAddController(client, this, this);
+
+    connect(torrentAddController, &TorrentAddController::addStarted,
+            this, [this]() {
+                statusBar()->showMessage(
+                    QStringLiteral("Adding torrent..."),
+                    3000
+                    );
+
+                //QTimer::singleShot(750, this, [this]() {
+                //    client->getTorrents();
+                //});
+            });
+
+    connect(torrentAddController, &TorrentAddController::addFailed,
+            this, [this](const QString &message) {
+                statusBar()->showMessage(message, 5000);
+            });
 
     this->aboutAction = new QAction(0);
     this->aboutAction->setMenuRole(QAction::AboutRole);
@@ -962,6 +983,20 @@ void MainWindow::stopSelectedTorrent()
 
 void MainWindow::addTorrentFromFile()
 {
+    const QString fileName = QFileDialog::getOpenFileName(
+        this,
+        QStringLiteral("Add Torrent File"),
+        QString(),
+        QStringLiteral("Torrent Files (*.torrent);;All Files (*)")
+        );
+
+    if (fileName.isEmpty())
+        return;
+
+    torrentAddController->addTorrentFile(fileName);
+}
+/*
+{
     const QString filePath = QFileDialog::getOpenFileName(
         this,
         "Add Torrent File",
@@ -981,8 +1016,27 @@ void MainWindow::addTorrentFromFile()
 
     statusBar()->showMessage("Adding torrent...", 3000);
 }
+*/
 
 void MainWindow::addTorrentFromMagnet()
+{
+    bool ok = false;
+
+    const QString magnetLink = QInputDialog::getText(
+        this,
+        QStringLiteral("Add Magnet Link"),
+        QStringLiteral("Magnet link:"),
+        QLineEdit::Normal,
+        QString(),
+        &ok
+        );
+
+    if (!ok || magnetLink.trimmed().isEmpty())
+        return;
+
+    torrentAddController->addMagnetLink(magnetLink);
+}
+/*
 {
     QDialog dialog(this);
     dialog.setWindowTitle("Add Torrent from Magnet Link");
@@ -1040,6 +1094,7 @@ void MainWindow::addTorrentFromMagnet()
 
     statusBar()->showMessage("Adding torrent...", 3000);
 }
+*/
 
 void MainWindow::on_actionStart_Torrent_triggered()
 {
@@ -1969,6 +2024,8 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
 {
     remoteDownloadDir =
         sessionSettings.value(QStringLiteral("download-dir")).toString();
+
+    torrentAddController->setDefaultDownloadDir(remoteDownloadDir);
 
     if (!remoteDownloadDir.isEmpty())
         client->getFreeSpace(remoteDownloadDir);
