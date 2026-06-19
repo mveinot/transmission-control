@@ -3,6 +3,7 @@
 #include "settingskeys.h"
 
 #include <QPushButton>
+#include <QFileDialog>
 #include <QSettings>
 
 namespace {
@@ -37,6 +38,25 @@ AppSettings::AppSettings(QWidget *parent)
     connect(ui->settingsCancel, &QPushButton::clicked, this, [this]() {
         reject();
     });
+
+    connect(ui->buttonBrowseWatchFolder, &QPushButton::clicked,
+            this, [this]() {
+                const QString folder = QFileDialog::getExistingDirectory(
+                    this,
+                    QStringLiteral("Select Watch Folder"),
+                    ui->editWatchFolderPath->text()
+                    );
+
+                if (!folder.isEmpty())
+                    ui->editWatchFolderPath->setText(folder);
+            });
+
+    connect(ui->checkWatchFolderEnabled, &QCheckBox::toggled,
+            this, [this](bool enabled) {
+                ui->editWatchFolderPath->setEnabled(enabled);
+                ui->buttonBrowseWatchFolder->setEnabled(enabled);
+                ui->spinWatchFolderStableChecks->setEnabled(enabled);
+            });
 }
 
 AppSettings::~AppSettings()
@@ -69,6 +89,26 @@ void AppSettings::loadSettings()
     ui->showNotifications->setChecked(
         settings.value(SettingsKeys::ShowTrayNotifications, true).toBool()
         );
+
+    ui->checkWatchFolderEnabled->setChecked(
+        settings.value(QString::fromLatin1(SettingsKeys::WatchFolderEnabled),
+                       false).toBool()
+        );
+
+    ui->editWatchFolderPath->setText(
+        settings.value(QString::fromLatin1(SettingsKeys::WatchFolderPath))
+            .toString()
+        );
+
+    ui->spinWatchFolderStableChecks->setValue(
+        settings.value(QString::fromLatin1(SettingsKeys::WatchFolderStableChecks),
+                       2).toInt()
+        );
+
+    const bool watchFolderEnabled = ui->checkWatchFolderEnabled->isChecked();
+    ui->editWatchFolderPath->setEnabled(watchFolderEnabled);
+    ui->buttonBrowseWatchFolder->setEnabled(watchFolderEnabled);
+    ui->spinWatchFolderStableChecks->setEnabled(watchFolderEnabled);
 }
 
 void AppSettings::saveSettings()
@@ -91,6 +131,15 @@ void AppSettings::saveSettings()
 
     settings.setValue(SettingsKeys::HideApplicationIcon,
                       trayIconEnabled && false);
+
+    settings.setValue(QString::fromLatin1(SettingsKeys::WatchFolderEnabled),
+                      ui->checkWatchFolderEnabled->isChecked());
+
+    settings.setValue(QString::fromLatin1(SettingsKeys::WatchFolderPath),
+                      ui->editWatchFolderPath->text().trimmed());
+
+    settings.setValue(QString::fromLatin1(SettingsKeys::WatchFolderStableChecks),
+                      ui->spinWatchFolderStableChecks->value());
 
     settings.sync();
 }

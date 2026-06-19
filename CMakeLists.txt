@@ -111,6 +111,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         sessionsettingsdialog.h sessionsettingsdialog.cpp sessionsettingsdialog.ui
         torrentadddialog.h torrentadddialog.cpp torrentadddialog.ui
         torrentaddcontroller.h torrentaddcontroller.cpp
+        watchfoldermanager.h watchfoldermanager.cpp
     )
 
 target_include_directories(Planetary PRIVATE

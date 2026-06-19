@@ -144,3 +144,39 @@ void TorrentAddController::saveOptions(const QString &downloadDir, bool startPau
     settings.setValue(QString::fromLatin1(SettingsDownloadDir), downloadDir);
     settings.setValue(QString::fromLatin1(SettingsStartPaused), startPaused);
 }
+
+void TorrentAddController::addTorrentFileUsingDefaults(const QString &filePath)
+{
+    if (filePath.trimmed().isEmpty()) {
+        emit addFailed(QStringLiteral("No torrent file was specified."));
+        return;
+    }
+
+    const QFileInfo fileInfo(filePath);
+
+    if (!fileInfo.exists() || !fileInfo.isFile()) {
+        emit addFailed(QStringLiteral("Torrent file does not exist: %1")
+                           .arg(filePath));
+        return;
+    }
+
+    if (!m_client) {
+        emit addFailed(QStringLiteral("No Transmission client is available."));
+        return;
+    }
+
+    QString downloadDir = savedDownloadDir();
+
+    if (downloadDir.isEmpty())
+        downloadDir = m_defaultDownloadDir;
+
+    const bool startPaused = savedStartPaused();
+
+    m_client->addTorrentFile(
+        fileInfo.absoluteFilePath(),
+        downloadDir,
+        startPaused
+        );
+
+    emit addStarted();
+}

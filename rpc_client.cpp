@@ -407,7 +407,9 @@ void rpc_client::getTorrentList()
         "uploadRatio",
         "eta",
         "sizeWhenDone",
-        "queuePosition"
+        "queuePosition",
+        "trackers",
+        "trackerStats"
     };
 
     postRpc("torrent-get", arguments, RpcRequestType::TorrentGet);

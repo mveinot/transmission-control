@@ -1,4 +1,28 @@
 #include "torrent.h"
+#include <QUrl>
+
+static QString normalizedTrackerHost(QString host)
+{
+    host = host.trimmed().toLower();
+
+    if (host.isEmpty())
+        return QString();
+
+    // If this is actually a URL, parse it as one.
+    if (host.contains(QStringLiteral("://"))) {
+        const QUrl url(host);
+        return url.host().toLower();
+    }
+
+    // trackerStats["host"] may be "example.com:6969".
+    // QUrl needs a scheme to parse host/port reliably.
+    const QUrl url(QStringLiteral("scheme://") + host);
+
+    if (!url.host().isEmpty())
+        return url.host().toLower();
+
+    return host;
+}
 
 torrent::torrent(const QJsonValue &val)
 {
@@ -20,10 +44,23 @@ torrent::torrent(const QJsonValue &val)
     trackerHosts.clear();
     primaryTrackerHost.clear();
 
+    QSet<QString> uniqueHosts;
+
+    auto addTrackerHost = [&uniqueHosts, this](const QString &host) {
+        const QString normalized = normalizedTrackerHost(host);
+
+        if (normalized.isEmpty())
+            return;
+
+        if (uniqueHosts.contains(normalized))
+            return;
+
+        uniqueHosts.insert(normalized);
+        trackerHosts.append(normalized);
+    };
+
     const QJsonArray trackersArray =
         obj.value(QStringLiteral("trackers")).toArray();
-
-    QSet<QString> uniqueHosts;
 
     for (const QJsonValue &trackerValue : trackersArray) {
         const QJsonObject trackerObject = trackerValue.toObject();
@@ -36,16 +73,33 @@ torrent::torrent(const QJsonValue &val)
                 trackerObject.value(QStringLiteral("scrape")).toString();
         }
 
-        QString host = QUrl(announce).host().toLower();
-
-        if (host.isEmpty())
-            continue;
-
-        if (!uniqueHosts.contains(host)) {
-            uniqueHosts.insert(host);
-            trackerHosts.append(host);
-        }
+        const QString host = QUrl(announce).host();
+        addTrackerHost(host);
     }
+
+    const QJsonArray trackerStatsArray =
+        obj.value(QStringLiteral("trackerStats")).toArray();
+
+    for (const QJsonValue &trackerValue : trackerStatsArray) {
+        const QJsonObject trackerObject = trackerValue.toObject();
+
+        QString host =
+            trackerObject.value(QStringLiteral("host")).toString();
+
+        if (host.isEmpty()) {
+            const QString announce =
+                trackerObject.value(QStringLiteral("announce")).toString();
+
+            host = QUrl(announce).host();
+        }
+
+        addTrackerHost(host);
+    }
+
+    std::sort(trackerHosts.begin(), trackerHosts.end());
+
+    if (!trackerHosts.isEmpty())
+        primaryTrackerHost = trackerHosts.first();
 
     std::sort(trackerHosts.begin(), trackerHosts.end());
 

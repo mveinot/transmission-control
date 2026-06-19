@@ -174,7 +174,7 @@ bool TorrentSortProxyModel::matchesStateFilter(int sourceRow,
 
     case StateFilter::Downloading:
         return status == QStringLiteral("Downloading")
-               || status == QStringLiteral("Waiting to Download");
+               || status == QStringLiteral("Queued");
 
     case StateFilter::Completed: {
         const QModelIndex percentIndex =
@@ -187,6 +187,12 @@ bool TorrentSortProxyModel::matchesStateFilter(int sourceRow,
     }
 
     case StateFilter::Active: {
+        if (status == QStringLiteral("Downloading")
+            || status == QStringLiteral("Seeding")
+            || status == QStringLiteral("Queued")) {
+            return true;
+        }
+
         const QModelIndex downIndex =
             model->index(sourceRow, TorrentModel::RateDownloadColumn, sourceParent);
 
@@ -194,22 +200,21 @@ bool TorrentSortProxyModel::matchesStateFilter(int sourceRow,
             model->index(sourceRow, TorrentModel::RateUploadColumn, sourceParent);
 
         const double downRate =
-            model->data(downIndex, Qt::UserRole + 1).toDouble();
+            model->data(downIndex, TorrentModel::SortRole).toDouble();
 
         const double upRate =
-            model->data(upIndex, Qt::UserRole + 1).toDouble();
+            model->data(upIndex, TorrentModel::SortRole).toDouble();
 
         return downRate > 0.0 || upRate > 0.0;
     }
 
     case StateFilter::Inactive:
-        return status == QStringLiteral("Stopped")
-               || status == QStringLiteral("Finished")
-               || status == QStringLiteral("Waiting to Download")
+        return status == QStringLiteral("Paused")
+               || status == QStringLiteral("Waiting to Verify")
                || status == QStringLiteral("Waiting to Seed");
 
     case StateFilter::Stopped:
-        return status == QStringLiteral("Stopped");
+        return status == QStringLiteral("Paused");
 
     case StateFilter::Error:
         return status.contains(QStringLiteral("Error"), Qt::CaseInsensitive);

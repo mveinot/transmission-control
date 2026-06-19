@@ -39,6 +39,7 @@
 #include "sessionsettingsdialog.h"
 #include "settingskeys.h"
 #include "torrentaddcontroller.h"
+#include "watchfoldermanager.h"
 
 namespace {
 constexpr int DefaultUpdateIntervalSeconds = 10;
@@ -134,6 +135,9 @@ MainWindow::MainWindow(QWidget *parent)
             this, [this](const QString &message) {
                 statusBar()->showMessage(message, 5000);
             });
+
+    setupWatchFolderManager();
+    loadWatchFolderSettings();
 
     this->aboutAction = new QAction(0);
     this->aboutAction->setMenuRole(QAction::AboutRole);
@@ -311,44 +315,7 @@ MainWindow::MainWindow(QWidget *parent)
             this, &MainWindow::showSessionSettings);
 
     connect(ui->actionServer_Setup, &QAction::triggered, this, &MainWindow::onServerSetupTriggered);
-/*
-    connect(ui->listWidget, &QListWidget::currentRowChanged,
-            this, [this](int row) {
-                switch (row) {
-                case 0:
-                    setTorrentStateFilter(TorrentSortProxyModel::StateFilter::All);
-                    break;
 
-                case 1:
-                    setTorrentStateFilter(TorrentSortProxyModel::StateFilter::Downloading);
-                    break;
-
-                case 2:
-                    setTorrentStateFilter(TorrentSortProxyModel::StateFilter::Completed);
-                    break;
-
-                case 3:
-                    setTorrentStateFilter(TorrentSortProxyModel::StateFilter::Active);
-                    break;
-
-                case 4:
-                    setTorrentStateFilter(TorrentSortProxyModel::StateFilter::Inactive);
-                    break;
-
-                case 5:
-                    setTorrentStateFilter(TorrentSortProxyModel::StateFilter::Stopped);
-                    break;
-
-                case 6:
-                    setTorrentStateFilter(TorrentSortProxyModel::StateFilter::Error);
-                    break;
-
-                default:
-                    setTorrentStateFilter(TorrentSortProxyModel::StateFilter::All);
-                    break;
-                }
-            });
-*/
     connect(ui->listWidget, &QListWidget::currentItemChanged,
             this, [this](QListWidgetItem *current, QListWidgetItem *) {
                 if (!current)
@@ -689,37 +656,37 @@ void MainWindow::setTorrentStateFilter(TorrentSortProxyModel::StateFilter filter
     switch (filter) {
     case TorrentSortProxyModel::StateFilter::All:
         ui->actionAll->setChecked(true);
-        ui->listWidget->setCurrentRow(0);
+        ui->listWidget->setCurrentRow(1);
         break;
 
     case TorrentSortProxyModel::StateFilter::Downloading:
         ui->actionDownloading->setChecked(true);
-        ui->listWidget->setCurrentRow(1);
+        ui->listWidget->setCurrentRow(2);
         break;
 
     case TorrentSortProxyModel::StateFilter::Completed:
         ui->actionCompleted->setChecked(true);
-        ui->listWidget->setCurrentRow(2);
+        ui->listWidget->setCurrentRow(3);
         break;
 
     case TorrentSortProxyModel::StateFilter::Active:
         ui->actionActive->setChecked(true);
-        ui->listWidget->setCurrentRow(3);
+        ui->listWidget->setCurrentRow(4);
         break;
 
     case TorrentSortProxyModel::StateFilter::Inactive:
         ui->actionInactive->setChecked(true);
-        ui->listWidget->setCurrentRow(4);
+        ui->listWidget->setCurrentRow(5);
         break;
 
     case TorrentSortProxyModel::StateFilter::Stopped:
         ui->actionStopped->setChecked(true);
-        ui->listWidget->setCurrentRow(5);
+        ui->listWidget->setCurrentRow(6);
         break;
 
     case TorrentSortProxyModel::StateFilter::Error:
         ui->actionError->setChecked(true);
-        ui->listWidget->setCurrentRow(6);
+        ui->listWidget->setCurrentRow(7);
         break;
     }
 }
@@ -1033,28 +1000,6 @@ void MainWindow::addTorrentFromFile()
 
     torrentAddController->addTorrentFile(fileName);
 }
-/*
-{
-    const QString filePath = QFileDialog::getOpenFileName(
-        this,
-        "Add Torrent File",
-        QString(),
-        "Torrent Files (*.torrent);;All Files (*)"
-        );
-
-    if (filePath.isEmpty())
-        return;
-
-    QSettings settings;
-
-    const bool deleteTorrentOnAdd =
-        settings.value(SettingsKeys::DeleteTorrentOnAdd, false).toBool();
-
-    client->addTorrentFromFile(filePath, deleteTorrentOnAdd);
-
-    statusBar()->showMessage("Adding torrent...", 3000);
-}
-*/
 
 void MainWindow::addTorrentFromMagnet()
 {
@@ -1074,65 +1019,6 @@ void MainWindow::addTorrentFromMagnet()
 
     torrentAddController->addMagnetLink(magnetLink);
 }
-/*
-{
-    QDialog dialog(this);
-    dialog.setWindowTitle("Add Torrent from Magnet Link");
-    dialog.resize(720, 120);
-
-    auto *layout = new QVBoxLayout(&dialog);
-
-    auto *formLayout = new QFormLayout();
-    auto *magnetEdit = new QLineEdit(&dialog);
-
-    magnetEdit->setPlaceholderText("magnet:?xt=urn:btih:...");
-    magnetEdit->setMinimumWidth(640);
-    magnetEdit->setClearButtonEnabled(true);
-
-    formLayout->addRow("Magnet link:", magnetEdit);
-    layout->addLayout(formLayout);
-
-    auto *buttons = new QDialogButtonBox(
-        QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
-        &dialog
-        );
-
-    layout->addWidget(buttons);
-
-    connect(buttons, &QDialogButtonBox::accepted,
-            &dialog, &QDialog::accept);
-
-    connect(buttons, &QDialogButtonBox::rejected,
-            &dialog, &QDialog::reject);
-
-    if (dialog.exec() != QDialog::Accepted)
-        return;
-
-    const QString magnetLink = magnetEdit->text().trimmed();
-
-    if (magnetLink.isEmpty()) {
-        QMessageBox::information(
-            this,
-            "Add Torrent from Magnet Link",
-            "No magnet link was entered."
-            );
-        return;
-    }
-
-    if (!magnetLink.startsWith("magnet:", Qt::CaseInsensitive)) {
-        QMessageBox::warning(
-            this,
-            "Add Torrent from Magnet Link",
-            "That does not look like a magnet link."
-            );
-        return;
-    }
-
-    client->addTorrentFromMagnet(magnetLink);
-
-    statusBar()->showMessage("Adding torrent...", 3000);
-}
-*/
 
 void MainWindow::on_actionStart_Torrent_triggered()
 {
@@ -1418,9 +1304,12 @@ void MainWindow::on_actionSettings_triggered()
 {
     AppSettings dialog(this);
 
-    if (dialog.exec() == QDialog::Accepted) {
-        applyAppSettings();
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
     }
+
+    applyAppSettings();
+    loadWatchFolderSettings();
 }
 
 QList<int> MainWindow::selectedTorrentIds() const
@@ -2064,7 +1953,8 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     remoteDownloadDir =
         sessionSettings.value(QStringLiteral("download-dir")).toString();
 
-    torrentAddController->setDefaultDownloadDir(remoteDownloadDir);
+    if (torrentAddController)
+        torrentAddController->setDefaultDownloadDir(remoteDownloadDir);
 
     if (!remoteDownloadDir.isEmpty())
         client->getFreeSpace(remoteDownloadDir);
@@ -2095,6 +1985,9 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     if (changes.contains(QStringLiteral("download-dir"))) {
         remoteDownloadDir =
             changes.value(QStringLiteral("download-dir")).toString();
+
+        if (torrentAddController)
+            torrentAddController->setDefaultDownloadDir(remoteDownloadDir);
 
         if (!remoteDownloadDir.isEmpty())
             client->getFreeSpace(remoteDownloadDir);
@@ -2209,7 +2102,7 @@ void MainWindow::rebuildTorrentFilterList(const QVector<torrent> &torrents)
         }
     }
 
-    ui->listWidget->setCurrentRow(0);
+    ui->listWidget->setCurrentRow(1);
 }
 
 void MainWindow::addStatusFilterItems()
@@ -2261,4 +2154,62 @@ void MainWindow::addTrackerFilterItems(const QStringList &trackerHosts)
         item->setData(FilterValueRole, trackerHost);
         ui->listWidget->addItem(item);
     }
+}
+
+void MainWindow::setupWatchFolderManager()
+{
+    watchFolderManager = new WatchFolderManager(this);
+
+    connect(watchFolderManager, &WatchFolderManager::torrentFileReady,
+            torrentAddController, &TorrentAddController::addTorrentFileUsingDefaults);
+
+    connect(watchFolderManager, &WatchFolderManager::statusMessage,
+            this, [this](const QString &message) {
+                statusBar()->showMessage(message, 3000);
+            });
+
+    connect(watchFolderManager, &WatchFolderManager::warningMessage,
+            this, [this](const QString &message) {
+                statusBar()->showMessage(message, 5000);
+            });
+
+    connect(watchFolderManager, &WatchFolderManager::torrentFileReady,
+            this, [this](const QString &) {
+                /*
+                 * The controller emits addStarted too, but keeping this here
+                 * makes the watch folder behavior obvious and resilient.
+                 */
+                QTimer::singleShot(1000, this, [this]() {
+                    client->getTorrentList();
+                });
+            });
+}
+
+void MainWindow::loadWatchFolderSettings()
+{
+    if (!watchFolderManager)
+        return;
+
+    QSettings settings;
+
+    const bool enabled =
+        settings.value(QString::fromLatin1(SettingsKeys::WatchFolderEnabled),
+                       false).toBool();
+
+    const QString folderPath =
+        settings.value(QString::fromLatin1(SettingsKeys::WatchFolderPath))
+            .toString();
+
+    const int scanIntervalMs =
+        settings.value(QString::fromLatin1(SettingsKeys::WatchFolderScanIntervalMs),
+                       1000).toInt();
+
+    const int stableChecks =
+        settings.value(QString::fromLatin1(SettingsKeys::WatchFolderStableChecks),
+                       2).toInt();
+
+    watchFolderManager->setScanIntervalMs(scanIntervalMs);
+    watchFolderManager->setRequiredStableChecks(stableChecks);
+    watchFolderManager->setWatchFolder(folderPath);
+    watchFolderManager->setEnabled(enabled);
 }

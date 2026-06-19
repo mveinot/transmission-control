@@ -23,6 +23,7 @@ public:
 public slots:
     void addTorrentFile(const QString &filePath);
     void addMagnetLink(const QString &magnetLink);
+    void addTorrentFileUsingDefaults(const QString &filePath);
 
 signals:
     void addStarted();

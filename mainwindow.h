@@ -26,6 +26,8 @@ namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
 class TorrentAddController;
+class WatchFolderManager;
+class TorrentAddController;
 
 class MainWindow : public QMainWindow
 {
@@ -77,6 +79,7 @@ private:
     rpc_client *client = nullptr;
     TorrentSortProxyModel *proxy = nullptr;
     GeoIpService *geoIpService = nullptr;
+    WatchFolderManager *watchFolderManager = nullptr;
     enum FileTreeColumn {
         FileNameColumn = 0,
         FileWantedColumn,
@@ -157,6 +160,8 @@ private:
 
     void updateConnectionStatus(int torrentCount);
     QString formatBytes(qint64 bytes) const;
+    void setupWatchFolderManager();
+    void loadWatchFolderSettings();
 
     enum class TorrentFilterItemType {
         Status,
