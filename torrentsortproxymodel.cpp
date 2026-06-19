@@ -13,14 +13,8 @@ void TorrentSortProxyModel::setStateFilter(StateFilter filter)
     if (m_stateFilter == filter)
         return;
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
-    beginFilterChange();
     m_stateFilter = filter;
-    endFilterChange(QSortFilterProxyModel::Direction::Rows);
-#else
-    m_stateFilter = filter;
-    invalidateFilter();
-#endif
+    refreshFilter();
 }
 
 TorrentSortProxyModel::StateFilter TorrentSortProxyModel::stateFilter() const
@@ -56,6 +50,11 @@ bool TorrentSortProxyModel::lessThan(const QModelIndex &left, const QModelIndex 
 
 bool TorrentSortProxyModel::filterAcceptsRow(int sourceRow,
                                              const QModelIndex &sourceParent) const
+{
+    return matchesStateFilter(sourceRow, sourceParent)
+    && matchesSearchFilter(sourceRow, sourceParent);
+}
+/*
 {
     if (m_stateFilter == StateFilter::All)
         return true;
@@ -99,6 +98,120 @@ bool TorrentSortProxyModel::filterAcceptsRow(int sourceRow,
     case StateFilter::Error:
         // Not currently supported by your model/request.
         return false;
+    }
+
+    return true;
+}
+*/
+
+void TorrentSortProxyModel::refreshFilter()
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
+    beginFilterChange();
+    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+#else
+    invalidateFilter();
+#endif
+}
+
+void TorrentSortProxyModel::setSearchText(const QString &searchText)
+{
+    const QString normalized = searchText.trimmed();
+
+    if (m_searchText == normalized)
+        return;
+
+    m_searchText = normalized;
+    refreshFilter();
+}
+
+QString TorrentSortProxyModel::searchText() const
+{
+    return m_searchText;
+}
+
+bool TorrentSortProxyModel::matchesSearchFilter(int sourceRow,
+                                                const QModelIndex &sourceParent) const
+{
+    if (m_searchText.isEmpty())
+        return true;
+
+    const QAbstractItemModel *model = sourceModel();
+
+    if (!model)
+        return true;
+
+    const QModelIndex nameIndex =
+        model->index(sourceRow, TorrentModel::NameColumn, sourceParent);
+
+    const QString name =
+        model->data(nameIndex, Qt::DisplayRole).toString();
+
+    return name.contains(m_searchText, Qt::CaseInsensitive);
+}
+
+bool TorrentSortProxyModel::matchesStateFilter(int sourceRow,
+                                               const QModelIndex &sourceParent) const
+{
+    if (m_stateFilter == StateFilter::All)
+        return true;
+
+    const QAbstractItemModel *model = sourceModel();
+
+    if (!model)
+        return true;
+
+    const QModelIndex statusIndex =
+        model->index(sourceRow, TorrentModel::StatusColumn, sourceParent);
+
+    const QString status =
+        model->data(statusIndex, Qt::DisplayRole).toString();
+
+    switch (m_stateFilter) {
+    case StateFilter::All:
+        return true;
+
+    case StateFilter::Downloading:
+        return status == QStringLiteral("Downloading")
+               || status == QStringLiteral("Waiting to Download");
+
+    case StateFilter::Completed: {
+        const QModelIndex percentIndex =
+            model->index(sourceRow, TorrentModel::PercentDoneColumn, sourceParent);
+
+        const double percentDone =
+            model->data(percentIndex, Qt::UserRole + 1).toDouble();
+
+        return percentDone >= 100.0;
+    }
+
+    case StateFilter::Active: {
+        const QModelIndex downIndex =
+            model->index(sourceRow, TorrentModel::RateDownloadColumn, sourceParent);
+
+        const QModelIndex upIndex =
+            model->index(sourceRow, TorrentModel::RateUploadColumn, sourceParent);
+
+        const double downRate =
+            model->data(downIndex, Qt::UserRole + 1).toDouble();
+
+        const double upRate =
+            model->data(upIndex, Qt::UserRole + 1).toDouble();
+
+        return downRate > 0.0 || upRate > 0.0;
+    }
+
+    case StateFilter::Inactive:
+        return status == QStringLiteral("Stopped")
+               || status == QStringLiteral("Finished")
+               || status == QStringLiteral("Waiting to Download")
+               || status == QStringLiteral("Waiting to Seed");
+
+    case StateFilter::Stopped:
+        return status == QStringLiteral("Stopped");
+
+    case StateFilter::Error:
+        return status.contains(QStringLiteral("Error"), Qt::CaseInsensitive);
     }
 
     return true;

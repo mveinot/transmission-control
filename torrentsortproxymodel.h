@@ -23,12 +23,24 @@ public:
     void setStateFilter(StateFilter filter);
     StateFilter stateFilter() const;
 
+    void setSearchText(const QString &searchText);
+    QString searchText() const;
+
 protected:
     bool lessThan(const QModelIndex &left, const QModelIndex &right) const override;
     bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override;
 
 private:
     StateFilter m_stateFilter = StateFilter::All;
+    QString m_searchText;
+
+    bool matchesSearchFilter(int sourceRow,
+                             const QModelIndex &sourceParent) const;
+
+    bool matchesStateFilter(int sourceRow,
+                            const QModelIndex &sourceParent) const;
+
+    void refreshFilter();
 };
 
 #endif // TORRENTSORTPROXYMODEL_H

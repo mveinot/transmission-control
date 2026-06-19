@@ -296,6 +296,9 @@ MainWindow::MainWindow(QWidget *parent)
         setTorrentStateFilter(TorrentSortProxyModel::StateFilter::Error);
     });
 
+    connect(ui->editTorrentFilter, &QLineEdit::textChanged,
+            proxy, &TorrentSortProxyModel::setSearchText);
+
     connect(client, &rpc_client::sessionSettingsReceived,
             this, &MainWindow::handleSessionSettingsReceived);
 
