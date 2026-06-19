@@ -139,8 +139,10 @@ MainWindow::MainWindow(QWidget *parent)
                 statusBar()->showMessage(message, 5000);
             });
 
-    setupWatchFolderManager();
-    loadWatchFolderSettings();
+    connect(torrentAddController, &TorrentAddController::addCancelled,
+            this, [this]() {
+                statusBar()->showMessage(QStringLiteral("Torrent add cancelled."), 3000);
+            });
 
     this->aboutAction = new QAction(0);
     this->aboutAction->setMenuRole(QAction::AboutRole);
@@ -148,6 +150,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     setupConnectionStatusIndicator();
+    setupWatchFolderManager();
+    loadWatchFolderSettings();
 
     auto *stateGroup = new QActionGroup(this);
     stateGroup->setExclusive(true);

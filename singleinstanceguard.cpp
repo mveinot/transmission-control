@@ -148,23 +148,34 @@ void SingleInstanceGuard::handleNewConnection()
                 emit openRequested(arguments);
         };
 
-        connect(socket, &QLocalSocket::readyRead, this, [socket, processMessage]() {
-            processMessage(socket->readAll());
+        auto handleSocketMessage = [this, socket, processMessage]() {
+            const QByteArray message = socket->readAll();
+
+            /*
+             * Important: disconnect the socket before processing the message.
+             * Processing can emit openRequested(), which may open a modal dialog.
+             * That nested event loop can delete the socket before this lambda
+             * resumes. Desktop GUI programming: apparently still a haunted attic.
+             */
             socket->disconnectFromServer();
-        });
+
+            QTimer::singleShot(0, this, [processMessage, message]() {
+                processMessage(message);
+            });
+        };
+
+        connect(socket, &QLocalSocket::readyRead,
+                this, handleSocketMessage);
 
         connect(socket, &QLocalSocket::disconnected,
                 socket, &QLocalSocket::deleteLater);
 
         /*
          * In case the message is already available before readyRead fires.
-         * Because event timing enjoys being adorable.
          */
-        QTimer::singleShot(0, socket, [socket, processMessage]() {
-            if (socket->bytesAvailable() > 0) {
-                processMessage(socket->readAll());
-                socket->disconnectFromServer();
-            }
+        QTimer::singleShot(0, socket, [socket, handleSocketMessage]() {
+            if (socket->bytesAvailable() > 0)
+                handleSocketMessage();
         });
     }
 }

@@ -5,6 +5,7 @@
 #include <QApplication>
 #include <QLocale>
 #include <QTranslator>
+#include <QTimer>
 
 int main(int argc, char *argv[])
 {
@@ -50,7 +51,12 @@ int main(int argc, char *argv[])
                      &w, &MainWindow::handleLaunchArguments);
 
     w.show();
-    w.handleLaunchArguments(launchArguments);
+
+    if (!launchArguments.isEmpty()) {
+        QTimer::singleShot(0, &w, [&w, launchArguments]() {
+            w.handleLaunchArguments(launchArguments);
+        });
+    }
 
     return a.exec();
 }
