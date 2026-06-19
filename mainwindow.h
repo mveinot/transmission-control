@@ -36,16 +36,18 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-    void showAbout();
-    void loadServerCombo();
-    void saveSelectedServerFromCombo();
+
     QSystemTrayIcon *trayIcon = nullptr;
     QMenu *trayMenu = nullptr;
     bool reallyQuit = false;
 
+    void showAbout();
+    void loadServerCombo();
+    void saveSelectedServerFromCombo();
     void setupTrayIcon();
     void showMainWindow();
     void quitApplication();
+    void handleLaunchArguments(const QStringList &arguments);
 
 public slots:
     void bringToFront();
@@ -175,5 +177,6 @@ private:
 protected:
     void closeEvent(QCloseEvent *event) override;
     void changeEvent(QEvent *event) override;
+    bool event(QEvent *event) override;
 };
 #endif // MAINWINDOW_H

@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
 
 class QLocalServer;
 
@@ -16,9 +17,11 @@ public:
 
     bool tryStartPrimaryInstance();
     bool notifyPrimaryInstance(const QString &message = QStringLiteral("activate"));
+    bool notifyPrimaryInstance(const QStringList &arguments);
 
 signals:
     void activationRequested();
+    void openRequested(const QStringList &arguments);
 
 private:
     QString serverName;

@@ -33,8 +33,11 @@ int main(int argc, char *argv[])
 
     SingleInstanceGuard instanceGuard(instanceServerName);
 
+    const QStringList launchArguments =
+        QCoreApplication::arguments().mid(1);
+
     if (!instanceGuard.tryStartPrimaryInstance()) {
-        instanceGuard.notifyPrimaryInstance();
+        instanceGuard.notifyPrimaryInstance(launchArguments);
         return 0;
     }
 
@@ -43,7 +46,11 @@ int main(int argc, char *argv[])
     QObject::connect(&instanceGuard, &SingleInstanceGuard::activationRequested,
                      &w, &MainWindow::bringToFront);
 
+    QObject::connect(&instanceGuard, &SingleInstanceGuard::openRequested,
+                     &w, &MainWindow::handleLaunchArguments);
+
     w.show();
+    w.handleLaunchArguments(launchArguments);
 
     return a.exec();
 }

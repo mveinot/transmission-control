@@ -13,6 +13,8 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QFileDialog>
+#include <QFileInfo>
+#include <QFileOpenEvent>
 #include <QMenu>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -28,6 +30,7 @@
 #include <QEvent>
 #include <QIcon>
 #include <QUrl>
+#include <QFileOpenEvent>
 #include <functional>
 #include <algorithm>
 #include "rpc_client.h"
@@ -937,6 +940,9 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
     QAction *moveBottomAction =
         queueMenu->addAction(QStringLiteral("Move to Bottom"));
 
+    menu.addSeparator();
+    menu.addAction(ui->actionDelete_Torrent);
+
     connect(moveTopAction, &QAction::triggered,
             this, &MainWindow::queueMoveSelectedTop);
 
@@ -984,6 +990,55 @@ void MainWindow::stopSelectedTorrent()
         QString("Stopping %1 torrent(s)...").arg(ids.size()),
         3000
         );
+}
+
+void MainWindow::handleLaunchArguments(const QStringList &arguments)
+{
+    if (arguments.isEmpty()) {
+        bringToFront();
+        return;
+    }
+
+    if (!torrentAddController)
+        return;
+
+    bool handledAny = false;
+
+    for (const QString &argument : arguments) {
+        const QString trimmed = argument.trimmed();
+
+        if (trimmed.isEmpty())
+            continue;
+
+        if (trimmed.startsWith(QStringLiteral("magnet:"), Qt::CaseInsensitive)) {
+            torrentAddController->addMagnetLink(trimmed);
+            handledAny = true;
+            continue;
+        }
+
+        const QUrl url(trimmed);
+
+        if (url.isValid()
+            && url.scheme().compare(QStringLiteral("magnet"), Qt::CaseInsensitive) == 0) {
+            torrentAddController->addMagnetLink(url.toString());
+            handledAny = true;
+            continue;
+        }
+
+        const QFileInfo fileInfo(trimmed);
+
+        if (fileInfo.exists()
+            && fileInfo.isFile()
+            && fileInfo.suffix().compare(QStringLiteral("torrent"),
+                                         Qt::CaseInsensitive) == 0) {
+            torrentAddController->addTorrentFile(fileInfo.absoluteFilePath());
+            handledAny = true;
+            continue;
+        }
+    }
+
+    if (handledAny)
+        bringToFront();
 }
 
 void MainWindow::addTorrentFromFile()
@@ -1554,6 +1609,30 @@ void MainWindow::bringToFront()
     showNormal();
     raise();
     activateWindow();
+}
+
+bool MainWindow::event(QEvent *event)
+{
+    if (event->type() == QEvent::FileOpen) {
+        auto *fileOpenEvent = static_cast<QFileOpenEvent *>(event);
+
+        const QUrl url = fileOpenEvent->url();
+
+        if (url.isValid()
+            && url.scheme().compare(QStringLiteral("magnet"), Qt::CaseInsensitive) == 0) {
+            handleLaunchArguments(QStringList { url.toString() });
+            return true;
+        }
+
+        const QString filePath = fileOpenEvent->file();
+
+        if (!filePath.isEmpty()) {
+            handleLaunchArguments(QStringList { filePath });
+            return true;
+        }
+    }
+
+    return QMainWindow::event(event);
 }
 
 bool MainWindow::trayIconEnabled() const

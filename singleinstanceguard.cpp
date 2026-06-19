@@ -4,6 +4,9 @@
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QTimer>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 SingleInstanceGuard::SingleInstanceGuard(const QString &serverName, QObject *parent)
     : QObject(parent)
@@ -69,16 +72,85 @@ bool SingleInstanceGuard::notifyPrimaryInstance(const QString &message)
     return true;
 }
 
+bool SingleInstanceGuard::notifyPrimaryInstance(const QStringList &arguments)
+{
+    if (arguments.isEmpty())
+        return notifyPrimaryInstance();
+
+    QJsonArray argumentsArray;
+
+    for (const QString &argument : arguments)
+        argumentsArray.append(argument);
+
+    QJsonObject message;
+    message.insert(QStringLiteral("type"), QStringLiteral("open"));
+    message.insert(QStringLiteral("arguments"), argumentsArray);
+
+    const QByteArray payload = QJsonDocument(message).toJson(QJsonDocument::Compact);
+
+    QLocalSocket socket;
+    socket.connectToServer(serverName, QIODevice::WriteOnly);
+
+    if (!socket.waitForConnected(500))
+        return false;
+
+    socket.write(payload);
+    socket.flush();
+    socket.waitForBytesWritten(500);
+    socket.disconnectFromServer();
+
+    return true;
+}
+
 void SingleInstanceGuard::handleNewConnection()
 {
     while (server && server->hasPendingConnections()) {
         QLocalSocket *socket = server->nextPendingConnection();
 
-        connect(socket, &QLocalSocket::readyRead, this, [this, socket]() {
-            const QByteArray message = socket->readAll();
+        auto processMessage = [this](const QByteArray &message) {
+            const QByteArray trimmedMessage = message.trimmed();
 
-            if (message.trimmed() == "activate")
+            if (trimmedMessage.isEmpty())
+                return;
+
+            if (trimmedMessage == "activate") {
                 emit activationRequested();
+                return;
+            }
+
+            const QJsonDocument document = QJsonDocument::fromJson(trimmedMessage);
+
+            if (!document.isObject())
+                return;
+
+            const QJsonObject object = document.object();
+            const QString type = object.value(QStringLiteral("type")).toString();
+
+            if (type != QStringLiteral("open"))
+                return;
+
+            const QJsonArray argumentsArray =
+                object.value(QStringLiteral("arguments")).toArray();
+
+            QStringList arguments;
+            arguments.reserve(argumentsArray.size());
+
+            for (const QJsonValue &value : argumentsArray) {
+                const QString argument = value.toString().trimmed();
+
+                if (!argument.isEmpty())
+                    arguments.append(argument);
+            }
+
+            if (arguments.isEmpty())
+                emit activationRequested();
+            else
+                emit openRequested(arguments);
+        };
+
+        connect(socket, &QLocalSocket::readyRead, this, [socket, processMessage]() {
+            processMessage(socket->readAll());
+            socket->disconnectFromServer();
         });
 
         connect(socket, &QLocalSocket::disconnected,
@@ -88,15 +160,11 @@ void SingleInstanceGuard::handleNewConnection()
          * In case the message is already available before readyRead fires.
          * Because event timing enjoys being adorable.
          */
-        QTimer::singleShot(0, socket, [this, socket]() {
+        QTimer::singleShot(0, socket, [socket, processMessage]() {
             if (socket->bytesAvailable() > 0) {
-                const QByteArray message = socket->readAll();
-
-                if (message.trimmed() == "activate")
-                    emit activationRequested();
+                processMessage(socket->readAll());
+                socket->disconnectFromServer();
             }
-
-            socket->disconnectFromServer();
         });
     }
 }

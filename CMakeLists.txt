@@ -84,6 +84,18 @@ configure_file(
     @ONLY
 )
 
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
+    @ONLY
+)
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
+    @ONLY
+)
+
 file(WRITE
     "${CMAKE_CURRENT_BINARY_DIR}/planetary-version.txt"
     "${PLANETARY_VERSION_FULL}\n"
@@ -118,24 +130,12 @@ target_include_directories(Planetary PRIVATE
     "${CMAKE_CURRENT_BINARY_DIR}/generated"
 )
 
-#find_library(MAXMINDDB_LIBRARY maxminddb)
-#find_path(MAXMINDDB_INCLUDE_DIR maxminddb.h)
-
-#if(NOT MAXMINDDB_LIBRARY OR NOT MAXMINDDB_INCLUDE_DIR)
-#    message(WARNING "libmaxminddb not found; GeoIP MMDB lookup will not build")
-#else()
-#    message(STATUS "Found libmaxminddb: ${MAXMINDDB_LIBRARY}")
-#    message(STATUS "Found maxminddb.h: ${MAXMINDDB_INCLUDE_DIR}")
-#endif()
+set_target_properties(Planetary PROPERTIES
+    MACOSX_BUNDLE TRUE
+    MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
+)
 
 find_program(IWYU_PATH NAMES include-what-you-use iwyu)
-
-#if(IWYU_PATH)
-#    set_property(TARGET Planetary PROPERTY
-#        CXX_INCLUDE_WHAT_YOU_USE
-#        "${IWYU_PATH};-Xiwyu;--no_comments"
-#    )
-#endif()
 
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET transmission-control APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
@@ -230,6 +230,7 @@ set_target_properties(Planetary PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
+    MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
     WIN32_EXECUTABLE TRUE
 )
 
