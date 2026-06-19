@@ -52,7 +52,8 @@ bool TorrentSortProxyModel::filterAcceptsRow(int sourceRow,
                                              const QModelIndex &sourceParent) const
 {
     return matchesStateFilter(sourceRow, sourceParent)
-    && matchesSearchFilter(sourceRow, sourceParent);
+    && matchesSearchFilter(sourceRow, sourceParent)
+        && matchesTrackerFilter(sourceRow, sourceParent);
 }
 /*
 {
@@ -215,4 +216,45 @@ bool TorrentSortProxyModel::matchesStateFilter(int sourceRow,
     }
 
     return true;
+}
+
+void TorrentSortProxyModel::setTrackerFilter(const QString &trackerHost)
+{
+    const QString normalized = trackerHost.trimmed().toLower();
+
+    if (m_trackerFilter == normalized)
+        return;
+
+    m_trackerFilter = normalized;
+    refreshFilter();
+}
+
+QString TorrentSortProxyModel::trackerFilter() const
+{
+    return m_trackerFilter;
+}
+
+bool TorrentSortProxyModel::matchesTrackerFilter(int sourceRow,
+                                                 const QModelIndex &sourceParent) const
+{
+    if (m_trackerFilter.isEmpty())
+        return true;
+
+    const QAbstractItemModel *model = sourceModel();
+
+    if (!model)
+        return true;
+
+    const QModelIndex nameIndex =
+        model->index(sourceRow, TorrentModel::NameColumn, sourceParent);
+
+    const QStringList trackerHosts =
+        model->data(nameIndex, TorrentModel::TrackerHostsRole).toStringList();
+
+    for (const QString &trackerHost : trackerHosts) {
+        if (trackerHost.compare(m_trackerFilter, Qt::CaseInsensitive) == 0)
+            return true;
+    }
+
+    return false;
 }

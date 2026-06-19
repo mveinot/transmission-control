@@ -16,6 +16,41 @@ torrent::torrent(const QJsonValue &val)
     peers = obj.value("peers");
     sizeWhenDone = obj.value("sizeWhenDone").toDouble();
     queuePosition = obj.value("queuePosition").toInt();
+
+    trackerHosts.clear();
+    primaryTrackerHost.clear();
+
+    const QJsonArray trackersArray =
+        obj.value(QStringLiteral("trackers")).toArray();
+
+    QSet<QString> uniqueHosts;
+
+    for (const QJsonValue &trackerValue : trackersArray) {
+        const QJsonObject trackerObject = trackerValue.toObject();
+
+        QString announce =
+            trackerObject.value(QStringLiteral("announce")).toString();
+
+        if (announce.isEmpty()) {
+            announce =
+                trackerObject.value(QStringLiteral("scrape")).toString();
+        }
+
+        QString host = QUrl(announce).host().toLower();
+
+        if (host.isEmpty())
+            continue;
+
+        if (!uniqueHosts.contains(host)) {
+            uniqueHosts.insert(host);
+            trackerHosts.append(host);
+        }
+    }
+
+    std::sort(trackerHosts.begin(), trackerHosts.end());
+
+    if (!trackerHosts.isEmpty())
+        primaryTrackerHost = trackerHosts.first();
 }
 
 torrent::Status torrent::statusFromInt(int value)
@@ -156,5 +191,17 @@ bool torrent::sameDisplayData(const torrent &other) const
            && status == other.status
            && eta == other.eta
            && sizeWhenDone == other.sizeWhenDone
-           && queuePosition == other.queuePosition;
+           && queuePosition == other.queuePosition
+           && primaryTrackerHost == other.primaryTrackerHost
+           && trackerHosts == other.trackerHosts;
+}
+
+QString torrent::getPrimaryTrackerHost() const
+{
+    return primaryTrackerHost;
+}
+
+QStringList torrent::getTrackerHosts() const
+{
+    return trackerHosts;
 }

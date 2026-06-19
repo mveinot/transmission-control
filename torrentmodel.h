@@ -27,6 +27,12 @@ public:
         ColumnCount
     };
 
+    enum Roles {
+        SortRole = Qt::UserRole + 1,
+        TrackerHostsRole,
+        PrimaryTrackerHostRole
+    };
+
     explicit TorrentModel(QObject *parent = nullptr);
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;

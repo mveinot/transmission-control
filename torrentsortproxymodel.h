@@ -26,6 +26,9 @@ public:
     void setSearchText(const QString &searchText);
     QString searchText() const;
 
+    void setTrackerFilter(const QString &trackerHost);
+    QString trackerFilter() const;
+
 protected:
     bool lessThan(const QModelIndex &left, const QModelIndex &right) const override;
     bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override;
@@ -33,6 +36,10 @@ protected:
 private:
     StateFilter m_stateFilter = StateFilter::All;
     QString m_searchText;
+    QString m_trackerFilter;
+
+    bool matchesTrackerFilter(int sourceRow,
+                              const QModelIndex &sourceParent) const;
 
     bool matchesSearchFilter(int sourceRow,
                              const QModelIndex &sourceParent) const;

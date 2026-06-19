@@ -29,6 +29,12 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
 
     const torrent &t = torrentVector.at(index.row());
 
+    if (role == TrackerHostsRole)
+        return t.getTrackerHosts();
+
+    if (role == PrimaryTrackerHostRole)
+        return t.getPrimaryTrackerHost();
+
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
         case IdColumn:

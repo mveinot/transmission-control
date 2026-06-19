@@ -158,6 +158,15 @@ private:
     void updateConnectionStatus(int torrentCount);
     QString formatBytes(qint64 bytes) const;
 
+    enum class TorrentFilterItemType {
+        Status,
+        Tracker
+    };
+
+    void rebuildTorrentFilterList(const QVector<torrent> &torrents);
+    void addStatusFilterItems();
+    void addTrackerFilterItems(const QStringList &trackerHosts);
+
 protected:
     void closeEvent(QCloseEvent *event) override;
     void changeEvent(QEvent *event) override;

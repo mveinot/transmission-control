@@ -6,6 +6,8 @@
 #include <QJsonValue>
 #include <QLocale>
 #include <QJsonArray>
+#include <QSet>
+#include <QUrl>
 
 class torrent
 {
@@ -37,6 +39,8 @@ public:
     int getId() const;
     QJsonArray getFiles() const;
     QJsonArray getPeers() const;
+    QString getPrimaryTrackerHost() const;
+    QStringList getTrackerHosts() const;
 
 private:
     static Status statusFromInt(int value);
@@ -53,6 +57,8 @@ private:
     int eta = 0;
     double sizeWhenDone = 0.0;
     int queuePosition = 0;
+    QString primaryTrackerHost;
+    QStringList trackerHosts;
 
 signals:
 
