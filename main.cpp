@@ -44,6 +44,8 @@ int main(int argc, char *argv[])
 
     MainWindow w;
 
+    a.installEventFilter(&w);
+
     QObject::connect(&instanceGuard, &SingleInstanceGuard::activationRequested,
                      &w, &MainWindow::bringToFront);
 

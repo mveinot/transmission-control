@@ -2296,3 +2296,49 @@ void MainWindow::loadWatchFolderSettings()
     watchFolderManager->setWatchFolder(folderPath);
     watchFolderManager->setEnabled(enabled);
 }
+
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    Q_UNUSED(watched)
+
+    if (event->type() == QEvent::FileOpen) {
+        auto *fileOpenEvent = static_cast<QFileOpenEvent *>(event);
+
+        QStringList arguments;
+
+        const QUrl url = fileOpenEvent->url();
+
+        if (url.isValid() && !url.isEmpty()) {
+            if (url.scheme().compare(QStringLiteral("file"), Qt::CaseInsensitive) == 0) {
+                const QString localFile = url.toLocalFile();
+
+                if (!localFile.isEmpty())
+                    arguments.append(localFile);
+            } else {
+                arguments.append(url.toString());
+            }
+        }
+
+        if (arguments.isEmpty()) {
+            const QString filePath = fileOpenEvent->file();
+
+            if (!filePath.isEmpty())
+                arguments.append(filePath);
+        }
+
+        if (!arguments.isEmpty()) {
+            /*
+             * Defer opening the add dialog until after the current macOS
+             * open-file event unwinds. Qt modal dialogs during platform event
+             * delivery are how we get tiny crash goblins.
+             */
+            QTimer::singleShot(0, this, [this, arguments]() {
+                handleLaunchArguments(arguments);
+            });
+
+            return true;
+        }
+    }
+
+    return QMainWindow::eventFilter(watched, event);
+}
