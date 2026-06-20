@@ -36,11 +36,11 @@ void TorrentAddDialog::setSource(SourceType type, const QString &source)
 
     switch (type) {
     case SourceType::TorrentFile:
-        ui->labelSourceTypeValue->setText(QStringLiteral("Torrent file"));
+        ui->labelSourceTypeValue->setText(tr("Torrent file"));
         break;
 
     case SourceType::MagnetLink:
-        ui->labelSourceTypeValue->setText(QStringLiteral("Magnet link"));
+        ui->labelSourceTypeValue->setText(tr("Magnet link"));
         break;
     }
 

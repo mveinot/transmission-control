@@ -55,55 +55,6 @@ bool TorrentSortProxyModel::filterAcceptsRow(int sourceRow,
     && matchesSearchFilter(sourceRow, sourceParent)
         && matchesTrackerFilter(sourceRow, sourceParent);
 }
-/*
-{
-    if (m_stateFilter == StateFilter::All)
-        return true;
-
-    const QModelIndex statusIndex =
-        sourceModel()->index(sourceRow, TorrentModel::StatusColumn, sourceParent);
-
-    const QModelIndex percentIndex =
-        sourceModel()->index(sourceRow, TorrentModel::PercentDoneColumn, sourceParent);
-
-    const QString status =
-        sourceModel()->data(statusIndex, Qt::DisplayRole).toString();
-
-    const double percent =
-        sourceModel()->data(percentIndex, Qt::UserRole + 1).toDouble();
-
-    switch (m_stateFilter) {
-    case StateFilter::All:
-        return true;
-
-    case StateFilter::Downloading:
-        return status == "Downloading";
-
-    case StateFilter::Completed:
-        return percent >= 100.0;
-
-    case StateFilter::Active:
-        return status == "Downloading" ||
-               status == "Seeding" ||
-               status == "Verifying";
-
-    case StateFilter::Inactive:
-        return status == "Paused" ||
-               status == "Queued" ||
-               status == "Waiting to Verify" ||
-               status == "Waiting to Seed";
-
-    case StateFilter::Stopped:
-        return status == "Paused";
-
-    case StateFilter::Error:
-        // Not currently supported by your model/request.
-        return false;
-    }
-
-    return true;
-}
-*/
 
 void TorrentSortProxyModel::refreshFilter()
 {

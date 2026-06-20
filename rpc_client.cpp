@@ -76,7 +76,7 @@ void rpc_client::init()
 
     if (!loadCurrentServerFromSettings()) {
         qWarning() << "No valid Transmission server configured.";
-        emit updateFailed("No valid Transmission server configured.");
+        emit updateFailed(tr("No valid Transmission server configured."));
         return;
     }
 
@@ -111,7 +111,7 @@ void rpc_client::replyFinished(QNetworkReply *reply)
 
         if (token.isEmpty()) {
             if (isTorrentGet) {
-                emit updateFailed("Transmission returned 409 without a session token.");
+                emit updateFailed(tr("Transmission returned 409 without a session token."));
             }
 
             finishTorrentGet();
@@ -122,7 +122,7 @@ void rpc_client::replyFinished(QNetworkReply *reply)
 
         if (context.retriedAfterAuth) {
             if (isTorrentGet) {
-                emit updateFailed("Transmission session token retry failed.");
+                emit updateFailed(tr("Transmission session token retry failed."));
             }
 
             finishTorrentGet();
@@ -163,7 +163,7 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         qDebug() << "Invalid JSON response:" << parseError.errorString();
 
         if (isTorrentGet) {
-            emit updateFailed("Invalid JSON response from Transmission.");
+            emit updateFailed(tr("Invalid JSON response from Transmission."));
         }
 
         finishTorrentGet();
@@ -198,7 +198,7 @@ void rpc_client::replyFinished(QNetworkReply *reply)
     if (result != "success") {
         const QString message =
             result.isEmpty()
-                ? QStringLiteral("Transmission RPC call failed.")
+                ? tr("Transmission RPC call failed.")
                 : result;
 
         qDebug() << "Transmission RPC error:" << message;
@@ -238,7 +238,7 @@ void rpc_client::replyFinished(QNetworkReply *reply)
     if (!torrentsValue.isArray()) {
         qDebug() << "torrent-get response did not contain arguments.torrents";
 
-        emit updateFailed("Torrent list response did not contain torrents.");
+        emit updateFailed(tr("Torrent list response did not contain torrents."));
         finishTorrentGet();
         return;
     }
@@ -380,13 +380,13 @@ QString rpc_client::getServer()
     if (!rpcUrl.isEmpty())
         return rpcUrl;
 
-    return "No server configured";
+    return tr("No server configured");
 }
 
 void rpc_client::getTorrentList()
 {
     if (rpcUrl.trimmed().isEmpty()) {
-        emit updateFailed("No Transmission server configured.");
+        emit updateFailed(tr("No Transmission server configured."));
         return;
     }
 
@@ -756,7 +756,7 @@ void rpc_client::addTorrentFile(const QString &filePath,
     if (!file.open(QIODevice::ReadOnly)) {
         emit commandFailed(
             QStringLiteral("torrent-add"),
-            QStringLiteral("Could not open torrent file: %1").arg(filePath)
+            tr("Could not open torrent file: %1").arg(filePath)
             );
         return;
     }
@@ -766,7 +766,7 @@ void rpc_client::addTorrentFile(const QString &filePath,
     if (data.isEmpty()) {
         emit commandFailed(
             QStringLiteral("torrent-add"),
-            QStringLiteral("Torrent file is empty: %1").arg(filePath)
+            tr("Torrent file is empty: %1").arg(filePath)
             );
         return;
     }

@@ -98,7 +98,7 @@ SessionSettingsDialog::SessionSettingsDialog(QWidget *parent)
 {
     ui->setupUi(this);
 
-    setWindowTitle(QStringLiteral("Transmission Session Settings"));
+    setWindowTitle(tr("Transmission Session Settings"));
 
     populateEncryptionCombo(QStringLiteral("tolerated"));
 
@@ -152,9 +152,9 @@ void SessionSettingsDialog::populateEncryptionCombo(const QString &currentValue)
     if (currentValue == QStringLiteral("allowed"))
         allowedValue = QStringLiteral("allowed");
 
-    ui->comboEncryption->addItem(QStringLiteral("Allowed"), allowedValue);
-    ui->comboEncryption->addItem(QStringLiteral("Preferred"), QStringLiteral("preferred"));
-    ui->comboEncryption->addItem(QStringLiteral("Required"), QStringLiteral("required"));
+    ui->comboEncryption->addItem(tr("Allowed"), allowedValue);
+    ui->comboEncryption->addItem(tr("Preferred"), QStringLiteral("preferred"));
+    ui->comboEncryption->addItem(tr("Required"), QStringLiteral("required"));
 
     setComboCurrentData(currentValue);
 }

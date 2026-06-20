@@ -14,7 +14,7 @@ ServerConfig::ServerConfig(QWidget *parent)
     ui->setupUi(this);
     setFixedSize(size());
 
-    setWindowTitle("Server Configuration");
+    setWindowTitle(tr("Server Configuration"));
 
     ui->listServers->setModel(serverListModel);
 
@@ -168,10 +168,10 @@ void ServerConfig::refreshServerList()
         QString name = servers.at(i).name.trimmed();
 
         if (name.isEmpty())
-            name = "(unnamed server)";
+            name = tr("(unnamed server)");
 
         if (i == defaultServerIndex)
-            name += " (default)";
+            name += tr(" (default)");
 
         names.append(name);
     }
@@ -231,7 +231,7 @@ void ServerConfig::setEditorEnabled(bool enabled)
 void ServerConfig::addServer()
 {
     TransmissionServer server;
-    server.name = "New Server";
+    server.name = tr("New Server");
     server.rpcUrl = "http://server:9091/transmission/rpc";
     server.username = "";
     server.password = "";
@@ -262,13 +262,13 @@ void ServerConfig::removeSelectedServer()
         return;
 
     const QString name = servers.at(index).name.isEmpty()
-                             ? QStringLiteral("(unnamed server)")
+                             ? tr("(unnamed server)")
                              : servers.at(index).name;
 
     const auto result = QMessageBox::question(
         this,
-        "Remove Server",
-        QString("Remove server \"%1\"?").arg(name),
+        tr("Remove Server"),
+        tr("Remove server \"%1\"?").arg(name),
         QMessageBox::Yes | QMessageBox::No,
         QMessageBox::No
         );
@@ -310,8 +310,8 @@ bool ServerConfig::saveSelectedServer()
     if (ui->editServerName->text().trimmed().isEmpty()) {
         QMessageBox::warning(
             this,
-            "Server Configuration",
-            "Server name cannot be empty."
+            tr("Server Configuration"),
+            tr("Server name cannot be empty.")
             );
         return false;
     }
@@ -319,8 +319,8 @@ bool ServerConfig::saveSelectedServer()
     if (ui->editServerUrl->text().trimmed().isEmpty()) {
         QMessageBox::warning(
             this,
-            "Server Configuration",
-            "RPC URL cannot be empty."
+            tr("Server Configuration"),
+            tr("RPC URL cannot be empty.")
             );
         return false;
     }

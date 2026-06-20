@@ -69,7 +69,7 @@ DialogAbout::DialogAbout(QWidget *parent)
 
     if (licenseText.isEmpty()) {
         licenseText =
-            "The GPL license text could not be loaded from the application bundle.";
+            tr("The GPL license text could not be loaded from the application bundle.");
     }
 
     ui->textLicense->setPlainText(licenseText);

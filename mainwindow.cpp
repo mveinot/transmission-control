@@ -125,13 +125,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(torrentAddController, &TorrentAddController::addStarted,
             this, [this]() {
                 statusBar()->showMessage(
-                    QStringLiteral("Adding torrent..."),
+                    tr("Adding torrent..."),
                     3000
                     );
-
-                //QTimer::singleShot(750, this, [this]() {
-                //    client->getTorrents();
-                //});
             });
 
     connect(torrentAddController, &TorrentAddController::addFailed,
@@ -141,7 +137,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(torrentAddController, &TorrentAddController::addCancelled,
             this, [this]() {
-                statusBar()->showMessage(QStringLiteral("Torrent add cancelled."), 3000);
+                statusBar()->showMessage(tr("Torrent add cancelled."), 3000);
             });
 
     this->aboutAction = new QAction(0);
@@ -178,12 +174,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->fileTreeWidget->setColumnCount(FileColumnCount);
     ui->fileTreeWidget->setHeaderLabels({
-        "Name",
-        "Wanted",
-        "Priority",
-        "Size",
-        "Done",
-        "Completed"
+        tr("Name"),
+        tr("Wanted"),
+        tr("Priority"),
+        tr("Size"),
+        tr("Done"),
+        tr("Completed")
     });
 
     ui->fileTreeWidget->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -213,15 +209,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->peerTableWidget->setColumnCount(9);
     ui->peerTableWidget->setHorizontalHeaderLabels({
-        "Country",
-        "Address",
-        "Port",
-        "Client",
-        "Progress",
-        "Download",
-        "Upload",
-        "Encrypted",
-        "Incoming"
+        tr("Country"),
+        tr("Address"),
+        tr("Port"),
+        tr("Client"),
+        tr("Progress"),
+        tr("Download"),
+        tr("Upload"),
+        tr("Encrypted"),
+        tr("Incoming")
     });
     ui->peerTableWidget->setAlternatingRowColors(true);
     ui->peerTableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -260,12 +256,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->trackerTableWidget->setColumnCount(6);
     ui->trackerTableWidget->setHorizontalHeaderLabels({
-        "Host",
-        "Announce",
-        "Seeds",
-        "Leechers",
-        "Last Announce",
-        "Result"
+        tr("Host"),
+        tr("Announce"),
+        tr("Seeds"),
+        tr("Leechers"),
+        tr("Last Announce"),
+        tr("Result")
     });
 
     ui->trackerTableWidget->setAlternatingRowColors(true);
@@ -381,7 +377,7 @@ MainWindow::MainWindow(QWidget *parent)
             this,
             [this]() {
                 connectionStatusLabel->setStyleSheet("");
-                connectionStatusLabel->setText("Updating...");
+                connectionStatusLabel->setText(tr("Updating..."));
             });
 
     connect(client, &rpc_client::updateFailed,
@@ -389,7 +385,7 @@ MainWindow::MainWindow(QWidget *parent)
             [this](const QString &message) {
                 connectionStatusLabel->setStyleSheet("color: #ff6b6b;");
                 connectionStatusLabel->setText(
-                    QString("Connection error: %1").arg(message)
+                    tr("Connection error: %1").arg(message)
                     );
             });
 
@@ -489,21 +485,21 @@ void MainWindow::on_actionDelete_Torrent_triggered()
     if (ids.isEmpty()) {
         QMessageBox::information(
             this,
-            "Delete Torrent",
-            "No torrent is selected."
+            tr("Delete Torrent"),
+            tr("No torrent is selected.")
             );
         return;
     }
 
     QMessageBox msgBox(this);
-    msgBox.setWindowTitle("Delete Torrent");
+    msgBox.setWindowTitle(tr("Delete Torrent"));
     msgBox.setIcon(QMessageBox::Warning);
 
     if (ids.size() == 1) {
-        msgBox.setText("Delete the selected torrent?");
+        msgBox.setText(tr("Delete the selected torrent?"));
         msgBox.setInformativeText(
-            QString(
-                "Torrent:\n%1\n\n"
+
+                tr("Torrent:\n%1\n\n"
                 "Choose whether to remove only the torrent from Transmission, "
                 "or also delete the downloaded data."
                 ).arg(names.value(0))
@@ -512,29 +508,29 @@ void MainWindow::on_actionDelete_Torrent_triggered()
         QString preview = names.mid(0, 8).join("\n");
 
         if (names.size() > 8)
-            preview += QString("\n… and %1 more").arg(names.size() - 8);
+            preview += tr("\n… and %1 more").arg(names.size() - 8);
 
         msgBox.setText(
-            QString("Delete %1 selected torrents?").arg(ids.size())
+            QString(tr("Delete %1 selected torrents?")).arg(ids.size())
             );
 
         msgBox.setInformativeText(
             QString(
-                "Torrents:\n%1\n\n"
+                tr("Torrents:\n%1\n\n"
                 "Choose whether to remove only the torrents from Transmission, "
-                "or also delete the downloaded data."
+                   "or also delete the downloaded data.")
                 ).arg(preview)
             );
     }
 
     QPushButton *noButton =
-        msgBox.addButton("No", QMessageBox::RejectRole);
+        msgBox.addButton(tr("No"), QMessageBox::RejectRole);
 
     QPushButton *torrentOnlyButton =
-        msgBox.addButton("Yes: torrent only", QMessageBox::AcceptRole);
+        msgBox.addButton(tr("Yes. Torrent only"), QMessageBox::AcceptRole);
 
     QPushButton *torrentAndDataButton =
-        msgBox.addButton("Yes, torrent and data", QMessageBox::DestructiveRole);
+        msgBox.addButton(tr("Yes. Torrent and data"), QMessageBox::DestructiveRole);
 
     msgBox.setDefaultButton(noButton);
     msgBox.exec();
@@ -779,7 +775,7 @@ void MainWindow::populateFileTree(const QJsonArray &files,
         current->setData(FileNameColumn, FileWantedRole, isWanted);
         current->setData(FileNameColumn, FilePriorityRole, priority);
 
-        current->setText(FileWantedColumn, isWanted ? QStringLiteral("Yes") : QStringLiteral("No"));
+        current->setText(FileWantedColumn, isWanted ? tr("Yes") : tr("No"));
         current->setText(FilePriorityColumn, priorityToString(priority));
 
         current->setText(FileSizeColumn, QLocale().formattedDataSize(
@@ -875,11 +871,11 @@ void MainWindow::populatePeerTable(const QJsonArray &peers)
         uploadItem->setData(Qt::UserRole, rateToPeer);
 
         auto *encryptedItem =
-            new QTableWidgetItem(isEncrypted ? "Yes" : "No");
+            new QTableWidgetItem(isEncrypted ? tr("Yes") : tr("No"));
         encryptedItem->setData(Qt::UserRole, isEncrypted);
 
         auto *incomingItem =
-            new QTableWidgetItem(isIncoming ? "Yes" : "No");
+            new QTableWidgetItem(isIncoming ? tr("Yes") : tr("No"));
         incomingItem->setData(Qt::UserRole, isIncoming);
 
         ui->peerTableWidget->setItem(row, 0, countryItem);
@@ -930,19 +926,19 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
     connect(ui->actionForce_Start_Torrent, &QAction::triggered,
             this, &MainWindow::forceStartSelectedTorrents);
 
-    QMenu *queueMenu = menu.addMenu(QStringLiteral("Queue"));
+    QMenu *queueMenu = menu.addMenu(tr("Queue"));
 
     QAction *moveTopAction =
-        queueMenu->addAction(QStringLiteral("Move to Top"));
+        queueMenu->addAction(tr("Move to Top"));
 
     QAction *moveUpAction =
-        queueMenu->addAction(QStringLiteral("Move Up"));
+        queueMenu->addAction(tr("Move Up"));
 
     QAction *moveDownAction =
-        queueMenu->addAction(QStringLiteral("Move Down"));
+        queueMenu->addAction(tr("Move Down"));
 
     QAction *moveBottomAction =
-        queueMenu->addAction(QStringLiteral("Move to Bottom"));
+        queueMenu->addAction(tr("Move to Bottom"));
 
     menu.addSeparator();
     menu.addAction(ui->actionDelete_Torrent);
@@ -967,14 +963,14 @@ void MainWindow::startSelectedTorrent()
     const QList<int> ids = selectedTorrentIds();
 
     if (ids.isEmpty()) {
-        statusBar()->showMessage("No torrent selected.", 3000);
+        statusBar()->showMessage(tr("No torrent selected."), 3000);
         return;
     }
 
     client->startTorrents(ids);
 
     statusBar()->showMessage(
-        QString("Starting %1 torrent(s)...").arg(ids.size()),
+        tr("Starting %1 torrent(s)...").arg(ids.size()),
         3000
         );
 }
@@ -984,14 +980,14 @@ void MainWindow::stopSelectedTorrent()
     const QList<int> ids = selectedTorrentIds();
 
     if (ids.isEmpty()) {
-        statusBar()->showMessage("No torrent selected.", 3000);
+        statusBar()->showMessage(tr("No torrent selected."), 3000);
         return;
     }
 
     client->stopTorrents(ids);
 
     statusBar()->showMessage(
-        QString("Stopping %1 torrent(s)...").arg(ids.size()),
+        tr("Stopping %1 torrent(s)...").arg(ids.size()),
         3000
         );
 }
@@ -1049,9 +1045,9 @@ void MainWindow::addTorrentFromFile()
 {
     const QString fileName = QFileDialog::getOpenFileName(
         this,
-        QStringLiteral("Add Torrent File"),
+        tr("Add Torrent File"),
         QString(),
-        QStringLiteral("Torrent Files (*.torrent);;All Files (*)")
+        tr("Torrent Files (*.torrent);;All Files (*)")
         );
 
     if (fileName.isEmpty())
@@ -1066,8 +1062,8 @@ void MainWindow::addTorrentFromMagnet()
 
     const QString magnetLink = QInputDialog::getText(
         this,
-        QStringLiteral("Add Magnet Link"),
-        QStringLiteral("Magnet link:"),
+        tr("Add Magnet Link"),
+        tr("Magnet link:"),
         QLineEdit::Normal,
         QString(),
         &ok
@@ -1104,14 +1100,14 @@ void MainWindow::reannounceSelectedTorrent()
     const QList<int> ids = selectedTorrentIds();
 
     if (ids.isEmpty()) {
-        statusBar()->showMessage("No torrent selected.", 3000);
+        statusBar()->showMessage(tr("No torrent selected."), 3000);
         return;
     }
 
     client->reannounceTorrents(ids);
 
     statusBar()->showMessage(
-        QString("Reannouncing %1 torrent(s)...").arg(ids.size()),
+        tr("Reannouncing %1 torrent(s)...").arg(ids.size()),
         3000
         );
 }
@@ -1121,14 +1117,14 @@ void MainWindow::verifySelectedTorrent()
     const QList<int> ids = selectedTorrentIds();
 
     if (ids.isEmpty()) {
-        statusBar()->showMessage("No torrent selected.", 3000);
+        statusBar()->showMessage(tr("No torrent selected."), 3000);
         return;
     }
 
     client->verifyTorrents(ids);
 
     statusBar()->showMessage(
-        QString("Verifying %1 torrent(s)...").arg(ids.size()),
+        tr("Verifying %1 torrent(s)...").arg(ids.size()),
         3000
         );
 }
@@ -1174,12 +1170,12 @@ void MainWindow::loadServerCombo()
 
         if (name.isEmpty()) {
             name = rpcUrl.isEmpty()
-            ? QStringLiteral("(unnamed server)")
+            ? tr("(unnamed server)")
             : rpcUrl;
         }
 
         if (i == defaultIndex)
-            name += QStringLiteral(" (default)");
+            name += tr(" (default)");
 
         ui->comboServers->addItem(name, i);
     }
@@ -1187,7 +1183,7 @@ void MainWindow::loadServerCombo()
     settings.endArray();
 
     if (ui->comboServers->count() == 0) {
-        ui->comboServers->addItem("No servers configured", -1);
+        ui->comboServers->addItem(tr("No servers configured"), -1);
         ui->comboServers->setEnabled(false);
         return;
     }
@@ -1228,7 +1224,7 @@ void MainWindow::saveSelectedServerFromCombo()
     settings.sync();
 
     if (!client->setServerFromSettingsIndex(serverIndex)) {
-        statusBar()->showMessage("Could not switch server.", 5000);
+        statusBar()->showMessage(tr("Could not switch server."), 5000);
         return;
     }
 
@@ -1238,7 +1234,7 @@ void MainWindow::saveSelectedServerFromCombo()
     updateTorrentActionState();
 
     statusBar()->showMessage(
-        QString("Selected server: %1").arg(client->getServer()),
+        tr("Selected server: %1").arg(client->getServer()),
         3000
         );
 
@@ -1281,8 +1277,8 @@ void MainWindow::setupTrayIcon()
 
     trayMenu = new QMenu(this);
 
-    QAction *showAction = trayMenu->addAction("Show Planetary");
-    QAction *quitAction = trayMenu->addAction("Quit");
+    QAction *showAction = trayMenu->addAction(tr("Show Planetary"));
+    QAction *quitAction = trayMenu->addAction(tr("Quit"));
 
     connect(showAction, &QAction::triggered,
             this, &MainWindow::showMainWindow);
@@ -1354,7 +1350,7 @@ void MainWindow::applyUpdateInterval()
         timer->start();
 
     statusBar()->showMessage(
-        QString("Update interval: %1 seconds").arg(timer->interval() / 1000),
+        tr("Update interval: %1 seconds").arg(timer->interval() / 1000),
         3000
         );
 }
@@ -1429,7 +1425,7 @@ QStringList MainWindow::selectedTorrentNames() const
 void MainWindow::setupConnectionStatusIndicator()
 {
     connectionStatusLabel = new QLabel(this);
-    connectionStatusLabel->setText("Not connected");
+    connectionStatusLabel->setText(tr("Not connected"));
 
     connectionStatusLabel->setMinimumWidth(260);
     connectionStatusLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
@@ -1439,7 +1435,7 @@ void MainWindow::setupConnectionStatusIndicator()
     connect(client, &rpc_client::updateStarted,
             this,
             [this]() {
-                connectionStatusLabel->setText("Updating...");
+                connectionStatusLabel->setText(tr("Updating..."));
             });
 
     connect(client, &rpc_client::updateFailed,
@@ -1448,17 +1444,17 @@ void MainWindow::setupConnectionStatusIndicator()
                 QString displayMessage = message;
 
                 if (message.contains("timed out", Qt::CaseInsensitive)) {
-                    displayMessage = "Timed out contacting Transmission";
+                    displayMessage = tr("Timed out contacting Transmission");
                 } else if (message.contains("connection refused", Qt::CaseInsensitive)) {
-                    displayMessage = "Connection refused by Transmission";
+                    displayMessage = tr("Connection refused by Transmission");
                 } else if (message.contains("host not found", Qt::CaseInsensitive)) {
-                    displayMessage = "Host not found";
+                    displayMessage = tr("Host not found");
                 } else if (message.contains("network", Qt::CaseInsensitive)) {
                     displayMessage = message;
                 }
 
                 connectionStatusLabel->setText(
-                    QString("Connection error: %1").arg(displayMessage)
+                    tr("Connection error: %1").arg(displayMessage)
                     );
             });
 
@@ -1466,7 +1462,7 @@ void MainWindow::setupConnectionStatusIndicator()
             this,
             [this]() {
                 connectionStatusLabel->setText(
-                    QString("Server changed: %1").arg(client->getServer())
+                    tr("Server changed: %1").arg(client->getServer())
                     );
             });
 }
@@ -1506,7 +1502,7 @@ void MainWindow::populateGeneralTab(const QJsonObject &details)
     const QString trimmedComment = comment.trimmed();
 
     if (trimmedComment.isEmpty()) {
-        ui->labelGeneralComment->setText("None");
+        ui->labelGeneralComment->setText(tr("None"));
     } else if (looksLikeUrl(trimmedComment)) {
         const QUrl url = QUrl::fromUserInput(trimmedComment);
 
@@ -1535,7 +1531,7 @@ void MainWindow::populateGeneralTab(const QJsonObject &details)
             QLocale().toString(created, QLocale::ShortFormat)
             );
     } else {
-        ui->labelGeneralCreated->setText("Unknown");
+        ui->labelGeneralCreated->setText(tr("Unknown"));
     }
 }
 
@@ -1573,7 +1569,7 @@ void MainWindow::populateTrackerTable(const QJsonObject &details)
                           ),
                       QLocale::ShortFormat
                       )
-                : QStringLiteral("Never");
+                : tr("Never");
 
         const QString lastAnnounceResult =
             tracker.value("lastAnnounceResult").toString();
@@ -1582,11 +1578,11 @@ void MainWindow::populateTrackerTable(const QJsonObject &details)
         auto *announceItem = new QTableWidgetItem(announce);
 
         auto *seedersItem = new QTableWidgetItem(
-            seeders >= 0 ? QString::number(seeders) : QStringLiteral("Unknown")
+            seeders >= 0 ? QString::number(seeders) : tr("Unknown")
             );
 
         auto *leechersItem = new QTableWidgetItem(
-            leechers >= 0 ? QString::number(leechers) : QStringLiteral("Unknown")
+            leechers >= 0 ? QString::number(leechers) : tr("Unknown")
             );
 
         auto *lastAnnounceItem = new QTableWidgetItem(lastAnnounceTime);
@@ -1690,8 +1686,8 @@ bool MainWindow::isTorrentCompleteForNotification(const torrent &torrentItem)
     const QString status = torrentItem.getStatus();
 
     return torrentItem.getPercentDone() >= 99.9 ||
-           status == QStringLiteral("Seeding") ||
-           status == QStringLiteral("Waiting to Seed");
+           status == tr("Seeding") ||
+           status == tr("Waiting to Seed");
 }
 
 void MainWindow::processFinishedTorrentNotifications(const QVector<torrent> &torrents)
@@ -1720,7 +1716,7 @@ void MainWindow::processFinishedTorrentNotifications(const QVector<torrent> &tor
             continue;
 
         showTrayNotification(
-            QStringLiteral("Torrent finished"),
+            tr("Torrent finished"),
             torrentItem.getName(),
             QSystemTrayIcon::Information,
             5000
@@ -1791,11 +1787,11 @@ void MainWindow::updateFolderWantedState(QTreeWidgetItem *item)
     scan(item);
 
     if (wantedCount > 0 && unwantedCount > 0) {
-        item->setText(FileWantedColumn, QStringLiteral("Mixed"));
+        item->setText(FileWantedColumn, tr("Mixed"));
     } else if (wantedCount > 0) {
-        item->setText(FileWantedColumn, QStringLiteral("Yes"));
+        item->setText(FileWantedColumn, tr("Yes"));
     } else if (unwantedCount > 0) {
-        item->setText(FileWantedColumn, QStringLiteral("No"));
+        item->setText(FileWantedColumn, tr("No"));
     } else {
         item->setText(FileWantedColumn, QString());
     }
@@ -1886,11 +1882,11 @@ void MainWindow::showFileContextMenu(const QPoint &pos)
 
     QMenu menu(this);
 
-    QMenu *wantedMenu = menu.addMenu(QStringLiteral("Wanted"));
+    QMenu *wantedMenu = menu.addMenu(tr("Wanted"));
     QAction *wantedAction =
-        wantedMenu->addAction(QStringLiteral("Download"));
+        wantedMenu->addAction(tr("Download"));
     QAction *unwantedAction =
-        wantedMenu->addAction(QStringLiteral("Do Not Download"));
+        wantedMenu->addAction(tr("Do Not Download"));
 
     connect(wantedAction, &QAction::triggered,
             this, [this]() { setSelectedFilesWanted(true); });
@@ -1898,14 +1894,14 @@ void MainWindow::showFileContextMenu(const QPoint &pos)
     connect(unwantedAction, &QAction::triggered,
             this, [this]() { setSelectedFilesWanted(false); });
 
-    QMenu *priorityMenu = menu.addMenu(QStringLiteral("Priority"));
+    QMenu *priorityMenu = menu.addMenu(tr("Priority"));
 
     QAction *highPriorityAction =
-        priorityMenu->addAction(QStringLiteral("High"));
+        priorityMenu->addAction(tr("High"));
     QAction *normalPriorityAction =
-        priorityMenu->addAction(QStringLiteral("Normal"));
+        priorityMenu->addAction(tr("Normal"));
     QAction *lowPriorityAction =
-        priorityMenu->addAction(QStringLiteral("Low"));
+        priorityMenu->addAction(tr("Low"));
 
     connect(highPriorityAction, &QAction::triggered,
             this, [this]() { setSelectedFilesPriority(1); });
@@ -1941,8 +1937,8 @@ void MainWindow::setSelectedFilesWanted(bool wanted)
 
     statusBar()->showMessage(
         QString("%1 %2 file(s)...")
-            .arg(wanted ? QStringLiteral("Marking wanted")
-                        : QStringLiteral("Marking unwanted"),
+            .arg(wanted ? tr("Marking wanted")
+                        : tr("Marking unwanted"),
                  QString::number(fileIndices.size())),
         3000
         );
@@ -1971,7 +1967,7 @@ void MainWindow::setSelectedFilesPriority(int priority)
     client->setTorrentFilesPriority(torrentId, fileIndices, priority);
 
     statusBar()->showMessage(
-        QString("Setting priority for %1 file(s)...")
+        tr("Setting priority for %1 file(s)...")
             .arg(fileIndices.size()),
         3000
         );
@@ -2024,7 +2020,7 @@ void MainWindow::showSessionSettings()
     openSessionSettingsWhenReceived = true;
 
     statusBar()->showMessage(
-        QStringLiteral("Loading Transmission session settings..."),
+        tr("Loading Transmission session settings..."),
         3000
         );
 
@@ -2057,7 +2053,7 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
 
     if (changes.isEmpty()) {
         statusBar()->showMessage(
-            QStringLiteral("No Transmission session settings changed"),
+            tr("No Transmission session settings changed"),
             3000
             );
         return;
@@ -2077,7 +2073,7 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     }
 
     statusBar()->showMessage(
-        QStringLiteral("Saving Transmission session settings..."),
+        tr("Saving Transmission session settings..."),
         3000
         );
 }
@@ -2086,12 +2082,12 @@ void MainWindow::updateConnectionStatus(int torrentCount)
 {
     lastTorrentCount = torrentCount;
 
-    QString text = QStringLiteral("Connected: %1 · %2 torrent(s)")
+    QString text = tr("Connected: %1 · %2 torrent(s)")
                        .arg(client->getServer(),
                             QString::number(torrentCount));
 
     if (remoteFreeSpaceBytes >= 0) {
-        text += QStringLiteral(" · Free: %1").arg(
+        text += tr(" · Free: %1").arg(
             QLocale().formattedDataSize(
                 remoteFreeSpaceBytes,
                 1,
@@ -2126,7 +2122,7 @@ void MainWindow::forceStartSelectedTorrents()
     client->startTorrentsNow(ids);
 
     statusBar()->showMessage(
-        QStringLiteral("Force starting selected torrent(s)..."),
+        tr("Force starting selected torrent(s)..."),
         3000
         );
 /*
@@ -2205,13 +2201,13 @@ void MainWindow::addStatusFilterItems()
     statusHeader->setFont(headerFont);
     ui->listWidget->addItem(statusHeader);
 
-    addStatusItem(QStringLiteral("All"), TorrentSortProxyModel::StateFilter::All);
-    addStatusItem(QStringLiteral("Downloading"), TorrentSortProxyModel::StateFilter::Downloading);
-    addStatusItem(QStringLiteral("Complete"), TorrentSortProxyModel::StateFilter::Completed);
-    addStatusItem(QStringLiteral("Active"), TorrentSortProxyModel::StateFilter::Active);
-    addStatusItem(QStringLiteral("Inactive"), TorrentSortProxyModel::StateFilter::Inactive);
-    addStatusItem(QStringLiteral("Stopped"), TorrentSortProxyModel::StateFilter::Stopped);
-    addStatusItem(QStringLiteral("Error"), TorrentSortProxyModel::StateFilter::Error);
+    addStatusItem(tr("All"), TorrentSortProxyModel::StateFilter::All);
+    addStatusItem(tr("Downloading"), TorrentSortProxyModel::StateFilter::Downloading);
+    addStatusItem(tr("Complete"), TorrentSortProxyModel::StateFilter::Completed);
+    addStatusItem(tr("Active"), TorrentSortProxyModel::StateFilter::Active);
+    addStatusItem(tr("Inactive"), TorrentSortProxyModel::StateFilter::Inactive);
+    addStatusItem(tr("Stopped"), TorrentSortProxyModel::StateFilter::Stopped);
+    addStatusItem(tr("Error"), TorrentSortProxyModel::StateFilter::Error);
 }
 
 void MainWindow::addTrackerFilterItems(const QStringList &trackerHosts)
@@ -2219,14 +2215,14 @@ void MainWindow::addTrackerFilterItems(const QStringList &trackerHosts)
     if (trackerHosts.isEmpty())
         return;
 
-    auto *trackerHeader = new QListWidgetItem(QStringLiteral("Trackers"));
+    auto *trackerHeader = new QListWidgetItem(tr("Trackers"));
     trackerHeader->setFlags(Qt::NoItemFlags);
     QFont headerFont = trackerHeader->font();
     headerFont.setBold(true);
     trackerHeader->setFont(headerFont);
     ui->listWidget->addItem(trackerHeader);
 
-    auto *allTrackersItem = new QListWidgetItem(QStringLiteral("All Trackers"));
+    auto *allTrackersItem = new QListWidgetItem(tr("All Trackers"));
     allTrackersItem->setData(FilterTypeRole, FilterTypeTracker);
     allTrackersItem->setData(FilterValueRole, QString());
     ui->listWidget->addItem(allTrackersItem);
