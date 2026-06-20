@@ -107,7 +107,7 @@ void WatchFolderManager::restartWatcher()
         return;
 
     if (m_watchFolder.isEmpty()) {
-        emit warningMessage(QStringLiteral("Watch folder is enabled but no folder is configured."));
+        emit warningMessage(tr("Watch folder is enabled but no folder is configured."));
         return;
     }
 
@@ -115,20 +115,20 @@ void WatchFolderManager::restartWatcher()
 
     if (!folderInfo.exists() || !folderInfo.isDir()) {
         emit warningMessage(
-            QStringLiteral("Watch folder does not exist: %1").arg(m_watchFolder)
+            tr("Watch folder does not exist: %1").arg(m_watchFolder)
             );
         return;
     }
 
     if (!m_watcher.addPath(m_watchFolder)) {
         emit warningMessage(
-            QStringLiteral("Could not watch folder: %1").arg(m_watchFolder)
+           tr("Could not watch folder: %1").arg(m_watchFolder)
             );
         return;
     }
 
     emit statusMessage(
-        QStringLiteral("Watching folder for torrents: %1").arg(m_watchFolder)
+        tr("Watching folder for torrents: %1").arg(m_watchFolder)
         );
 
     m_scanTimer.start();
@@ -208,7 +208,7 @@ void WatchFolderManager::scanWatchFolder()
 
     if (!folderInfo.exists() || !folderInfo.isDir()) {
         emit warningMessage(
-            QStringLiteral("Watch folder is no longer available: %1").arg(m_watchFolder)
+            tr("Watch folder is no longer available: %1").arg(m_watchFolder)
             );
         stopWatcher();
         return;
@@ -256,7 +256,7 @@ void WatchFolderManager::observeCandidate(const QString &filePath)
     markProcessed(fingerprint);
 
     emit statusMessage(
-        QStringLiteral("Watch folder found torrent: %1").arg(fileInfo.fileName())
+        tr("Watch folder found torrent: %1").arg(fileInfo.fileName())
         );
 
     emit torrentFileReady(fileInfo.absoluteFilePath());

@@ -61,12 +61,12 @@ bool GeoIpService::loadDatabase(const QString &path)
     const QString cleanPath = path.trimmed();
 
     if (cleanPath.isEmpty()) {
-        qWarning() << "GeoIP database path is empty";
+        qWarning() << tr("GeoIP database path is empty");
         return false;
     }
 
     if (!QFileInfo::exists(cleanPath)) {
-        qWarning() << "GeoIP database not found:" << cleanPath;
+        qWarning() << tr("GeoIP database not found:") << cleanPath;
         return false;
     }
 
@@ -77,7 +77,7 @@ bool GeoIpService::loadDatabase(const QString &path)
         );
 
     if (status != MMDB_SUCCESS) {
-        qWarning() << "Could not open GeoIP database:"
+        qWarning() << tr("Could not open GeoIP database:")
                    << cleanPath
                    << MMDB_strerror(status);
         return false;
@@ -85,11 +85,11 @@ bool GeoIpService::loadDatabase(const QString &path)
 
     mmdbOpen = true;
 
-    qDebug() << "Loaded GeoIP database:" << cleanPath;
+    qDebug() << tr("Loaded GeoIP database:") << cleanPath;
     return true;
 #else
     Q_UNUSED(path);
-    qWarning() << "Planetary was built without libmaxminddb support";
+    qWarning() << tr("Planetary was built without libmaxminddb support");
     return false;
 #endif
 }
@@ -118,8 +118,8 @@ GeoIpResult GeoIpService::lookup(const QString &ipAddress)
     GeoIpResult result;
 
     if (isPrivateOrLocalAddress(key)) {
-        result.countryCode = QStringLiteral("LAN");
-        result.countryName = QStringLiteral("Private / Local");
+        result.countryCode = tr("LAN");
+        result.countryName = tr("Private / Local");
         result.found = false;
         result.isPrivateAddress = true;
     } else if (isDatabaseLoaded()) {
@@ -152,14 +152,14 @@ GeoIpResult GeoIpService::lookupInDatabase(const QString &ipAddress) const
             );
 
     if (gaiError != 0) {
-        qWarning() << "GeoIP getaddrinfo error for"
+        qWarning() << tr("GeoIP getaddrinfo error for")
                    << ipAddress
                    << gai_strerror(gaiError);
         return result;
     }
 
     if (mmdbError != MMDB_SUCCESS) {
-        qWarning() << "GeoIP lookup error for"
+        qWarning() << tr("GeoIP lookup error for")
                    << ipAddress
                    << MMDB_strerror(mmdbError);
         return result;

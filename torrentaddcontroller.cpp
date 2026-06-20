@@ -43,14 +43,14 @@ void TorrentAddController::setDefaultDownloadDir(const QString &downloadDir)
 void TorrentAddController::addTorrentFile(const QString &filePath)
 {
     if (filePath.trimmed().isEmpty()) {
-        emit addFailed(QStringLiteral("No torrent file was specified."));
+        emit addFailed(tr("No torrent file was specified."));
         return;
     }
 
     const QFileInfo fileInfo(filePath);
 
     if (!fileInfo.exists() || !fileInfo.isFile()) {
-        emit addFailed(QStringLiteral("Torrent file does not exist: %1")
+        emit addFailed(tr("Torrent file does not exist: %1")
                            .arg(filePath));
         return;
     }
@@ -64,12 +64,12 @@ void TorrentAddController::addMagnetLink(const QString &magnetLink)
     const QString trimmed = magnetLink.trimmed();
 
     if (trimmed.isEmpty()) {
-        emit addFailed(QStringLiteral("No magnet link was specified."));
+        emit addFailed(tr("No magnet link was specified."));
         return;
     }
 
     if (!trimmed.startsWith(QStringLiteral("magnet:"), Qt::CaseInsensitive)) {
-        emit addFailed(QStringLiteral("The supplied link is not a magnet URI."));
+        emit addFailed(tr("The supplied link is not a magnet URI."));
         return;
     }
 
@@ -80,7 +80,7 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
                                         const QString &source)
 {
     if (!m_client) {
-        emit addFailed(QStringLiteral("No Transmission client is available."));
+        emit addFailed(tr("No Transmission client is available."));
         return false;
     }
 
@@ -148,20 +148,20 @@ void TorrentAddController::saveOptions(const QString &downloadDir, bool startPau
 void TorrentAddController::addTorrentFileUsingDefaults(const QString &filePath)
 {
     if (filePath.trimmed().isEmpty()) {
-        emit addFailed(QStringLiteral("No torrent file was specified."));
+        emit addFailed(tr("No torrent file was specified."));
         return;
     }
 
     const QFileInfo fileInfo(filePath);
 
     if (!fileInfo.exists() || !fileInfo.isFile()) {
-        emit addFailed(QStringLiteral("Torrent file does not exist: %1")
+        emit addFailed(tr("Torrent file does not exist: %1")
                            .arg(filePath));
         return;
     }
 
     if (!m_client) {
-        emit addFailed(QStringLiteral("No Transmission client is available."));
+        emit addFailed(tr("No Transmission client is available."));
         return;
     }
 

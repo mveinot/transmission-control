@@ -1,5 +1,4 @@
 #include "percentfilldelegate.h"
-//#include "rpc_client.h"
 #include "torrentmodel.h"
 #include <QApplication>
 #include <QPainter>

@@ -18,11 +18,11 @@ AppSettings::AppSettings(QWidget *parent)
 {
     ui->setupUi(this);
 
-    setWindowTitle("Application Settings");
+    setWindowTitle(tr("Application Settings"));
 
     ui->updateInterval->setMinimum(MinimumUpdateIntervalSeconds);
     ui->updateInterval->setMaximum(MaximumUpdateIntervalSeconds);
-    ui->updateInterval->setSuffix(" seconds");
+    ui->updateInterval->setSuffix(tr(" seconds"));
 
     loadSettings();
     updateTrayOptionAvailability();
@@ -43,7 +43,7 @@ AppSettings::AppSettings(QWidget *parent)
             this, [this]() {
                 const QString folder = QFileDialog::getExistingDirectory(
                     this,
-                    QStringLiteral("Select Watch Folder"),
+                    tr("Select Watch Folder"),
                     ui->editWatchFolderPath->text()
                     );
 
