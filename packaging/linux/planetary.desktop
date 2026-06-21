@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
 Name=Planetary
-Comment=Qt Transmission remote client
-Exec=Planetary %U
+Comment=Transmission remote client
+Exec=/home/vmark/.local/bin/Planetary %U
 Icon=planetary
+Terminal=false
 Categories=Network;FileTransfer;P2P;Qt;
 MimeType=application/x-bittorrent;x-scheme-handler/magnet;
-Terminal=false
 StartupNotify=true
