@@ -646,6 +646,9 @@
     <addaction name="actionSettings"/>
     <addaction name="actionTransmission_Settings"/>
     <addaction name="separator"/>
+    <addaction name="actionExport_Settings"/>
+    <addaction name="actionImport_Settings"/>
+    <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -878,6 +881,16 @@
   <action name="actionCheckForUpdates">
    <property name="text">
     <string>Check for Updates</string>
+   </property>
+  </action>
+  <action name="actionExport_Settings">
+   <property name="text">
+    <string>Export Settings...</string>
+   </property>
+  </action>
+  <action name="actionImport_Settings">
+   <property name="text">
+    <string>Import Settings...</string>
    </property>
   </action>
  </widget>

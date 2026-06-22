@@ -70,8 +70,9 @@ private slots:
     void showSessionSettings();
     void handleSessionSettingsReceived(const QJsonObject &settings);
     void on_actionAbout_triggered();
-
     void on_actionQuit_triggered();
+    void exportSettings();
+    void importSettings();
 
 private:
     Ui::MainWindow *ui;

@@ -127,6 +127,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         updatechecker.h updatechecker.cpp
         Resources/licenses/gpl-2.0.txt
         Resources/translations/planetary_fr_CA.qm
+        settingsimportexport.h settingsimportexport.cpp
     )
 
 target_include_directories(Planetary PRIVATE

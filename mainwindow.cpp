@@ -45,6 +45,7 @@
 #include "torrentaddcontroller.h"
 #include "watchfoldermanager.h"
 #include "updatechecker.h"
+#include "settingsimportexport.h"
 #include "version.h"
 
 #include <QDesktopServices>
@@ -336,6 +337,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionError, &QAction::triggered, this, [this]() {
         setTorrentStateFilter(TorrentSortProxyModel::StateFilter::Error);
     });
+
+    connect(ui->actionExport_Settings, &QAction::triggered,
+            this, &MainWindow::exportSettings);
+
+    connect(ui->actionImport_Settings, &QAction::triggered,
+            this, &MainWindow::importSettings);
 
     connect(ui->editTorrentFilter, &QLineEdit::textChanged,
             proxy, &TorrentSortProxyModel::setSearchText);
@@ -2476,4 +2483,48 @@ void MainWindow::maybeCheckForUpdates()
     settings.setValue(QStringLiteral("updates/lastCheck"), now);
 
     updateChecker->checkForUpdates(false);
+}
+
+void MainWindow::exportSettings()
+{
+    const QString filePath =
+        QFileDialog::getSaveFileName(
+            this,
+            tr("Export Settings"),
+            QStringLiteral("planetary-settings.json"),
+            tr("JSON Files (*.json);;All Files (*)")
+            );
+
+    if (filePath.isEmpty())
+        return;
+
+    if (SettingsImportExport::exportSettings(this, filePath)) {
+        QMessageBox::information(
+            this,
+            tr("Settings Exported"),
+            tr("Planetary settings were exported successfully.")
+            );
+    }
+}
+
+void MainWindow::importSettings()
+{
+    const QString filePath =
+        QFileDialog::getOpenFileName(
+            this,
+            tr("Import Settings"),
+            QString(),
+            tr("JSON Files (*.json);;All Files (*)")
+            );
+
+    if (filePath.isEmpty())
+        return;
+
+    if (SettingsImportExport::importSettings(this, filePath)) {
+        QMessageBox::information(
+            this,
+            tr("Settings Imported"),
+            tr("Planetary settings were imported successfully.\n\nRestart Planetary for all changes to take effect.")
+            );
+    }
 }
