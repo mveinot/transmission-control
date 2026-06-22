@@ -124,6 +124,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         torrentadddialog.h torrentadddialog.cpp torrentadddialog.ui
         torrentaddcontroller.h torrentaddcontroller.cpp
         watchfoldermanager.h watchfoldermanager.cpp
+        updatechecker.h updatechecker.cpp
     )
 
 target_include_directories(Planetary PRIVATE

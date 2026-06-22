@@ -28,6 +28,7 @@ QT_END_NAMESPACE
 class TorrentAddController;
 class WatchFolderManager;
 class TorrentAddController;
+class UpdateChecker;
 
 class MainWindow : public QMainWindow
 {
@@ -173,6 +174,10 @@ private:
     void rebuildTorrentFilterList(const QVector<torrent> &torrents);
     void addStatusFilterItems();
     void addTrackerFilterItems(const QStringList &trackerHosts);
+    UpdateChecker *updateChecker = nullptr;
+
+    void setupUpdateChecker();
+    void maybeCheckForUpdates();
 
 protected:
     void closeEvent(QCloseEvent *event) override;
