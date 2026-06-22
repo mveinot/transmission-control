@@ -126,6 +126,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         watchfoldermanager.h watchfoldermanager.cpp
         updatechecker.h updatechecker.cpp
         Resources/licenses/gpl-2.0.txt
+        Resources/translations/planetary_fr_CA.qm
     )
 
 target_include_directories(Planetary PRIVATE
