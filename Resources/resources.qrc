@@ -4,5 +4,6 @@
         <file>icons/planetary.png</file>
         <file>icons/planetary_menu.png</file>
         <file>icons/planetary-512px.png</file>
+        <file>licenses/gpl-2.0.txt</file>
     </qresource>
 </RCC>

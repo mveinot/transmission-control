@@ -125,6 +125,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         torrentaddcontroller.h torrentaddcontroller.cpp
         watchfoldermanager.h watchfoldermanager.cpp
         updatechecker.h updatechecker.cpp
+        Resources/licenses/gpl-2.0.txt
     )
 
 target_include_directories(Planetary PRIVATE
