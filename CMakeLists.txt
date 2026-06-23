@@ -128,6 +128,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         Resources/licenses/gpl-2.0.txt
         Resources/translations/planetary_fr_CA.qm
         settingsimportexport.h settingsimportexport.cpp
+        foldermapping.h
+        foldermappingsdialog.h foldermappingsdialog.cpp foldermappingsdialog.ui
     )
 
 target_include_directories(Planetary PRIVATE

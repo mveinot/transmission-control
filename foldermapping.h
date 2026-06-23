@@ -1,0 +1,4 @@
+#ifndef FOLDERMAPPING_H
+#define FOLDERMAPPING_H
+
+#endif // FOLDERMAPPING_H
