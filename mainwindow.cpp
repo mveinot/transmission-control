@@ -554,11 +554,13 @@ void MainWindow::on_actionDelete_Torrent_triggered()
     msgBox.setIcon(QMessageBox::Warning);
     QPushButton *torrentOnlyButton = nullptr;
     QPushButton *torrentAndDataButton = nullptr;
+    QPushButton *noButton = nullptr;
 
     if (ids.size() == 1) {
         msgBox.setText(tr("Delete the selected torrent?"));
         msgBox.setInformativeText(
-            tr("Remove only the torrent from Transmission, or also delete the downloaded data?")
+            tr("Remove only the torrent from Transmission, or also delete the downloaded data?\n\n"
+               "View details to see the affected torrent name.")
             );
         msgBox.setDetailedText(names.value(0));
 
@@ -567,13 +569,10 @@ void MainWindow::on_actionDelete_Torrent_triggered()
     } else {
         QString preview = names.join("\n");
 
-        msgBox.setText(
-            QString(tr("Delete %1 selected torrents?")).arg(ids.size())
-            );
-
+        msgBox.setText(tr("Delete %1 selected torrents?").arg(ids.size()));
         msgBox.setInformativeText(
-            QString(
-                tr("Remove only the torrents from Transmission, or also delete the downloaded data?"))
+            tr("Remove only the torrents from Transmission, or also delete the downloaded data?\n\n"
+               "View details to see the affected torrent names.")
             );
         msgBox.setDetailedText(preview);
 
@@ -581,8 +580,7 @@ void MainWindow::on_actionDelete_Torrent_triggered()
         torrentAndDataButton = msgBox.addButton(tr("Torrents and data"), QMessageBox::DestructiveRole);
     }
 
-    QPushButton *noButton =
-        msgBox.addButton(tr("Cancel"), QMessageBox::RejectRole);
+    noButton = msgBox.addButton(tr("Cancel"), QMessageBox::RejectRole);
 
     msgBox.setDefaultButton(noButton);
     msgBox.exec();
