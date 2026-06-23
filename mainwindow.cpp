@@ -552,21 +552,20 @@ void MainWindow::on_actionDelete_Torrent_triggered()
     QMessageBox msgBox(this);
     msgBox.setWindowTitle(tr("Delete Torrent"));
     msgBox.setIcon(QMessageBox::Warning);
+    QPushButton *torrentOnlyButton = nullptr;
+    QPushButton *torrentAndDataButton = nullptr;
 
     if (ids.size() == 1) {
         msgBox.setText(tr("Delete the selected torrent?"));
         msgBox.setInformativeText(
-
-            tr("Torrent:\n%1\n\n"
-               "Choose whether to remove only the torrent from Transmission, "
-               "or also delete the downloaded data."
-               ).arg(names.value(0))
+            tr("Remove only the torrent from Transmission, or also delete the downloaded data?")
             );
+        msgBox.setDetailedText(names.value(0));
+
+        torrentOnlyButton = msgBox.addButton(tr("Torrent only"), QMessageBox::AcceptRole);
+        torrentAndDataButton = msgBox.addButton(tr("Torrent and data"), QMessageBox::DestructiveRole);
     } else {
         QString preview = names.join("\n");
-
-        //if (names.size() > 8)
-        //    preview += tr("\n… and %1 more").arg(names.size() - 8);
 
         msgBox.setText(
             QString(tr("Delete %1 selected torrents?")).arg(ids.size())
@@ -574,17 +573,13 @@ void MainWindow::on_actionDelete_Torrent_triggered()
 
         msgBox.setInformativeText(
             QString(
-                tr("Remove only the torrents from Transmission, or also delete the downloaded data?")
-                )
+                tr("Remove only the torrents from Transmission, or also delete the downloaded data?"))
             );
         msgBox.setDetailedText(preview);
+
+        torrentOnlyButton = msgBox.addButton(tr("Torrents only"), QMessageBox::AcceptRole);
+        torrentAndDataButton = msgBox.addButton(tr("Torrents and data"), QMessageBox::DestructiveRole);
     }
-
-    QPushButton *torrentOnlyButton =
-        msgBox.addButton(tr("Torrents only"), QMessageBox::AcceptRole);
-
-    QPushButton *torrentAndDataButton =
-        msgBox.addButton(tr("Torrents and data"), QMessageBox::DestructiveRole);
 
     QPushButton *noButton =
         msgBox.addButton(tr("Cancel"), QMessageBox::RejectRole);
