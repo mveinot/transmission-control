@@ -38,6 +38,7 @@ static QString translationsPath()
     return QString();
 }
 
+// if the user launched with a locale override use that, otherwise system locale
 static QLocale applicationLocale()
 {
     const QByteArray forcedLocale = qgetenv("PLANETARY_LOCALE");
@@ -52,8 +53,10 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
+    // determine the language to load
     const QLocale locale = applicationLocale();
 
+    // QT's built-in strings translator
     QTranslator qtTranslator;
     const bool qtTranslationLoaded =
         qtTranslator.load(locale,
@@ -64,6 +67,7 @@ int main(int argc, char *argv[])
     if (qtTranslationLoaded)
         a.installTranslator(&qtTranslator);
 
+    // App string translator
     QTranslator appTranslator;
     const bool appTranslationLoaded =
         appTranslator.load(locale,
@@ -74,24 +78,18 @@ int main(int argc, char *argv[])
     if (appTranslationLoaded)
         a.installTranslator(&appTranslator);
 
+    // application details
     QCoreApplication::setOrganizationName("mvgrafx");
     QCoreApplication::setOrganizationDomain("mvgrafx.net");
     QCoreApplication::setApplicationName(QString("Planetary"));
     QCoreApplication::setApplicationVersion(__PLANETARY_VERSION__);
 
     a.setWindowIcon(QIcon(":/icons/planetary.icns"));
-    QTranslator translator;
-    const QStringList uiLanguages = QLocale::system().uiLanguages();
-    for (const QString &locale : uiLanguages) {
-        const QString baseName = "transmission-control_" + QLocale(locale).name();
-        if (translator.load(":/i18n/" + baseName)) {
-            a.installTranslator(&translator);
-            break;
-        }
-    }
 
     QApplication::setQuitOnLastWindowClosed(false);
 
+    // some magic to ensure the app only runs one instance at a time,
+    // but new launches will send any relevant data to the running instance
     const QString instanceServerName =
         QStringLiteral("com.mvgrafx.Planetary.singleInstance");
 
@@ -105,8 +103,8 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    // start the main app window
     MainWindow w;
-
     a.installEventFilter(&w);
 
     QObject::connect(&instanceGuard, &SingleInstanceGuard::activationRequested,

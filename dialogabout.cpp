@@ -4,7 +4,6 @@
 #include <QTextStream>
 #include "dialogabout.h"
 #include "ui_dialogabout.h"
-#include "version.h"
 
 static QString readTextFile(const QString &path)
 {

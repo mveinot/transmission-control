@@ -1,39 +1,40 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
-#include <QTimer>
 #include <QActionGroup>
-#include <QHeaderView>
-#include <QSettings>
-#include <QTableWidget>
-#include <QTableWidgetItem>
-#include <QLocale>
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QJsonValue>
-#include <QMessageBox>
-#include <QPushButton>
+#include <QAction>
+#include <QCloseEvent>
+#include <QComboBox>
+#include <QDateTime>
+#include <QDesktopServices>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QEvent>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFileOpenEvent>
-#include <QMenu>
-#include <QDialog>
-#include <QDialogButtonBox>
 #include <QFormLayout>
-#include <QLineEdit>
-#include <QVBoxLayout>
-#include <QSignalBlocker>
-#include <QComboBox>
-#include <QSystemTrayIcon>
-#include <QAction>
-#include <QCloseEvent>
+#include <QHeaderView>
 #include <QInputDialog>
-#include <QEvent>
 #include <QIcon>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonValue>
+#include <QLineEdit>
+#include <QLocale>
+#include <QMenu>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QSettings>
+#include <QSignalBlocker>
+#include <QSystemTrayIcon>
+#include <QTableWidget>
+#include <QTableWidgetItem>
+#include <QTimer>
 #include <QUrl>
-#include <QFileOpenEvent>
-#include <QDateTime>
+#include <QVBoxLayout>
 #include <functional>
 #include <algorithm>
+
 #include "rpc_client.h"
 #include "dialogabout.h"
 #include "serverconfig.h"
@@ -48,22 +49,17 @@
 #include "settingsimportexport.h"
 #include "version.h"
 
-#include <QDesktopServices>
-#include <QMessageBox>
-#include <QSettings>
-#include <QUrl>
-
 namespace {
 constexpr int DefaultUpdateIntervalSeconds = 10;
 constexpr int MinimumUpdateIntervalSeconds = 1;
 constexpr int MaximumUpdateIntervalSeconds = 3600;
 constexpr int FilterTypeRole = Qt::UserRole;
 constexpr int FilterValueRole = Qt::UserRole + 1;
-
 constexpr int FilterTypeStatus = 0;
 constexpr int FilterTypeTracker = 1;
 }
 
+// determine if a string looks like a URL
 static bool looksLikeUrl(const QString &text)
 {
     const QString trimmed = text.trimmed();
@@ -129,11 +125,14 @@ MainWindow::MainWindow(QWidget *parent)
     client = new rpc_client(this);
     torrentModel = new TorrentModel(this);
 
+    // used as a intermediate model for sorting/filtering/etc
     proxy = new TorrentSortProxyModel(this);
     proxy->setSourceModel(torrentModel);
 
+    // geo ip lookup
     geoIpService = new GeoIpService(this);
 
+    // TODO: needs fixing for non-macos builds
     const QString geoIpPath =
         QCoreApplication::applicationDirPath()
         + "/../Resources/geoip/country.mmdb";
@@ -144,57 +143,28 @@ MainWindow::MainWindow(QWidget *parent)
 
     torrentAddController = new TorrentAddController(client, this, this);
 
-    connect(torrentAddController, &TorrentAddController::addStarted,
-            this, [this]() {
-                statusBar()->showMessage(
-                    tr("Adding torrent..."),
-                    3000
-                    );
-            });
-
-    connect(torrentAddController, &TorrentAddController::addFailed,
-            this, [this](const QString &message) {
-                statusBar()->showMessage(message, 5000);
-            });
-
-    connect(torrentAddController, &TorrentAddController::addCancelled,
-            this, [this]() {
-                statusBar()->showMessage(tr("Torrent add cancelled."), 3000);
-            });
-
-    this->aboutAction = new QAction(0);
-    this->aboutAction->setMenuRole(QAction::AboutRole);
-
+    // set up the main UI
     ui->setupUi(this);
+    MainWindow::setWindowTitle(QCoreApplication::applicationName());
+    setWindowIcon(QIcon(":/icons/planetary-512px.png"));
 
+    // Initialization methods
+    loadServerCombo();
     setupUpdateChecker();
     maybeCheckForUpdates();
     setupConnectionStatusIndicator();
     setupWatchFolderManager();
     loadWatchFolderSettings();
-
-    auto *stateGroup = new QActionGroup(this);
-    stateGroup->setExclusive(true);
-
-    MainWindow::setWindowTitle(QCoreApplication::applicationName());
-
-    ui->tableView->setModel(proxy);
-
     updateTorrentActionState();
+    setupTrayIcon();
 
-    connect(ui->tableView->selectionModel(),
-            &QItemSelectionModel::selectionChanged,
-            this,
-            [this]() {
-                updateTorrentActionState();
-            });
-
-    connect(ui->tableView->selectionModel(),
-            &QItemSelectionModel::currentChanged,
-            this,
-            [this]() {
-                updateTorrentActionState();
-            });
+    // UI setup
+    this->mainMenu = new QMenu(0);
+    this->menuBar()->addMenu(this->mainMenu);
+    this->aboutAction = new QAction(0);
+    this->aboutAction->setMenuRole(QAction::AboutRole);
+    this->mainMenu->addAction(this->aboutAction);
+    this->setMenuBar(this->menuBar());
 
     ui->fileTreeWidget->setColumnCount(FileColumnCount);
     ui->fileTreeWidget->setHeaderLabels({
@@ -205,20 +175,15 @@ MainWindow::MainWindow(QWidget *parent)
         tr("Done"),
         tr("Completed")
     });
-
-    connect(ui->actionCheckForUpdates, &QAction::triggered,
-            this, [this]() {
-                if (updateChecker)
-                    updateChecker->checkForUpdates(true);
-            });
-
     ui->fileTreeWidget->setContextMenuPolicy(Qt::CustomContextMenu);
-
-    connect(ui->fileTreeWidget, &QTreeWidget::customContextMenuRequested,
-            this, &MainWindow::showFileContextMenu);
-
     ui->fileTreeWidget->setAlternatingRowColors(true);
     ui->fileTreeWidget->setRootIsDecorated(true);
+    ui->fileTreeWidget->setItemDelegateForColumn(
+        FilePercentColumn,
+        new PercentFillDelegate(FilePercentColumn, Qt::UserRole, ui->fileTreeWidget)
+        );
+
+    ui->statusbar->showMessage(client->getServer());
 
     ui->actionAll->setCheckable(true);
     ui->actionDownloading->setCheckable(true);
@@ -228,6 +193,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->actionStopped->setCheckable(true);
     ui->actionError->setCheckable(true);
 
+    auto *stateGroup = new QActionGroup(this);
+    stateGroup->setExclusive(true);
     stateGroup->addAction(ui->actionAll);
     stateGroup->addAction(ui->actionDownloading);
     stateGroup->addAction(ui->actionCompleted);
@@ -269,6 +236,7 @@ MainWindow::MainWindow(QWidget *parent)
         "}"
         ));
 
+    ui->tableView->setModel(proxy);
     ui->tableView->hideColumn(TorrentModel::IdColumn);
     ui->tableView->setSortingEnabled(true);
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -284,6 +252,11 @@ MainWindow::MainWindow(QWidget *parent)
             )
         );
 
+    ui->trackerTableWidget->setAlternatingRowColors(true);
+    ui->trackerTableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->trackerTableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->trackerTableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->trackerTableWidget->horizontalHeader()->setStretchLastSection(true);
     ui->trackerTableWidget->setColumnCount(6);
     ui->trackerTableWidget->setHorizontalHeaderLabels({
         tr("Host"),
@@ -294,18 +267,48 @@ MainWindow::MainWindow(QWidget *parent)
         tr("Result")
     });
 
-    ui->trackerTableWidget->setAlternatingRowColors(true);
-    ui->trackerTableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->trackerTableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
-    ui->trackerTableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    ui->trackerTableWidget->horizontalHeader()->setStretchLastSection(true);
+    // signal connections
+    connect(ui->tableView->selectionModel(),
+            &QItemSelectionModel::selectionChanged,
+            this,
+            [this]() {
+                updateTorrentActionState();
+            });
 
-    ui->fileTreeWidget->setItemDelegateForColumn(
-        FilePercentColumn,
-        new PercentFillDelegate(FilePercentColumn, Qt::UserRole, ui->fileTreeWidget)
-        );
+    connect(ui->tableView->selectionModel(),
+            &QItemSelectionModel::currentChanged,
+            this,
+            [this]() {
+                updateTorrentActionState();
+            });
 
-    ui->statusbar->showMessage(client->getServer());
+    connect(torrentAddController, &TorrentAddController::addStarted,
+            this, [this]() {
+                statusBar()->showMessage(
+                    tr("Adding torrent..."),
+                    3000
+                    );
+            });
+
+    connect(torrentAddController, &TorrentAddController::addFailed,
+            this, [this](const QString &message) {
+                statusBar()->showMessage(message, 5000);
+            });
+
+    connect(torrentAddController, &TorrentAddController::addCancelled,
+            this, [this]() {
+                statusBar()->showMessage(tr("Torrent add cancelled."), 3000);
+            });
+
+
+    connect(ui->actionCheckForUpdates, &QAction::triggered,
+            this, [this]() {
+                if (updateChecker)
+                    updateChecker->checkForUpdates(true);
+            });
+
+    connect(ui->fileTreeWidget, &QTreeWidget::customContextMenuRequested,
+            this, &MainWindow::showFileContextMenu);
 
     connect(client, &rpc_client::serverChanged,
             torrentModel, &TorrentModel::clear);
@@ -385,11 +388,6 @@ MainWindow::MainWindow(QWidget *parent)
                 }
             });
 
-    this->mainMenu = new QMenu(0);
-    this->menuBar()->addMenu(this->mainMenu);
-    this->mainMenu->addAction(this->aboutAction);
-    this->setMenuBar(this->menuBar());
-
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTorrentList);
     connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
 
@@ -436,8 +434,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->tableView, &QTableView::customContextMenuRequested,
             this, &MainWindow::showTorrentContextMenu);
 
-    loadServerCombo();
-
     connect(ui->comboServers,
             QOverload<int>::of(&QComboBox::currentIndexChanged),
             this,
@@ -451,11 +447,9 @@ MainWindow::MainWindow(QWidget *parent)
                 updateConnectionStatus(lastTorrentCount);
             });
 
+
     restoreTableViewState();
 
-    setWindowIcon(QIcon(":/icons/planetary-512px.png"));
-
-    setupTrayIcon();
     client->init();
     applyAppSettings();
     client->getSessionSettings();
@@ -477,6 +471,7 @@ void MainWindow::showAbout()
     dialog.exec();
 }
 
+// torent(s) selected
 void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
 {
     if (!proxyIndex.isValid())
@@ -489,28 +484,55 @@ void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
 
     const int torrentId = sourceIndex.data(Qt::UserRole).toInt();
 
-    ui->fileTreeWidget->clear();
+    // clear the informational widgets
+    clearGeneralTab();
     ui->peerTableWidget->clearContents();
     ui->peerTableWidget->setRowCount(0);
-    clearGeneralTab();
     clearTrackerTable();
+    ui->fileTreeWidget->clear();
 
+    // get info for the selected torrent
     client->getTorrentDetails(torrentId);
 }
 
-int MainWindow::currentTorrentId() const
+void MainWindow::on_actionStart_Torrent_triggered()
 {
-    const QModelIndex proxyIndex = ui->tableView->currentIndex();
+    startSelectedTorrent();
+}
 
-    if (!proxyIndex.isValid())
-        return -1;
+void MainWindow::on_actionStop_Torrent_triggered()
+{
+    stopSelectedTorrent();
+}
 
-    const QModelIndex sourceIndex = proxy->mapToSource(proxyIndex);
+void MainWindow::on_action_Open_Torrent_triggered()
+{
+    addTorrentFromFile();
+}
 
-    if (!sourceIndex.isValid())
-        return -1;
+void MainWindow::on_actionAdd_Torrent_from_Magnet_Link_triggered()
+{
+    addTorrentFromMagnet();
+}
 
-    return sourceIndex.data(Qt::UserRole).toInt();
+void MainWindow::on_actionReannounce_triggered()
+{
+    reannounceSelectedTorrent();
+}
+
+void MainWindow::on_actionVerify_Torrent_triggered()
+{
+    verifySelectedTorrent();
+}
+
+void MainWindow::on_actionAbout_triggered()
+{
+    showAbout();
+}
+
+void MainWindow::on_actionQuit_triggered()
+{
+    quitApplication();
 }
 
 void MainWindow::on_actionDelete_Torrent_triggered()
@@ -535,10 +557,10 @@ void MainWindow::on_actionDelete_Torrent_triggered()
         msgBox.setText(tr("Delete the selected torrent?"));
         msgBox.setInformativeText(
 
-                tr("Torrent:\n%1\n\n"
-                "Choose whether to remove only the torrent from Transmission, "
-                "or also delete the downloaded data."
-                ).arg(names.value(0))
+            tr("Torrent:\n%1\n\n"
+               "Choose whether to remove only the torrent from Transmission, "
+               "or also delete the downloaded data."
+               ).arg(names.value(0))
             );
     } else {
         QString preview = names.mid(0, 8).join("\n");
@@ -553,7 +575,7 @@ void MainWindow::on_actionDelete_Torrent_triggered()
         msgBox.setInformativeText(
             QString(
                 tr("Torrents:\n%1\n\n"
-                "Choose whether to remove only the torrents from Transmission, "
+                   "Choose whether to remove only the torrents from Transmission, "
                    "or also delete the downloaded data.")
                 ).arg(preview)
             );
@@ -585,6 +607,34 @@ void MainWindow::on_actionDelete_Torrent_triggered()
     }
 }
 
+void MainWindow::on_actionSettings_triggered()
+{
+    AppSettings dialog(this);
+
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    applyAppSettings();
+    loadWatchFolderSettings();
+}
+
+int MainWindow::currentTorrentId() const
+{
+    const QModelIndex proxyIndex = ui->tableView->currentIndex();
+
+    if (!proxyIndex.isValid())
+        return -1;
+
+    const QModelIndex sourceIndex = proxy->mapToSource(proxyIndex);
+
+    if (!sourceIndex.isValid())
+        return -1;
+
+    return sourceIndex.data(Qt::UserRole).toInt();
+}
+
+// save header dimensions of all tables
 void MainWindow::saveTableViewState()
 {
     QSettings settings;
@@ -615,6 +665,7 @@ void MainWindow::saveTableViewState()
         );
 }
 
+// restore header dimensions
 void MainWindow::restoreTableViewState()
 {
     QSettings settings;
@@ -730,6 +781,7 @@ void MainWindow::setTorrentStateFilter(TorrentSortProxyModel::StateFilter filter
     }
 }
 
+// Create file list folder heirarchy
 QTreeWidgetItem *MainWindow::findOrCreateTopLevelItem(const QString &name)
 {
     for (int i = 0; i < ui->fileTreeWidget->topLevelItemCount(); ++i) {
@@ -1111,26 +1163,6 @@ void MainWindow::addTorrentFromMagnet()
     torrentAddController->addMagnetLink(magnetLink);
 }
 
-void MainWindow::on_actionStart_Torrent_triggered()
-{
-    startSelectedTorrent();
-}
-
-void MainWindow::on_actionStop_Torrent_triggered()
-{
-    stopSelectedTorrent();
-}
-
-void MainWindow::on_action_Open_Torrent_triggered()
-{
-    addTorrentFromFile();
-}
-
-void MainWindow::on_actionAdd_Torrent_from_Magnet_Link_triggered()
-{
-    addTorrentFromMagnet();
-}
-
 void MainWindow::reannounceSelectedTorrent()
 {
     const QList<int> ids = selectedTorrentIds();
@@ -1163,16 +1195,6 @@ void MainWindow::verifySelectedTorrent()
         tr("Verifying %1 torrent(s)...").arg(ids.size()),
         3000
         );
-}
-
-void MainWindow::on_actionReannounce_triggered()
-{
-    reannounceSelectedTorrent();
-}
-
-void MainWindow::on_actionVerify_Torrent_triggered()
-{
-    verifySelectedTorrent();
 }
 
 void MainWindow::loadServerCombo()
@@ -1389,18 +1411,6 @@ void MainWindow::applyUpdateInterval()
         tr("Update interval: %1 seconds").arg(timer->interval() / 1000),
         3000
         );
-}
-
-void MainWindow::on_actionSettings_triggered()
-{
-    AppSettings dialog(this);
-
-    if (dialog.exec() != QDialog::Accepted) {
-        return;
-    }
-
-    applyAppSettings();
-    loadWatchFolderSettings();
 }
 
 QList<int> MainWindow::selectedTorrentIds() const
@@ -2136,16 +2146,6 @@ void MainWindow::updateConnectionStatus(int torrentCount)
         connectionStatusLabel->setStyleSheet(QString());
         connectionStatusLabel->setText(text);
     }
-}
-void MainWindow::on_actionAbout_triggered()
-{
-    showAbout();
-}
-
-
-void MainWindow::on_actionQuit_triggered()
-{
-    quitApplication();
 }
 
 void MainWindow::forceStartSelectedTorrents()

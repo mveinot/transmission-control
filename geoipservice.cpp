@@ -13,6 +13,7 @@ struct DummyCountry
     const char *name;
 };
 
+// some dummy country values if the database could not be loaded
 const QList<DummyCountry> DummyCountries {
     { "CA", "Canada" },
     { "US", "United States" },
@@ -175,8 +176,7 @@ GeoIpResult GeoIpService::lookupInDatabase(const QString &ipAddress) const
      *   country.names.en
      *
      * Some generated country-only MMDBs may also have slightly flatter layouts,
-     * so we try a couple of reasonable paths before giving up. Because database
-     * schemas enjoy being tiny cultural arguments.
+     * so we try a couple of reasonable paths before giving up.
      */
     QString countryCode =
         readUtf8Value(&lookupResult.entry, "country", "iso_code");

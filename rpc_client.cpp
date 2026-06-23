@@ -31,6 +31,27 @@ static QJsonArray idsToJsonArray(const QList<int> &ids)
     return array;
 }
 
+rpc_client::rpc_client(QObject *parent)
+    : QObject(parent)
+{
+}
+
+void rpc_client::init()
+{
+    na_manager = new QNetworkAccessManager(this);
+
+    connect(na_manager, &QNetworkAccessManager::finished,
+            this, &rpc_client::replyFinished);
+
+    if (!loadCurrentServerFromSettings()) {
+        qWarning() << "No valid Transmission server configured.";
+        emit updateFailed(tr("No valid Transmission server configured."));
+        return;
+    }
+
+    getTorrentList();
+}
+
 void rpc_client::postRpc(const QString &method,
                          const QJsonObject &arguments,
                          RpcRequestType type)
@@ -62,27 +83,6 @@ void rpc_client::postRpc(const RpcRequestContext &context)
     pendingRequests.insert(reply, context);
 }
 
-rpc_client::rpc_client(QObject *parent)
-    : QObject(parent)
-{
-}
-
-void rpc_client::init()
-{
-    na_manager = new QNetworkAccessManager(this);
-
-    connect(na_manager, &QNetworkAccessManager::finished,
-            this, &rpc_client::replyFinished);
-
-    if (!loadCurrentServerFromSettings()) {
-        qWarning() << "No valid Transmission server configured.";
-        emit updateFailed(tr("No valid Transmission server configured."));
-        return;
-    }
-
-    getTorrentList();
-}
-
 void rpc_client::replyFinished(QNetworkReply *reply)
 {
     RpcRequestContext context =
@@ -92,10 +92,6 @@ void rpc_client::replyFinished(QNetworkReply *reply)
     const bool isTorrentGet =
         requestType == RpcRequestType::TorrentGet;
 
-    /*
-    const bool isTorrentDetails =
-       requestType == RpcRequestType::TorrentDetails;
-*/
     const auto finishTorrentGet = [this, isTorrentGet]() {
         if (isTorrentGet) {
             updateInProgress = false;
@@ -268,8 +264,6 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         }
 
         emit torrentsReceived(incoming);
-
-        //emit listUpdated();
 
         finishTorrentGet();
         return;
