@@ -1,7 +1,10 @@
 #ifndef SERVERCONFIG_H
 #define SERVERCONFIG_H
 
+#include "foldermapping.h"
+
 #include <QDialog>
+#include <QList>
 #include <QStringListModel>
 #include <QVector>
 
@@ -24,6 +27,7 @@ private:
         QString rpcUrl;
         QString username;
         QString password;
+        QList<FolderMapping> folderMappings;
     };
 
     Ui::ServerConfig *ui;
@@ -41,10 +45,12 @@ private:
     void saveEditorToServer(int index);
     void clearEditor();
     void setEditorEnabled(bool enabled);
+    void updateFolderMappingsSummary();
 
     void addServer();
     void removeSelectedServer();
     bool saveSelectedServer();
+    void configureFolderMappings();
     int defaultServerIndex = -1;
     void setSelectedServerAsDefault();
 };

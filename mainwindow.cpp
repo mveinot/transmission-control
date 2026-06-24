@@ -1920,6 +1920,15 @@ void MainWindow::showFileContextMenu(const QPoint &pos)
 
     QMenu menu(this);
 
+    QAction *openAction = menu.addAction(tr("Open"));
+
+    connect(openAction, &QAction::triggered,
+            this, [this, fileIndices]() {
+                openFileFromContextMenu(fileIndices);
+            });
+
+    menu.addSeparator();
+
     QMenu *wantedMenu = menu.addMenu(tr("Wanted"));
     QAction *wantedAction =
         wantedMenu->addAction(tr("Download"));
@@ -1951,6 +1960,30 @@ void MainWindow::showFileContextMenu(const QPoint &pos)
             this, [this]() { setSelectedFilesPriority(-1); });
 
     menu.exec(ui->fileTreeWidget->viewport()->mapToGlobal(pos));
+}
+
+void MainWindow::openFileFromContextMenu(const QList<int> &fileIndices)
+{
+    if (fileIndices.isEmpty())
+        return;
+
+    if (fileIndices.size() > 1) {
+        QMessageBox::information(
+            this,
+            tr("Open File"),
+            tr("Please select a single file to open.")
+            );
+        return;
+    }
+
+    const int fileIndex = fileIndices.first();
+
+    QMessageBox::information(
+        this,
+        tr("Open File"),
+        tr("Open selected file index: %1")
+            .arg(fileIndex)
+        );
 }
 
 void MainWindow::setSelectedFilesWanted(bool wanted)

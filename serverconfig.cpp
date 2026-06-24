@@ -1,8 +1,11 @@
 #include "serverconfig.h"
 #include "ui_serverconfig.h"
 
+#include "foldermappingsdialog.h"
+
 #include <QItemSelectionModel>
 #include <QMessageBox>
+#include <QPushButton>
 #include <QSettings>
 #include <QSignalBlocker>
 
@@ -22,6 +25,8 @@ ServerConfig::ServerConfig(QWidget *parent)
     ui->buttonSaveServer->setEnabled(false);
     ui->buttonRemoveServer->setEnabled(false);
     ui->buttonSetDefaultServer->setEnabled(false);
+    ui->buttonConfigureFolderMappings->setEnabled(false);
+    updateFolderMappingsSummary();
 
     loadServers();
     refreshServerList();
@@ -38,6 +43,8 @@ ServerConfig::ServerConfig(QWidget *parent)
                     ui->buttonSaveServer->setEnabled(false);
                     ui->buttonRemoveServer->setEnabled(false);
                     ui->buttonSetDefaultServer->setEnabled(false);
+                    ui->buttonConfigureFolderMappings->setEnabled(false);
+                    updateFolderMappingsSummary();
                     return;
                 }
 
@@ -46,6 +53,8 @@ ServerConfig::ServerConfig(QWidget *parent)
                 ui->buttonSaveServer->setEnabled(true);
                 ui->buttonRemoveServer->setEnabled(true);
                 ui->buttonSetDefaultServer->setEnabled(true);
+                ui->buttonConfigureFolderMappings->setEnabled(true);
+                updateFolderMappingsSummary();
             });
 
     connect(ui->buttonAddServer, &QPushButton::clicked,
@@ -66,6 +75,11 @@ ServerConfig::ServerConfig(QWidget *parent)
     connect(ui->buttonSaveServer, &QPushButton::clicked,
             this, [this]() {
                 saveSelectedServer();
+            });
+
+    connect(ui->buttonConfigureFolderMappings, &QPushButton::clicked,
+            this, [this]() {
+                configureFolderMappings();
             });
 
     connect(ui->scButtonBox, &QDialogButtonBox::accepted, this, [this]() {
@@ -118,6 +132,21 @@ void ServerConfig::loadServers()
         server.username = settings.value("username").toString();
         server.password = settings.value("password").toString();
 
+        const int mappingCount = settings.beginReadArray("folderMappings");
+
+        for (int mappingIndex = 0; mappingIndex < mappingCount; ++mappingIndex) {
+            settings.setArrayIndex(mappingIndex);
+
+            FolderMapping mapping;
+            mapping.remotePath = settings.value("remotePath").toString().trimmed();
+            mapping.localPath = settings.value("localPath").toString().trimmed();
+
+            if (!mapping.remotePath.isEmpty() || !mapping.localPath.isEmpty())
+                server.folderMappings.append(mapping);
+        }
+
+        settings.endArray();
+
         if (!server.name.trimmed().isEmpty() ||
             !server.rpcUrl.trimmed().isEmpty()) {
             servers.append(server);
@@ -145,6 +174,18 @@ void ServerConfig::saveServers()
         settings.setValue("rpcUrl", servers.at(i).rpcUrl);
         settings.setValue("username", servers.at(i).username);
         settings.setValue("password", servers.at(i).password);
+
+        settings.beginWriteArray("folderMappings");
+
+        const QList<FolderMapping> mappings = servers.at(i).folderMappings;
+
+        for (int mappingIndex = 0; mappingIndex < mappings.size(); ++mappingIndex) {
+            settings.setArrayIndex(mappingIndex);
+            settings.setValue("remotePath", mappings.at(mappingIndex).remotePath);
+            settings.setValue("localPath", mappings.at(mappingIndex).localPath);
+        }
+
+        settings.endArray();
     }
 
     settings.endArray();
@@ -195,6 +236,8 @@ void ServerConfig::loadServerIntoEditor(int index)
     ui->editServerUrl->setText(server.rpcUrl);
     ui->editServerUsername->setText(server.username);
     ui->editServerPassword->setText(server.password);
+
+    updateFolderMappingsSummary();
 }
 
 void ServerConfig::saveEditorToServer(int index)
@@ -218,6 +261,7 @@ void ServerConfig::clearEditor()
     ui->editServerUrl->clear();
     ui->editServerUsername->clear();
     ui->editServerPassword->clear();
+    updateFolderMappingsSummary();
 }
 
 void ServerConfig::setEditorEnabled(bool enabled)
@@ -226,6 +270,7 @@ void ServerConfig::setEditorEnabled(bool enabled)
     ui->editServerUrl->setEnabled(enabled);
     ui->editServerUsername->setEnabled(enabled);
     ui->editServerPassword->setEnabled(enabled);
+    ui->buttonConfigureFolderMappings->setEnabled(enabled);
 }
 
 void ServerConfig::addServer()
@@ -249,6 +294,9 @@ void ServerConfig::addServer()
     setEditorEnabled(true);
     ui->buttonSaveServer->setEnabled(true);
     ui->buttonRemoveServer->setEnabled(true);
+    ui->buttonSetDefaultServer->setEnabled(true);
+    ui->buttonConfigureFolderMappings->setEnabled(true);
+    updateFolderMappingsSummary();
 
     ui->editServerName->setFocus();
     ui->editServerName->selectAll();
@@ -293,6 +341,9 @@ void ServerConfig::removeSelectedServer()
         setEditorEnabled(false);
         ui->buttonSaveServer->setEnabled(false);
         ui->buttonRemoveServer->setEnabled(false);
+        ui->buttonSetDefaultServer->setEnabled(false);
+        ui->buttonConfigureFolderMappings->setEnabled(false);
+        updateFolderMappingsSummary();
         return;
     }
 
@@ -326,9 +377,53 @@ bool ServerConfig::saveSelectedServer()
     }
 
     saveEditorToServer(index);
+    updateFolderMappingsSummary();
     saveServers();
 
     return true;
+}
+
+void ServerConfig::updateFolderMappingsSummary()
+{
+    const int index = currentServerIndex();
+
+    if (index < 0 || index >= servers.size()) {
+        ui->labelFolderMappingsSummary->setText(tr("No server selected"));
+        return;
+    }
+
+    const int count = servers.at(index).folderMappings.size();
+
+    if (count == 0) {
+        ui->labelFolderMappingsSummary->setText(tr("No folder mappings configured"));
+        return;
+    }
+
+    ui->labelFolderMappingsSummary->setText(
+        tr("%n folder mapping(s) configured", nullptr, count)
+    );
+}
+
+void ServerConfig::configureFolderMappings()
+{
+    const int index = currentServerIndex();
+
+    if (index < 0 || index >= servers.size())
+        return;
+
+    saveEditorToServer(index);
+
+    FolderMappingsDialog dialog(this);
+    dialog.setServerName(servers.at(index).name);
+    dialog.setMappings(servers.at(index).folderMappings);
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    servers[index].folderMappings = dialog.mappings();
+    updateFolderMappingsSummary();
+    refreshServerList();
+    ui->listServers->setCurrentIndex(serverListModel->index(index, 0));
 }
 
 void ServerConfig::setSelectedServerAsDefault()

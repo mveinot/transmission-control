@@ -73,6 +73,8 @@ private slots:
     void on_actionQuit_triggered();
     void exportSettings();
     void importSettings();
+    //void showFilesContextMenu(const QPoint &position);
+    //void openSelectedTorrentFile();
 
 private:
     Ui::MainWindow *ui;
@@ -139,6 +141,7 @@ private:
     QList<int> fileIndicesForItem(QTreeWidgetItem *item) const;
     QList<int> selectedFileIndicesForContextItem(QTreeWidgetItem *item) const;
     void showFileContextMenu(const QPoint &pos);
+    void openFileFromContextMenu(const QList<int> &fileIndices);
     void setSelectedFilesWanted(bool wanted);
     void setSelectedFilesPriority(int priority);
     void queueMoveSelectedTop();
