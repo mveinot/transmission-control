@@ -1052,6 +1052,12 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
         queueMenu->addAction(tr("Move to Bottom"));
 
     menu.addSeparator();
+
+    QAction *setLocationAction =
+        menu.addAction(tr("Set Location…"));
+
+    menu.addSeparator();
+
     menu.addAction(ui->actionDelete_Torrent);
 
     connect(moveTopAction, &QAction::triggered,
@@ -1065,11 +1071,6 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
 
     connect(moveBottomAction, &QAction::triggered,
             this, &MainWindow::queueMoveSelectedBottom);
-
-    menu.addSeparator();
-
-    QAction *setLocationAction =
-        menu.addAction(tr("Set Location…"));
 
     connect(setLocationAction, &QAction::triggered,
             this, &MainWindow::setSelectedTorrentsLocation);
@@ -2064,6 +2065,15 @@ void MainWindow::showFileContextMenu(const QPoint &pos)
                 openFileFromContextMenu(fileIndices);
             });
 
+    QAction *openContainingFolderAction =
+        menu.addAction(tr("Open Containing Folder"));
+    openContainingFolderAction->setEnabled(fileIndices.size() == 1);
+
+    connect(openContainingFolderAction, &QAction::triggered,
+            this, [this, fileIndices]() {
+                openContainingFolderFromContextMenu(fileIndices);
+            });
+
     menu.addSeparator();
 
     QMenu *wantedMenu = menu.addMenu(tr("Wanted"));
@@ -2190,18 +2200,29 @@ QString MainWindow::mapRemotePathToLocalPath(
     return QDir(localPrefix).filePath(suffix);
 }
 
-void MainWindow::openFileFromContextMenu(const QList<int> &fileIndices)
+bool MainWindow::resolveMappedLocalPathForSingleFile(
+    const QList<int> &fileIndices,
+    const QString &dialogTitle,
+    QString *localPath,
+    QString *remotePath,
+    bool requireFileExists)
 {
+    if (localPath)
+        localPath->clear();
+
+    if (remotePath)
+        remotePath->clear();
+
     if (fileIndices.isEmpty())
-        return;
+        return false;
 
     if (fileIndices.size() != 1) {
         QMessageBox::information(
             this,
-            tr("Open File"),
-            tr("Please select a single file to open.")
+            dialogTitle,
+            tr("Please select a single file.")
             );
-        return;
+        return false;
     }
 
     const int fileIndex = fileIndices.first();
@@ -2211,49 +2232,71 @@ void MainWindow::openFileFromContextMenu(const QList<int> &fileIndices)
     if (relativeFilePath.isEmpty()) {
         QMessageBox::warning(
             this,
-            tr("Open File"),
+            dialogTitle,
             tr("Planetary could not determine the selected file path.")
             );
-        return;
+        return false;
     }
 
     if (currentTorrentDownloadDir.trimmed().isEmpty()) {
         QMessageBox::warning(
             this,
-            tr("Open File"),
+            dialogTitle,
             tr("Planetary could not determine the torrent download directory.")
             );
-        return;
+        return false;
     }
 
-    const QString remotePath =
+    const QString resolvedRemotePath =
         QDir::cleanPath(
             currentTorrentDownloadDir + QLatin1Char('/') + relativeFilePath
             );
 
-    const QString localPath =
-        mapRemotePathToLocalPath(remotePath, currentServerFolderMappings());
+    const QString resolvedLocalPath =
+        mapRemotePathToLocalPath(resolvedRemotePath, currentServerFolderMappings());
 
-    if (localPath.isEmpty()) {
+    if (remotePath)
+        *remotePath = resolvedRemotePath;
+
+    if (resolvedLocalPath.isEmpty()) {
         QMessageBox::information(
             this,
             tr("No Folder Mapping"),
             tr("Planetary could not map this remote file path to a local file path.\n\n"
                "Remote path:\n%1")
-                .arg(remotePath)
+                .arg(resolvedRemotePath)
             );
-        return;
+        return false;
     }
 
-    if (!QFileInfo::exists(localPath)) {
+    if (requireFileExists && !QFileInfo::exists(resolvedLocalPath)) {
         QMessageBox::warning(
             this,
             tr("File Not Found"),
             tr("The mapped local file does not exist.\n\n"
                "Remote path:\n%1\n\n"
                "Local path:\n%2")
-                .arg(remotePath, localPath)
+                .arg(resolvedRemotePath, resolvedLocalPath)
             );
+        return false;
+    }
+
+    if (localPath)
+        *localPath = resolvedLocalPath;
+
+    return true;
+}
+
+void MainWindow::openFileFromContextMenu(const QList<int> &fileIndices)
+{
+    QString localPath;
+
+    if (!resolveMappedLocalPathForSingleFile(
+            fileIndices,
+            tr("Open File"),
+            &localPath,
+            nullptr,
+            true)) {
         return;
     }
 
@@ -2272,6 +2315,56 @@ void MainWindow::openFileFromContextMenu(const QList<int> &fileIndices)
 
     statusBar()->showMessage(
         tr("Opening %1").arg(QFileInfo(localPath).fileName()),
+        3000
+        );
+}
+
+void MainWindow::openContainingFolderFromContextMenu(const QList<int> &fileIndices)
+{
+    QString localPath;
+    QString remotePath;
+
+    if (!resolveMappedLocalPathForSingleFile(
+            fileIndices,
+            tr("Open Containing Folder"),
+            &localPath,
+            &remotePath,
+            false)) {
+        return;
+    }
+
+    const QFileInfo localInfo(localPath);
+    const QString folderPath = localInfo.isDir()
+        ? localInfo.absoluteFilePath()
+        : localInfo.absolutePath();
+
+    if (folderPath.isEmpty() || !QFileInfo::exists(folderPath)) {
+        QMessageBox::warning(
+            this,
+            tr("Folder Not Found"),
+            tr("The mapped containing folder does not exist.\n\n"
+               "Remote path:\n%1\n\n"
+               "Local folder:\n%2")
+                .arg(remotePath, folderPath)
+            );
+        return;
+    }
+
+    const bool opened =
+        QDesktopServices::openUrl(QUrl::fromLocalFile(folderPath));
+
+    if (!opened) {
+        QMessageBox::warning(
+            this,
+            tr("Open Folder Failed"),
+            tr("The operating system could not open this folder:\n\n%1")
+                .arg(folderPath)
+            );
+        return;
+    }
+
+    statusBar()->showMessage(
+        tr("Opening folder %1").arg(QDir::toNativeSeparators(folderPath)),
         3000
         );
 }

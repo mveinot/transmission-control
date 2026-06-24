@@ -145,6 +145,12 @@ private:
     QList<int> selectedFileIndicesForContextItem(QTreeWidgetItem *item) const;
     void showFileContextMenu(const QPoint &pos);
     void openFileFromContextMenu(const QList<int> &fileIndices);
+    void openContainingFolderFromContextMenu(const QList<int> &fileIndices);
+    bool resolveMappedLocalPathForSingleFile(const QList<int> &fileIndices,
+                                            const QString &dialogTitle,
+                                            QString *localPath,
+                                            QString *remotePath = nullptr,
+                                            bool requireFileExists = true);
     QList<FolderMapping> currentServerFolderMappings() const;
     QString mapRemotePathToLocalPath(const QString &remotePath,
                                      const QList<FolderMapping> &mappings) const;
