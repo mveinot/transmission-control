@@ -49,6 +49,9 @@ public:
     void removeTorrents(const QList<int> &ids, bool deleteLocalData);
     void verifyTorrents(const QList<int> &ids);
     void reannounceTorrents(const QList<int> &ids);
+    void setTorrentLocation(const QList<int> &ids,
+                            const QString &location,
+                            bool moveData);
     void setTorrentFilesWanted(int torrentId,
                                const QList<int> &fileIndices,
                                bool wanted);

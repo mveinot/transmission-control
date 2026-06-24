@@ -142,6 +142,8 @@ void rpc_client::replyFinished(QNetworkReply *reply)
 
         if (isTorrentGet) {
             emit updateFailed(message);
+        } else if (requestType == RpcRequestType::Command) {
+            emit commandFailed(context.method, message);
         }
 
         reply->deleteLater();
@@ -201,6 +203,8 @@ void rpc_client::replyFinished(QNetworkReply *reply)
 
         if (isTorrentGet) {
             emit updateFailed(message);
+        } else if (requestType == RpcRequestType::Command) {
+            emit commandFailed(context.method, message);
         }
 
         finishTorrentGet();
@@ -556,6 +560,25 @@ void rpc_client::reannounceTorrents(const QList<int> &ids)
     arguments["ids"] = idsToJsonArray(ids);
 
     postRpc("torrent-reannounce", arguments, RpcRequestType::Command);
+}
+
+void rpc_client::setTorrentLocation(const QList<int> &ids,
+                                    const QString &location,
+                                    bool moveData)
+{
+    const QString trimmedLocation = location.trimmed();
+
+    if (ids.isEmpty() || trimmedLocation.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments[QStringLiteral("ids")] = idsToJsonArray(ids);
+    arguments[QStringLiteral("location")] = trimmedLocation;
+    arguments[QStringLiteral("move")] = moveData;
+
+    postRpc(QStringLiteral("torrent-set-location"),
+            arguments,
+            RpcRequestType::Command);
 }
 
 void rpc_client::getTorrentDetails(int id)

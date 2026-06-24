@@ -3,6 +3,7 @@
 #include <QActionGroup>
 #include <QAction>
 #include <QCloseEvent>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDateTime>
 #include <QDesktopServices>
@@ -450,6 +451,28 @@ MainWindow::MainWindow(QWidget *parent)
             this, [this](const QString &, qint64 sizeBytes) {
                 remoteFreeSpaceBytes = sizeBytes;
                 updateConnectionStatus(lastTorrentCount);
+            });
+
+    connect(client, &rpc_client::commandSucceeded,
+            this, [this](const QString &method) {
+                if (method == QStringLiteral("torrent-set-location")) {
+                    statusBar()->showMessage(
+                        tr("Torrent location updated."),
+                        3000
+                        );
+
+                    client->getTorrentList();
+
+                    const int torrentId = currentTorrentId();
+
+                    if (torrentId >= 0)
+                        client->getTorrentDetails(torrentId);
+                }
+            });
+
+    connect(client, &rpc_client::commandFailed,
+            this, [this](const QString &, const QString &message) {
+                statusBar()->showMessage(message, 5000);
             });
 
 
@@ -1043,6 +1066,14 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
     connect(moveBottomAction, &QAction::triggered,
             this, &MainWindow::queueMoveSelectedBottom);
 
+    menu.addSeparator();
+
+    QAction *setLocationAction =
+        menu.addAction(tr("Set Location…"));
+
+    connect(setLocationAction, &QAction::triggered,
+            this, &MainWindow::setSelectedTorrentsLocation);
+
     menu.exec(ui->tableView->viewport()->mapToGlobal(pos));
 }
 
@@ -1195,6 +1226,101 @@ void MainWindow::verifySelectedTorrent()
         tr("Verifying %1 torrent(s)...").arg(ids.size()),
         3000
         );
+}
+
+void MainWindow::setSelectedTorrentsLocation()
+{
+    const QList<int> ids = selectedTorrentIds();
+
+    if (ids.isEmpty()) {
+        statusBar()->showMessage(tr("No torrent selected."), 3000);
+        return;
+    }
+
+    QString initialLocation = remoteDownloadDir.trimmed();
+
+    if (ids.size() == 1 && currentTorrentId() == ids.first()) {
+        const QString currentDownloadDir =
+            ui->labelGeneralDownloadDir->text().trimmed();
+
+        if (!currentDownloadDir.isEmpty() &&
+            currentDownloadDir != tr("Unknown")) {
+            initialLocation = currentDownloadDir;
+        }
+    }
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Set Location"));
+
+    auto *layout = new QVBoxLayout(&dialog);
+
+    auto *descriptionLabel = new QLabel(
+        tr("Set the download location on the Transmission server."),
+        &dialog
+        );
+    descriptionLabel->setWordWrap(true);
+    layout->addWidget(descriptionLabel);
+
+    auto *formLayout = new QFormLayout;
+    auto *locationEdit = new QLineEdit(initialLocation, &dialog);
+    locationEdit->setPlaceholderText(tr("Remote download location"));
+    locationEdit->selectAll();
+
+    formLayout->addRow(tr("Location:"), locationEdit);
+    layout->addLayout(formLayout);
+
+    auto *moveDataCheckBox = new QCheckBox(
+        tr("Move existing data to the new location"),
+        &dialog
+        );
+    moveDataCheckBox->setChecked(false);
+    layout->addWidget(moveDataCheckBox);
+
+    auto *buttonBox = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+        &dialog
+        );
+    layout->addWidget(buttonBox);
+
+    connect(buttonBox, &QDialogButtonBox::accepted,
+            &dialog, &QDialog::accept);
+
+    connect(buttonBox, &QDialogButtonBox::rejected,
+            &dialog, &QDialog::reject);
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    const QString location = locationEdit->text().trimmed();
+
+    if (location.isEmpty()) {
+        QMessageBox::warning(
+            this,
+            tr("Set Location"),
+            tr("The download location cannot be empty.")
+            );
+        return;
+    }
+
+    const bool moveData = moveDataCheckBox->isChecked();
+
+    client->setTorrentLocation(ids, location, moveData);
+
+    statusBar()->showMessage(
+        moveData
+            ? tr("Moving %1 torrent(s) to %2...").arg(ids.size()).arg(location)
+            : tr("Setting location for %1 torrent(s) to %2...").arg(ids.size()).arg(location),
+        5000
+        );
+
+    QTimer::singleShot(1500, this, [this]() {
+        client->getTorrentList();
+
+        const int torrentId = currentTorrentId();
+
+        if (torrentId >= 0)
+            client->getTorrentDetails(torrentId);
+    });
 }
 
 void MainWindow::loadServerCombo()
