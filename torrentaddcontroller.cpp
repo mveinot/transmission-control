@@ -1,6 +1,7 @@
 #include "torrentaddcontroller.h"
 
 #include "rpc_client.h"
+#include "torrentmetadataparser.h"
 
 #include <QFileInfo>
 #include <QSettings>
@@ -90,6 +91,9 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
                      sourceType == TorrentAddDialog::SourceType::TorrentFile
                          ? displaySourceForFile(source)
                          : source);
+
+    if (sourceType == TorrentAddDialog::SourceType::TorrentFile)
+        dialog.setTorrentMetadata(TorrentMetadataParser::parseTorrentFile(source));
 
     const QString rememberedDownloadDir = savedDownloadDir();
 

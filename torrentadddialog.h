@@ -4,6 +4,8 @@
 #include <QDialog>
 #include <QString>
 
+#include "torrentmetadataparser.h"
+
 namespace Ui {
 class TorrentAddDialog;
 }
@@ -25,6 +27,8 @@ public:
     void setDownloadDir(const QString &downloadDir);
     void setStartPaused(bool paused);
     void setRememberOptions(bool remember);
+    void setTorrentMetadata(const TorrentMetadata &metadata);
+    void clearTorrentMetadata();
 
     SourceType sourceType() const;
     QString source() const;
