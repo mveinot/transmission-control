@@ -49,3 +49,13 @@ add_planetary_test(test_sessionsettingsdialog
     ${CMAKE_SOURCE_DIR}/sessionsettingsdialog.h
     ${CMAKE_SOURCE_DIR}/sessionsettingsdialog.ui
 )
+
+add_planetary_test(test_bencodeparser
+    test_bencodeparser.cpp
+    ${CMAKE_SOURCE_DIR}/bencodevalue.cpp
+    ${CMAKE_SOURCE_DIR}/bencodevalue.h
+    ${CMAKE_SOURCE_DIR}/bencodeparser.cpp
+    ${CMAKE_SOURCE_DIR}/bencodeparser.h
+    ${CMAKE_SOURCE_DIR}/torrentmetadataparser.cpp
+    ${CMAKE_SOURCE_DIR}/torrentmetadataparser.h
+)

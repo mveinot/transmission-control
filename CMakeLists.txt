@@ -2,12 +2,6 @@ cmake_minimum_required(VERSION 3.5)
 
 project(Planetary VERSION 0.1 LANGUAGES CXX)
 
-#add_custom_target(gen_version ALL
-#    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/make_version.pl
-#    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-#    COMMENT "Generating version.h"
-#)
-
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -90,11 +84,11 @@ configure_file(
     @ONLY
 )
 
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
-    @ONLY
-)
+#configure_file(
+#    "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
+#    "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
+#    @ONLY
+#)
 
 file(WRITE
     "${CMAKE_CURRENT_BINARY_DIR}/planetary-version.txt"
@@ -130,6 +124,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         settingsimportexport.h settingsimportexport.cpp
         foldermapping.h
         foldermappingsdialog.h foldermappingsdialog.cpp foldermappingsdialog.ui
+        bencodevalue.h bencodevalue.cpp
+        bencodeparser.h bencodeparser.cpp
+        torrentmetadataparser.h torrentmetadataparser.cpp
     )
 
 target_include_directories(Planetary PRIVATE
