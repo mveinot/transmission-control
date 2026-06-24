@@ -1,9 +1,11 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include <QActionGroup>
+#include <QApplication>
 #include <QAction>
 #include <QCloseEvent>
 #include <QCheckBox>
+#include <QClipboard>
 #include <QComboBox>
 #include <QDateTime>
 #include <QDesktopServices>
@@ -102,6 +104,9 @@ void MainWindow::clearGeneralTab()
 
     currentTorrentDownloadDir.clear();
     currentTorrentFilePaths.clear();
+    currentDetailsTorrentId = -1;
+    currentTorrentHashString.clear();
+    currentTorrentMagnetLink.clear();
 }
 
 void MainWindow::clearTrackerTable()
@@ -262,6 +267,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->trackerTableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->trackerTableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->trackerTableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->trackerTableWidget->setContextMenuPolicy(Qt::CustomContextMenu);
     ui->trackerTableWidget->horizontalHeader()->setStretchLastSection(true);
     ui->trackerTableWidget->setColumnCount(6);
     ui->trackerTableWidget->setHorizontalHeaderLabels({
@@ -315,6 +321,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->fileTreeWidget, &QTreeWidget::customContextMenuRequested,
             this, &MainWindow::showFileContextMenu);
+
+    connect(ui->trackerTableWidget, &QTableWidget::customContextMenuRequested,
+            this, &MainWindow::showTrackerContextMenu);
 
     connect(client, &rpc_client::serverChanged,
             torrentModel, &TorrentModel::clear);
@@ -1032,7 +1041,29 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
     menu.addAction(ui->actionVerify_Torrent);
     menu.addAction(ui->actionReannounce);
     menu.addSeparator();
-    menu.addAction(ui->actionDelete_Torrent);
+
+    QAction *copyMagnetAction =
+        menu.addAction(tr("Copy Magnet Link"));
+
+    QAction *copyHashAction =
+        menu.addAction(tr("Copy Hash"));
+
+    const QList<int> contextTorrentIds = selectedTorrentIds();
+    const bool canCopyCurrentTorrentDetails =
+        contextTorrentIds.size() == 1
+        && currentDetailsTorrentId == contextTorrentIds.first();
+
+    copyMagnetAction->setEnabled(
+        canCopyCurrentTorrentDetails
+        && !currentTorrentMagnetLink.trimmed().isEmpty()
+        );
+
+    copyHashAction->setEnabled(
+        canCopyCurrentTorrentDetails
+        && !currentTorrentHashString.trimmed().isEmpty()
+        );
+
+    menu.addSeparator();
 
     connect(ui->actionForce_Start_Torrent, &QAction::triggered,
             this, &MainWindow::forceStartSelectedTorrents);
@@ -1074,6 +1105,12 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
 
     connect(setLocationAction, &QAction::triggered,
             this, &MainWindow::setSelectedTorrentsLocation);
+
+    connect(copyMagnetAction, &QAction::triggered,
+            this, &MainWindow::copySelectedTorrentMagnetLink);
+
+    connect(copyHashAction, &QAction::triggered,
+            this, &MainWindow::copySelectedTorrentHash);
 
     menu.exec(ui->tableView->viewport()->mapToGlobal(pos));
 }
@@ -1662,6 +1699,10 @@ void MainWindow::populateGeneralTab(const QJsonObject &details)
     const QString magnetLink =
         details.value("magnetLink").toString();
 
+    currentDetailsTorrentId = details.value("id").toInt(-1);
+    currentTorrentHashString = hashString;
+    currentTorrentMagnetLink = magnetLink;
+
     const qint64 totalSize =
         details.value("totalSize").toVariant().toLongLong();
 
@@ -1751,6 +1792,7 @@ void MainWindow::populateTrackerTable(const QJsonObject &details)
 
         auto *hostItem = new QTableWidgetItem(host);
         auto *announceItem = new QTableWidgetItem(announce);
+        announceItem->setData(Qt::UserRole, announce);
 
         auto *seedersItem = new QTableWidgetItem(
             seeders >= 0 ? QString::number(seeders) : tr("Unknown")
@@ -2034,6 +2076,73 @@ QList<int> MainWindow::selectedFileIndicesForContextItem(QTreeWidgetItem *item) 
     std::sort(result.begin(), result.end());
 
     return result;
+}
+
+void MainWindow::copyTextToClipboard(const QString &text,
+                                      const QString &statusMessage)
+{
+    const QString trimmed = text.trimmed();
+
+    if (trimmed.isEmpty())
+        return;
+
+    QApplication::clipboard()->setText(trimmed);
+
+    if (!statusMessage.isEmpty())
+        statusBar()->showMessage(statusMessage, 3000);
+}
+
+void MainWindow::copySelectedTorrentMagnetLink()
+{
+    copyTextToClipboard(
+        currentTorrentMagnetLink,
+        tr("Magnet link copied to clipboard.")
+        );
+}
+
+void MainWindow::copySelectedTorrentHash()
+{
+    copyTextToClipboard(
+        currentTorrentHashString,
+        tr("Torrent hash copied to clipboard.")
+        );
+}
+
+void MainWindow::showTrackerContextMenu(const QPoint &pos)
+{
+    QTableWidgetItem *item = ui->trackerTableWidget->itemAt(pos);
+
+    if (!item)
+        return;
+
+    ui->trackerTableWidget->selectRow(item->row());
+
+    QTableWidgetItem *announceItem =
+        ui->trackerTableWidget->item(item->row(), 1);
+
+    if (!announceItem)
+        return;
+
+    const QString trackerUrl =
+        announceItem->data(Qt::UserRole).toString().trimmed();
+
+    if (trackerUrl.isEmpty())
+        return;
+
+    QMenu menu(this);
+
+    QAction *copyTrackerUrlAction =
+        menu.addAction(tr("Copy Tracker URL"));
+
+    connect(copyTrackerUrlAction, &QAction::triggered,
+            this, [this, trackerUrl]() {
+                copyTextToClipboard(
+                    trackerUrl,
+                    tr("Tracker URL copied to clipboard.")
+                    );
+            });
+
+    menu.exec(ui->trackerTableWidget->viewport()->mapToGlobal(pos));
 }
 
 void MainWindow::showFileContextMenu(const QPoint &pos)

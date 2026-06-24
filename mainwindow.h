@@ -144,6 +144,11 @@ private:
     QList<int> fileIndicesForItem(QTreeWidgetItem *item) const;
     QList<int> selectedFileIndicesForContextItem(QTreeWidgetItem *item) const;
     void showFileContextMenu(const QPoint &pos);
+    void showTrackerContextMenu(const QPoint &pos);
+    void copySelectedTorrentMagnetLink();
+    void copySelectedTorrentHash();
+    void copyTextToClipboard(const QString &text,
+                             const QString &statusMessage);
     void openFileFromContextMenu(const QList<int> &fileIndices);
     void openContainingFolderFromContextMenu(const QList<int> &fileIndices);
     bool resolveMappedLocalPathForSingleFile(const QList<int> &fileIndices,
@@ -175,6 +180,9 @@ private:
     bool openSessionSettingsWhenReceived = false;
     QString remoteDownloadDir;
     QString currentTorrentDownloadDir;
+    int currentDetailsTorrentId = -1;
+    QString currentTorrentHashString;
+    QString currentTorrentMagnetLink;
     QHash<int, QString> currentTorrentFilePaths;
     qint64 remoteFreeSpaceBytes = -1;
     int lastTorrentCount = 0;
