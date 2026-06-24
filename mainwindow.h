@@ -16,6 +16,8 @@
 #include <QEvent>
 #include <QLabel>
 #include <QSet>
+#include <QHash>
+#include "foldermapping.h"
 #include "rpc_client.h"
 #include "torrentsortproxymodel.h"
 #include "torrentmodel.h"
@@ -142,6 +144,9 @@ private:
     QList<int> selectedFileIndicesForContextItem(QTreeWidgetItem *item) const;
     void showFileContextMenu(const QPoint &pos);
     void openFileFromContextMenu(const QList<int> &fileIndices);
+    QList<FolderMapping> currentServerFolderMappings() const;
+    QString mapRemotePathToLocalPath(const QString &remotePath,
+                                     const QList<FolderMapping> &mappings) const;
     void setSelectedFilesWanted(bool wanted);
     void setSelectedFilesPriority(int priority);
     void queueMoveSelectedTop();
@@ -162,6 +167,8 @@ private:
     bool completedTorrentNotificationBaselineLoaded = false;
     bool openSessionSettingsWhenReceived = false;
     QString remoteDownloadDir;
+    QString currentTorrentDownloadDir;
+    QHash<int, QString> currentTorrentFilePaths;
     qint64 remoteFreeSpaceBytes = -1;
     int lastTorrentCount = 0;
 

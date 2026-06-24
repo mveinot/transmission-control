@@ -8,6 +8,7 @@
 #include <QDesktopServices>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QDir>
 #include <QEvent>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -47,6 +48,7 @@
 #include "watchfoldermanager.h"
 #include "updatechecker.h"
 #include "settingsimportexport.h"
+#include "foldermapping.h"
 #include "version.h"
 
 namespace {
@@ -96,6 +98,9 @@ void MainWindow::clearGeneralTab()
     ui->labelGeneralDownloadDir->clear();
     ui->labelGeneralHash->clear();
     ui->lineGeneralMagnet->clear();
+
+    currentTorrentDownloadDir.clear();
+    currentTorrentFilePaths.clear();
 }
 
 void MainWindow::clearTrackerTable()
@@ -815,11 +820,14 @@ void MainWindow::populateFileTree(const QJsonArray &files,
                                   const QJsonArray &priorities)
 {
     ui->fileTreeWidget->clear();
+    currentTorrentFilePaths.clear();
 
     for (int fileIndex = 0; fileIndex < files.size(); ++fileIndex) {
         const QJsonObject file = files.at(fileIndex).toObject();
 
         const QString path = file.value("name").toString();
+        currentTorrentFilePaths.insert(fileIndex, path);
+
         const qint64 length = file.value("length").toVariant().toLongLong();
         const qint64 bytesCompleted = file.value("bytesCompleted").toVariant().toLongLong();
 
@@ -1519,6 +1527,8 @@ void MainWindow::populateGeneralTab(const QJsonObject &details)
     const QString downloadDir =
         details.value("downloadDir").toString();
 
+    currentTorrentDownloadDir = downloadDir;
+
     const QString hashString =
         details.value("hashString").toString();
 
@@ -1921,6 +1931,7 @@ void MainWindow::showFileContextMenu(const QPoint &pos)
     QMenu menu(this);
 
     QAction *openAction = menu.addAction(tr("Open"));
+    openAction->setEnabled(fileIndices.size() == 1);
 
     connect(openAction, &QAction::triggered,
             this, [this, fileIndices]() {
@@ -1962,12 +1973,103 @@ void MainWindow::showFileContextMenu(const QPoint &pos)
     menu.exec(ui->fileTreeWidget->viewport()->mapToGlobal(pos));
 }
 
+QList<FolderMapping> MainWindow::currentServerFolderMappings() const
+{
+    QList<FolderMapping> mappings;
+
+    const int serverIndex = ui->comboServers->currentData().toInt();
+
+    if (serverIndex < 0)
+        return mappings;
+
+    QSettings settings;
+    const int serverCount = settings.beginReadArray(QStringLiteral("servers"));
+
+    if (serverIndex >= serverCount) {
+        settings.endArray();
+        return mappings;
+    }
+
+    settings.setArrayIndex(serverIndex);
+
+    const int mappingCount =
+        settings.beginReadArray(QStringLiteral("folderMappings"));
+
+    for (int i = 0; i < mappingCount; ++i) {
+        settings.setArrayIndex(i);
+
+        FolderMapping mapping;
+        mapping.remotePath =
+            settings.value(QStringLiteral("remotePath")).toString().trimmed();
+        mapping.localPath =
+            settings.value(QStringLiteral("localPath")).toString().trimmed();
+
+        if (!mapping.remotePath.isEmpty() && !mapping.localPath.isEmpty())
+            mappings.append(mapping);
+    }
+
+    settings.endArray(); // folderMappings
+    settings.endArray(); // servers
+
+    return mappings;
+}
+
+QString MainWindow::mapRemotePathToLocalPath(
+    const QString &remotePath,
+    const QList<FolderMapping> &mappings) const
+{
+    const QString cleanRemotePath =
+        QDir::cleanPath(remotePath.trimmed());
+
+    if (cleanRemotePath.isEmpty())
+        return {};
+
+    const FolderMapping *bestMatch = nullptr;
+    QString bestRemotePrefix;
+
+    for (const FolderMapping &mapping : mappings) {
+        const QString remotePrefix =
+            QDir::cleanPath(mapping.remotePath.trimmed());
+
+        if (remotePrefix.isEmpty())
+            continue;
+
+        const bool exactMatch = cleanRemotePath == remotePrefix;
+        const bool childMatch =
+            cleanRemotePath.startsWith(remotePrefix + QLatin1Char('/'));
+
+        if (!exactMatch && !childMatch)
+            continue;
+
+        if (!bestMatch || remotePrefix.length() > bestRemotePrefix.length()) {
+            bestMatch = &mapping;
+            bestRemotePrefix = remotePrefix;
+        }
+    }
+
+    if (!bestMatch)
+        return {};
+
+    const QString localPrefix =
+        QDir::cleanPath(bestMatch->localPath.trimmed());
+
+    QString suffix = cleanRemotePath.mid(bestRemotePrefix.length());
+
+    if (suffix.startsWith(QLatin1Char('/')))
+        suffix.remove(0, 1);
+
+    if (suffix.isEmpty())
+        return localPrefix;
+
+    return QDir(localPrefix).filePath(suffix);
+}
+
 void MainWindow::openFileFromContextMenu(const QList<int> &fileIndices)
 {
     if (fileIndices.isEmpty())
         return;
 
-    if (fileIndices.size() > 1) {
+    if (fileIndices.size() != 1) {
         QMessageBox::information(
             this,
             tr("Open File"),
@@ -1977,12 +2079,74 @@ void MainWindow::openFileFromContextMenu(const QList<int> &fileIndices)
     }
 
     const int fileIndex = fileIndices.first();
+    const QString relativeFilePath =
+        currentTorrentFilePaths.value(fileIndex).trimmed();
 
-    QMessageBox::information(
-        this,
-        tr("Open File"),
-        tr("Open selected file index: %1")
-            .arg(fileIndex)
+    if (relativeFilePath.isEmpty()) {
+        QMessageBox::warning(
+            this,
+            tr("Open File"),
+            tr("Planetary could not determine the selected file path.")
+            );
+        return;
+    }
+
+    if (currentTorrentDownloadDir.trimmed().isEmpty()) {
+        QMessageBox::warning(
+            this,
+            tr("Open File"),
+            tr("Planetary could not determine the torrent download directory.")
+            );
+        return;
+    }
+
+    const QString remotePath =
+        QDir::cleanPath(
+            currentTorrentDownloadDir + QLatin1Char('/') + relativeFilePath
+            );
+
+    const QString localPath =
+        mapRemotePathToLocalPath(remotePath, currentServerFolderMappings());
+
+    if (localPath.isEmpty()) {
+        QMessageBox::information(
+            this,
+            tr("No Folder Mapping"),
+            tr("Planetary could not map this remote file path to a local file path.\n\n"
+               "Remote path:\n%1")
+                .arg(remotePath)
+            );
+        return;
+    }
+
+    if (!QFileInfo::exists(localPath)) {
+        QMessageBox::warning(
+            this,
+            tr("File Not Found"),
+            tr("The mapped local file does not exist.\n\n"
+               "Remote path:\n%1\n\n"
+               "Local path:\n%2")
+                .arg(remotePath, localPath)
+            );
+        return;
+    }
+
+    const bool opened =
+        QDesktopServices::openUrl(QUrl::fromLocalFile(localPath));
+
+    if (!opened) {
+        QMessageBox::warning(
+            this,
+            tr("Open File Failed"),
+            tr("The operating system could not open this file:\n\n%1")
+                .arg(localPath)
+            );
+        return;
+    }
+
+    statusBar()->showMessage(
+        tr("Opening %1").arg(QFileInfo(localPath).fileName()),
+        3000
         );
 }
 
