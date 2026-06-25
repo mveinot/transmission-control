@@ -94,35 +94,44 @@ void PieceMapWidget::paintEvent(QPaintEvent *event)
     if (area.width() <= 8 || area.height() <= 8)
         return;
 
-    constexpr int gap = 1;
-
-    int columns = qMax(
-        1,
-        static_cast<int>(qCeil(qSqrt(
-            static_cast<double>(m_pieceCount)
-            * static_cast<double>(area.width())
-            / static_cast<double>(qMax(1, area.height()))
-        )))
-    );
-
+    int cellSize = 1;
+    int gap = 0;
+    int columns = qMax(1, area.width());
     int rows = (m_pieceCount + columns - 1) / columns;
-    int cellWidth = (area.width() - (columns - 1) * gap) / columns;
-    int cellHeight = (area.height() - (rows - 1) * gap) / rows;
-    int cellSize = qMin(cellWidth, cellHeight);
 
-    while (columns > 1 && cellSize < 2) {
-        --columns;
-        rows = (m_pieceCount + columns - 1) / columns;
-        cellWidth = (area.width() - (columns - 1) * gap) / columns;
-        cellHeight = (area.height() - (rows - 1) * gap) / rows;
-        cellSize = qMin(cellWidth, cellHeight);
+    /*
+     * Choose the largest square cell size that fits all pieces in the
+     * available area. The previous version tried to keep a roughly square
+     * grid, then backed off by reducing the column count when cells became
+     * too small. That made large torrents collapse into a giant off-screen
+     * single-column grid, which rendered as the sad little vertical line of
+     * shame.
+     */
+    for (int candidateSize = 12; candidateSize >= 1; --candidateSize) {
+        const int candidateGap = candidateSize >= 4 ? 1 : 0;
+        const int candidateColumns = qMax(
+            1,
+            (area.width() + candidateGap) / (candidateSize + candidateGap)
+        );
+
+        const int candidateRows =
+            (m_pieceCount + candidateColumns - 1) / candidateColumns;
+
+        const int candidateGridHeight =
+            candidateRows * candidateSize
+            + qMax(0, candidateRows - 1) * candidateGap;
+
+        if (candidateGridHeight <= area.height()) {
+            cellSize = candidateSize;
+            gap = candidateGap;
+            columns = candidateColumns;
+            rows = candidateRows;
+            break;
+        }
     }
 
-    cellSize = qMax(2, cellSize);
-    rows = (m_pieceCount + columns - 1) / columns;
-
-    const int gridWidth = columns * cellSize + (columns - 1) * gap;
-    const int gridHeight = rows * cellSize + (rows - 1) * gap;
+    const int gridWidth = columns * cellSize + qMax(0, columns - 1) * gap;
+    const int gridHeight = rows * cellSize + qMax(0, rows - 1) * gap;
 
     const int startX = area.x() + (area.width() - gridWidth) / 2;
     const int startY = area.y() + (area.height() - gridHeight) / 2;

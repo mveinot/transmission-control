@@ -20,8 +20,8 @@
 #include <QFileOpenEvent>
 #include <QFormLayout>
 #include <QGroupBox>
-#include <QHeaderView>
 #include <QHBoxLayout>
+#include <QHeaderView>
 #include <QInputDialog>
 #include <QIcon>
 #include <QJsonArray>
@@ -1718,18 +1718,10 @@ void MainWindow::setupConnectionStatusIndicator()
 
 void MainWindow::setupPieceMapWidget()
 {
-    auto *topRowWidget = new QWidget(ui->general);
-    auto *topRowLayout = new QHBoxLayout(topRowWidget);
-    topRowLayout->setContentsMargins(0, 0, 0, 0);
-    topRowLayout->setSpacing(6);
-
-    ui->verticalLayoutGeneral->removeWidget(ui->groupGeneralInfo);
-    topRowLayout->addWidget(ui->groupGeneralInfo, 1);
-
-    pieceMapGroup = new QGroupBox(tr("Pieces"), topRowWidget);
+    pieceMapGroup = new QGroupBox(tr("Pieces"), this);
     pieceMapGroup->setMinimumSize(220, 120);
     pieceMapGroup->setMaximumSize(320, 170);
-    pieceMapGroup->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+    pieceMapGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
 
     auto *pieceMapLayout = new QVBoxLayout(pieceMapGroup);
     pieceMapLayout->setContentsMargins(6, 6, 6, 6);
@@ -1737,8 +1729,16 @@ void MainWindow::setupPieceMapWidget()
     pieceMapWidget = new PieceMapWidget(pieceMapGroup);
     pieceMapLayout->addWidget(pieceMapWidget);
 
-    topRowLayout->addWidget(pieceMapGroup, 0, Qt::AlignTop);
-    ui->verticalLayoutGeneral->insertWidget(0, topRowWidget, 0);
+    auto *topGeneralRow = new QWidget(ui->general);
+    auto *topGeneralLayout = new QHBoxLayout(topGeneralRow);
+    topGeneralLayout->setContentsMargins(0, 0, 0, 0);
+    topGeneralLayout->setSpacing(6);
+
+    ui->verticalLayoutGeneral->removeWidget(ui->groupGeneralInfo);
+    topGeneralLayout->addWidget(ui->groupGeneralInfo, 1);
+    topGeneralLayout->addWidget(pieceMapGroup, 0, Qt::AlignTop);
+
+    ui->verticalLayoutGeneral->insertWidget(0, topGeneralRow, 0);
 }
 
 void MainWindow::updatePieceMap(const QJsonObject &details)
