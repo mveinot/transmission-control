@@ -64,6 +64,35 @@ constexpr int FilterTypeStatus = 0;
 constexpr int FilterTypeTracker = 1;
 }
 
+// accept various representations of true and false
+bool jsonValueToBool(const QJsonValue &value, bool defaultValue = false)
+{
+    if (value.isBool())
+        return value.toBool();
+
+    if (value.isDouble())
+        return value.toInt(defaultValue ? 1 : 0) != 0;
+
+    if (value.isString()) {
+        const QString text = value.toString().trimmed().toLower();
+
+        if (text == QStringLiteral("true")
+            || text == QStringLiteral("yes")
+            || text == QStringLiteral("1")) {
+            return true;
+        }
+
+        if (text == QStringLiteral("false")
+            || text == QStringLiteral("no")
+            || text == QStringLiteral("0")) {
+            return false;
+        }
+    }
+
+    return defaultValue;
+}
+
+
 // determine if a string looks like a URL
 static bool looksLikeUrl(const QString &text)
 {
@@ -865,7 +894,7 @@ void MainWindow::populateFileTree(const QJsonArray &files,
 
         const bool isWanted =
             fileIndex < wanted.size()
-                ? wanted.at(fileIndex).toBool(true)
+                ? jsonValueToBool(wanted.at(fileIndex), true)
                 : true;
 
         const int priority =

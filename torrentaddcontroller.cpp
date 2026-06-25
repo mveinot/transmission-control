@@ -2,6 +2,7 @@
 
 #include "rpc_client.h"
 #include "torrentmetadataparser.h"
+#include "settingskeys.h"
 
 #include <QFileInfo>
 #include <QSettings>
@@ -26,6 +27,13 @@ QString displaySourceForFile(const QString &filePath)
 }
 
 } // namespace
+
+
+bool TorrentAddController::deleteTorrentFileOnSuccessfulAdd() const
+{
+    QSettings settings;
+    return settings.value(SettingsKeys::DeleteTorrentOnAdd, false).toBool();
+}
 
 TorrentAddController::TorrentAddController(rpc_client *client,
                                            QWidget *dialogParent,
@@ -118,7 +126,13 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
 
     switch (sourceType) {
     case TorrentAddDialog::SourceType::TorrentFile:
-        m_client->addTorrentFile(source, downloadDir, startPaused);
+        m_client->addTorrentFile(source,
+                                 downloadDir,
+                                 startPaused,
+                                 dialog.unwantedFileIndices(),
+                                 dialog.lowPriorityFileIndices(),
+                                 dialog.highPriorityFileIndices(),
+                                 deleteTorrentFileOnSuccessfulAdd());
         break;
 
     case TorrentAddDialog::SourceType::MagnetLink:
@@ -179,7 +193,11 @@ void TorrentAddController::addTorrentFileUsingDefaults(const QString &filePath)
     m_client->addTorrentFile(
         fileInfo.absoluteFilePath(),
         downloadDir,
-        startPaused
+        startPaused,
+        {},
+        {},
+        {},
+        deleteTorrentFileOnSuccessfulAdd()
         );
 
     emit addStarted();

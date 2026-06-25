@@ -2,6 +2,7 @@
 #define TORRENTADDDIALOG_H
 
 #include <QDialog>
+#include <QList>
 #include <QString>
 
 #include "torrentmetadataparser.h"
@@ -9,6 +10,9 @@
 namespace Ui {
 class TorrentAddDialog;
 }
+
+class QComboBox;
+class QTreeWidgetItem;
 
 class TorrentAddDialog : public QDialog
 {
@@ -36,11 +40,36 @@ public:
     bool startPaused() const;
     bool rememberOptions() const;
 
+    QList<int> unwantedFileIndices() const;
+    QList<int> lowPriorityFileIndices() const;
+    QList<int> highPriorityFileIndices() const;
+
+private slots:
+    void handleContentItemChanged(QTreeWidgetItem *item, int column);
+
 private:
     Ui::TorrentAddDialog *ui = nullptr;
 
     SourceType m_sourceType = SourceType::TorrentFile;
     QString m_source;
+
+    bool m_updatingChecks = false;
+    bool m_updatingPriorities = false;
+
+    void setupContentsTree();
+    void addTorrentFileItem(const TorrentFileMetadata &file,
+                            QTreeWidgetItem *parentItem,
+                            const QString &displayName);
+    void addTorrentFolderItem(QTreeWidgetItem *item);
+
+    QComboBox *createPriorityCombo(int priority = 0);
+    void setPriorityForChildren(QTreeWidgetItem *item, int priority);
+
+    void applyCheckStateToChildren(QTreeWidgetItem *item, Qt::CheckState state);
+    void updateParentCheckState(QTreeWidgetItem *item);
+
+    QList<int> fileIndicesForWantedState(Qt::CheckState state) const;
+    QList<int> fileIndicesForPriority(int priority) const;
 };
 
 #endif // TORRENTADDDIALOG_H

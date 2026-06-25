@@ -36,6 +36,7 @@ private:
 
     QString m_defaultDownloadDir;
 
+    bool deleteTorrentFileOnSuccessfulAdd() const;
     bool promptAndAdd(TorrentAddDialog::SourceType sourceType,
                       const QString &source);
 

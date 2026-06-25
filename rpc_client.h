@@ -38,7 +38,11 @@ public:
     void addTorrentFromMagnet(const QString &magnetLink);
     void addTorrentFile(const QString &filePath,
                         const QString &downloadDir = QString(),
-                        bool paused = false);
+                        bool paused = false,
+                        const QList<int> &filesUnwanted = {},
+                        const QList<int> &priorityLow = {},
+                        const QList<int> &priorityHigh = {},
+                        bool deleteFileOnSuccess = false);
 
     void addMagnetLink(const QString &magnetLink,
                        const QString &downloadDir = QString(),

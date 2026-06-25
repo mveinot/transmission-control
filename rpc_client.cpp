@@ -766,7 +766,11 @@ void rpc_client::getFreeSpace(const QString &path)
 
 void rpc_client::addTorrentFile(const QString &filePath,
                                 const QString &downloadDir,
-                                bool paused)
+                                bool paused,
+                                const QList<int> &filesUnwanted,
+                                const QList<int> &priorityLow,
+                                const QList<int> &priorityHigh,
+                                bool deleteFileOnSuccess)
 {
     QFile file(filePath);
 
@@ -799,9 +803,26 @@ void rpc_client::addTorrentFile(const QString &filePath,
 
     arguments.insert(QStringLiteral("paused"), paused);
 
-    postRpc(QStringLiteral("torrent-add"),
-            arguments,
-            RpcRequestType::Command);
+    if (!filesUnwanted.isEmpty())
+        arguments.insert(QStringLiteral("files-unwanted"),
+                         idsToJsonArray(filesUnwanted));
+
+    if (!priorityLow.isEmpty())
+        arguments.insert(QStringLiteral("priority-low"),
+                         idsToJsonArray(priorityLow));
+
+    if (!priorityHigh.isEmpty())
+        arguments.insert(QStringLiteral("priority-high"),
+                         idsToJsonArray(priorityHigh));
+
+    RpcRequestContext context;
+    context.method = QStringLiteral("torrent-add");
+    context.arguments = arguments;
+    context.type = RpcRequestType::Command;
+    context.torrentFilePath = filePath;
+    context.deleteTorrentFileOnSuccess = deleteFileOnSuccess;
+
+    postRpc(context);
 }
 
 void rpc_client::addMagnetLink(const QString &magnetLink,
