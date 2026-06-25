@@ -90,7 +90,6 @@ private:
     WatchFolderManager *watchFolderManager = nullptr;
     enum FileTreeColumn {
         FileNameColumn = 0,
-        FileWantedColumn,
         FilePriorityColumn,
         FileSizeColumn,
         FileDoneColumn,
@@ -139,8 +138,8 @@ private:
     void clearTrackerTable();
     bool trayIconEnabled() const;
     bool trayNotificationsEnabled() const;
-    void updateFolderWantedStates();
-    void updateFolderWantedState(QTreeWidgetItem *item);
+    void updateFolderPriorityStates();
+    void updateFolderPriorityState(QTreeWidgetItem *item);
     QList<int> fileIndicesForItem(QTreeWidgetItem *item) const;
     QList<int> selectedFileIndicesForContextItem(QTreeWidgetItem *item) const;
     void showFileContextMenu(const QPoint &pos);
@@ -159,8 +158,7 @@ private:
     QList<FolderMapping> currentServerFolderMappings() const;
     QString mapRemotePathToLocalPath(const QString &remotePath,
                                      const QList<FolderMapping> &mappings) const;
-    void setSelectedFilesWanted(bool wanted);
-    void setSelectedFilesPriority(int priority);
+    void setSelectedFilesPriorityState(int priority, bool wanted);
     void queueMoveSelectedTop();
     void queueMoveSelectedUp();
     void queueMoveSelectedDown();

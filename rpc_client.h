@@ -64,6 +64,11 @@ public:
                                  const QList<int> &fileIndices,
                                  int priority);
 
+    void setTorrentFilesWantedAndPriority(int torrentId,
+                                          const QList<int> &fileIndices,
+                                          bool wanted,
+                                          int priority);
+
     void queueMoveTop(const QList<int> &ids);
     void queueMoveUp(const QList<int> &ids);
     void queueMoveDown(const QList<int> &ids);

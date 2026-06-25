@@ -44,16 +44,12 @@ public:
     QList<int> lowPriorityFileIndices() const;
     QList<int> highPriorityFileIndices() const;
 
-private slots:
-    void handleContentItemChanged(QTreeWidgetItem *item, int column);
-
 private:
     Ui::TorrentAddDialog *ui = nullptr;
 
     SourceType m_sourceType = SourceType::TorrentFile;
     QString m_source;
 
-    bool m_updatingChecks = false;
     bool m_updatingPriorities = false;
 
     void setupContentsTree();
@@ -65,10 +61,6 @@ private:
     QComboBox *createPriorityCombo(int priority = 0);
     void setPriorityForChildren(QTreeWidgetItem *item, int priority);
 
-    void applyCheckStateToChildren(QTreeWidgetItem *item, Qt::CheckState state);
-    void updateParentCheckState(QTreeWidgetItem *item);
-
-    QList<int> fileIndicesForWantedState(Qt::CheckState state) const;
     QList<int> fileIndicesForPriority(int priority) const;
 };
 

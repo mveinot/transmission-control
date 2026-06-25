@@ -12,9 +12,13 @@
 namespace {
 
 constexpr int NameColumn = 0;
-constexpr int WantedColumn = 1;
-constexpr int PriorityColumn = 2;
-constexpr int SizeColumn = 3;
+constexpr int PriorityColumn = 1;
+constexpr int SizeColumn = 2;
+
+constexpr int PrioritySkip = -2;
+constexpr int PriorityLow = -1;
+constexpr int PriorityNormal = 0;
+constexpr int PriorityHigh = 1;
 
 constexpr int SizeRole = Qt::UserRole;
 constexpr int FileIndexRole = Qt::UserRole + 1;
@@ -120,22 +124,17 @@ TorrentAddDialog::~TorrentAddDialog()
 
 void TorrentAddDialog::setupContentsTree()
 {
-    ui->treeTorrentContents->setColumnCount(4);
+    ui->treeTorrentContents->setColumnCount(3);
     ui->treeTorrentContents->setHeaderLabels({
         tr("Name"),
-        tr("Wanted"),
         tr("Priority"),
         tr("Size")
     });
 
     ui->treeTorrentContents->header()->setStretchLastSection(false);
     ui->treeTorrentContents->header()->setSectionResizeMode(NameColumn, QHeaderView::Stretch);
-    ui->treeTorrentContents->header()->setSectionResizeMode(WantedColumn, QHeaderView::ResizeToContents);
     ui->treeTorrentContents->header()->setSectionResizeMode(PriorityColumn, QHeaderView::ResizeToContents);
     ui->treeTorrentContents->header()->setSectionResizeMode(SizeColumn, QHeaderView::ResizeToContents);
-
-    connect(ui->treeTorrentContents, &QTreeWidget::itemChanged,
-            this, &TorrentAddDialog::handleContentItemChanged);
 }
 
 void TorrentAddDialog::setSource(SourceType type, const QString &source)
@@ -175,7 +174,6 @@ void TorrentAddDialog::setRememberOptions(bool remember)
 
 void TorrentAddDialog::setTorrentMetadata(const TorrentMetadata &metadata)
 {
-    m_updatingChecks = true;
     m_updatingPriorities = true;
 
     ui->treeTorrentContents->clear();
@@ -187,7 +185,6 @@ void TorrentAddDialog::setTorrentMetadata(const TorrentMetadata &metadata)
                 .arg(metadata.errorString)
         );
         ui->treeTorrentContents->hide();
-        m_updatingChecks = false;
         m_updatingPriorities = false;
         return;
     }
@@ -223,7 +220,6 @@ void TorrentAddDialog::setTorrentMetadata(const TorrentMetadata &metadata)
                 folderItem = new QTreeWidgetItem(QStringList{
                     parts.at(i),
                     QString(),
-                    QString(),
                     QString()
                 });
 
@@ -250,7 +246,6 @@ void TorrentAddDialog::setTorrentMetadata(const TorrentMetadata &metadata)
     for (int i = 0; i < ui->treeTorrentContents->topLevelItemCount(); ++i)
         updateFolderSizes(ui->treeTorrentContents->topLevelItem(i));
 
-    m_updatingChecks = false;
     m_updatingPriorities = false;
 
     ui->treeTorrentContents->expandToDepth(0);
@@ -260,10 +255,6 @@ void TorrentAddDialog::addTorrentFolderItem(QTreeWidgetItem *item)
 {
     item->setData(NameColumn, SizeRole, qint64(0));
     item->setData(NameColumn, IsFileRole, false);
-    item->setCheckState(WantedColumn, Qt::Checked);
-    item->setFlags(item->flags()
-                   | Qt::ItemIsUserCheckable
-                   | Qt::ItemIsAutoTristate);
 
 }
 
@@ -274,15 +265,12 @@ void TorrentAddDialog::addTorrentFileItem(const TorrentFileMetadata &file,
     auto *fileItem = new QTreeWidgetItem(QStringList{
         displayName,
         QString(),
-        QString(),
         formatByteSize(file.length)
     });
 
     fileItem->setData(NameColumn, SizeRole, file.length);
     fileItem->setData(NameColumn, FileIndexRole, file.index);
     fileItem->setData(NameColumn, IsFileRole, true);
-    fileItem->setCheckState(WantedColumn, Qt::Checked);
-    fileItem->setFlags(fileItem->flags() | Qt::ItemIsUserCheckable);
     fileItem->setToolTip(NameColumn, file.path);
 
     if (parentItem) {
@@ -301,12 +289,13 @@ QComboBox *TorrentAddDialog::createPriorityCombo(int priority)
 {
     auto *combo = new QComboBox(ui->treeTorrentContents);
 
-    combo->addItem(tr("Low"), -1);
-    combo->addItem(tr("Normal"), 0);
-    combo->addItem(tr("High"), 1);
+    combo->addItem(tr("Skip"), PrioritySkip);
+    combo->addItem(tr("Low"), PriorityLow);
+    combo->addItem(tr("Normal"), PriorityNormal);
+    combo->addItem(tr("High"), PriorityHigh);
 
     const int index = combo->findData(priority);
-    combo->setCurrentIndex(index >= 0 ? index : 1);
+    combo->setCurrentIndex(index >= 0 ? index : combo->findData(PriorityNormal));
 
     connect(combo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, [this, combo](int) {
@@ -366,69 +355,6 @@ void TorrentAddDialog::setPriorityForChildren(QTreeWidgetItem *item, int priorit
     m_updatingPriorities = wasUpdating;
 }
 
-void TorrentAddDialog::handleContentItemChanged(QTreeWidgetItem *item, int column)
-{
-    if (!item || column != WantedColumn || m_updatingChecks)
-        return;
-
-    m_updatingChecks = true;
-
-    if (item->childCount() > 0)
-        applyCheckStateToChildren(item, item->checkState(WantedColumn));
-
-    updateParentCheckState(item->parent());
-
-    m_updatingChecks = false;
-}
-
-void TorrentAddDialog::applyCheckStateToChildren(QTreeWidgetItem *item,
-                                                 Qt::CheckState state)
-{
-    if (!item)
-        return;
-
-    if (state == Qt::PartiallyChecked)
-        return;
-
-    for (int i = 0; i < item->childCount(); ++i) {
-        QTreeWidgetItem *child = item->child(i);
-        child->setCheckState(WantedColumn, state);
-        applyCheckStateToChildren(child, state);
-    }
-}
-
-void TorrentAddDialog::updateParentCheckState(QTreeWidgetItem *item)
-{
-    while (item) {
-        int checked = 0;
-        int unchecked = 0;
-        int partial = 0;
-
-        for (int i = 0; i < item->childCount(); ++i) {
-            switch (item->child(i)->checkState(WantedColumn)) {
-            case Qt::Checked:
-                ++checked;
-                break;
-            case Qt::Unchecked:
-                ++unchecked;
-                break;
-            case Qt::PartiallyChecked:
-                ++partial;
-                break;
-            }
-        }
-
-        if (partial > 0 || (checked > 0 && unchecked > 0))
-            item->setCheckState(WantedColumn, Qt::PartiallyChecked);
-        else if (checked > 0)
-            item->setCheckState(WantedColumn, Qt::Checked);
-        else
-            item->setCheckState(WantedColumn, Qt::Unchecked);
-
-        item = item->parent();
-    }
-}
-
 void TorrentAddDialog::clearTorrentMetadata()
 {
     ui->treeTorrentContents->clear();
@@ -462,39 +388,17 @@ bool TorrentAddDialog::rememberOptions() const
 
 QList<int> TorrentAddDialog::unwantedFileIndices() const
 {
-    return fileIndicesForWantedState(Qt::Unchecked);
+    return fileIndicesForPriority(PrioritySkip);
 }
 
 QList<int> TorrentAddDialog::lowPriorityFileIndices() const
 {
-    return fileIndicesForPriority(-1);
+    return fileIndicesForPriority(PriorityLow);
 }
 
 QList<int> TorrentAddDialog::highPriorityFileIndices() const
 {
-    return fileIndicesForPriority(1);
-}
-
-QList<int> TorrentAddDialog::fileIndicesForWantedState(Qt::CheckState state) const
-{
-    QList<int> result;
-
-    for (int i = 0; i < ui->treeTorrentContents->topLevelItemCount(); ++i) {
-        QList<QTreeWidgetItem *> fileItems;
-        collectFileItems(ui->treeTorrentContents->topLevelItem(i), &fileItems);
-
-        for (QTreeWidgetItem *item : fileItems) {
-            if (item->checkState(WantedColumn) != state)
-                continue;
-
-            const int fileIndex = item->data(NameColumn, FileIndexRole).toInt();
-
-            if (fileIndex >= 0)
-                result.append(fileIndex);
-        }
-    }
-
-    return result;
+    return fileIndicesForPriority(PriorityHigh);
 }
 
 QList<int> TorrentAddDialog::fileIndicesForPriority(int priority) const
