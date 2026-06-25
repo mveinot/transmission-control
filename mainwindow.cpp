@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
+#include "piecemapwidget.h"
 #include <QActionGroup>
 #include <QApplication>
 #include <QAction>
@@ -18,6 +19,7 @@
 #include <QFileInfo>
 #include <QFileOpenEvent>
 #include <QFormLayout>
+#include <QGroupBox>
 #include <QHeaderView>
 #include <QInputDialog>
 #include <QIcon>
@@ -31,6 +33,7 @@
 #include <QPushButton>
 #include <QSettings>
 #include <QSignalBlocker>
+#include <QSizePolicy>
 #include <QSystemTrayIcon>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -132,6 +135,12 @@ void MainWindow::clearGeneralTab()
     ui->labelGeneralHash->clear();
     ui->lineGeneralMagnet->clear();
 
+    if (pieceMapWidget)
+        pieceMapWidget->clear();
+
+    if (pieceMapGroup)
+        pieceMapGroup->setTitle(tr("Pieces"));
+
     currentTorrentDownloadDir.clear();
     currentTorrentFilePaths.clear();
     currentDetailsTorrentId = -1;
@@ -186,6 +195,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // set up the main UI
     ui->setupUi(this);
+    setupPieceMapWidget();
     MainWindow::setWindowTitle(QCoreApplication::applicationName());
     setWindowIcon(QIcon(":/icons/planetary-512px.png"));
 
@@ -1705,6 +1715,50 @@ void MainWindow::setupConnectionStatusIndicator()
             });
 }
 
+void MainWindow::setupPieceMapWidget()
+{
+    pieceMapGroup = new QGroupBox(tr("Pieces"), this);
+    pieceMapGroup->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    auto *pieceMapLayout = new QVBoxLayout(pieceMapGroup);
+    pieceMapLayout->setContentsMargins(6, 6, 6, 6);
+
+    pieceMapWidget = new PieceMapWidget(pieceMapGroup);
+    pieceMapLayout->addWidget(pieceMapWidget);
+
+    ui->verticalLayoutGeneral->insertWidget(1, pieceMapGroup, 1);
+}
+
+void MainWindow::updatePieceMap(const QJsonObject &details)
+{
+    if (!pieceMapWidget || !pieceMapGroup)
+        return;
+
+    const int pieceCount = details.value(QStringLiteral("pieceCount")).toInt(0);
+    const QByteArray pieces =
+        QByteArray::fromBase64(
+            details.value(QStringLiteral("pieces")).toString().toLatin1()
+        );
+
+    pieceMapWidget->setPieces(pieceCount, pieces);
+
+    if (pieceCount <= 0) {
+        pieceMapGroup->setTitle(tr("Pieces"));
+        return;
+    }
+
+    const int completed = pieceMapWidget->completedPieceCount();
+    const double percent =
+        100.0 * static_cast<double>(completed) / static_cast<double>(pieceCount);
+
+    pieceMapGroup->setTitle(
+        tr("Pieces (%1 / %2, %3%)")
+            .arg(completed)
+            .arg(pieceCount)
+            .arg(QLocale().toString(percent, 'f', 1))
+    );
+}
+
 void MainWindow::populateGeneralTab(const QJsonObject &details)
 {
     const QString name =
@@ -1777,6 +1831,8 @@ void MainWindow::populateGeneralTab(const QJsonObject &details)
     } else {
         ui->labelGeneralCreated->setText(tr("Unknown"));
     }
+
+    updatePieceMap(details);
 }
 
 void MainWindow::populateTrackerTable(const QJsonObject &details)

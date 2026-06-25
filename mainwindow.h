@@ -31,6 +31,8 @@ class TorrentAddController;
 class WatchFolderManager;
 class TorrentAddController;
 class UpdateChecker;
+class PieceMapWidget;
+class QGroupBox;
 
 class MainWindow : public QMainWindow
 {
@@ -199,7 +201,11 @@ private:
     void addStatusFilterItems();
     void addTrackerFilterItems(const QStringList &trackerHosts);
     UpdateChecker *updateChecker = nullptr;
+    QGroupBox *pieceMapGroup = nullptr;
+    PieceMapWidget *pieceMapWidget = nullptr;
 
+    void setupPieceMapWidget();
+    void updatePieceMap(const QJsonObject &details);
     void setupUpdateChecker();
     void maybeCheckForUpdates();
 

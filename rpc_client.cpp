@@ -599,6 +599,9 @@ void rpc_client::getTorrentDetails(int id)
         "hashString",
         "magnetLink",
         "totalSize",
+        "percentDone",
+        "pieceCount",
+        "pieces",
 
         "trackers",
         "trackerStats",
