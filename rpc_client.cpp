@@ -259,6 +259,18 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         return;
     }
 
+    if (requestType == RpcRequestType::TorrentPieces) {
+        if (!newTorrentList.isEmpty()) {
+            const QJsonObject detail = newTorrentList.first().toObject();
+            const int torrentId = detail.value(QStringLiteral("id")).toInt(-1);
+
+            if (torrentId >= 0)
+                emit torrentPiecesReceived(torrentId, detail);
+        }
+
+        return;
+    }
+
     if (requestType == RpcRequestType::TorrentGet) {
         QVector<torrent> incoming;
         incoming.reserve(newTorrentList.size());
@@ -613,6 +625,27 @@ void rpc_client::getTorrentDetails(int id)
     };
 
     postRpc("torrent-get", arguments, RpcRequestType::TorrentDetails);
+}
+
+
+void rpc_client::getTorrentPieces(int id)
+{
+    if (id < 0)
+        return;
+
+    QJsonObject arguments;
+    arguments[QStringLiteral("ids")] = QJsonArray { id };
+
+    arguments[QStringLiteral("fields")] = QJsonArray {
+        QStringLiteral("id"),
+        QStringLiteral("pieceCount"),
+        QStringLiteral("pieces"),
+        QStringLiteral("percentDone")
+    };
+
+    postRpc(QStringLiteral("torrent-get"),
+            arguments,
+            RpcRequestType::TorrentPieces);
 }
 
 void rpc_client::setTorrentFilesWanted(int torrentId,

@@ -33,6 +33,7 @@ public:
     void init();
     void getTorrentList();
     void getTorrentDetails(int id);
+    void getTorrentPieces(int id);
     QString getServer();
     void addTorrentFromFile(const QString &filePath, bool deleteFileOnSuccess);
     void addTorrentFromMagnet(const QString &magnetLink);
@@ -83,6 +84,7 @@ signals:
     void updateFailed(const QString &message);
     void torrentsReceived(const QVector<torrent> &torrents);
     void torrentDetailsReceived(int torrentId, const QJsonObject &torrentDetails);
+    void torrentPiecesReceived(int torrentId, const QJsonObject &pieceDetails);
     void commandSucceeded(const QString &method);
     void commandFailed(const QString &method, const QString &message);
     void serverChanged();
@@ -93,6 +95,7 @@ private:
     enum class RpcRequestType {
         TorrentGet,
         TorrentDetails,
+        TorrentPieces,
         Command,
         SessionGet,
         FreeSpace

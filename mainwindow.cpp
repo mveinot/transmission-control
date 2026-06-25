@@ -462,6 +462,15 @@ MainWindow::MainWindow(QWidget *parent)
                 populatePeerTable(details.value("peers").toArray());
             });
 
+    connect(client, &rpc_client::torrentPiecesReceived,
+            this,
+            [this](int torrentId, const QJsonObject &details) {
+                if (torrentId != currentDetailsTorrentId)
+                    return;
+
+                updatePieceMap(details);
+            });
+
     connect(client, &rpc_client::updateStarted,
             this,
             [this]() {
@@ -2048,6 +2057,9 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
 
     if (!remoteDownloadDir.isEmpty())
         client->getFreeSpace(remoteDownloadDir);
+
+    if (currentDetailsTorrentId >= 0)
+        client->getTorrentPieces(currentDetailsTorrentId);
 }
 
 void MainWindow::updateFolderPriorityStates()
