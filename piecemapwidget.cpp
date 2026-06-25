@@ -8,7 +8,7 @@
 PieceMapWidget::PieceMapWidget(QWidget *parent)
     : QWidget(parent)
 {
-    setMinimumHeight(120);
+    setMinimumSize(180, 80);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 }
 
@@ -45,12 +45,12 @@ int PieceMapWidget::completedPieceCount() const
 
 QSize PieceMapWidget::minimumSizeHint() const
 {
-    return QSize(220, 120);
+    return QSize(180, 80);
 }
 
 QSize PieceMapWidget::sizeHint() const
 {
-    return QSize(420, 150);
+    return QSize(260, 100);
 }
 
 bool PieceMapWidget::hasPiece(int index) const
