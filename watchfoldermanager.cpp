@@ -5,6 +5,8 @@
 #include <QSettings>
 #include <QStringList>
 
+#include <QDebug>
+
 namespace {
 
 QString processedFingerprintsSettingsKey()
@@ -32,6 +34,8 @@ WatchFolderManager::WatchFolderManager(QObject *parent)
 
 void WatchFolderManager::setEnabled(bool enabled)
 {
+    //qDebug() << "WatchFolderManager::setEnabled" << enabled;
+
     if (m_enabled == enabled)
         return;
 
@@ -110,6 +114,12 @@ void WatchFolderManager::restartWatcher()
         emit warningMessage(tr("Watch folder is enabled but no folder is configured."));
         return;
     }
+
+    /*
+    qDebug() << "WatchFolder: restartWatcher"
+             << "enabled=" << m_enabled
+             << "folder=" << m_watchFolder;
+    */
 
     const QFileInfo folderInfo(m_watchFolder);
 
@@ -198,6 +208,14 @@ bool WatchFolderManager::isTorrentFile(const QString &filePath) const
 
 void WatchFolderManager::scanWatchFolder()
 {
+    /*
+    qDebug() << "WatchFolder: scan" << m_watchFolder;
+
+    const QStringList localtorrentFiles = torrentFilesInWatchFolder();
+
+    qDebug() << "WatchFolder: torrent files:" << localtorrentFiles;
+    */
+
     if (!m_enabled)
         return;
 
@@ -241,6 +259,12 @@ void WatchFolderManager::observeCandidate(const QString &filePath)
 
     const QFileInfo fileInfo(filePath);
     const QString fingerprint = fingerprintForFile(filePath, fileInfo);
+
+    /*
+    qDebug() << "Watch folder candidate:" << filePath;
+    qDebug() << "Fingerprint:" << fingerprint;
+    qDebug() << "Already processed:" << alreadyProcessed(fingerprint);
+    */
 
     if (alreadyProcessed(fingerprint))
         return;

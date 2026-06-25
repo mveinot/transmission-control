@@ -2836,6 +2836,11 @@ void MainWindow::loadWatchFolderSettings()
     watchFolderManager->setRequiredStableChecks(stableChecks);
     watchFolderManager->setWatchFolder(folderPath);
     watchFolderManager->setEnabled(enabled);
+
+    qDebug() << "Watch folder settings:"
+             << "enabled=" << enabled
+             << "path=" << folderPath
+             << "stableChecks=" << stableChecks;
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
