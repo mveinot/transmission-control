@@ -57,6 +57,7 @@
 #include "updatechecker.h"
 #include "settingsimportexport.h"
 #include "foldermapping.h"
+#include "torrentpropertiesdialog.h"
 #include "version.h"
 
 namespace {
@@ -1088,6 +1089,12 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
     menu.addSeparator();
     menu.addAction(ui->actionVerify_Torrent);
     menu.addAction(ui->actionReannounce);
+
+    QAction *propertiesAction =
+        menu.addAction(tr("Properties…"));
+
+    propertiesAction->setEnabled(selectedTorrentIds().size() == 1);
+
     menu.addSeparator();
 
     QAction *copyMagnetAction =
@@ -1154,6 +1161,9 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
     connect(setLocationAction, &QAction::triggered,
             this, &MainWindow::setSelectedTorrentsLocation);
 
+    connect(propertiesAction, &QAction::triggered,
+            this, &MainWindow::showSelectedTorrentProperties);
+
     connect(copyMagnetAction, &QAction::triggered,
             this, &MainWindow::copySelectedTorrentMagnetLink);
 
@@ -1161,6 +1171,26 @@ void MainWindow::showTorrentContextMenu(const QPoint &pos)
             this, &MainWindow::copySelectedTorrentHash);
 
     menu.exec(ui->tableView->viewport()->mapToGlobal(pos));
+}
+
+void MainWindow::showSelectedTorrentProperties()
+{
+    const QList<int> ids = selectedTorrentIds();
+
+    if (ids.size() != 1) {
+        statusBar()->showMessage(tr("Select one torrent to edit properties."), 3000);
+        return;
+    }
+
+    TorrentPropertiesDialog dialog(client, ids.first(), this);
+    dialog.exec();
+
+    client->getTorrentList();
+
+    const int torrentId = currentTorrentId();
+
+    if (torrentId >= 0)
+        client->getTorrentDetails(torrentId);
 }
 
 void MainWindow::startSelectedTorrent()

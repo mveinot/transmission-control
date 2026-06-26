@@ -271,6 +271,18 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         return;
     }
 
+    if (requestType == RpcRequestType::TorrentProperties) {
+        if (!newTorrentList.isEmpty()) {
+            const QJsonObject detail = newTorrentList.first().toObject();
+            const int torrentId = detail.value(QStringLiteral("id")).toInt(-1);
+
+            if (torrentId >= 0)
+                emit torrentPropertiesReceived(torrentId, detail);
+        }
+
+        return;
+    }
+
     if (requestType == RpcRequestType::TorrentGet) {
         QVector<torrent> incoming;
         incoming.reserve(newTorrentList.size());
@@ -648,6 +660,92 @@ void rpc_client::getTorrentPieces(int id)
             RpcRequestType::TorrentPieces);
 }
 
+void rpc_client::getTorrentProperties(int id)
+{
+    if (id < 0)
+        return;
+
+    QJsonObject arguments;
+    arguments[QStringLiteral("ids")] = QJsonArray { id };
+    arguments[QStringLiteral("fields")] = QJsonArray {
+        QStringLiteral("activityDate"),
+        QStringLiteral("addedDate"),
+        QStringLiteral("bandwidthPriority"),
+        QStringLiteral("comment"),
+        QStringLiteral("corruptEver"),
+        QStringLiteral("creator"),
+        QStringLiteral("dateCreated"),
+        QStringLiteral("desiredAvailable"),
+        QStringLiteral("doneDate"),
+        QStringLiteral("downloadDir"),
+        QStringLiteral("downloadedEver"),
+        QStringLiteral("downloadLimit"),
+        QStringLiteral("downloadLimited"),
+        QStringLiteral("editDate"),
+        QStringLiteral("error"),
+        QStringLiteral("errorString"),
+        QStringLiteral("eta"),
+        QStringLiteral("etaIdle"),
+        QStringLiteral("file-count"),
+        QStringLiteral("files"),
+        QStringLiteral("group"),
+        QStringLiteral("hashString"),
+        QStringLiteral("haveUnchecked"),
+        QStringLiteral("haveValid"),
+        QStringLiteral("honorsSessionLimits"),
+        QStringLiteral("id"),
+        QStringLiteral("isFinished"),
+        QStringLiteral("isPrivate"),
+        QStringLiteral("isStalled"),
+        QStringLiteral("labels"),
+        QStringLiteral("leftUntilDone"),
+        QStringLiteral("magnetLink"),
+        QStringLiteral("manualAnnounceTime"),
+        QStringLiteral("maxConnectedPeers"),
+        QStringLiteral("metadataPercentComplete"),
+        QStringLiteral("name"),
+        QStringLiteral("peer-limit"),
+        QStringLiteral("peers"),
+        QStringLiteral("peersConnected"),
+        QStringLiteral("peersFrom"),
+        QStringLiteral("peersGettingFromUs"),
+        QStringLiteral("peersSendingToUs"),
+        QStringLiteral("percentComplete"),
+        QStringLiteral("percentDone"),
+        QStringLiteral("pieceCount"),
+        QStringLiteral("pieces"),
+        QStringLiteral("pieceSize"),
+        QStringLiteral("priorities"),
+        QStringLiteral("queuePosition"),
+        QStringLiteral("rateDownload"),
+        QStringLiteral("rateUpload"),
+        QStringLiteral("recheckProgress"),
+        QStringLiteral("secondsDownloading"),
+        QStringLiteral("secondsSeeding"),
+        QStringLiteral("seedIdleLimit"),
+        QStringLiteral("seedIdleMode"),
+        QStringLiteral("seedRatioLimit"),
+        QStringLiteral("seedRatioMode"),
+        QStringLiteral("sizeWhenDone"),
+        QStringLiteral("startDate"),
+        QStringLiteral("status"),
+        QStringLiteral("trackers"),
+        QStringLiteral("trackerStats"),
+        QStringLiteral("totalSize"),
+        QStringLiteral("uploadedEver"),
+        QStringLiteral("uploadLimit"),
+        QStringLiteral("uploadLimited"),
+        QStringLiteral("uploadRatio"),
+        QStringLiteral("wanted"),
+        QStringLiteral("webseeds"),
+        QStringLiteral("webseedsSendingToUs")
+    };
+
+    postRpc(QStringLiteral("torrent-get"),
+            arguments,
+            RpcRequestType::TorrentProperties);
+}
+
 void rpc_client::setTorrentFilesWanted(int torrentId,
                                        const QList<int> &fileIndices,
                                        bool wanted)
@@ -723,6 +821,20 @@ void rpc_client::setTorrentFilesWantedAndPriority(int torrentId,
     }
 
     postRpc("torrent-set", arguments, RpcRequestType::Command);
+}
+
+void rpc_client::setTorrentProperties(int torrentId,
+                                      const QJsonObject &properties)
+{
+    if (torrentId < 0 || properties.isEmpty())
+        return;
+
+    QJsonObject arguments = properties;
+    arguments.insert(QStringLiteral("ids"), QJsonArray { torrentId });
+
+    postRpc(QStringLiteral("torrent-set"),
+            arguments,
+            RpcRequestType::Command);
 }
 
 void rpc_client::queueMoveTop(const QList<int> &ids)

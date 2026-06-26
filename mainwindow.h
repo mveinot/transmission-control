@@ -130,6 +130,7 @@ private:
     void verifySelectedTorrent();
     void forceStartSelectedTorrents();
     void setSelectedTorrentsLocation();
+    void showSelectedTorrentProperties();
     void updateTorrentActionState();
     int updateIntervalMs() const;
     void applyUpdateInterval();

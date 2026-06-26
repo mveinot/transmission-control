@@ -34,6 +34,7 @@ public:
     void getTorrentList();
     void getTorrentDetails(int id);
     void getTorrentPieces(int id);
+    void getTorrentProperties(int id);
     QString getServer();
     void addTorrentFromFile(const QString &filePath, bool deleteFileOnSuccess);
     void addTorrentFromMagnet(const QString &magnetLink);
@@ -70,6 +71,9 @@ public:
                                           bool wanted,
                                           int priority);
 
+    void setTorrentProperties(int torrentId,
+                              const QJsonObject &properties);
+
     void queueMoveTop(const QList<int> &ids);
     void queueMoveUp(const QList<int> &ids);
     void queueMoveDown(const QList<int> &ids);
@@ -85,6 +89,7 @@ signals:
     void torrentsReceived(const QVector<torrent> &torrents);
     void torrentDetailsReceived(int torrentId, const QJsonObject &torrentDetails);
     void torrentPiecesReceived(int torrentId, const QJsonObject &pieceDetails);
+    void torrentPropertiesReceived(int torrentId, const QJsonObject &properties);
     void commandSucceeded(const QString &method);
     void commandFailed(const QString &method, const QString &message);
     void serverChanged();
@@ -96,6 +101,7 @@ private:
         TorrentGet,
         TorrentDetails,
         TorrentPieces,
+        TorrentProperties,
         Command,
         SessionGet,
         FreeSpace
