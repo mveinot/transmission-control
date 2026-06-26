@@ -131,6 +131,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         piecemapcontroller.h piecemapcontroller.cpp
         torrentdetailstabcontroller.h torrentdetailstabcontroller.cpp
         torrentfilescontroller.h torrentfilescontroller.cpp
+        torrenttrackerscontroller.h torrenttrackerscontroller.cpp
         torrentpropertiesdialog.h torrentpropertiesdialog.cpp
     )
 

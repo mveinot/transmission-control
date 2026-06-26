@@ -31,6 +31,7 @@ class UpdateChecker;
 class PieceMapController;
 class TorrentDetailsTabController;
 class TorrentFilesController;
+class TorrentTrackersController;
 
 class MainWindow : public QMainWindow
 {
@@ -116,17 +117,9 @@ private:
     void applyUpdateInterval();
     void setupConnectionStatusIndicator();
     void populateGeneralTab(const QJsonObject &details);
-    void populateTrackerTable(const QJsonObject &details);
     void clearGeneralTab();
-    void clearTrackerTable();
     bool trayIconEnabled() const;
     bool trayNotificationsEnabled() const;
-    void showTrackerContextMenu(const QPoint &pos);
-    int trackerIdForRow(int row) const;
-    QString trackerAnnounceUrlForRow(int row) const;
-    void addTrackerFromContextMenu();
-    void editTrackerFromContextMenu(int row);
-    void removeTrackerFromContextMenu(int row);
     void copySelectedTorrentMagnetLink();
     void copySelectedTorrentHash();
     void copyTextToClipboard(const QString &text,
@@ -173,6 +166,7 @@ private:
     PieceMapController *pieceMapController = nullptr;
     TorrentDetailsTabController *torrentDetailsController = nullptr;
     TorrentFilesController *torrentFilesController = nullptr;
+    TorrentTrackersController *torrentTrackersController = nullptr;
     QJsonObject currentTorrentDetailsCache;
     QStringList lastTrackerFilterHosts;
 

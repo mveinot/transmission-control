@@ -3,6 +3,7 @@
 #include "piecemapcontroller.h"
 #include "torrentdetailstabcontroller.h"
 #include "torrentfilescontroller.h"
+#include "torrenttrackerscontroller.h"
 #include <QActionGroup>
 #include <QAbstractItemView>
 #include <QApplication>
@@ -72,8 +73,6 @@ constexpr int FilterTypeRole = Qt::UserRole;
 constexpr int FilterValueRole = Qt::UserRole + 1;
 constexpr int FilterTypeStatus = 0;
 constexpr int FilterTypeTracker = 1;
-constexpr int TrackerAnnounceRole = Qt::UserRole;
-constexpr int TrackerIdRole = Qt::UserRole + 1;
 }
 
 
@@ -126,17 +125,17 @@ void MainWindow::clearGeneralTab()
         torrentFilesController->clear();
     }
 
+    if (torrentTrackersController) {
+        torrentTrackersController->setTorrentId(-1);
+        torrentTrackersController->clear();
+    }
+
     currentTorrentDetailsCache = QJsonObject();
     currentDetailsTorrentId = -1;
     currentTorrentHashString.clear();
     currentTorrentMagnetLink.clear();
 }
 
-void MainWindow::clearTrackerTable()
-{
-    ui->trackerTableWidget->clearContents();
-    ui->trackerTableWidget->setRowCount(0);
-}
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -215,6 +214,20 @@ MainWindow::MainWindow(QWidget *parent)
             client,
             &rpc_client::getTorrentDetails);
 
+    torrentTrackersController = new TorrentTrackersController(
+        ui->trackerTableWidget,
+        client,
+        this,
+        this
+        );
+    torrentTrackersController->setup();
+
+    connect(torrentTrackersController,
+            &TorrentTrackersController::statusMessageRequested,
+            this, [this](const QString &message, int timeoutMs) {
+                statusBar()->showMessage(message, timeoutMs);
+            });
+
     ui->statusbar->showMessage(client->getServer());
 
     ui->actionAll->setCheckable(true);
@@ -284,22 +297,6 @@ MainWindow::MainWindow(QWidget *parent)
             )
         );
 
-    ui->trackerTableWidget->setAlternatingRowColors(true);
-    ui->trackerTableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->trackerTableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
-    ui->trackerTableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    ui->trackerTableWidget->setContextMenuPolicy(Qt::CustomContextMenu);
-    ui->trackerTableWidget->horizontalHeader()->setStretchLastSection(true);
-    ui->trackerTableWidget->setColumnCount(6);
-    ui->trackerTableWidget->setHorizontalHeaderLabels({
-        tr("Host"),
-        tr("Announce"),
-        tr("Seeds"),
-        tr("Leechers"),
-        tr("Last Announce"),
-        tr("Result")
-    });
-
     // signal connections
     connect(ui->tableView->selectionModel(),
             &QItemSelectionModel::selectionChanged,
@@ -339,9 +336,6 @@ MainWindow::MainWindow(QWidget *parent)
                 if (updateChecker)
                     updateChecker->checkForUpdates(true);
             });
-
-    connect(ui->trackerTableWidget, &QTableWidget::customContextMenuRequested,
-            this, &MainWindow::showTrackerContextMenu);
 
     connect(ui->tabWidget, &QTabWidget::currentChanged,
             this, [this](int) {
@@ -438,7 +432,8 @@ MainWindow::MainWindow(QWidget *parent)
                 currentTorrentDetailsCache = details;
                 populateGeneralTab(details);
                 torrentDetailsController->update(currentTorrentDetailsCache);
-                populateTrackerTable(details);
+                torrentTrackersController->setTorrentId(torrentId);
+                torrentTrackersController->populate(details);
                 torrentFilesController->setTorrentContext(
                     torrentId,
                     details.value("downloadDir").toString()
@@ -584,7 +579,8 @@ void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
     clearGeneralTab();
     ui->peerTableWidget->clearContents();
     ui->peerTableWidget->setRowCount(0);
-    clearTrackerTable();
+    torrentTrackersController->clear();
+    torrentTrackersController->setTorrentId(torrentId);
     torrentFilesController->setTorrentContext(-1, QString());
     torrentFilesController->clear();
 
@@ -1390,6 +1386,8 @@ void MainWindow::saveSelectedServerFromCombo()
 
     torrentFilesController->setTorrentContext(-1, QString());
     torrentFilesController->clear();
+    torrentTrackersController->setTorrentId(-1);
+    torrentTrackersController->clear();
     ui->peerTableWidget->clearContents();
     ui->peerTableWidget->setRowCount(0);
     updateTorrentActionState();
@@ -1722,98 +1720,6 @@ void MainWindow::populateGeneralTab(const QJsonObject &details)
         pieceMapController->update(details);
 }
 
-void MainWindow::populateTrackerTable(const QJsonObject &details)
-{
-    const QJsonArray trackerStats =
-        details.value("trackerStats").toArray();
-
-    const QJsonArray trackers =
-        details.value("trackers").toArray();
-
-    ui->trackerTableWidget->setSortingEnabled(false);
-    ui->trackerTableWidget->clearContents();
-    ui->trackerTableWidget->setRowCount(trackerStats.size());
-
-    int row = 0;
-
-    for (const QJsonValue &value : trackerStats) {
-        const QJsonObject tracker = value.toObject();
-
-        const QString host =
-            tracker.value("host").toString();
-
-        const QString announce =
-            tracker.value("announce").toString();
-
-        int trackerId =
-            tracker.value("id").toInt(-1);
-
-        if (trackerId < 0 && row < trackers.size())
-            trackerId = trackers.at(row).toObject().value("id").toInt(-1);
-
-        if (trackerId < 0) {
-            for (const QJsonValue &trackerValue : trackers) {
-                const QJsonObject trackerObject = trackerValue.toObject();
-
-                if (trackerObject.value("announce").toString() == announce) {
-                    trackerId = trackerObject.value("id").toInt(-1);
-                    break;
-                }
-            }
-        }
-
-        const int seeders =
-            tracker.value("seederCount").toInt(-1);
-
-        const int leechers =
-            tracker.value("leecherCount").toInt(-1);
-
-        const QString lastAnnounceTime =
-            tracker.value("lastAnnounceTime").toVariant().toLongLong() > 0
-                ? QLocale().toString(
-                      QDateTime::fromSecsSinceEpoch(
-                          tracker.value("lastAnnounceTime").toVariant().toLongLong()
-                          ),
-                      QLocale::ShortFormat
-                      )
-                : tr("Never");
-
-        const QString lastAnnounceResult =
-            tracker.value("lastAnnounceResult").toString();
-
-        auto *hostItem = new QTableWidgetItem(host);
-        auto *announceItem = new QTableWidgetItem(announce);
-        announceItem->setData(TrackerAnnounceRole, announce);
-        announceItem->setData(TrackerIdRole, trackerId);
-        hostItem->setData(TrackerIdRole, trackerId);
-
-        auto *seedersItem = new QTableWidgetItem(
-            seeders >= 0 ? QString::number(seeders) : tr("Unknown")
-            );
-
-        auto *leechersItem = new QTableWidgetItem(
-            leechers >= 0 ? QString::number(leechers) : tr("Unknown")
-            );
-
-        auto *lastAnnounceItem = new QTableWidgetItem(lastAnnounceTime);
-        auto *resultItem = new QTableWidgetItem(lastAnnounceResult);
-
-        seedersItem->setData(Qt::UserRole, seeders);
-        leechersItem->setData(Qt::UserRole, leechers);
-
-        ui->trackerTableWidget->setItem(row, 0, hostItem);
-        ui->trackerTableWidget->setItem(row, 1, announceItem);
-        ui->trackerTableWidget->setItem(row, 2, seedersItem);
-        ui->trackerTableWidget->setItem(row, 3, leechersItem);
-        ui->trackerTableWidget->setItem(row, 4, lastAnnounceItem);
-        ui->trackerTableWidget->setItem(row, 5, resultItem);
-
-        ++row;
-    }
-
-    ui->trackerTableWidget->setSortingEnabled(true);
-}
-
 void MainWindow::bringToFront()
 {
     showNormal();
@@ -1948,200 +1854,6 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
 
     refreshCurrentTorrentLiveDetailsIfNeeded();
 }
-
-int MainWindow::trackerIdForRow(int row) const
-{
-    if (row < 0)
-        return -1;
-
-    QTableWidgetItem *announceItem =
-        ui->trackerTableWidget->item(row, 1);
-
-    if (!announceItem)
-        return -1;
-
-    bool ok = false;
-    const int trackerId = announceItem->data(TrackerIdRole).toInt(&ok);
-    return ok ? trackerId : -1;
-}
-
-QString MainWindow::trackerAnnounceUrlForRow(int row) const
-{
-    if (row < 0)
-        return QString();
-
-    QTableWidgetItem *announceItem =
-        ui->trackerTableWidget->item(row, 1);
-
-    if (!announceItem)
-        return QString();
-
-    QString trackerUrl =
-        announceItem->data(TrackerAnnounceRole).toString().trimmed();
-
-    if (trackerUrl.isEmpty())
-        trackerUrl = announceItem->text().trimmed();
-
-    return trackerUrl;
-}
-
-void MainWindow::addTrackerFromContextMenu()
-{
-    const int torrentId = currentTorrentId();
-
-    if (torrentId < 0)
-        return;
-
-    bool ok = false;
-    const QString trackerUrl = QInputDialog::getText(
-        this,
-        tr("Add Tracker"),
-        tr("Announce URL:"),
-        QLineEdit::Normal,
-        QString(),
-        &ok
-        ).trimmed();
-
-    if (!ok)
-        return;
-
-    if (trackerUrl.isEmpty()) {
-        QMessageBox::warning(
-            this,
-            tr("Add Tracker"),
-            tr("The tracker announce URL cannot be empty.")
-            );
-        return;
-    }
-
-    client->addTorrentTracker(torrentId, trackerUrl);
-
-    statusBar()->showMessage(
-        tr("Adding tracker..."),
-        3000
-        );
-}
-
-void MainWindow::editTrackerFromContextMenu(int row)
-{
-    const int torrentId = currentTorrentId();
-    const int trackerId = trackerIdForRow(row);
-    const QString oldTrackerUrl = trackerAnnounceUrlForRow(row);
-
-    if (torrentId < 0 || trackerId < 0 || oldTrackerUrl.isEmpty())
-        return;
-
-    bool ok = false;
-    const QString trackerUrl = QInputDialog::getText(
-        this,
-        tr("Edit Tracker"),
-        tr("Announce URL:"),
-        QLineEdit::Normal,
-        oldTrackerUrl,
-        &ok
-        ).trimmed();
-
-    if (!ok)
-        return;
-
-    if (trackerUrl.isEmpty()) {
-        QMessageBox::warning(
-            this,
-            tr("Edit Tracker"),
-            tr("The tracker announce URL cannot be empty.")
-            );
-        return;
-    }
-
-    if (trackerUrl == oldTrackerUrl)
-        return;
-
-    client->editTorrentTracker(torrentId, trackerId, trackerUrl);
-
-    statusBar()->showMessage(
-        tr("Updating tracker..."),
-        3000
-        );
-}
-
-void MainWindow::removeTrackerFromContextMenu(int row)
-{
-    const int torrentId = currentTorrentId();
-    const int trackerId = trackerIdForRow(row);
-    const QString trackerUrl = trackerAnnounceUrlForRow(row);
-
-    if (torrentId < 0 || trackerId < 0 || trackerUrl.isEmpty())
-        return;
-
-    const QMessageBox::StandardButton result = QMessageBox::question(
-        this,
-        tr("Remove Tracker"),
-        tr("Remove this tracker from the torrent?\n\n%1").arg(trackerUrl),
-        QMessageBox::Yes | QMessageBox::No,
-        QMessageBox::No
-        );
-
-    if (result != QMessageBox::Yes)
-        return;
-
-    client->removeTorrentTracker(torrentId, trackerId);
-
-    statusBar()->showMessage(
-        tr("Removing tracker..."),
-        3000
-        );
-}
-
-void MainWindow::showTrackerContextMenu(const QPoint &pos)
-{
-    QTableWidgetItem *item = ui->trackerTableWidget->itemAt(pos);
-    const int row = item ? item->row() : -1;
-
-    if (item)
-        ui->trackerTableWidget->selectRow(row);
-
-    const QString trackerUrl = trackerAnnounceUrlForRow(row);
-    const int trackerId = trackerIdForRow(row);
-
-    QMenu menu(this);
-
-    QAction *addTrackerAction =
-        menu.addAction(tr("Add Tracker…"));
-
-    QAction *editTrackerAction =
-        menu.addAction(tr("Edit Tracker…"));
-    editTrackerAction->setEnabled(row >= 0 && trackerId >= 0);
-
-    QAction *removeTrackerAction =
-        menu.addAction(tr("Remove Tracker"));
-    removeTrackerAction->setEnabled(row >= 0 && trackerId >= 0);
-
-    menu.addSeparator();
-
-    QAction *copyTrackerUrlAction =
-        menu.addAction(tr("Copy Tracker URL"));
-    copyTrackerUrlAction->setEnabled(!trackerUrl.isEmpty());
-
-    connect(addTrackerAction, &QAction::triggered,
-            this, &MainWindow::addTrackerFromContextMenu);
-
-    connect(editTrackerAction, &QAction::triggered,
-            this, [this, row]() { editTrackerFromContextMenu(row); });
-
-    connect(removeTrackerAction, &QAction::triggered,
-            this, [this, row]() { removeTrackerFromContextMenu(row); });
-
-    connect(copyTrackerUrlAction, &QAction::triggered,
-            this, [this, trackerUrl]() {
-                copyTextToClipboard(
-                    trackerUrl,
-                    tr("Tracker URL copied to clipboard.")
-                    );
-            });
-
-    menu.exec(ui->trackerTableWidget->viewport()->mapToGlobal(pos));
-}
-
 
 void MainWindow::copyTextToClipboard(const QString &text,
                                       const QString &statusMessage)
@@ -2698,47 +2410,3 @@ void MainWindow::importSettings()
             );
     }
 }
-
-/*
-void MainWindow::showTrackerContextMenu(const QPoint &pos)
-{
-    if (!ui->trackerTableWidget)
-        return;
-
-    const QModelIndex index = ui->trackerTableWidget->indexAt(pos);
-    if (!index.isValid())
-        return;
-
-    QMenu menu(this);
-
-    QAction *copyUrlAction = menu.addAction(tr("Copy Tracker URL"));
-    QAction *copyAnnounceAction = menu.addAction(tr("Copy Announce URL"));
-
-    QAction *selectedAction = menu.exec(ui->trackerTableWidget->viewport()->mapToGlobal(pos));
-    if (!selectedAction)
-        return;
-
-    const int row = index.row();
-
-    if (selectedAction == copyUrlAction) {
-        const QString trackerUrl = ui->trackerTableWidget->item(row, 0)
-        ? ui->trackerTableWidget->item(row, 0)->text()
-        : QString();
-
-        if (!trackerUrl.isEmpty())
-            QApplication::clipboard()->setText(trackerUrl);
-
-        return;
-    }
-
-    if (selectedAction == copyAnnounceAction) {
-        const QString announceUrl = ui->trackerTableWidget->item(row, 1)
-        ? ui->trackerTableWidget->item(row, 1)->text()
-        : QString();
-
-        if (!announceUrl.isEmpty())
-            QApplication::clipboard()->setText(announceUrl);
-
-        return;
-    }
-}*/
