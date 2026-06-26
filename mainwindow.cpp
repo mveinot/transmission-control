@@ -3,6 +3,7 @@
 #include "piecemapcontroller.h"
 #include "torrentdetailstabcontroller.h"
 #include "torrentfilescontroller.h"
+#include "torrentpeerscontroller.h"
 #include "torrenttrackerscontroller.h"
 #include <QActionGroup>
 #include <QAbstractItemView>
@@ -130,6 +131,9 @@ void MainWindow::clearGeneralTab()
         torrentTrackersController->clear();
     }
 
+    if (torrentPeersController)
+        torrentPeersController->clear();
+
     currentTorrentDetailsCache = QJsonObject();
     currentDetailsTorrentId = -1;
     currentTorrentHashString.clear();
@@ -228,6 +232,13 @@ MainWindow::MainWindow(QWidget *parent)
                 statusBar()->showMessage(message, timeoutMs);
             });
 
+    torrentPeersController = new TorrentPeersController(
+        ui->peerTableWidget,
+        geoIpService,
+        this
+        );
+    torrentPeersController->setup();
+
     ui->statusbar->showMessage(client->getServer());
 
     ui->actionAll->setCheckable(true);
@@ -248,24 +259,6 @@ MainWindow::MainWindow(QWidget *parent)
     stateGroup->addAction(ui->actionStopped);
     stateGroup->addAction(ui->actionError);
     ui->actionAll->setChecked(true);
-
-    ui->peerTableWidget->setColumnCount(9);
-    ui->peerTableWidget->setHorizontalHeaderLabels({
-        tr("Country"),
-        tr("Address"),
-        tr("Port"),
-        tr("Client"),
-        tr("Progress"),
-        tr("Download"),
-        tr("Upload"),
-        tr("Encrypted"),
-        tr("Incoming")
-    });
-    ui->peerTableWidget->setAlternatingRowColors(true);
-    ui->peerTableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->peerTableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
-    ui->peerTableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    ui->peerTableWidget->setSortingEnabled(true);
 
     ui->lineGeneralMagnet->setReadOnly(true);
     ui->lineGeneralMagnet->setFrame(false);
@@ -443,7 +436,7 @@ MainWindow::MainWindow(QWidget *parent)
                     details.value("wanted").toArray(),
                     details.value("priorities").toArray()
                     );
-                populatePeerTable(details.value("peers").toArray());
+                torrentPeersController->populate(details.value("peers").toArray());
             });
 
     connect(client, &rpc_client::torrentPiecesReceived,
@@ -577,8 +570,7 @@ void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
 
     // clear the informational widgets
     clearGeneralTab();
-    ui->peerTableWidget->clearContents();
-    ui->peerTableWidget->setRowCount(0);
+    torrentPeersController->clear();
     torrentTrackersController->clear();
     torrentTrackersController->setTorrentId(torrentId);
     torrentFilesController->setTorrentContext(-1, QString());
@@ -864,103 +856,6 @@ void MainWindow::setTorrentStateFilter(TorrentSortProxyModel::StateFilter filter
         ui->listWidget->setCurrentRow(7);
         break;
     }
-}
-
-void MainWindow::populatePeerTable(const QJsonArray &peers)
-{
-    ui->peerTableWidget->setSortingEnabled(false);
-    ui->peerTableWidget->clearContents();
-    ui->peerTableWidget->setRowCount(peers.size());
-
-    int row = 0;
-
-    for (const QJsonValue &peerValue : peers) {
-        const QJsonObject peer = peerValue.toObject();
-
-        const QString address = peer.value("address").toString();
-
-        const GeoIpResult geoIp =
-            geoIpService ? geoIpService->lookup(address) : GeoIpResult {};
-
-        const int port = peer.value("port").toInt();
-
-        const QString clientName =
-            peer.value("clientName").toString().isEmpty()
-                ? QStringLiteral("(unknown)")
-                : peer.value("clientName").toString();
-
-        const double progress = peer.value("progress").toDouble() * 100.0;
-
-        const qint64 rateToClient =
-            peer.value("rateToClient").toVariant().toLongLong();
-
-        const qint64 rateToPeer =
-            peer.value("rateToPeer").toVariant().toLongLong();
-
-        const bool isEncrypted = peer.value("isEncrypted").toBool();
-        const bool isIncoming = peer.value("isIncoming").toBool();
-
-        auto *countryItem = new QTableWidgetItem(geoIp.displayText());
-        countryItem->setToolTip(
-            geoIp.found
-                ? QString("%1 (%2)").arg(geoIp.countryName, address)
-                : QString("%1").arg(address)
-            );
-        countryItem->setData(Qt::UserRole, geoIp.countryCode);
-
-        auto *addressItem = new QTableWidgetItem(address);
-
-        auto *portItem = new QTableWidgetItem(QString::number(port));
-        portItem->setData(Qt::UserRole, port);
-
-        auto *clientItem = new QTableWidgetItem(clientName);
-
-        auto *progressItem =
-            new QTableWidgetItem(QString("%1%").arg(progress, 0, 'f', 1));
-        progressItem->setData(Qt::UserRole, progress);
-
-        auto *downloadItem =
-            new QTableWidgetItem(
-                QLocale().formattedDataSize(
-                    rateToClient,
-                    1,
-                    QLocale::DataSizeIecFormat
-                    ) + "/s"
-                );
-        downloadItem->setData(Qt::UserRole, rateToClient);
-
-        auto *uploadItem =
-            new QTableWidgetItem(
-                QLocale().formattedDataSize(
-                    rateToPeer,
-                    1,
-                    QLocale::DataSizeIecFormat
-                    ) + "/s"
-                );
-        uploadItem->setData(Qt::UserRole, rateToPeer);
-
-        auto *encryptedItem =
-            new QTableWidgetItem(isEncrypted ? tr("Yes") : tr("No"));
-        encryptedItem->setData(Qt::UserRole, isEncrypted);
-
-        auto *incomingItem =
-            new QTableWidgetItem(isIncoming ? tr("Yes") : tr("No"));
-        incomingItem->setData(Qt::UserRole, isIncoming);
-
-        ui->peerTableWidget->setItem(row, 0, countryItem);
-        ui->peerTableWidget->setItem(row, 1, addressItem);
-        ui->peerTableWidget->setItem(row, 2, portItem);
-        ui->peerTableWidget->setItem(row, 3, clientItem);
-        ui->peerTableWidget->setItem(row, 4, progressItem);
-        ui->peerTableWidget->setItem(row, 5, downloadItem);
-        ui->peerTableWidget->setItem(row, 6, uploadItem);
-        ui->peerTableWidget->setItem(row, 7, encryptedItem);
-        ui->peerTableWidget->setItem(row, 8, incomingItem);
-
-        ++row;
-    }
-
-    ui->peerTableWidget->setSortingEnabled(true);
 }
 
 void MainWindow::showTorrentContextMenu(const QPoint &pos)
@@ -1388,8 +1283,7 @@ void MainWindow::saveSelectedServerFromCombo()
     torrentFilesController->clear();
     torrentTrackersController->setTorrentId(-1);
     torrentTrackersController->clear();
-    ui->peerTableWidget->clearContents();
-    ui->peerTableWidget->setRowCount(0);
+    torrentPeersController->clear();
     updateTorrentActionState();
 
     statusBar()->showMessage(

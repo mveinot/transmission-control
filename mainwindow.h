@@ -31,6 +31,7 @@ class UpdateChecker;
 class PieceMapController;
 class TorrentDetailsTabController;
 class TorrentFilesController;
+class TorrentPeersController;
 class TorrentTrackersController;
 
 class MainWindow : public QMainWindow
@@ -106,7 +107,6 @@ private:
     void saveTableViewState();
     void restoreTableViewState();
     void setTorrentStateFilter(TorrentSortProxyModel::StateFilter filter);
-    void populatePeerTable(const QJsonArray &peers);
     void reannounceSelectedTorrent();
     void verifySelectedTorrent();
     void forceStartSelectedTorrents();
@@ -166,6 +166,7 @@ private:
     PieceMapController *pieceMapController = nullptr;
     TorrentDetailsTabController *torrentDetailsController = nullptr;
     TorrentFilesController *torrentFilesController = nullptr;
+    TorrentPeersController *torrentPeersController = nullptr;
     TorrentTrackersController *torrentTrackersController = nullptr;
     QJsonObject currentTorrentDetailsCache;
     QStringList lastTrackerFilterHosts;
