@@ -6,6 +6,7 @@
 #include "torrentpeerscontroller.h"
 #include "torrenttrackerscontroller.h"
 #include "torrentlistcontroller.h"
+#include "torrentfiltercontroller.h"
 #include "watchfoldercontroller.h"
 #include "watchfoldermanager.h"
 #include <QActionGroup>
@@ -66,10 +67,6 @@ namespace {
 constexpr int DefaultUpdateIntervalSeconds = 10;
 constexpr int MinimumUpdateIntervalSeconds = 1;
 constexpr int MaximumUpdateIntervalSeconds = 3600;
-constexpr int FilterTypeRole = Qt::UserRole;
-constexpr int FilterValueRole = Qt::UserRole + 1;
-constexpr int FilterTypeStatus = 0;
-constexpr int FilterTypeTracker = 1;
 }
 
 
@@ -274,6 +271,24 @@ MainWindow::MainWindow(QWidget *parent)
     stateGroup->addAction(ui->actionError);
     ui->actionAll->setChecked(true);
 
+    TorrentFilterController::Actions filterActions;
+    filterActions.all = ui->actionAll;
+    filterActions.downloading = ui->actionDownloading;
+    filterActions.completed = ui->actionCompleted;
+    filterActions.active = ui->actionActive;
+    filterActions.inactive = ui->actionInactive;
+    filterActions.stopped = ui->actionStopped;
+    filterActions.error = ui->actionError;
+
+    torrentFilterController = new TorrentFilterController(
+        ui->listWidget,
+        ui->editTorrentFilter,
+        proxy,
+        filterActions,
+        this
+        );
+    torrentFilterController->setup();
+
     ui->lineGeneralMagnet->setReadOnly(true);
     ui->lineGeneralMagnet->setFrame(false);
     ui->lineGeneralMagnet->setCursorPosition(0);
@@ -373,43 +388,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(client, &rpc_client::serverChanged,
             torrentModel, &TorrentModel::clear);
 
-    connect(ui->actionAll, &QAction::triggered, this, [this]() {
-        setTorrentStateFilter(TorrentSortProxyModel::StateFilter::All);
-    });
-
-    connect(ui->actionDownloading, &QAction::triggered, this, [this]() {
-        setTorrentStateFilter(TorrentSortProxyModel::StateFilter::Downloading);
-    });
-
-    connect(ui->actionCompleted, &QAction::triggered, this, [this]() {
-        setTorrentStateFilter(TorrentSortProxyModel::StateFilter::Completed);
-    });
-
-    connect(ui->actionActive, &QAction::triggered, this, [this]() {
-        setTorrentStateFilter(TorrentSortProxyModel::StateFilter::Active);
-    });
-
-    connect(ui->actionInactive, &QAction::triggered, this, [this]() {
-        setTorrentStateFilter(TorrentSortProxyModel::StateFilter::Inactive);
-    });
-
-    connect(ui->actionStopped, &QAction::triggered, this, [this]() {
-        setTorrentStateFilter(TorrentSortProxyModel::StateFilter::Stopped);
-    });
-
-    connect(ui->actionError, &QAction::triggered, this, [this]() {
-        setTorrentStateFilter(TorrentSortProxyModel::StateFilter::Error);
-    });
-
-    connect(ui->actionExport_Settings, &QAction::triggered,
-            this, &MainWindow::exportSettings);
-
-    connect(ui->actionImport_Settings, &QAction::triggered,
-            this, &MainWindow::importSettings);
-
-    connect(ui->editTorrentFilter, &QLineEdit::textChanged,
-            proxy, &TorrentSortProxyModel::setSearchText);
-
     connect(client, &rpc_client::sessionSettingsReceived,
             this, &MainWindow::handleSessionSettingsReceived);
 
@@ -417,36 +395,6 @@ MainWindow::MainWindow(QWidget *parent)
             this, &MainWindow::showSessionSettings);
 
     connect(ui->actionServer_Setup, &QAction::triggered, this, &MainWindow::onServerSetupTriggered);
-
-    connect(ui->listWidget, &QListWidget::currentItemChanged,
-            this, [this](QListWidgetItem *current, QListWidgetItem *) {
-                if (!current)
-                    return;
-
-                const int filterType = current->data(FilterTypeRole).toInt();
-
-                if (filterType == FilterTypeStatus) {
-                    const auto stateFilter =
-                        static_cast<TorrentSortProxyModel::StateFilter>(
-                            current->data(FilterValueRole).toInt()
-                            );
-
-                    proxy->setStateFilter(stateFilter);
-                    proxy->setTrackerFilter(QString());
-                    return;
-                }
-
-                if (filterType == FilterTypeTracker) {
-                    proxy->setStateFilter(
-                        TorrentSortProxyModel::StateFilter::All
-                        );
-
-                    proxy->setTrackerFilter(
-                        current->data(FilterValueRole).toString()
-                        );
-                    return;
-                }
-            });
 
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTorrentList);
     connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
@@ -762,50 +710,6 @@ void MainWindow::onServerSetupTriggered()
             statusBar()->showMessage(client->getServer());
             client->getTorrentList();
         }
-    }
-}
-
-void MainWindow::setTorrentStateFilter(TorrentSortProxyModel::StateFilter filter)
-{
-    proxy->setStateFilter(filter);
-
-    QSignalBlocker blocker(ui->listWidget);
-
-    switch (filter) {
-    case TorrentSortProxyModel::StateFilter::All:
-        ui->actionAll->setChecked(true);
-        ui->listWidget->setCurrentRow(1);
-        break;
-
-    case TorrentSortProxyModel::StateFilter::Downloading:
-        ui->actionDownloading->setChecked(true);
-        ui->listWidget->setCurrentRow(2);
-        break;
-
-    case TorrentSortProxyModel::StateFilter::Completed:
-        ui->actionCompleted->setChecked(true);
-        ui->listWidget->setCurrentRow(3);
-        break;
-
-    case TorrentSortProxyModel::StateFilter::Active:
-        ui->actionActive->setChecked(true);
-        ui->listWidget->setCurrentRow(4);
-        break;
-
-    case TorrentSortProxyModel::StateFilter::Inactive:
-        ui->actionInactive->setChecked(true);
-        ui->listWidget->setCurrentRow(5);
-        break;
-
-    case TorrentSortProxyModel::StateFilter::Stopped:
-        ui->actionStopped->setChecked(true);
-        ui->listWidget->setCurrentRow(6);
-        break;
-
-    case TorrentSortProxyModel::StateFilter::Error:
-        ui->actionError->setChecked(true);
-        ui->listWidget->setCurrentRow(7);
-        break;
     }
 }
 
@@ -1372,7 +1276,8 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
 {
     processFinishedTorrentNotifications(torrents);
 
-    rebuildTorrentFilterList(torrents);
+    if (torrentFilterController)
+        torrentFilterController->rebuild(torrents);
     updateConnectionStatus(torrents.size());
 
     if (!remoteDownloadDir.isEmpty())
@@ -1512,114 +1417,6 @@ void MainWindow::updateConnectionStatus(int torrentCount)
     if (connectionStatusLabel) {
         connectionStatusLabel->setStyleSheet(QString());
         connectionStatusLabel->setText(text);
-    }
-}
-
-void MainWindow::rebuildTorrentFilterList(const QVector<torrent> &torrents)
-{
-    if (!ui->listWidget)
-        return;
-
-    const QString currentValue =
-        ui->listWidget->currentItem()
-            ? ui->listWidget->currentItem()->data(FilterValueRole).toString()
-            : QString();
-
-    const int currentType =
-        ui->listWidget->currentItem()
-            ? ui->listWidget->currentItem()->data(FilterTypeRole).toInt()
-            : FilterTypeStatus;
-
-    QSet<QString> uniqueTrackers;
-
-    for (const torrent &torrentItem : torrents) {
-        for (const QString &trackerHost : torrentItem.getTrackerHosts()) {
-            if (!trackerHost.trimmed().isEmpty())
-                uniqueTrackers.insert(trackerHost.trimmed().toLower());
-        }
-    }
-
-    QStringList trackerHosts = uniqueTrackers.values();
-    std::sort(trackerHosts.begin(), trackerHosts.end());
-
-    if (trackerHosts == lastTrackerFilterHosts && ui->listWidget->count() > 0)
-        return;
-
-    lastTrackerFilterHosts = trackerHosts;
-
-    QSignalBlocker blocker(ui->listWidget);
-
-    ui->listWidget->clear();
-
-    addStatusFilterItems();
-    addTrackerFilterItems(trackerHosts);
-
-    for (int row = 0; row < ui->listWidget->count(); ++row) {
-        QListWidgetItem *item = ui->listWidget->item(row);
-
-        if (!item)
-            continue;
-
-        const int type = item->data(FilterTypeRole).toInt();
-        const QString value = item->data(FilterValueRole).toString();
-
-        if (type == currentType && value == currentValue) {
-            ui->listWidget->setCurrentRow(row);
-            return;
-        }
-    }
-
-    ui->listWidget->setCurrentRow(1);
-}
-
-void MainWindow::addStatusFilterItems()
-{
-    auto addStatusItem =
-        [this](const QString &label, TorrentSortProxyModel::StateFilter filter) {
-            auto *item = new QListWidgetItem(label);
-            item->setData(FilterTypeRole, FilterTypeStatus);
-            item->setData(FilterValueRole, static_cast<int>(filter));
-            ui->listWidget->addItem(item);
-        };
-
-    auto *statusHeader = new QListWidgetItem(QStringLiteral("Status"));
-    statusHeader->setFlags(Qt::NoItemFlags);
-    QFont headerFont = statusHeader->font();
-    headerFont.setBold(true);
-    statusHeader->setFont(headerFont);
-    ui->listWidget->addItem(statusHeader);
-
-    addStatusItem(tr("All"), TorrentSortProxyModel::StateFilter::All);
-    addStatusItem(tr("Downloading"), TorrentSortProxyModel::StateFilter::Downloading);
-    addStatusItem(tr("Complete"), TorrentSortProxyModel::StateFilter::Completed);
-    addStatusItem(tr("Active"), TorrentSortProxyModel::StateFilter::Active);
-    addStatusItem(tr("Inactive"), TorrentSortProxyModel::StateFilter::Inactive);
-    addStatusItem(tr("Stopped"), TorrentSortProxyModel::StateFilter::Stopped);
-    addStatusItem(tr("Error"), TorrentSortProxyModel::StateFilter::Error);
-}
-
-void MainWindow::addTrackerFilterItems(const QStringList &trackerHosts)
-{
-    if (trackerHosts.isEmpty())
-        return;
-
-    auto *trackerHeader = new QListWidgetItem(tr("Trackers"));
-    trackerHeader->setFlags(Qt::NoItemFlags);
-    QFont headerFont = trackerHeader->font();
-    headerFont.setBold(true);
-    trackerHeader->setFont(headerFont);
-    ui->listWidget->addItem(trackerHeader);
-
-    auto *allTrackersItem = new QListWidgetItem(tr("All Trackers"));
-    allTrackersItem->setData(FilterTypeRole, FilterTypeTracker);
-    allTrackersItem->setData(FilterValueRole, QString());
-    ui->listWidget->addItem(allTrackersItem);
-
-    for (const QString &trackerHost : trackerHosts) {
-        auto *item = new QListWidgetItem(trackerHost);
-        item->setData(FilterTypeRole, FilterTypeTracker);
-        item->setData(FilterValueRole, trackerHost);
-        ui->listWidget->addItem(item);
     }
 }
 

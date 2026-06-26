@@ -34,6 +34,7 @@ class TorrentFilesController;
 class TorrentPeersController;
 class TorrentTrackersController;
 class TorrentListController;
+class TorrentFilterController;
 
 class MainWindow : public QMainWindow
 {
@@ -101,7 +102,6 @@ private:
     void addTorrentFromMagnet();
     void saveTableViewState();
     void restoreTableViewState();
-    void setTorrentStateFilter(TorrentSortProxyModel::StateFilter filter);
     int updateIntervalMs() const;
     void applyUpdateInterval();
     void setupConnectionStatusIndicator();
@@ -133,14 +133,6 @@ private:
     void updateConnectionStatus(int torrentCount);
     QString formatBytes(qint64 bytes) const;
 
-    enum class TorrentFilterItemType {
-        Status,
-        Tracker
-    };
-
-    void rebuildTorrentFilterList(const QVector<torrent> &torrents);
-    void addStatusFilterItems();
-    void addTrackerFilterItems(const QStringList &trackerHosts);
     UpdateChecker *updateChecker = nullptr;
     PieceMapController *pieceMapController = nullptr;
     TorrentDetailsTabController *torrentDetailsController = nullptr;
@@ -148,8 +140,8 @@ private:
     TorrentPeersController *torrentPeersController = nullptr;
     TorrentTrackersController *torrentTrackersController = nullptr;
     TorrentListController *torrentListController = nullptr;
+    TorrentFilterController *torrentFilterController = nullptr;
     QJsonObject currentTorrentDetailsCache;
-    QStringList lastTrackerFilterHosts;
 
     void setupUpdateChecker();
     void maybeCheckForUpdates();
