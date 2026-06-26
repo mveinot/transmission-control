@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
-#include "piecemapwidget.h"
+#include "piecemapcontroller.h"
+#include "torrentdetailstabcontroller.h"
 #include <QActionGroup>
 #include <QAbstractItemView>
 #include <QApplication>
@@ -141,13 +142,11 @@ void MainWindow::clearGeneralTab()
     ui->labelGeneralHash->clear();
     ui->lineGeneralMagnet->clear();
 
-    if (pieceMapWidget)
-        pieceMapWidget->clear();
+    if (pieceMapController)
+        pieceMapController->clear();
 
-    if (pieceMapGroup)
-        pieceMapGroup->setTitle(tr("Pieces"));
-
-    clearTorrentDetailsTab();
+    if (torrentDetailsController)
+        torrentDetailsController->clear();
     currentTorrentDetailsCache = QJsonObject();
 
     currentTorrentDownloadDir.clear();
@@ -204,8 +203,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     // set up the main UI
     ui->setupUi(this);
-    setupPieceMapWidget();
-    setupTorrentDetailsTab();
+    pieceMapController = new PieceMapController(ui->general,
+                                                ui->verticalLayoutGeneral,
+                                                ui->groupGeneralInfo,
+                                                this);
+    torrentDetailsController = new TorrentDetailsTabController(ui->tabWidget,
+                                                              ui->general,
+                                                              this);
     MainWindow::setWindowTitle(QCoreApplication::applicationName());
     setWindowIcon(QIcon(":/icons/planetary-512px.png"));
 
@@ -468,7 +472,7 @@ MainWindow::MainWindow(QWidget *parent)
 
                 currentTorrentDetailsCache = details;
                 populateGeneralTab(details);
-                updateTorrentDetailsTab(currentTorrentDetailsCache);
+                torrentDetailsController->update(currentTorrentDetailsCache);
                 populateTrackerTable(details);
                 populateFileTree(
                     details.value("files").toArray(),
@@ -487,8 +491,8 @@ MainWindow::MainWindow(QWidget *parent)
                 for (auto it = details.constBegin(); it != details.constEnd(); ++it)
                     currentTorrentDetailsCache.insert(it.key(), it.value());
 
-                updatePieceMap(currentTorrentDetailsCache);
-                updateTorrentDetailsTab(currentTorrentDetailsCache);
+                pieceMapController->update(currentTorrentDetailsCache);
+                torrentDetailsController->update(currentTorrentDetailsCache);
             });
 
     connect(client, &rpc_client::updateStarted,
@@ -1721,7 +1725,8 @@ void MainWindow::invokeSelectedTorrentCommand(void (rpc_client::*command)(const 
 bool MainWindow::currentTabWantsLiveTorrentDetails() const
 {
     QWidget *current = ui->tabWidget->currentWidget();
-    return current == ui->general || current == torrentDetailsTab;
+    return current == ui->general
+           || (torrentDetailsController && current == torrentDetailsController->widget());
 }
 
 void MainWindow::refreshCurrentTorrentLiveDetailsIfNeeded()
@@ -1775,410 +1780,6 @@ void MainWindow::setupConnectionStatusIndicator()
                     tr("Server changed: %1").arg(client->getServer())
                     );
             });
-}
-
-void MainWindow::setupPieceMapWidget()
-{
-    pieceMapGroup = new QGroupBox(tr("Pieces"), this);
-    pieceMapGroup->setMinimumSize(220, 120);
-    pieceMapGroup->setMaximumSize(320, 170);
-    pieceMapGroup->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
-
-    auto *pieceMapLayout = new QVBoxLayout(pieceMapGroup);
-    pieceMapLayout->setContentsMargins(6, 6, 6, 6);
-
-    pieceMapWidget = new PieceMapWidget(pieceMapGroup);
-    pieceMapLayout->addWidget(pieceMapWidget);
-
-    auto *topGeneralRow = new QWidget(ui->general);
-    auto *topGeneralLayout = new QHBoxLayout(topGeneralRow);
-    topGeneralLayout->setContentsMargins(0, 0, 0, 0);
-    topGeneralLayout->setSpacing(6);
-
-    ui->verticalLayoutGeneral->removeWidget(ui->groupGeneralInfo);
-    topGeneralLayout->addWidget(ui->groupGeneralInfo, 1);
-    topGeneralLayout->addWidget(pieceMapGroup, 0, Qt::AlignTop);
-
-    ui->verticalLayoutGeneral->insertWidget(0, topGeneralRow, 0);
-}
-
-
-void MainWindow::setupTorrentDetailsTab()
-{
-    torrentDetailsTab = new QWidget(ui->tabWidget);
-
-    auto *layout = new QVBoxLayout(torrentDetailsTab);
-    layout->setContentsMargins(4, 4, 4, 4);
-
-    torrentDetailsTable = new QTableWidget(torrentDetailsTab);
-    torrentDetailsTable->setColumnCount(2);
-    torrentDetailsTable->setHorizontalHeaderLabels({ tr("Property"), tr("Value") });
-    torrentDetailsTable->verticalHeader()->setVisible(false);
-    torrentDetailsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    torrentDetailsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    torrentDetailsTable->setSelectionMode(QAbstractItemView::SingleSelection);
-    torrentDetailsTable->setAlternatingRowColors(true);
-    torrentDetailsTable->setWordWrap(false);
-    torrentDetailsTable->horizontalHeader()->setStretchLastSection(true);
-    torrentDetailsTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    torrentDetailsTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-
-    layout->addWidget(torrentDetailsTable);
-
-    const int generalIndex = ui->tabWidget->indexOf(ui->general);
-    ui->tabWidget->insertTab(generalIndex + 1, torrentDetailsTab, tr("Details"));
-
-    clearTorrentDetailsTab();
-}
-
-void MainWindow::clearTorrentDetailsTab()
-{
-    if (!torrentDetailsTable)
-        return;
-
-    torrentDetailsTable->setSortingEnabled(false);
-    torrentDetailsTable->clearContents();
-    torrentDetailsTable->setRowCount(0);
-}
-
-void MainWindow::updateTorrentDetailsTab(const QJsonObject &details)
-{
-    if (!torrentDetailsTable)
-        return;
-
-    torrentDetailsTable->setSortingEnabled(false);
-    torrentDetailsTable->clearContents();
-    torrentDetailsTable->setRowCount(0);
-
-    auto jsonInt64 = [&details](const QString &key, qint64 defaultValue = 0) -> qint64 {
-        const QJsonValue value = details.value(key);
-
-        if (value.isUndefined() || value.isNull())
-            return defaultValue;
-
-        return value.toVariant().toLongLong();
-    };
-
-    auto jsonDouble = [&details](const QString &key, double defaultValue = 0.0) -> double {
-        const QJsonValue value = details.value(key);
-
-        if (value.isUndefined() || value.isNull())
-            return defaultValue;
-
-        return value.toDouble(defaultValue);
-    };
-
-    auto jsonBool = [&details](const QString &key, bool defaultValue = false) -> bool {
-        return jsonValueToBool(details.value(key), defaultValue);
-    };
-
-    auto formatBytesText = [](qint64 bytes) -> QString {
-        return QLocale().formattedDataSize(bytes, 1, QLocale::DataSizeIecFormat);
-    };
-
-    auto formatRate = [this, &formatBytesText](qint64 bytesPerSecond) -> QString {
-        return tr("%1/s").arg(formatBytesText(bytesPerSecond));
-    };
-
-    auto formatPercent = [](double fraction) -> QString {
-        return QStringLiteral("%1%").arg(QLocale().toString(fraction * 100.0, 'f', 1));
-    };
-
-    auto formatRatio = [this](double ratio) -> QString {
-        if (ratio < 0.0)
-            return tr("None");
-
-        return QLocale().toString(ratio, 'f', 2);
-    };
-
-    auto formatDate = [this](qint64 seconds) -> QString {
-        if (seconds <= 0)
-            return tr("Unknown");
-
-        return QLocale().toString(QDateTime::fromSecsSinceEpoch(seconds), QLocale::ShortFormat);
-    };
-
-    auto formatDuration = [this](qint64 seconds) -> QString {
-        if (seconds < 0)
-            return tr("Unknown");
-
-        const qint64 days = seconds / 86400;
-        seconds %= 86400;
-        const qint64 hours = seconds / 3600;
-        seconds %= 3600;
-        const qint64 minutes = seconds / 60;
-        const qint64 secs = seconds % 60;
-
-        if (days > 0)
-            return tr("%1 d %2 h").arg(days).arg(hours);
-
-        if (hours > 0)
-            return tr("%1 h %2 m").arg(hours).arg(minutes);
-
-        if (minutes > 0)
-            return tr("%1 m %2 s").arg(minutes).arg(secs);
-
-        return tr("%1 s").arg(secs);
-    };
-
-    auto formatEta = [this, &formatDuration](qint64 seconds) -> QString {
-        if (seconds < 0)
-            return tr("Unknown");
-
-        return formatDuration(seconds);
-    };
-
-    auto yesNo = [this](bool value) -> QString {
-        return value ? tr("Yes") : tr("No");
-    };
-
-    auto statusText = [this](int status) -> QString {
-        switch (status) {
-        case 0:
-            return tr("Stopped");
-        case 1:
-            return tr("Queued for check");
-        case 2:
-            return tr("Checking");
-        case 3:
-            return tr("Queued for download");
-        case 4:
-            return tr("Downloading");
-        case 5:
-            return tr("Queued for seeding");
-        case 6:
-            return tr("Seeding");
-        default:
-            return tr("Unknown (%1)").arg(status);
-        }
-    };
-
-    auto seedRatioModeText = [this](int mode) -> QString {
-        switch (mode) {
-        case 0:
-            return tr("Use global setting");
-        case 1:
-            return tr("Use torrent ratio limit");
-        case 2:
-            return tr("Seed regardless of ratio");
-        default:
-            return tr("Unknown (%1)").arg(mode);
-        }
-    };
-
-    auto seedIdleModeText = [this](int mode) -> QString {
-        switch (mode) {
-        case 0:
-            return tr("Use global setting");
-        case 1:
-            return tr("Use torrent idle limit");
-        case 2:
-            return tr("Seed regardless of idle time");
-        default:
-            return tr("Unknown (%1)").arg(mode);
-        }
-    };
-
-    auto priorityText = [this](int priority) -> QString {
-        switch (priority) {
-        case 1:
-            return tr("High");
-        case -1:
-            return tr("Low");
-        case 0:
-            return tr("Normal");
-        default:
-            return tr("Unknown (%1)").arg(priority);
-        }
-    };
-
-    auto addSection = [this](const QString &title) {
-        const int row = torrentDetailsTable->rowCount();
-        torrentDetailsTable->insertRow(row);
-        torrentDetailsTable->setSpan(row, 0, 1, 2);
-
-        auto *item = new QTableWidgetItem(title);
-        QFont font = item->font();
-        font.setBold(true);
-        item->setFont(font);
-        item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-        item->setBackground(palette().alternateBase());
-
-        torrentDetailsTable->setItem(row, 0, item);
-    };
-
-    auto addRow = [this](const QString &label, const QString &value) {
-        const int row = torrentDetailsTable->rowCount();
-        torrentDetailsTable->insertRow(row);
-
-        auto *labelItem = new QTableWidgetItem(label);
-        labelItem->setFlags(labelItem->flags() & ~Qt::ItemIsEditable);
-
-        auto *valueItem = new QTableWidgetItem(value);
-        valueItem->setFlags(valueItem->flags() & ~Qt::ItemIsEditable);
-        valueItem->setToolTip(value);
-
-        torrentDetailsTable->setItem(row, 0, labelItem);
-        torrentDetailsTable->setItem(row, 1, valueItem);
-    };
-
-    auto addRowIfPresent = [&details, &addRow](const QString &key, const QString &label, const QString &value) {
-        if (!details.contains(key))
-            return;
-
-        addRow(label, value);
-    };
-
-    const qint64 pieceSize = jsonInt64(QStringLiteral("pieceSize"));
-    const int pieceCount = details.value(QStringLiteral("pieceCount")).toInt(0);
-    const QByteArray pieces = QByteArray::fromBase64(
-        details.value(QStringLiteral("pieces")).toString().toLatin1()
-    );
-
-    int completedPieces = 0;
-    if (pieceCount > 0 && !pieces.isEmpty()) {
-        for (int index = 0; index < pieceCount; ++index) {
-            const int byteIndex = index / 8;
-            const int bitIndex = 7 - (index % 8);
-
-            if (byteIndex >= 0 && byteIndex < pieces.size()) {
-                const uchar byte = static_cast<uchar>(pieces.at(byteIndex));
-                if ((byte & (1u << bitIndex)) != 0)
-                    ++completedPieces;
-            }
-        }
-    }
-
-    addSection(tr("State"));
-    addRowIfPresent(QStringLiteral("status"), tr("Status"), statusText(details.value(QStringLiteral("status")).toInt(-1)));
-    addRowIfPresent(QStringLiteral("isPrivate"), tr("Private torrent"), yesNo(jsonBool(QStringLiteral("isPrivate"))));
-    addRowIfPresent(QStringLiteral("isStalled"), tr("Stalled"), yesNo(jsonBool(QStringLiteral("isStalled"))));
-    addRowIfPresent(QStringLiteral("isFinished"), tr("Finished"), yesNo(jsonBool(QStringLiteral("isFinished"))));
-    if (details.value(QStringLiteral("error")).toInt(0) != 0 || !details.value(QStringLiteral("errorString")).toString().isEmpty()) {
-        addRow(tr("Error"), details.value(QStringLiteral("errorString")).toString(tr("Unknown error")));
-    }
-
-    addSection(tr("Progress"));
-    addRowIfPresent(QStringLiteral("percentDone"), tr("Done"), formatPercent(jsonDouble(QStringLiteral("percentDone"))));
-    addRowIfPresent(QStringLiteral("metadataPercentComplete"), tr("Metadata"), formatPercent(jsonDouble(QStringLiteral("metadataPercentComplete"))));
-    addRowIfPresent(QStringLiteral("recheckProgress"), tr("Recheck"), formatPercent(jsonDouble(QStringLiteral("recheckProgress"))));
-    if (pieceCount > 0)
-        addRow(tr("Pieces complete"), tr("%1 / %2 (%3%)")
-                                  .arg(completedPieces)
-                                  .arg(pieceCount)
-                                  .arg(QLocale().toString(100.0 * completedPieces / pieceCount, 'f', 1)));
-
-    addSection(tr("Transfer"));
-    addRowIfPresent(QStringLiteral("rateDownload"), tr("Download rate"), formatRate(jsonInt64(QStringLiteral("rateDownload"))));
-    addRowIfPresent(QStringLiteral("rateUpload"), tr("Upload rate"), formatRate(jsonInt64(QStringLiteral("rateUpload"))));
-    addRowIfPresent(QStringLiteral("uploadRatio"), tr("Ratio"), formatRatio(jsonDouble(QStringLiteral("uploadRatio"), -1.0)));
-    addRowIfPresent(QStringLiteral("downloadedEver"), tr("Downloaded"), formatBytesText(jsonInt64(QStringLiteral("downloadedEver"))));
-    addRowIfPresent(QStringLiteral("uploadedEver"), tr("Uploaded"), formatBytesText(jsonInt64(QStringLiteral("uploadedEver"))));
-    addRowIfPresent(QStringLiteral("corruptEver"), tr("Wasted/corrupt"), formatBytesText(jsonInt64(QStringLiteral("corruptEver"))));
-    addRowIfPresent(QStringLiteral("haveValid"), tr("Have valid"), formatBytesText(jsonInt64(QStringLiteral("haveValid"))));
-    addRowIfPresent(QStringLiteral("haveUnchecked"), tr("Have unchecked"), formatBytesText(jsonInt64(QStringLiteral("haveUnchecked"))));
-    addRowIfPresent(QStringLiteral("desiredAvailable"), tr("Desired available"), formatBytesText(jsonInt64(QStringLiteral("desiredAvailable"))));
-    addRowIfPresent(QStringLiteral("leftUntilDone"), tr("Left until done"), formatBytesText(jsonInt64(QStringLiteral("leftUntilDone"))));
-    addRowIfPresent(QStringLiteral("sizeWhenDone"), tr("Size when done"), formatBytesText(jsonInt64(QStringLiteral("sizeWhenDone"))));
-    addRowIfPresent(QStringLiteral("totalSize"), tr("Total size"), formatBytesText(jsonInt64(QStringLiteral("totalSize"))));
-
-    addSection(tr("Time"));
-    addRowIfPresent(QStringLiteral("eta"), tr("ETA"), formatEta(jsonInt64(QStringLiteral("eta"), -1)));
-    addRowIfPresent(QStringLiteral("etaIdle"), tr("Idle ETA"), formatEta(jsonInt64(QStringLiteral("etaIdle"), -1)));
-    addRowIfPresent(QStringLiteral("secondsDownloading"), tr("Downloading time"), formatDuration(jsonInt64(QStringLiteral("secondsDownloading"))));
-    addRowIfPresent(QStringLiteral("secondsSeeding"), tr("Seeding time"), formatDuration(jsonInt64(QStringLiteral("secondsSeeding"))));
-    addRowIfPresent(QStringLiteral("dateCreated"), tr("Created"), formatDate(jsonInt64(QStringLiteral("dateCreated"))));
-    addRowIfPresent(QStringLiteral("addedDate"), tr("Added"), formatDate(jsonInt64(QStringLiteral("addedDate"))));
-    addRowIfPresent(QStringLiteral("startDate"), tr("Started"), formatDate(jsonInt64(QStringLiteral("startDate"))));
-    addRowIfPresent(QStringLiteral("doneDate"), tr("Completed"), formatDate(jsonInt64(QStringLiteral("doneDate"))));
-    addRowIfPresent(QStringLiteral("activityDate"), tr("Last activity"), formatDate(jsonInt64(QStringLiteral("activityDate"))));
-    addRowIfPresent(QStringLiteral("editDate"), tr("Edited"), formatDate(jsonInt64(QStringLiteral("editDate"))));
-    addRowIfPresent(QStringLiteral("manualAnnounceTime"), tr("Manual announce available"), formatDate(jsonInt64(QStringLiteral("manualAnnounceTime"))));
-
-    addSection(tr("Peers"));
-    addRowIfPresent(QStringLiteral("peersConnected"), tr("Connected peers"), QString::number(jsonInt64(QStringLiteral("peersConnected"))));
-    addRowIfPresent(QStringLiteral("peersSendingToUs"), tr("Peers sending to us"), QString::number(jsonInt64(QStringLiteral("peersSendingToUs"))));
-    addRowIfPresent(QStringLiteral("peersGettingFromUs"), tr("Peers getting from us"), QString::number(jsonInt64(QStringLiteral("peersGettingFromUs"))));
-    addRowIfPresent(QStringLiteral("webseedsSendingToUs"), tr("Web seeds sending to us"), QString::number(jsonInt64(QStringLiteral("webseedsSendingToUs"))));
-    addRowIfPresent(QStringLiteral("maxConnectedPeers"), tr("Max connected peers"), QString::number(jsonInt64(QStringLiteral("maxConnectedPeers"))));
-    if (details.contains(QStringLiteral("peersFrom"))) {
-        const QJsonObject peersFrom = details.value(QStringLiteral("peersFrom")).toObject();
-        QStringList peerSources;
-        for (auto it = peersFrom.constBegin(); it != peersFrom.constEnd(); ++it)
-            peerSources << QStringLiteral("%1: %2").arg(it.key()).arg(it.value().toInt());
-        peerSources.sort(Qt::CaseInsensitive);
-        addRow(tr("Peer sources"), peerSources.join(QStringLiteral(", ")));
-    }
-
-    addSection(tr("Limits and seeding"));
-    addRowIfPresent(QStringLiteral("bandwidthPriority"), tr("Bandwidth priority"), priorityText(details.value(QStringLiteral("bandwidthPriority")).toInt(0)));
-    addRowIfPresent(QStringLiteral("honorsSessionLimits"), tr("Honor session limits"), yesNo(jsonBool(QStringLiteral("honorsSessionLimits"), true)));
-    if (details.contains(QStringLiteral("downloadLimited")) || details.contains(QStringLiteral("downloadLimit"))) {
-        const bool limited = jsonBool(QStringLiteral("downloadLimited"));
-        addRow(tr("Download limit"), limited
-                                      ? tr("%1/s").arg(formatBytesText(jsonInt64(QStringLiteral("downloadLimit")) * 1000))
-                                      : tr("Unlimited"));
-    }
-    if (details.contains(QStringLiteral("uploadLimited")) || details.contains(QStringLiteral("uploadLimit"))) {
-        const bool limited = jsonBool(QStringLiteral("uploadLimited"));
-        addRow(tr("Upload limit"), limited
-                                    ? tr("%1/s").arg(formatBytesText(jsonInt64(QStringLiteral("uploadLimit")) * 1000))
-                                    : tr("Unlimited"));
-    }
-    addRowIfPresent(QStringLiteral("seedRatioMode"), tr("Seed ratio mode"), seedRatioModeText(details.value(QStringLiteral("seedRatioMode")).toInt(0)));
-    addRowIfPresent(QStringLiteral("seedRatioLimit"), tr("Seed ratio limit"), QLocale().toString(jsonDouble(QStringLiteral("seedRatioLimit")), 'f', 2));
-    addRowIfPresent(QStringLiteral("seedIdleMode"), tr("Seed idle mode"), seedIdleModeText(details.value(QStringLiteral("seedIdleMode")).toInt(0)));
-    addRowIfPresent(QStringLiteral("seedIdleLimit"), tr("Seed idle limit"), tr("%1 minute(s)").arg(jsonInt64(QStringLiteral("seedIdleLimit"))));
-    addRowIfPresent(QStringLiteral("queuePosition"), tr("Queue position"), QString::number(jsonInt64(QStringLiteral("queuePosition"))));
-
-    addSection(tr("Torrent"));
-    addRowIfPresent(QStringLiteral("pieceSize"), tr("Piece size"), formatBytesText(pieceSize));
-    addRowIfPresent(QStringLiteral("pieceCount"), tr("Piece count"), QString::number(pieceCount));
-    addRowIfPresent(QStringLiteral("file-count"), tr("File count"), QString::number(jsonInt64(QStringLiteral("file-count"))));
-    addRowIfPresent(QStringLiteral("group"), tr("Group"), details.value(QStringLiteral("group")).toString().isEmpty()
-                                                    ? tr("None")
-                                                    : details.value(QStringLiteral("group")).toString());
-    if (details.contains(QStringLiteral("labels"))) {
-        const QJsonArray labels = details.value(QStringLiteral("labels")).toArray();
-        QStringList labelTexts;
-        for (const QJsonValue &label : labels)
-            labelTexts << label.toString();
-        addRow(tr("Labels"), labelTexts.isEmpty() ? tr("None") : labelTexts.join(QStringLiteral(", ")));
-    }
-    addRowIfPresent(QStringLiteral("downloadDir"), tr("Download directory"), details.value(QStringLiteral("downloadDir")).toString());
-    addRowIfPresent(QStringLiteral("hashString"), tr("Hash"), details.value(QStringLiteral("hashString")).toString());
-
-    torrentDetailsTable->resizeRowsToContents();
-}
-
-void MainWindow::updatePieceMap(const QJsonObject &details)
-{
-    if (!pieceMapWidget || !pieceMapGroup)
-        return;
-
-    const int pieceCount = details.value(QStringLiteral("pieceCount")).toInt(0);
-    const QByteArray pieces =
-        QByteArray::fromBase64(
-            details.value(QStringLiteral("pieces")).toString().toLatin1()
-        );
-
-    pieceMapWidget->setPieces(pieceCount, pieces);
-
-    if (pieceCount <= 0) {
-        pieceMapGroup->setTitle(tr("Pieces"));
-        return;
-    }
-
-    const int completed = pieceMapWidget->completedPieceCount();
-    const double percent =
-        100.0 * static_cast<double>(completed) / static_cast<double>(pieceCount);
-
-    pieceMapGroup->setTitle(
-        tr("Pieces (%1 / %2, %3%)")
-            .arg(completed)
-            .arg(pieceCount)
-            .arg(QLocale().toString(percent, 'f', 1))
-    );
 }
 
 void MainWindow::populateGeneralTab(const QJsonObject &details)
@@ -2254,7 +1855,8 @@ void MainWindow::populateGeneralTab(const QJsonObject &details)
         ui->labelGeneralCreated->setText(tr("Unknown"));
     }
 
-    updatePieceMap(details);
+    if (pieceMapController)
+        pieceMapController->update(details);
 }
 
 void MainWindow::populateTrackerTable(const QJsonObject &details)

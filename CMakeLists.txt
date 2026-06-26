@@ -128,6 +128,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         bencodeparser.h bencodeparser.cpp
         torrentmetadataparser.h torrentmetadataparser.cpp
         piecemapwidget.h piecemapwidget.cpp
+        piecemapcontroller.h piecemapcontroller.cpp
+        torrentdetailstabcontroller.h torrentdetailstabcontroller.cpp
         torrentpropertiesdialog.h torrentpropertiesdialog.cpp
     )
 
