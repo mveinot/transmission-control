@@ -1051,17 +1051,17 @@ void MainWindow::handleLaunchArguments(const QStringList &arguments)
 
 void MainWindow::addTorrentFromFile()
 {
-    const QString fileName = QFileDialog::getOpenFileName(
+    const QStringList fileNames = QFileDialog::getOpenFileNames(
         this,
-        tr("Add Torrent File"),
+        tr("Add Torrent Files"),
         QString(),
         tr("Torrent Files (*.torrent);;All Files (*)")
         );
 
-    if (fileName.isEmpty())
+    if (fileNames.isEmpty())
         return;
 
-    torrentAddController->addTorrentFile(fileName);
+    torrentAddController->addTorrentFiles(fileNames);
 }
 
 void MainWindow::addTorrentFromMagnet()

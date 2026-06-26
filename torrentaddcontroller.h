@@ -5,6 +5,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
 
 class QWidget;
 class rpc_client;
@@ -22,6 +23,7 @@ public:
 
 public slots:
     void addTorrentFile(const QString &filePath);
+    void addTorrentFiles(const QStringList &filePaths);
     void addMagnetLink(const QString &magnetLink);
     void addTorrentFileUsingDefaults(const QString &filePath);
 

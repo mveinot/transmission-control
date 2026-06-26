@@ -8,6 +8,8 @@
 #include <QSettings>
 #include <QWidget>
 
+#include <utility>
+
 #include <QDebug>
 
 namespace {
@@ -68,6 +70,44 @@ void TorrentAddController::addTorrentFile(const QString &filePath)
 
     promptAndAdd(TorrentAddDialog::SourceType::TorrentFile,
                  fileInfo.absoluteFilePath());
+}
+
+
+void TorrentAddController::addTorrentFiles(const QStringList &filePaths)
+{
+    QStringList normalizedFilePaths;
+
+    for (const QString &filePath : filePaths) {
+        const QString trimmed = filePath.trimmed();
+
+        if (!trimmed.isEmpty())
+            normalizedFilePaths.append(trimmed);
+    }
+
+    if (normalizedFilePaths.isEmpty()) {
+        emit addFailed(tr("No torrent files were specified."));
+        return;
+    }
+
+    if (!m_client) {
+        emit addFailed(tr("No Transmission client is available."));
+        return;
+    }
+
+    for (const QString &filePath : std::as_const(normalizedFilePaths)) {
+        const QFileInfo fileInfo(filePath);
+
+        if (!fileInfo.exists() || !fileInfo.isFile()) {
+            emit addFailed(tr("Torrent file does not exist: %1")
+                               .arg(filePath));
+            continue;
+        }
+
+        if (!promptAndAdd(TorrentAddDialog::SourceType::TorrentFile,
+                          fileInfo.absoluteFilePath())) {
+            break;
+        }
+    }
 }
 
 void TorrentAddController::addMagnetLink(const QString &magnetLink)
