@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
-#include "piecemapcontroller.h"
-#include "torrentdetailstabcontroller.h"
+#include "torrentgeneralcontroller.h"
 #include "torrentfilescontroller.h"
 #include "torrentpeerscontroller.h"
 #include "torrenttrackerscontroller.h"
@@ -70,21 +69,6 @@ constexpr int MaximumUpdateIntervalSeconds = 3600;
 }
 
 
-// determine if a string looks like a URL
-static bool looksLikeUrl(const QString &text)
-{
-    const QString trimmed = text.trimmed();
-
-    if (trimmed.isEmpty())
-        return false;
-
-    const QUrl url = QUrl::fromUserInput(trimmed);
-
-    return url.isValid() &&
-           !url.scheme().isEmpty() &&
-           !url.host().isEmpty();
-}
-
 QString displayVersion(QString version)
 {
     version = version.trimmed();
@@ -100,19 +84,8 @@ QString displayVersion(QString version)
 
 void MainWindow::clearGeneralTab()
 {
-    ui->labelGeneralName->clear();
-    ui->labelGeneralTotalSize->clear();
-    ui->labelGeneralCreator->clear();
-    ui->labelGeneralCreated->clear();
-    ui->labelGeneralDownloadDir->clear();
-    ui->labelGeneralHash->clear();
-    ui->lineGeneralMagnet->clear();
-
-    if (pieceMapController)
-        pieceMapController->clear();
-
-    if (torrentDetailsController)
-        torrentDetailsController->clear();
+    if (torrentGeneralController)
+        torrentGeneralController->clear();
 
     if (torrentFilesController) {
         torrentFilesController->setTorrentContext(-1, QString());
@@ -126,14 +99,6 @@ void MainWindow::clearGeneralTab()
 
     if (torrentPeersController)
         torrentPeersController->clear();
-
-    currentTorrentDetailsCache = QJsonObject();
-    currentDetailsTorrentId = -1;
-    currentTorrentHashString.clear();
-    currentTorrentMagnetLink.clear();
-
-    if (torrentListController)
-        torrentListController->clearCurrentTorrentDetails();
 }
 
 
@@ -165,13 +130,43 @@ MainWindow::MainWindow(QWidget *parent)
 
     // set up the main UI
     ui->setupUi(this);
-    pieceMapController = new PieceMapController(ui->general,
-                                                ui->verticalLayoutGeneral,
-                                                ui->groupGeneralInfo,
-                                                this);
-    torrentDetailsController = new TorrentDetailsTabController(ui->tabWidget,
-                                                              ui->general,
-                                                              this);
+    TorrentGeneralController::Widgets generalWidgets;
+    generalWidgets.generalTab = ui->general;
+    generalWidgets.generalLayout = ui->verticalLayoutGeneral;
+    generalWidgets.generalInfoGroup = ui->groupGeneralInfo;
+    generalWidgets.tabWidget = ui->tabWidget;
+    generalWidgets.nameLabel = ui->labelGeneralName;
+    generalWidgets.totalSizeLabel = ui->labelGeneralTotalSize;
+    generalWidgets.creatorLabel = ui->labelGeneralCreator;
+    generalWidgets.createdLabel = ui->labelGeneralCreated;
+    generalWidgets.downloadDirLabel = ui->labelGeneralDownloadDir;
+    generalWidgets.hashLabel = ui->labelGeneralHash;
+    generalWidgets.commentLabel = ui->labelGeneralComment;
+    generalWidgets.magnetLineEdit = ui->lineGeneralMagnet;
+
+    torrentGeneralController = new TorrentGeneralController(generalWidgets, this);
+    torrentGeneralController->setup();
+
+    connect(torrentGeneralController,
+            &TorrentGeneralController::currentTorrentDetailsChanged,
+            this,
+            [this](int torrentId, const QString &hashString, const QString &magnetLink) {
+                if (torrentListController) {
+                    torrentListController->setCurrentTorrentDetails(
+                        torrentId,
+                        hashString,
+                        magnetLink
+                        );
+                }
+            });
+
+    connect(torrentGeneralController,
+            &TorrentGeneralController::currentTorrentDetailsCleared,
+            this,
+            [this]() {
+                if (torrentListController)
+                    torrentListController->clearCurrentTorrentDetails();
+            });
     MainWindow::setWindowTitle(QCoreApplication::applicationName());
     setWindowIcon(QIcon(":/icons/planetary-512px.png"));
 
@@ -289,20 +284,6 @@ MainWindow::MainWindow(QWidget *parent)
         );
     torrentFilterController->setup();
 
-    ui->lineGeneralMagnet->setReadOnly(true);
-    ui->lineGeneralMagnet->setFrame(false);
-    ui->lineGeneralMagnet->setCursorPosition(0);
-    ui->lineGeneralMagnet->setTextMargins(0, 0, 0, 0);
-    ui->lineGeneralMagnet->setContextMenuPolicy(Qt::DefaultContextMenu);
-
-    ui->lineGeneralMagnet->setStyleSheet(QStringLiteral(
-        "QLineEdit {"
-        "  background: transparent;"
-        "  border: none;"
-        "  padding: 0px;"
-        "}"
-        ));
-
     torrentListController = new TorrentListController(
         ui->tableView,
         proxy,
@@ -321,7 +302,7 @@ MainWindow::MainWindow(QWidget *parent)
         });
 
     torrentListController->setCurrentDetailsDownloadDirProvider(
-        [this]() { return ui->labelGeneralDownloadDir->text(); }
+        [this]() { return torrentGeneralController->currentDownloadDir(); }
         );
 
     ui->tableView->setItemDelegateForColumn(
@@ -405,9 +386,7 @@ MainWindow::MainWindow(QWidget *parent)
                 if (torrentId != currentTorrentId())
                     return;
 
-                currentTorrentDetailsCache = details;
-                populateGeneralTab(details);
-                torrentDetailsController->update(currentTorrentDetailsCache);
+                torrentGeneralController->update(details);
                 torrentTrackersController->setTorrentId(torrentId);
                 torrentTrackersController->populate(details);
                 torrentFilesController->setTorrentContext(
@@ -425,14 +404,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(client, &rpc_client::torrentPiecesReceived,
             this,
             [this](int torrentId, const QJsonObject &details) {
-                if (torrentId != currentDetailsTorrentId)
-                    return;
-
-                for (auto it = details.constBegin(); it != details.constEnd(); ++it)
-                    currentTorrentDetailsCache.insert(it.key(), it.value());
-
-                pieceMapController->update(currentTorrentDetailsCache);
-                torrentDetailsController->update(currentTorrentDetailsCache);
+                torrentGeneralController->updatePieces(torrentId, details);
             });
 
     connect(client, &rpc_client::updateStarted,
@@ -1009,17 +981,21 @@ void MainWindow::applyUpdateInterval()
 
 bool MainWindow::currentTabWantsLiveTorrentDetails() const
 {
-    QWidget *current = ui->tabWidget->currentWidget();
-    return current == ui->general
-           || (torrentDetailsController && current == torrentDetailsController->widget());
+    return torrentGeneralController
+           && torrentGeneralController->wantsLiveTorrentDetails(ui->tabWidget->currentWidget());
 }
 
 void MainWindow::refreshCurrentTorrentLiveDetailsIfNeeded()
 {
-    if (currentDetailsTorrentId < 0 || !currentTabWantsLiveTorrentDetails())
+    if (!torrentGeneralController || !currentTabWantsLiveTorrentDetails())
         return;
 
-    client->getTorrentPieces(currentDetailsTorrentId);
+    const int torrentId = torrentGeneralController->currentTorrentId();
+
+    if (torrentId < 0)
+        return;
+
+    client->getTorrentPieces(torrentId);
 }
 
 void MainWindow::setupConnectionStatusIndicator()
@@ -1065,89 +1041,6 @@ void MainWindow::setupConnectionStatusIndicator()
                     tr("Server changed: %1").arg(client->getServer())
                     );
             });
-}
-
-void MainWindow::populateGeneralTab(const QJsonObject &details)
-{
-    const QString name =
-        details.value("name").toString();
-
-    const QString comment =
-        details.value("comment").toString();
-
-    const QString creator =
-        details.value("creator").toString();
-
-    const QString downloadDir =
-        details.value("downloadDir").toString();
-
-    const QString hashString =
-        details.value("hashString").toString();
-
-    const QString magnetLink =
-        details.value("magnetLink").toString();
-
-    currentDetailsTorrentId = details.value("id").toInt(-1);
-    currentTorrentHashString = hashString;
-    currentTorrentMagnetLink = magnetLink;
-
-    if (torrentListController) {
-        torrentListController->setCurrentTorrentDetails(
-            currentDetailsTorrentId,
-            currentTorrentHashString,
-            currentTorrentMagnetLink
-            );
-    }
-
-    const qint64 totalSize =
-        details.value("totalSize").toVariant().toLongLong();
-
-    const qint64 dateCreated =
-        details.value("dateCreated").toVariant().toLongLong();
-
-    ui->labelGeneralName->setText(name);
-    ui->labelGeneralCreator->setText(creator);
-    ui->labelGeneralDownloadDir->setText(downloadDir);
-    ui->labelGeneralHash->setText(hashString);
-    ui->lineGeneralMagnet->setText(magnetLink);
-
-    const QString trimmedComment = comment.trimmed();
-
-    if (trimmedComment.isEmpty()) {
-        ui->labelGeneralComment->setText(tr("None"));
-    } else if (looksLikeUrl(trimmedComment)) {
-        const QUrl url = QUrl::fromUserInput(trimmedComment);
-
-        ui->labelGeneralComment->setText(
-            QString("<a href=\"%1\">%2</a>")
-                .arg(url.toString().toHtmlEscaped(),
-                     trimmedComment.toHtmlEscaped())
-            );
-    } else {
-        ui->labelGeneralComment->setText(trimmedComment.toHtmlEscaped());
-    }
-
-    ui->labelGeneralTotalSize->setText(
-        QLocale().formattedDataSize(
-            totalSize,
-            1,
-            QLocale::DataSizeIecFormat
-            )
-        );
-
-    if (dateCreated > 0) {
-        const QDateTime created =
-            QDateTime::fromSecsSinceEpoch(dateCreated);
-
-        ui->labelGeneralCreated->setText(
-            QLocale().toString(created, QLocale::ShortFormat)
-            );
-    } else {
-        ui->labelGeneralCreated->setText(tr("Unknown"));
-    }
-
-    if (pieceMapController)
-        pieceMapController->update(details);
 }
 
 void MainWindow::bringToFront()

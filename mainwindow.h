@@ -28,8 +28,7 @@ class TorrentAddController;
 class WatchFolderManager;
 class WatchFolderController;
 class UpdateChecker;
-class PieceMapController;
-class TorrentDetailsTabController;
+class TorrentGeneralController;
 class TorrentFilesController;
 class TorrentPeersController;
 class TorrentTrackersController;
@@ -105,7 +104,6 @@ private:
     int updateIntervalMs() const;
     void applyUpdateInterval();
     void setupConnectionStatusIndicator();
-    void populateGeneralTab(const QJsonObject &details);
     void clearGeneralTab();
     bool trayIconEnabled() const;
     bool trayNotificationsEnabled() const;
@@ -124,9 +122,6 @@ private:
     bool completedTorrentNotificationBaselineLoaded = false;
     bool openSessionSettingsWhenReceived = false;
     QString remoteDownloadDir;
-    int currentDetailsTorrentId = -1;
-    QString currentTorrentHashString;
-    QString currentTorrentMagnetLink;
     qint64 remoteFreeSpaceBytes = -1;
     int lastTorrentCount = 0;
 
@@ -134,14 +129,12 @@ private:
     QString formatBytes(qint64 bytes) const;
 
     UpdateChecker *updateChecker = nullptr;
-    PieceMapController *pieceMapController = nullptr;
-    TorrentDetailsTabController *torrentDetailsController = nullptr;
+    TorrentGeneralController *torrentGeneralController = nullptr;
     TorrentFilesController *torrentFilesController = nullptr;
     TorrentPeersController *torrentPeersController = nullptr;
     TorrentTrackersController *torrentTrackersController = nullptr;
     TorrentListController *torrentListController = nullptr;
     TorrentFilterController *torrentFilterController = nullptr;
-    QJsonObject currentTorrentDetailsCache;
 
     void setupUpdateChecker();
     void maybeCheckForUpdates();
