@@ -61,6 +61,7 @@ void WatchFolderManager::setWatchFolder(const QString &folderPath)
 
     m_watchFolder = cleanedPath;
     m_candidates.clear();
+    m_pendingFingerprintsByPath.clear();
 
     if (m_enabled)
         restartWatcher();
@@ -101,6 +102,39 @@ void WatchFolderManager::clearProcessedHistory()
 {
     m_processedFingerprints.clear();
     saveProcessedFingerprints();
+}
+
+void WatchFolderManager::markTorrentFileProcessed(const QString &filePath)
+{
+    const QString fingerprint = pendingFingerprintForFile(filePath);
+
+    if (fingerprint.isEmpty())
+        return;
+
+    forgetPending(filePath);
+    m_candidates.remove(QDir::cleanPath(QFileInfo(filePath).absoluteFilePath()));
+    markProcessed(fingerprint);
+}
+
+void WatchFolderManager::retryTorrentFile(const QString &filePath)
+{
+    const QString cleanedPath =
+        QDir::cleanPath(QFileInfo(filePath).absoluteFilePath());
+
+    if (cleanedPath.isEmpty())
+        return;
+
+    forgetPending(cleanedPath);
+    m_candidates.remove(cleanedPath);
+
+    /*
+     * Nudge a retry without waiting for another filesystem event.
+     * Use the scan interval instead of an immediate retry so a persistent
+     * authentication or server error does not create a tight retry loop.
+     */
+    QTimer::singleShot(m_scanIntervalMs,
+                       this,
+                       &WatchFolderManager::scanWatchFolder);
 }
 
 void WatchFolderManager::restartWatcher()
@@ -158,6 +192,7 @@ void WatchFolderManager::stopWatcher()
 
     m_scanTimer.stop();
     m_candidates.clear();
+    m_pendingFingerprintsByPath.clear();
 }
 
 void WatchFolderManager::handleDirectoryChanged(const QString &path)
@@ -266,7 +301,7 @@ void WatchFolderManager::observeCandidate(const QString &filePath)
     qDebug() << "Already processed:" << alreadyProcessed(fingerprint);
     */
 
-    if (alreadyProcessed(fingerprint))
+    if (alreadyProcessed(fingerprint) || isPending(fileInfo.absoluteFilePath(), fingerprint))
         return;
 
     CandidateFile candidate = m_candidates.value(filePath);
@@ -277,7 +312,7 @@ void WatchFolderManager::observeCandidate(const QString &filePath)
     }
 
     m_candidates.remove(filePath);
-    markProcessed(fingerprint);
+    markPending(fileInfo.absoluteFilePath(), fingerprint);
 
     emit statusMessage(
         tr("Watch folder found torrent: %1").arg(fileInfo.fileName())
@@ -329,6 +364,50 @@ QString WatchFolderManager::fingerprintForFile(const QString &filePath,
 bool WatchFolderManager::alreadyProcessed(const QString &fingerprint) const
 {
     return m_processedFingerprints.contains(fingerprint);
+}
+
+bool WatchFolderManager::isPending(const QString &filePath,
+                                   const QString &fingerprint) const
+{
+    const QString cleanedPath =
+        QDir::cleanPath(QFileInfo(filePath).absoluteFilePath());
+
+    return m_pendingFingerprintsByPath.value(cleanedPath) == fingerprint;
+}
+
+void WatchFolderManager::markPending(const QString &filePath,
+                                     const QString &fingerprint)
+{
+    if (fingerprint.isEmpty())
+        return;
+
+    const QString cleanedPath =
+        QDir::cleanPath(QFileInfo(filePath).absoluteFilePath());
+
+    if (cleanedPath.isEmpty())
+        return;
+
+    m_pendingFingerprintsByPath.insert(cleanedPath, fingerprint);
+}
+
+void WatchFolderManager::forgetPending(const QString &filePath)
+{
+    const QString cleanedPath =
+        QDir::cleanPath(QFileInfo(filePath).absoluteFilePath());
+
+    if (!cleanedPath.isEmpty())
+        m_pendingFingerprintsByPath.remove(cleanedPath);
+}
+
+QString WatchFolderManager::pendingFingerprintForFile(const QString &filePath) const
+{
+    const QString cleanedPath =
+        QDir::cleanPath(QFileInfo(filePath).absoluteFilePath());
+
+    if (cleanedPath.isEmpty())
+        return {};
+
+    return m_pendingFingerprintsByPath.value(cleanedPath);
 }
 
 void WatchFolderManager::markProcessed(const QString &fingerprint)

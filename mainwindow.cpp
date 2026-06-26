@@ -2049,6 +2049,31 @@ void MainWindow::setupWatchFolderManager()
     connect(watchFolderManager, &WatchFolderManager::torrentFileReady,
             torrentAddController, &TorrentAddController::addTorrentFileUsingDefaults);
 
+    connect(client, &rpc_client::torrentFileAddSucceeded,
+            watchFolderManager, &WatchFolderManager::markTorrentFileProcessed);
+
+    connect(client, &rpc_client::torrentFileAddFailed,
+            this, [this](const QString &filePath, const QString &message) {
+                const QString lowerMessage = message.toLower();
+
+                if (lowerMessage.contains(QStringLiteral("duplicate"))) {
+                    watchFolderManager->markTorrentFileProcessed(filePath);
+                    statusBar()->showMessage(
+                        tr("Watch folder skipped duplicate torrent: %1")
+                            .arg(QFileInfo(filePath).fileName()),
+                        5000
+                        );
+                    return;
+                }
+
+                watchFolderManager->retryTorrentFile(filePath);
+                statusBar()->showMessage(
+                    tr("Watch folder add failed; will retry %1: %2")
+                        .arg(QFileInfo(filePath).fileName(), message),
+                    5000
+                    );
+            });
+
     connect(watchFolderManager, &WatchFolderManager::statusMessage,
             this, [this](const QString &message) {
                 statusBar()->showMessage(message, 3000);

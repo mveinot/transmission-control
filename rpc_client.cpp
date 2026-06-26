@@ -129,8 +129,18 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         reply->deleteLater();
 
         if (token.isEmpty()) {
+            const QString message =
+                tr("Transmission returned 409 without a session token.");
+
             if (isTorrentGet) {
-                emit updateFailed(tr("Transmission returned 409 without a session token."));
+                emit updateFailed(message);
+            } else if (requestType == RpcRequestType::Command) {
+                if (context.method == QStringLiteral("torrent-add")
+                    && !context.torrentFilePath.isEmpty()) {
+                    emit torrentFileAddFailed(context.torrentFilePath, message);
+                }
+
+                emit commandFailed(context.method, message);
             }
 
             finishTorrentGet();
@@ -140,8 +150,18 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         setSessionToken(token);
 
         if (context.retriedAfterAuth) {
+            const QString message =
+                tr("Transmission session token retry failed.");
+
             if (isTorrentGet) {
-                emit updateFailed(tr("Transmission session token retry failed."));
+                emit updateFailed(message);
+            } else if (requestType == RpcRequestType::Command) {
+                if (context.method == QStringLiteral("torrent-add")
+                    && !context.torrentFilePath.isEmpty()) {
+                    emit torrentFileAddFailed(context.torrentFilePath, message);
+                }
+
+                emit commandFailed(context.method, message);
             }
 
             finishTorrentGet();
@@ -166,6 +186,11 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         if (isTorrentGet) {
             emit updateFailed(message);
         } else if (requestType == RpcRequestType::Command) {
+            if (context.method == QStringLiteral("torrent-add")
+                && !context.torrentFilePath.isEmpty()) {
+                emit torrentFileAddFailed(context.torrentFilePath, message);
+            }
+
             emit commandFailed(context.method, message);
         }
 
@@ -183,8 +208,18 @@ void rpc_client::replyFinished(QNetworkReply *reply)
     if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
         qDebug() << "Invalid JSON response:" << parseError.errorString();
 
+        const QString message =
+            tr("Invalid JSON response from Transmission.");
+
         if (isTorrentGet) {
-            emit updateFailed(tr("Invalid JSON response from Transmission."));
+            emit updateFailed(message);
+        } else if (requestType == RpcRequestType::Command) {
+            if (context.method == QStringLiteral("torrent-add")
+                && !context.torrentFilePath.isEmpty()) {
+                emit torrentFileAddFailed(context.torrentFilePath, message);
+            }
+
+            emit commandFailed(context.method, message);
         }
 
         finishTorrentGet();
@@ -227,6 +262,11 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         if (isTorrentGet) {
             emit updateFailed(message);
         } else if (requestType == RpcRequestType::Command) {
+            if (context.method == QStringLiteral("torrent-add")
+                && !context.torrentFilePath.isEmpty()) {
+                emit torrentFileAddFailed(context.torrentFilePath, message);
+            }
+
             emit commandFailed(context.method, message);
         }
 
@@ -246,6 +286,11 @@ void rpc_client::replyFinished(QNetworkReply *reply)
                 qWarning() << "Could not delete torrent file after add:"
                            << context.torrentFilePath;
             }
+        }
+
+        if (context.method == QStringLiteral("torrent-add")
+            && !context.torrentFilePath.isEmpty()) {
+            emit torrentFileAddSucceeded(context.torrentFilePath);
         }
 
         emit commandSucceeded(context.method);
@@ -499,16 +544,28 @@ void rpc_client::addTorrentFromFile(const QString &filePath,
     QFile file(filePath);
 
     if (!file.open(QIODevice::ReadOnly)) {
+        const QString message =
+            tr("Could not open torrent file: %1").arg(filePath);
+
         qWarning() << "Could not open torrent file:"
                    << filePath
                    << file.errorString();
+
+        emit torrentFileAddFailed(filePath, message);
+        emit commandFailed(QStringLiteral("torrent-add"), message);
         return;
     }
 
     const QByteArray torrentData = file.readAll();
 
     if (torrentData.isEmpty()) {
+        const QString message =
+            tr("Torrent file is empty: %1").arg(filePath);
+
         qWarning() << "Torrent file is empty:" << filePath;
+
+        emit torrentFileAddFailed(filePath, message);
+        emit commandFailed(QStringLiteral("torrent-add"), message);
         return;
     }
 
@@ -1086,20 +1143,22 @@ void rpc_client::addTorrentFile(const QString &filePath,
     QFile file(filePath);
 
     if (!file.open(QIODevice::ReadOnly)) {
-        emit commandFailed(
-            QStringLiteral("torrent-add"),
-            tr("Could not open torrent file: %1").arg(filePath)
-            );
+        const QString message =
+            tr("Could not open torrent file: %1").arg(filePath);
+
+        emit torrentFileAddFailed(filePath, message);
+        emit commandFailed(QStringLiteral("torrent-add"), message);
         return;
     }
 
     const QByteArray data = file.readAll();
 
     if (data.isEmpty()) {
-        emit commandFailed(
-            QStringLiteral("torrent-add"),
-            tr("Torrent file is empty: %1").arg(filePath)
-            );
+        const QString message =
+            tr("Torrent file is empty: %1").arg(filePath);
+
+        emit torrentFileAddFailed(filePath, message);
+        emit commandFailed(QStringLiteral("torrent-add"), message);
         return;
     }
 

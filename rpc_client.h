@@ -100,6 +100,8 @@ signals:
     void torrentPropertiesReceived(int torrentId, const QJsonObject &properties);
     void commandSucceeded(const QString &method);
     void commandFailed(const QString &method, const QString &message);
+    void torrentFileAddSucceeded(const QString &filePath);
+    void torrentFileAddFailed(const QString &filePath, const QString &message);
     void serverChanged();
     void sessionSettingsReceived(const QJsonObject &settings);
     void freeSpaceReceived(const QString &path, qint64 sizeBytes);

@@ -31,6 +31,10 @@ public:
 
     void clearProcessedHistory();
 
+public slots:
+    void markTorrentFileProcessed(const QString &filePath);
+    void retryTorrentFile(const QString &filePath);
+
 signals:
     void torrentFileReady(const QString &filePath);
     void statusMessage(const QString &message);
@@ -59,6 +63,7 @@ private:
 
     QHash<QString, CandidateFile> m_candidates;
     QSet<QString> m_processedFingerprints;
+    QHash<QString, QString> m_pendingFingerprintsByPath;
 
     void restartWatcher();
     void stopWatcher();
@@ -75,7 +80,11 @@ private:
                                const QFileInfo &fileInfo) const;
 
     bool alreadyProcessed(const QString &fingerprint) const;
+    bool isPending(const QString &filePath, const QString &fingerprint) const;
+    void markPending(const QString &filePath, const QString &fingerprint);
+    void forgetPending(const QString &filePath);
     void markProcessed(const QString &fingerprint);
+    QString pendingFingerprintForFile(const QString &filePath) const;
 
     void loadProcessedFingerprints();
     void saveProcessedFingerprints() const;
