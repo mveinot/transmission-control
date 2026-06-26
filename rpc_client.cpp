@@ -915,6 +915,77 @@ void rpc_client::setTorrentFilesWantedAndPriority(int torrentId,
     postRpc("torrent-set", arguments, RpcRequestType::Command);
 }
 
+
+void rpc_client::addTorrentTracker(int torrentId, const QString &announceUrl)
+{
+    const QString trimmedUrl = announceUrl.trimmed();
+
+    if (torrentId < 0 || trimmedUrl.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments[QStringLiteral("ids")] = QJsonArray { torrentId };
+    arguments[QStringLiteral("trackerAdd")] = QJsonArray { trimmedUrl };
+
+    postRpc(QStringLiteral("torrent-set"),
+            arguments,
+            RpcRequestType::Command);
+}
+
+void rpc_client::editTorrentTracker(int torrentId,
+                                    int trackerId,
+                                    const QString &announceUrl)
+{
+    const QString trimmedUrl = announceUrl.trimmed();
+
+    if (torrentId < 0 || trackerId < 0 || trimmedUrl.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments[QStringLiteral("ids")] = QJsonArray { torrentId };
+    arguments[QStringLiteral("trackerReplace")] = QJsonArray {
+        QJsonArray { trackerId, trimmedUrl }
+    };
+
+    postRpc(QStringLiteral("torrent-set"),
+            arguments,
+            RpcRequestType::Command);
+}
+
+void rpc_client::removeTorrentTracker(int torrentId, int trackerId)
+{
+    if (torrentId < 0 || trackerId < 0)
+        return;
+
+    QJsonObject arguments;
+    arguments[QStringLiteral("ids")] = QJsonArray { torrentId };
+    arguments[QStringLiteral("trackerRemove")] = QJsonArray { trackerId };
+
+    postRpc(QStringLiteral("torrent-set"),
+            arguments,
+            RpcRequestType::Command);
+}
+
+void rpc_client::renameTorrentPath(int torrentId,
+                                   const QString &path,
+                                   const QString &newName)
+{
+    const QString trimmedPath = path.trimmed();
+    const QString trimmedName = newName.trimmed();
+
+    if (torrentId < 0 || trimmedPath.isEmpty() || trimmedName.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments[QStringLiteral("ids")] = QJsonArray { torrentId };
+    arguments[QStringLiteral("path")] = trimmedPath;
+    arguments[QStringLiteral("name")] = trimmedName;
+
+    postRpc(QStringLiteral("torrent-rename-path"),
+            arguments,
+            RpcRequestType::Command);
+}
+
 void rpc_client::setTorrentProperties(int torrentId,
                                       const QJsonObject &properties)
 {

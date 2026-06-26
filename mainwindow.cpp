@@ -70,6 +70,8 @@ constexpr int FilterTypeRole = Qt::UserRole;
 constexpr int FilterValueRole = Qt::UserRole + 1;
 constexpr int FilterTypeStatus = 0;
 constexpr int FilterTypeTracker = 1;
+constexpr int TrackerAnnounceRole = Qt::UserRole;
+constexpr int TrackerIdRole = Qt::UserRole + 1;
 }
 
 // accept various representations of true and false
@@ -534,6 +536,23 @@ MainWindow::MainWindow(QWidget *parent)
 
                     client->getTorrentList();
 
+                    const int torrentId = currentTorrentId();
+
+                    if (torrentId >= 0)
+                        client->getTorrentDetails(torrentId);
+                } else if (method == QStringLiteral("torrent-rename-path")) {
+                    statusBar()->showMessage(
+                        tr("Torrent path renamed."),
+                        3000
+                        );
+
+                    client->getTorrentList();
+
+                    const int torrentId = currentTorrentId();
+
+                    if (torrentId >= 0)
+                        client->getTorrentDetails(torrentId);
+                } else if (method == QStringLiteral("torrent-set")) {
                     const int torrentId = currentTorrentId();
 
                     if (torrentId >= 0)
@@ -2252,6 +2271,9 @@ void MainWindow::populateTrackerTable(const QJsonObject &details)
     const QJsonArray trackerStats =
         details.value("trackerStats").toArray();
 
+    const QJsonArray trackers =
+        details.value("trackers").toArray();
+
     ui->trackerTableWidget->setSortingEnabled(false);
     ui->trackerTableWidget->clearContents();
     ui->trackerTableWidget->setRowCount(trackerStats.size());
@@ -2266,6 +2288,23 @@ void MainWindow::populateTrackerTable(const QJsonObject &details)
 
         const QString announce =
             tracker.value("announce").toString();
+
+        int trackerId =
+            tracker.value("id").toInt(-1);
+
+        if (trackerId < 0 && row < trackers.size())
+            trackerId = trackers.at(row).toObject().value("id").toInt(-1);
+
+        if (trackerId < 0) {
+            for (const QJsonValue &trackerValue : trackers) {
+                const QJsonObject trackerObject = trackerValue.toObject();
+
+                if (trackerObject.value("announce").toString() == announce) {
+                    trackerId = trackerObject.value("id").toInt(-1);
+                    break;
+                }
+            }
+        }
 
         const int seeders =
             tracker.value("seederCount").toInt(-1);
@@ -2288,7 +2327,9 @@ void MainWindow::populateTrackerTable(const QJsonObject &details)
 
         auto *hostItem = new QTableWidgetItem(host);
         auto *announceItem = new QTableWidgetItem(announce);
-        announceItem->setData(Qt::UserRole, announce);
+        announceItem->setData(TrackerAnnounceRole, announce);
+        announceItem->setData(TrackerIdRole, trackerId);
+        hostItem->setData(TrackerIdRole, trackerId);
 
         auto *seedersItem = new QTableWidgetItem(
             seeders >= 0 ? QString::number(seeders) : tr("Unknown")
@@ -2606,31 +2647,273 @@ void MainWindow::copySelectedTorrentHash()
         );
 }
 
+
+QString MainWindow::torrentPathForFileTreeItem(QTreeWidgetItem *item) const
+{
+    if (!item)
+        return QString();
+
+    const QString kind =
+        item->data(FileNameColumn, FileKindRole).toString();
+
+    if (kind == QStringLiteral("file")) {
+        bool ok = false;
+        const int fileIndex =
+            item->data(FileNameColumn, FileIndexRole).toInt(&ok);
+
+        if (ok && fileIndex >= 0)
+            return currentTorrentFilePaths.value(fileIndex).trimmed();
+    }
+
+    QStringList parts;
+
+    for (QTreeWidgetItem *current = item;
+         current;
+         current = current->parent()) {
+        parts.prepend(current->text(FileNameColumn));
+    }
+
+    return parts.join(QLatin1Char('/')).trimmed();
+}
+
+void MainWindow::renameFileTreeItem(QTreeWidgetItem *item)
+{
+    const int torrentId = currentTorrentId();
+
+    if (torrentId < 0 || !item)
+        return;
+
+    const QString oldPath = torrentPathForFileTreeItem(item);
+
+    if (oldPath.isEmpty())
+        return;
+
+    const QString oldName = item->text(FileNameColumn).trimmed();
+
+    bool ok = false;
+    const QString newName = QInputDialog::getText(
+        this,
+        tr("Rename Path"),
+        tr("New name:"),
+        QLineEdit::Normal,
+        oldName,
+        &ok
+        ).trimmed();
+
+    if (!ok)
+        return;
+
+    if (newName.isEmpty()) {
+        QMessageBox::warning(
+            this,
+            tr("Rename Path"),
+            tr("The new name cannot be empty.")
+            );
+        return;
+    }
+
+    if (newName.contains(QLatin1Char('/'))
+        || newName.contains(QLatin1Char('\\'))) {
+        QMessageBox::warning(
+            this,
+            tr("Rename Path"),
+            tr("Enter a file or folder name, not a path.")
+            );
+        return;
+    }
+
+    if (newName == oldName)
+        return;
+
+    client->renameTorrentPath(torrentId, oldPath, newName);
+
+    statusBar()->showMessage(
+        tr("Renaming %1...").arg(oldName),
+        3000
+        );
+}
+
+int MainWindow::trackerIdForRow(int row) const
+{
+    if (row < 0)
+        return -1;
+
+    QTableWidgetItem *announceItem =
+        ui->trackerTableWidget->item(row, 1);
+
+    if (!announceItem)
+        return -1;
+
+    bool ok = false;
+    const int trackerId = announceItem->data(TrackerIdRole).toInt(&ok);
+    return ok ? trackerId : -1;
+}
+
+QString MainWindow::trackerAnnounceUrlForRow(int row) const
+{
+    if (row < 0)
+        return QString();
+
+    QTableWidgetItem *announceItem =
+        ui->trackerTableWidget->item(row, 1);
+
+    if (!announceItem)
+        return QString();
+
+    QString trackerUrl =
+        announceItem->data(TrackerAnnounceRole).toString().trimmed();
+
+    if (trackerUrl.isEmpty())
+        trackerUrl = announceItem->text().trimmed();
+
+    return trackerUrl;
+}
+
+void MainWindow::addTrackerFromContextMenu()
+{
+    const int torrentId = currentTorrentId();
+
+    if (torrentId < 0)
+        return;
+
+    bool ok = false;
+    const QString trackerUrl = QInputDialog::getText(
+        this,
+        tr("Add Tracker"),
+        tr("Announce URL:"),
+        QLineEdit::Normal,
+        QString(),
+        &ok
+        ).trimmed();
+
+    if (!ok)
+        return;
+
+    if (trackerUrl.isEmpty()) {
+        QMessageBox::warning(
+            this,
+            tr("Add Tracker"),
+            tr("The tracker announce URL cannot be empty.")
+            );
+        return;
+    }
+
+    client->addTorrentTracker(torrentId, trackerUrl);
+
+    statusBar()->showMessage(
+        tr("Adding tracker..."),
+        3000
+        );
+}
+
+void MainWindow::editTrackerFromContextMenu(int row)
+{
+    const int torrentId = currentTorrentId();
+    const int trackerId = trackerIdForRow(row);
+    const QString oldTrackerUrl = trackerAnnounceUrlForRow(row);
+
+    if (torrentId < 0 || trackerId < 0 || oldTrackerUrl.isEmpty())
+        return;
+
+    bool ok = false;
+    const QString trackerUrl = QInputDialog::getText(
+        this,
+        tr("Edit Tracker"),
+        tr("Announce URL:"),
+        QLineEdit::Normal,
+        oldTrackerUrl,
+        &ok
+        ).trimmed();
+
+    if (!ok)
+        return;
+
+    if (trackerUrl.isEmpty()) {
+        QMessageBox::warning(
+            this,
+            tr("Edit Tracker"),
+            tr("The tracker announce URL cannot be empty.")
+            );
+        return;
+    }
+
+    if (trackerUrl == oldTrackerUrl)
+        return;
+
+    client->editTorrentTracker(torrentId, trackerId, trackerUrl);
+
+    statusBar()->showMessage(
+        tr("Updating tracker..."),
+        3000
+        );
+}
+
+void MainWindow::removeTrackerFromContextMenu(int row)
+{
+    const int torrentId = currentTorrentId();
+    const int trackerId = trackerIdForRow(row);
+    const QString trackerUrl = trackerAnnounceUrlForRow(row);
+
+    if (torrentId < 0 || trackerId < 0 || trackerUrl.isEmpty())
+        return;
+
+    const QMessageBox::StandardButton result = QMessageBox::question(
+        this,
+        tr("Remove Tracker"),
+        tr("Remove this tracker from the torrent?\n\n%1").arg(trackerUrl),
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No
+        );
+
+    if (result != QMessageBox::Yes)
+        return;
+
+    client->removeTorrentTracker(torrentId, trackerId);
+
+    statusBar()->showMessage(
+        tr("Removing tracker..."),
+        3000
+        );
+}
+
 void MainWindow::showTrackerContextMenu(const QPoint &pos)
 {
     QTableWidgetItem *item = ui->trackerTableWidget->itemAt(pos);
+    const int row = item ? item->row() : -1;
 
-    if (!item)
-        return;
+    if (item)
+        ui->trackerTableWidget->selectRow(row);
 
-    ui->trackerTableWidget->selectRow(item->row());
-
-    QTableWidgetItem *announceItem =
-        ui->trackerTableWidget->item(item->row(), 1);
-
-    if (!announceItem)
-        return;
-
-    const QString trackerUrl =
-        announceItem->data(Qt::UserRole).toString().trimmed();
-
-    if (trackerUrl.isEmpty())
-        return;
+    const QString trackerUrl = trackerAnnounceUrlForRow(row);
+    const int trackerId = trackerIdForRow(row);
 
     QMenu menu(this);
 
+    QAction *addTrackerAction =
+        menu.addAction(tr("Add Tracker…"));
+
+    QAction *editTrackerAction =
+        menu.addAction(tr("Edit Tracker…"));
+    editTrackerAction->setEnabled(row >= 0 && trackerId >= 0);
+
+    QAction *removeTrackerAction =
+        menu.addAction(tr("Remove Tracker"));
+    removeTrackerAction->setEnabled(row >= 0 && trackerId >= 0);
+
+    menu.addSeparator();
+
     QAction *copyTrackerUrlAction =
         menu.addAction(tr("Copy Tracker URL"));
+    copyTrackerUrlAction->setEnabled(!trackerUrl.isEmpty());
+
+    connect(addTrackerAction, &QAction::triggered,
+            this, &MainWindow::addTrackerFromContextMenu);
+
+    connect(editTrackerAction, &QAction::triggered,
+            this, [this, row]() { editTrackerFromContextMenu(row); });
+
+    connect(removeTrackerAction, &QAction::triggered,
+            this, [this, row]() { removeTrackerFromContextMenu(row); });
 
     connect(copyTrackerUrlAction, &QAction::triggered,
             this, [this, trackerUrl]() {
@@ -2680,6 +2963,12 @@ void MainWindow::showFileContextMenu(const QPoint &pos)
             this, [this, fileIndices]() {
                 openContainingFolderFromContextMenu(fileIndices);
             });
+
+    QAction *renameAction = menu.addAction(tr("Rename…"));
+    renameAction->setEnabled(ui->fileTreeWidget->selectedItems().size() == 1);
+
+    connect(renameAction, &QAction::triggered,
+            this, [this, item]() { renameFileTreeItem(item); });
 
     menu.addSeparator();
 

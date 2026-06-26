@@ -149,8 +149,15 @@ private:
     void updateFolderPriorityState(QTreeWidgetItem *item);
     QList<int> fileIndicesForItem(QTreeWidgetItem *item) const;
     QList<int> selectedFileIndicesForContextItem(QTreeWidgetItem *item) const;
+    QString torrentPathForFileTreeItem(QTreeWidgetItem *item) const;
+    void renameFileTreeItem(QTreeWidgetItem *item);
     void showFileContextMenu(const QPoint &pos);
     void showTrackerContextMenu(const QPoint &pos);
+    int trackerIdForRow(int row) const;
+    QString trackerAnnounceUrlForRow(int row) const;
+    void addTrackerFromContextMenu();
+    void editTrackerFromContextMenu(int row);
+    void removeTrackerFromContextMenu(int row);
     void copySelectedTorrentMagnetLink();
     void copySelectedTorrentHash();
     void copyTextToClipboard(const QString &text,

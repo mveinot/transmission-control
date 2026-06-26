@@ -71,6 +71,14 @@ public:
                                           bool wanted,
                                           int priority);
 
+    void addTorrentTracker(int torrentId, const QString &announceUrl);
+    void editTorrentTracker(int torrentId, int trackerId, const QString &announceUrl);
+    void removeTorrentTracker(int torrentId, int trackerId);
+
+    void renameTorrentPath(int torrentId,
+                           const QString &path,
+                           const QString &newName);
+
     void setTorrentProperties(int torrentId,
                               const QJsonObject &properties);
 
