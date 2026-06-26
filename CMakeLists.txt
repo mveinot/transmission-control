@@ -118,6 +118,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         torrentadddialog.h torrentadddialog.cpp torrentadddialog.ui
         torrentaddcontroller.h torrentaddcontroller.cpp
         watchfoldermanager.h watchfoldermanager.cpp
+        watchfoldercontroller.h watchfoldercontroller.cpp
         updatechecker.h updatechecker.cpp
         Resources/licenses/gpl-2.0.txt
         Resources/translations/planetary_fr_CA.qm

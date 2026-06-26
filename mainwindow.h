@@ -26,6 +26,7 @@ QT_END_NAMESPACE
 
 class TorrentAddController;
 class WatchFolderManager;
+class WatchFolderController;
 class UpdateChecker;
 class PieceMapController;
 class TorrentDetailsTabController;
@@ -89,6 +90,7 @@ private:
     TorrentSortProxyModel *proxy = nullptr;
     GeoIpService *geoIpService = nullptr;
     WatchFolderManager *watchFolderManager = nullptr;
+    WatchFolderController *watchFolderController = nullptr;
 
     int currentTorrentId() const;
     bool currentTabWantsLiveTorrentDetails() const;
@@ -130,8 +132,6 @@ private:
 
     void updateConnectionStatus(int torrentCount);
     QString formatBytes(qint64 bytes) const;
-    void setupWatchFolderManager();
-    void loadWatchFolderSettings();
 
     enum class TorrentFilterItemType {
         Status,

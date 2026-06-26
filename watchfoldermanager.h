@@ -30,6 +30,7 @@ public:
     int requiredStableChecks() const;
 
     void clearProcessedHistory();
+    bool hasPendingTorrentFile(const QString &filePath) const;
 
 public slots:
     void markTorrentFileProcessed(const QString &filePath);

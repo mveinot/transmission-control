@@ -104,6 +104,11 @@ void WatchFolderManager::clearProcessedHistory()
     saveProcessedFingerprints();
 }
 
+bool WatchFolderManager::hasPendingTorrentFile(const QString &filePath) const
+{
+    return !pendingFingerprintForFile(filePath).isEmpty();
+}
+
 void WatchFolderManager::markTorrentFileProcessed(const QString &filePath)
 {
     const QString fingerprint = pendingFingerprintForFile(filePath);

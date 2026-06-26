@@ -6,6 +6,8 @@
 #include "torrentpeerscontroller.h"
 #include "torrenttrackerscontroller.h"
 #include "torrentlistcontroller.h"
+#include "watchfoldercontroller.h"
+#include "watchfoldermanager.h"
 #include <QActionGroup>
 #include <QApplication>
 #include <QAction>
@@ -55,7 +57,6 @@
 #include "sessionsettingsdialog.h"
 #include "settingskeys.h"
 #include "torrentaddcontroller.h"
-#include "watchfoldermanager.h"
 #include "updatechecker.h"
 #include "settingsimportexport.h"
 #include "foldermapping.h"
@@ -182,8 +183,24 @@ MainWindow::MainWindow(QWidget *parent)
     setupUpdateChecker();
     maybeCheckForUpdates();
     setupConnectionStatusIndicator();
-    setupWatchFolderManager();
-    loadWatchFolderSettings();
+    watchFolderManager = new WatchFolderManager(this);
+    watchFolderController = new WatchFolderController(
+        watchFolderManager,
+        torrentAddController,
+        client,
+        this
+        );
+    watchFolderController->setup();
+
+    connect(watchFolderController, &WatchFolderController::statusMessageRequested,
+            this, [this](const QString &message, int timeoutMs) {
+                statusBar()->showMessage(message, timeoutMs);
+            });
+
+    connect(watchFolderController, &WatchFolderController::torrentListRefreshRequested,
+            client, &rpc_client::getTorrentList);
+
+    watchFolderController->loadSettings();
     setupTrayIcon();
 
     // UI setup
@@ -636,7 +653,8 @@ void MainWindow::on_actionSettings_triggered()
     }
 
     applyAppSettings();
-    loadWatchFolderSettings();
+    if (watchFolderController)
+        watchFolderController->loadSettings();
 }
 
 int MainWindow::currentTorrentId() const
@@ -1605,93 +1623,6 @@ void MainWindow::addTrackerFilterItems(const QStringList &trackerHosts)
     }
 }
 
-void MainWindow::setupWatchFolderManager()
-{
-    watchFolderManager = new WatchFolderManager(this);
-
-    connect(watchFolderManager, &WatchFolderManager::torrentFileReady,
-            torrentAddController, &TorrentAddController::addTorrentFileUsingDefaults);
-
-    connect(client, &rpc_client::torrentFileAddSucceeded,
-            watchFolderManager, &WatchFolderManager::markTorrentFileProcessed);
-
-    connect(client, &rpc_client::torrentFileAddFailed,
-            this, [this](const QString &filePath, const QString &message) {
-                const QString lowerMessage = message.toLower();
-
-                if (lowerMessage.contains(QStringLiteral("duplicate"))) {
-                    watchFolderManager->markTorrentFileProcessed(filePath);
-                    statusBar()->showMessage(
-                        tr("Watch folder skipped duplicate torrent: %1")
-                            .arg(QFileInfo(filePath).fileName()),
-                        5000
-                        );
-                    return;
-                }
-
-                watchFolderManager->retryTorrentFile(filePath);
-                statusBar()->showMessage(
-                    tr("Watch folder add failed; will retry %1: %2")
-                        .arg(QFileInfo(filePath).fileName(), message),
-                    5000
-                    );
-            });
-
-    connect(watchFolderManager, &WatchFolderManager::statusMessage,
-            this, [this](const QString &message) {
-                statusBar()->showMessage(message, 3000);
-            });
-
-    connect(watchFolderManager, &WatchFolderManager::warningMessage,
-            this, [this](const QString &message) {
-                statusBar()->showMessage(message, 5000);
-            });
-
-    connect(watchFolderManager, &WatchFolderManager::torrentFileReady,
-            this, [this](const QString &) {
-                /*
-                 * The controller emits addStarted too, but keeping this here
-                 * makes the watch folder behavior obvious and resilient.
-                 */
-                QTimer::singleShot(1000, this, [this]() {
-                    client->getTorrentList();
-                });
-            });
-}
-
-void MainWindow::loadWatchFolderSettings()
-{
-    if (!watchFolderManager)
-        return;
-
-    QSettings settings;
-
-    const bool enabled =
-        settings.value(QString::fromLatin1(SettingsKeys::WatchFolderEnabled),
-                       false).toBool();
-
-    const QString folderPath =
-        settings.value(QString::fromLatin1(SettingsKeys::WatchFolderPath))
-            .toString();
-
-    const int scanIntervalMs =
-        settings.value(QString::fromLatin1(SettingsKeys::WatchFolderScanIntervalMs),
-                       1000).toInt();
-
-    const int stableChecks =
-        settings.value(QString::fromLatin1(SettingsKeys::WatchFolderStableChecks),
-                       2).toInt();
-
-    watchFolderManager->setScanIntervalMs(scanIntervalMs);
-    watchFolderManager->setRequiredStableChecks(stableChecks);
-    watchFolderManager->setWatchFolder(folderPath);
-    watchFolderManager->setEnabled(enabled);
-
-    qDebug() << "Watch folder settings:"
-             << "enabled=" << enabled
-             << "path=" << folderPath
-             << "stableChecks=" << stableChecks;
-}
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
