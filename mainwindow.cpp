@@ -5,26 +5,22 @@
 #include "torrentfilescontroller.h"
 #include "torrentpeerscontroller.h"
 #include "torrenttrackerscontroller.h"
+#include "torrentlistcontroller.h"
 #include <QActionGroup>
-#include <QAbstractItemView>
 #include <QApplication>
 #include <QAction>
 #include <QCloseEvent>
-#include <QCheckBox>
-#include <QClipboard>
 #include <QCoreApplication>
 #include <QComboBox>
 #include <QDateTime>
 #include <QDesktopServices>
 #include <QDialog>
-#include <QDialogButtonBox>
 #include <QDir>
 #include <QEvent>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFileOpenEvent>
 #include <QFont>
-#include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -63,7 +59,6 @@
 #include "updatechecker.h"
 #include "settingsimportexport.h"
 #include "foldermapping.h"
-#include "torrentpropertiesdialog.h"
 #include "version.h"
 
 namespace {
@@ -138,6 +133,9 @@ void MainWindow::clearGeneralTab()
     currentDetailsTorrentId = -1;
     currentTorrentHashString.clear();
     currentTorrentMagnetLink.clear();
+
+    if (torrentListController)
+        torrentListController->clearCurrentTorrentDetails();
 }
 
 
@@ -186,7 +184,6 @@ MainWindow::MainWindow(QWidget *parent)
     setupConnectionStatusIndicator();
     setupWatchFolderManager();
     loadWatchFolderSettings();
-    updateTorrentActionState();
     setupTrayIcon();
 
     // UI setup
@@ -274,13 +271,27 @@ MainWindow::MainWindow(QWidget *parent)
         "}"
         ));
 
-    ui->tableView->setModel(proxy);
-    ui->tableView->hideColumn(TorrentModel::IdColumn);
-    ui->tableView->setSortingEnabled(true);
-    ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    ui->tableView->sortByColumn(TorrentModel::NameColumn, Qt::AscendingOrder);
-    ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
+    torrentListController = new TorrentListController(
+        ui->tableView,
+        proxy,
+        client,
+        this,
+        this
+        );
+
+    torrentListController->setup({
+        ui->actionStart_Torrent,
+        ui->actionStop_Torrent,
+        ui->actionDelete_Torrent,
+        ui->actionVerify_Torrent,
+        ui->actionReannounce,
+        ui->actionForce_Start_Torrent
+        });
+
+    torrentListController->setCurrentDetailsDownloadDirProvider(
+        [this]() { return ui->labelGeneralDownloadDir->text(); }
+        );
+
     ui->tableView->setItemDelegateForColumn(
         TorrentModel::PercentDoneColumn,
         new PercentFillDelegate(
@@ -290,20 +301,27 @@ MainWindow::MainWindow(QWidget *parent)
             )
         );
 
-    // signal connections
-    connect(ui->tableView->selectionModel(),
-            &QItemSelectionModel::selectionChanged,
-            this,
-            [this]() {
-                updateTorrentActionState();
+    connect(torrentListController, &TorrentListController::statusMessageRequested,
+            this, [this](const QString &message, int timeoutMs) {
+                statusBar()->showMessage(message, timeoutMs);
             });
 
-    connect(ui->tableView->selectionModel(),
-            &QItemSelectionModel::currentChanged,
-            this,
-            [this]() {
-                updateTorrentActionState();
+    connect(torrentListController, &TorrentListController::torrentSelected,
+            this, [this](int torrentId) {
+                clearGeneralTab();
+                torrentPeersController->clear();
+                torrentTrackersController->clear();
+                torrentTrackersController->setTorrentId(torrentId);
+                torrentFilesController->setTorrentContext(-1, QString());
+                torrentFilesController->clear();
+                client->getTorrentDetails(torrentId);
             });
+
+    connect(torrentListController, &TorrentListController::torrentListRefreshRequested,
+            client, &rpc_client::getTorrentList);
+
+    connect(torrentListController, &TorrentListController::torrentDetailsRefreshRequested,
+            client, &rpc_client::getTorrentDetails);
 
     connect(torrentAddController, &TorrentAddController::addStarted,
             this, [this]() {
@@ -476,9 +494,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(client, &rpc_client::torrentsReceived,
             this, &MainWindow::handleTorrentsReceived);
 
-    connect(ui->tableView, &QTableView::customContextMenuRequested,
-            this, &MainWindow::showTorrentContextMenu);
-
     connect(ui->comboServers,
             QOverload<int>::of(&QComboBox::currentIndexChanged),
             this,
@@ -558,36 +573,20 @@ void MainWindow::showAbout()
 // torent(s) selected
 void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
 {
-    if (!proxyIndex.isValid())
-        return;
-
-    const QModelIndex sourceIndex = proxy->mapToSource(proxyIndex);
-
-    if (!sourceIndex.isValid())
-        return;
-
-    const int torrentId = sourceIndex.data(Qt::UserRole).toInt();
-
-    // clear the informational widgets
-    clearGeneralTab();
-    torrentPeersController->clear();
-    torrentTrackersController->clear();
-    torrentTrackersController->setTorrentId(torrentId);
-    torrentFilesController->setTorrentContext(-1, QString());
-    torrentFilesController->clear();
-
-    // get info for the selected torrent
-    client->getTorrentDetails(torrentId);
+    if (torrentListController)
+        torrentListController->handleTableClicked(proxyIndex);
 }
 
 void MainWindow::on_actionStart_Torrent_triggered()
 {
-    startSelectedTorrent();
+    if (torrentListController)
+        torrentListController->startSelectedTorrents();
 }
 
 void MainWindow::on_actionStop_Torrent_triggered()
 {
-    stopSelectedTorrent();
+    if (torrentListController)
+        torrentListController->stopSelectedTorrents();
 }
 
 void MainWindow::on_action_Open_Torrent_triggered()
@@ -602,12 +601,14 @@ void MainWindow::on_actionAdd_Torrent_from_Magnet_Link_triggered()
 
 void MainWindow::on_actionReannounce_triggered()
 {
-    reannounceSelectedTorrent();
+    if (torrentListController)
+        torrentListController->reannounceSelectedTorrents();
 }
 
 void MainWindow::on_actionVerify_Torrent_triggered()
 {
-    verifySelectedTorrent();
+    if (torrentListController)
+        torrentListController->verifySelectedTorrents();
 }
 
 void MainWindow::on_actionAbout_triggered()
@@ -622,66 +623,8 @@ void MainWindow::on_actionQuit_triggered()
 
 void MainWindow::on_actionDelete_Torrent_triggered()
 {
-    const QList<int> ids = selectedTorrentIds();
-    const QStringList names = selectedTorrentNames();
-
-    if (ids.isEmpty()) {
-        QMessageBox::information(
-            this,
-            tr("Delete Torrent"),
-            tr("No torrent is selected.")
-            );
-        return;
-    }
-
-    QMessageBox msgBox(this);
-    msgBox.setWindowTitle(tr("Delete Torrent"));
-    msgBox.setIcon(QMessageBox::Warning);
-    QPushButton *torrentOnlyButton = nullptr;
-    QPushButton *torrentAndDataButton = nullptr;
-    QPushButton *noButton = nullptr;
-
-    if (ids.size() == 1) {
-        msgBox.setText(tr("Delete the selected torrent?"));
-        msgBox.setInformativeText(
-            tr("Remove only the torrent from Transmission, or also delete the downloaded data?\n\n"
-               "View details to see the affected torrent name.")
-            );
-        msgBox.setDetailedText(names.value(0));
-
-        torrentOnlyButton = msgBox.addButton(tr("Torrent only"), QMessageBox::AcceptRole);
-        torrentAndDataButton = msgBox.addButton(tr("Torrent and data"), QMessageBox::DestructiveRole);
-    } else {
-        QString preview = names.join("\n");
-
-        msgBox.setText(tr("Delete %1 selected torrents?").arg(ids.size()));
-        msgBox.setInformativeText(
-            tr("Remove only the torrents from Transmission, or also delete the downloaded data?\n\n"
-               "View details to see the affected torrent names.")
-            );
-        msgBox.setDetailedText(preview);
-
-        torrentOnlyButton = msgBox.addButton(tr("Torrents only"), QMessageBox::AcceptRole);
-        torrentAndDataButton = msgBox.addButton(tr("Torrents and data"), QMessageBox::DestructiveRole);
-    }
-
-    noButton = msgBox.addButton(tr("Cancel"), QMessageBox::RejectRole);
-
-    msgBox.setDefaultButton(noButton);
-    msgBox.exec();
-
-    if (msgBox.clickedButton() == noButton)
-        return;
-
-    if (msgBox.clickedButton() == torrentOnlyButton) {
-        client->removeTorrents(ids, false);
-        return;
-    }
-
-    if (msgBox.clickedButton() == torrentAndDataButton) {
-        client->removeTorrents(ids, true);
-        return;
-    }
+    if (torrentListController)
+        torrentListController->deleteSelectedTorrents();
 }
 
 void MainWindow::on_actionSettings_triggered()
@@ -698,17 +641,7 @@ void MainWindow::on_actionSettings_triggered()
 
 int MainWindow::currentTorrentId() const
 {
-    const QModelIndex proxyIndex = ui->tableView->currentIndex();
-
-    if (!proxyIndex.isValid())
-        return -1;
-
-    const QModelIndex sourceIndex = proxy->mapToSource(proxyIndex);
-
-    if (!sourceIndex.isValid())
-        return -1;
-
-    return sourceIndex.data(Qt::UserRole).toInt();
+    return torrentListController ? torrentListController->currentTorrentId() : -1;
 }
 
 // save header dimensions of all tables
@@ -858,148 +791,6 @@ void MainWindow::setTorrentStateFilter(TorrentSortProxyModel::StateFilter filter
     }
 }
 
-void MainWindow::showTorrentContextMenu(const QPoint &pos)
-{
-    const QModelIndex index = ui->tableView->indexAt(pos);
-
-    if (!index.isValid())
-        return;
-
-    QItemSelectionModel *selection = ui->tableView->selectionModel();
-
-    if (!selection->isSelected(index)) {
-        selection->select(
-            index,
-            QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows
-            );
-
-        ui->tableView->setCurrentIndex(index);
-    }
-
-    QMenu menu(this);
-
-    menu.addAction(ui->actionStart_Torrent);
-    menu.addAction(ui->actionForce_Start_Torrent);
-    menu.addAction(ui->actionStop_Torrent);
-    menu.addSeparator();
-    menu.addAction(ui->actionVerify_Torrent);
-    menu.addAction(ui->actionReannounce);
-
-    QAction *propertiesAction =
-        menu.addAction(tr("Properties…"));
-
-    propertiesAction->setEnabled(selectedTorrentIds().size() == 1);
-
-    menu.addSeparator();
-
-    QAction *copyMagnetAction =
-        menu.addAction(tr("Copy Magnet Link"));
-
-    QAction *copyHashAction =
-        menu.addAction(tr("Copy Hash"));
-
-    const QList<int> contextTorrentIds = selectedTorrentIds();
-    const bool canCopyCurrentTorrentDetails =
-        contextTorrentIds.size() == 1
-        && currentDetailsTorrentId == contextTorrentIds.first();
-
-    copyMagnetAction->setEnabled(
-        canCopyCurrentTorrentDetails
-        && !currentTorrentMagnetLink.trimmed().isEmpty()
-        );
-
-    copyHashAction->setEnabled(
-        canCopyCurrentTorrentDetails
-        && !currentTorrentHashString.trimmed().isEmpty()
-        );
-
-    menu.addSeparator();
-
-    connect(ui->actionForce_Start_Torrent, &QAction::triggered,
-            this, &MainWindow::forceStartSelectedTorrents);
-
-    QMenu *queueMenu = menu.addMenu(tr("Queue"));
-
-    QAction *moveTopAction =
-        queueMenu->addAction(tr("Move to Top"));
-
-    QAction *moveUpAction =
-        queueMenu->addAction(tr("Move Up"));
-
-    QAction *moveDownAction =
-        queueMenu->addAction(tr("Move Down"));
-
-    QAction *moveBottomAction =
-        queueMenu->addAction(tr("Move to Bottom"));
-
-    menu.addSeparator();
-
-    QAction *setLocationAction =
-        menu.addAction(tr("Set Location…"));
-
-    menu.addSeparator();
-
-    menu.addAction(ui->actionDelete_Torrent);
-
-    connect(moveTopAction, &QAction::triggered,
-            this, &MainWindow::queueMoveSelectedTop);
-
-    connect(moveUpAction, &QAction::triggered,
-            this, &MainWindow::queueMoveSelectedUp);
-
-    connect(moveDownAction, &QAction::triggered,
-            this, &MainWindow::queueMoveSelectedDown);
-
-    connect(moveBottomAction, &QAction::triggered,
-            this, &MainWindow::queueMoveSelectedBottom);
-
-    connect(setLocationAction, &QAction::triggered,
-            this, &MainWindow::setSelectedTorrentsLocation);
-
-    connect(propertiesAction, &QAction::triggered,
-            this, &MainWindow::showSelectedTorrentProperties);
-
-    connect(copyMagnetAction, &QAction::triggered,
-            this, &MainWindow::copySelectedTorrentMagnetLink);
-
-    connect(copyHashAction, &QAction::triggered,
-            this, &MainWindow::copySelectedTorrentHash);
-
-    menu.exec(ui->tableView->viewport()->mapToGlobal(pos));
-}
-
-void MainWindow::showSelectedTorrentProperties()
-{
-    const QList<int> ids = selectedTorrentIds();
-
-    if (ids.size() != 1) {
-        statusBar()->showMessage(tr("Select one torrent to edit properties."), 3000);
-        return;
-    }
-
-    TorrentPropertiesDialog dialog(client, ids.first(), this);
-    dialog.exec();
-
-    client->getTorrentList();
-
-    const int torrentId = currentTorrentId();
-
-    if (torrentId >= 0)
-        client->getTorrentDetails(torrentId);
-}
-
-void MainWindow::startSelectedTorrent()
-{
-    invokeSelectedTorrentCommand(&rpc_client::startTorrents,
-                                 tr("Starting %1 torrent(s)..."));
-}
-
-void MainWindow::stopSelectedTorrent()
-{
-    invokeSelectedTorrentCommand(&rpc_client::stopTorrents,
-                                 tr("Stopping %1 torrent(s)..."));
-}
-
 void MainWindow::handleLaunchArguments(const QStringList &arguments)
 {
     if (arguments.isEmpty()) {
@@ -1081,113 +872,6 @@ void MainWindow::addTorrentFromMagnet()
         return;
 
     torrentAddController->addMagnetLink(magnetLink);
-}
-
-void MainWindow::reannounceSelectedTorrent()
-{
-    invokeSelectedTorrentCommand(&rpc_client::reannounceTorrents,
-                                 tr("Reannouncing %1 torrent(s)..."));
-}
-
-void MainWindow::verifySelectedTorrent()
-{
-    invokeSelectedTorrentCommand(&rpc_client::verifyTorrents,
-                                 tr("Verifying %1 torrent(s)..."));
-}
-
-void MainWindow::setSelectedTorrentsLocation()
-{
-    const QList<int> ids = selectedTorrentIds();
-
-    if (ids.isEmpty()) {
-        statusBar()->showMessage(tr("No torrent selected."), 3000);
-        return;
-    }
-
-    QString initialLocation = remoteDownloadDir.trimmed();
-
-    if (ids.size() == 1 && currentTorrentId() == ids.first()) {
-        const QString currentDownloadDir =
-            ui->labelGeneralDownloadDir->text().trimmed();
-
-        if (!currentDownloadDir.isEmpty() &&
-            currentDownloadDir != tr("Unknown")) {
-            initialLocation = currentDownloadDir;
-        }
-    }
-
-    QDialog dialog(this);
-    dialog.setWindowTitle(tr("Set Location"));
-
-    auto *layout = new QVBoxLayout(&dialog);
-
-    auto *descriptionLabel = new QLabel(
-        tr("Set the download location on the Transmission server."),
-        &dialog
-        );
-    descriptionLabel->setWordWrap(true);
-    layout->addWidget(descriptionLabel);
-
-    auto *formLayout = new QFormLayout;
-    auto *locationEdit = new QLineEdit(initialLocation, &dialog);
-    locationEdit->setPlaceholderText(tr("Remote download location"));
-    locationEdit->selectAll();
-
-    formLayout->addRow(tr("Location:"), locationEdit);
-    layout->addLayout(formLayout);
-
-    auto *moveDataCheckBox = new QCheckBox(
-        tr("Move existing data to the new location"),
-        &dialog
-        );
-    moveDataCheckBox->setChecked(false);
-    layout->addWidget(moveDataCheckBox);
-
-    auto *buttonBox = new QDialogButtonBox(
-        QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
-        &dialog
-        );
-    layout->addWidget(buttonBox);
-
-    connect(buttonBox, &QDialogButtonBox::accepted,
-            &dialog, &QDialog::accept);
-
-    connect(buttonBox, &QDialogButtonBox::rejected,
-            &dialog, &QDialog::reject);
-
-    if (dialog.exec() != QDialog::Accepted)
-        return;
-
-    const QString location = locationEdit->text().trimmed();
-
-    if (location.isEmpty()) {
-        QMessageBox::warning(
-            this,
-            tr("Set Location"),
-            tr("The download location cannot be empty.")
-            );
-        return;
-    }
-
-    const bool moveData = moveDataCheckBox->isChecked();
-
-    client->setTorrentLocation(ids, location, moveData);
-
-    statusBar()->showMessage(
-        moveData
-            ? tr("Moving %1 torrent(s) to %2...").arg(ids.size()).arg(location)
-            : tr("Setting location for %1 torrent(s) to %2...").arg(ids.size()).arg(location),
-        5000
-        );
-
-    QTimer::singleShot(1500, this, [this]() {
-        client->getTorrentList();
-
-        const int torrentId = currentTorrentId();
-
-        if (torrentId >= 0)
-            client->getTorrentDetails(torrentId);
-    });
 }
 
 void MainWindow::loadServerCombo()
@@ -1284,7 +968,8 @@ void MainWindow::saveSelectedServerFromCombo()
     torrentTrackersController->setTorrentId(-1);
     torrentTrackersController->clear();
     torrentPeersController->clear();
-    updateTorrentActionState();
+    if (torrentListController)
+        torrentListController->updateActionState();
 
     statusBar()->showMessage(
         tr("Selected server: %1").arg(client->getServer()),
@@ -1294,25 +979,17 @@ void MainWindow::saveSelectedServerFromCombo()
     client->getTorrentList();
 
     remoteDownloadDir.clear();
+
+    if (torrentListController) {
+        torrentListController->clearCurrentTorrentDetails();
+        torrentListController->setDefaultDownloadDir(remoteDownloadDir);
+    }
+
     remoteFreeSpaceBytes = -1;
     lastTorrentCount = 0;
     updateConnectionStatus(0);
 
     client->getSessionSettings();
-}
-
-void MainWindow::updateTorrentActionState()
-{
-    const bool hasSelection =
-        ui->tableView->selectionModel() &&
-        !ui->tableView->selectionModel()->selectedRows().isEmpty();
-
-    ui->actionStart_Torrent->setEnabled(hasSelection);
-    ui->actionStop_Torrent->setEnabled(hasSelection);
-    ui->actionDelete_Torrent->setEnabled(hasSelection);
-    ui->actionVerify_Torrent->setEnabled(hasSelection);
-    ui->actionReannounce->setEnabled(hasSelection);
-    ui->actionForce_Start_Torrent->setEnabled(hasSelection);
 }
 
 void MainWindow::setupTrayIcon()
@@ -1408,77 +1085,6 @@ void MainWindow::applyUpdateInterval()
         );
 }
 
-QList<int> MainWindow::selectedTorrentIds() const
-{
-    QList<int> ids;
-
-    const QItemSelectionModel *selection = ui->tableView->selectionModel();
-
-    if (!selection)
-        return ids;
-
-    const QModelIndexList proxyRows = selection->selectedRows();
-
-    for (const QModelIndex &proxyIndex : proxyRows) {
-        const QModelIndex sourceIndex = proxy->mapToSource(proxyIndex);
-
-        if (!sourceIndex.isValid())
-            continue;
-
-        const int id = sourceIndex.data(Qt::UserRole).toInt();
-
-        if (id >= 0)
-            ids.append(id);
-    }
-
-    return ids;
-}
-
-QStringList MainWindow::selectedTorrentNames() const
-{
-    QStringList names;
-
-    const QItemSelectionModel *selection = ui->tableView->selectionModel();
-
-    if (!selection)
-        return names;
-
-    const QModelIndexList proxyRows = selection->selectedRows();
-
-    for (const QModelIndex &proxyIndex : proxyRows) {
-        const QModelIndex sourceIndex = proxy->mapToSource(proxyIndex);
-
-        if (!sourceIndex.isValid())
-            continue;
-
-        const QString name = sourceIndex
-                                 .siblingAtColumn(TorrentModel::NameColumn)
-                                 .data(Qt::DisplayRole)
-                                 .toString();
-
-        if (!name.isEmpty())
-            names.append(name);
-    }
-
-    return names;
-}
-
-void MainWindow::invokeSelectedTorrentCommand(void (rpc_client::*command)(const QList<int> &),
-                                              const QString &message)
-{
-    const QList<int> ids = selectedTorrentIds();
-
-    if (ids.isEmpty()) {
-        statusBar()->showMessage(tr("No torrent selected."), 3000);
-        return;
-    }
-
-    (client->*command)(ids);
-
-    if (!message.isEmpty())
-        statusBar()->showMessage(message.arg(ids.size()), 3000);
-}
-
 bool MainWindow::currentTabWantsLiveTorrentDetails() const
 {
     QWidget *current = ui->tabWidget->currentWidget();
@@ -1562,6 +1168,14 @@ void MainWindow::populateGeneralTab(const QJsonObject &details)
     currentDetailsTorrentId = details.value("id").toInt(-1);
     currentTorrentHashString = hashString;
     currentTorrentMagnetLink = magnetLink;
+
+    if (torrentListController) {
+        torrentListController->setCurrentTorrentDetails(
+            currentDetailsTorrentId,
+            currentTorrentHashString,
+            currentTorrentMagnetLink
+            );
+    }
 
     const qint64 totalSize =
         details.value("totalSize").toVariant().toLongLong();
@@ -1749,37 +1363,6 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
     refreshCurrentTorrentLiveDetailsIfNeeded();
 }
 
-void MainWindow::copyTextToClipboard(const QString &text,
-                                      const QString &statusMessage)
-{
-    const QString trimmed = text.trimmed();
-
-    if (trimmed.isEmpty())
-        return;
-
-    QApplication::clipboard()->setText(trimmed);
-
-    if (!statusMessage.isEmpty())
-        statusBar()->showMessage(statusMessage, 3000);
-}
-
-void MainWindow::copySelectedTorrentMagnetLink()
-{
-    copyTextToClipboard(
-        currentTorrentMagnetLink,
-        tr("Magnet link copied to clipboard.")
-        );
-}
-
-void MainWindow::copySelectedTorrentHash()
-{
-    copyTextToClipboard(
-        currentTorrentHashString,
-        tr("Torrent hash copied to clipboard.")
-        );
-}
-
-
 QList<FolderMapping> MainWindow::currentServerFolderMappings() const
 {
     QList<FolderMapping> mappings;
@@ -1821,26 +1404,6 @@ QList<FolderMapping> MainWindow::currentServerFolderMappings() const
     return mappings;
 }
 
-void MainWindow::queueMoveSelectedTop()
-{
-    invokeSelectedTorrentCommand(&rpc_client::queueMoveTop, QString());
-}
-
-void MainWindow::queueMoveSelectedUp()
-{
-    invokeSelectedTorrentCommand(&rpc_client::queueMoveUp, QString());
-}
-
-void MainWindow::queueMoveSelectedDown()
-{
-    invokeSelectedTorrentCommand(&rpc_client::queueMoveDown, QString());
-}
-
-void MainWindow::queueMoveSelectedBottom()
-{
-    invokeSelectedTorrentCommand(&rpc_client::queueMoveBottom, QString());
-}
-
 void MainWindow::showSessionSettings()
 {
     openSessionSettingsWhenReceived = true;
@@ -1860,6 +1423,9 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
 
     if (torrentAddController)
         torrentAddController->setDefaultDownloadDir(remoteDownloadDir);
+
+    if (torrentListController)
+        torrentListController->setDefaultDownloadDir(remoteDownloadDir);
 
     if (!remoteDownloadDir.isEmpty())
         client->getFreeSpace(remoteDownloadDir);
@@ -1894,6 +1460,9 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
         if (torrentAddController)
             torrentAddController->setDefaultDownloadDir(remoteDownloadDir);
 
+        if (torrentListController)
+            torrentListController->setDefaultDownloadDir(remoteDownloadDir);
+
         if (!remoteDownloadDir.isEmpty())
             client->getFreeSpace(remoteDownloadDir);
     }
@@ -1926,12 +1495,6 @@ void MainWindow::updateConnectionStatus(int torrentCount)
         connectionStatusLabel->setStyleSheet(QString());
         connectionStatusLabel->setText(text);
     }
-}
-
-void MainWindow::forceStartSelectedTorrents()
-{
-    invokeSelectedTorrentCommand(&rpc_client::startTorrentsNow,
-                                 tr("Force starting %1 torrent(s)..."));
 }
 
 void MainWindow::rebuildTorrentFilterList(const QVector<torrent> &torrents)

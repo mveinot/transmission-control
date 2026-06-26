@@ -26,13 +26,13 @@ QT_END_NAMESPACE
 
 class TorrentAddController;
 class WatchFolderManager;
-class TorrentAddController;
 class UpdateChecker;
 class PieceMapController;
 class TorrentDetailsTabController;
 class TorrentFilesController;
 class TorrentPeersController;
 class TorrentTrackersController;
+class TorrentListController;
 
 class MainWindow : public QMainWindow
 {
@@ -62,7 +62,6 @@ private slots:
     void on_tableView_clicked(const QModelIndex &index);
     void on_actionDelete_Torrent_triggered();
     void onServerSetupTriggered();
-    void showTorrentContextMenu(const QPoint &pos);
     void on_actionStart_Torrent_triggered();
     void on_actionStop_Torrent_triggered();
     void on_action_Open_Torrent_triggered();
@@ -92,27 +91,15 @@ private:
     WatchFolderManager *watchFolderManager = nullptr;
 
     int currentTorrentId() const;
-    QList<int> selectedTorrentIds() const;
-    QStringList selectedTorrentNames() const;
-    void invokeSelectedTorrentCommand(void (rpc_client::*command)(const QList<int> &),
-                                      const QString &message);
     bool currentTabWantsLiveTorrentDetails() const;
     void refreshCurrentTorrentLiveDetailsIfNeeded();
     QLabel *connectionStatusLabel = nullptr;
     TorrentAddController *torrentAddController = nullptr;
-    void startSelectedTorrent();
-    void stopSelectedTorrent();
     void addTorrentFromFile();
     void addTorrentFromMagnet();
     void saveTableViewState();
     void restoreTableViewState();
     void setTorrentStateFilter(TorrentSortProxyModel::StateFilter filter);
-    void reannounceSelectedTorrent();
-    void verifySelectedTorrent();
-    void forceStartSelectedTorrents();
-    void setSelectedTorrentsLocation();
-    void showSelectedTorrentProperties();
-    void updateTorrentActionState();
     int updateIntervalMs() const;
     void applyUpdateInterval();
     void setupConnectionStatusIndicator();
@@ -120,15 +107,7 @@ private:
     void clearGeneralTab();
     bool trayIconEnabled() const;
     bool trayNotificationsEnabled() const;
-    void copySelectedTorrentMagnetLink();
-    void copySelectedTorrentHash();
-    void copyTextToClipboard(const QString &text,
-                             const QString &statusMessage);
     QList<FolderMapping> currentServerFolderMappings() const;
-    void queueMoveSelectedTop();
-    void queueMoveSelectedUp();
-    void queueMoveSelectedDown();
-    void queueMoveSelectedBottom();
     void applyAppSettings();
     void updateTrayIconVisibility();
     void showTrayNotification(const QString &title,
@@ -168,6 +147,7 @@ private:
     TorrentFilesController *torrentFilesController = nullptr;
     TorrentPeersController *torrentPeersController = nullptr;
     TorrentTrackersController *torrentTrackersController = nullptr;
+    TorrentListController *torrentListController = nullptr;
     QJsonObject currentTorrentDetailsCache;
     QStringList lastTrackerFilterHosts;
 
