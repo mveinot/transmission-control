@@ -2,6 +2,7 @@
 #include "./ui_mainwindow.h"
 #include "piecemapcontroller.h"
 #include "torrentdetailstabcontroller.h"
+#include "torrentfilescontroller.h"
 #include <QActionGroup>
 #include <QAbstractItemView>
 #include <QApplication>
@@ -75,34 +76,6 @@ constexpr int TrackerAnnounceRole = Qt::UserRole;
 constexpr int TrackerIdRole = Qt::UserRole + 1;
 }
 
-// accept various representations of true and false
-bool jsonValueToBool(const QJsonValue &value, bool defaultValue = false)
-{
-    if (value.isBool())
-        return value.toBool();
-
-    if (value.isDouble())
-        return value.toInt(defaultValue ? 1 : 0) != 0;
-
-    if (value.isString()) {
-        const QString text = value.toString().trimmed().toLower();
-
-        if (text == QStringLiteral("true")
-            || text == QStringLiteral("yes")
-            || text == QStringLiteral("1")) {
-            return true;
-        }
-
-        if (text == QStringLiteral("false")
-            || text == QStringLiteral("no")
-            || text == QStringLiteral("0")) {
-            return false;
-        }
-    }
-
-    return defaultValue;
-}
-
 
 // determine if a string looks like a URL
 static bool looksLikeUrl(const QString &text)
@@ -147,10 +120,13 @@ void MainWindow::clearGeneralTab()
 
     if (torrentDetailsController)
         torrentDetailsController->clear();
-    currentTorrentDetailsCache = QJsonObject();
 
-    currentTorrentDownloadDir.clear();
-    currentTorrentFilePaths.clear();
+    if (torrentFilesController) {
+        torrentFilesController->setTorrentContext(-1, QString());
+        torrentFilesController->clear();
+    }
+
+    currentTorrentDetailsCache = QJsonObject();
     currentDetailsTorrentId = -1;
     currentTorrentHashString.clear();
     currentTorrentMagnetLink.clear();
@@ -160,19 +136,6 @@ void MainWindow::clearTrackerTable()
 {
     ui->trackerTableWidget->clearContents();
     ui->trackerTableWidget->setRowCount(0);
-}
-
-static QString priorityToString(int priority)
-{
-    switch (priority) {
-    case 1:
-        return QCoreApplication::translate("MainWindow", "High");
-    case -1:
-        return QCoreApplication::translate("MainWindow", "Low");
-    case 0:
-    default:
-        return QCoreApplication::translate("MainWindow", "Normal");
-    }
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -231,21 +194,26 @@ MainWindow::MainWindow(QWidget *parent)
     this->mainMenu->addAction(this->aboutAction);
     this->setMenuBar(this->menuBar());
 
-    ui->fileTreeWidget->setColumnCount(FileColumnCount);
-    ui->fileTreeWidget->setHeaderLabels({
-        tr("Name"),
-        tr("Priority"),
-        tr("Size"),
-        tr("Done"),
-        tr("Completed")
-    });
-    ui->fileTreeWidget->setContextMenuPolicy(Qt::CustomContextMenu);
-    ui->fileTreeWidget->setAlternatingRowColors(true);
-    ui->fileTreeWidget->setRootIsDecorated(true);
-    ui->fileTreeWidget->setItemDelegateForColumn(
-        FilePercentColumn,
-        new PercentFillDelegate(FilePercentColumn, Qt::UserRole, ui->fileTreeWidget)
+    torrentFilesController = new TorrentFilesController(
+        ui->fileTreeWidget,
+        client,
+        this,
+        this
         );
+    torrentFilesController->setFolderMappingsProvider(
+        [this]() { return currentServerFolderMappings(); }
+        );
+    torrentFilesController->setup();
+
+    connect(torrentFilesController, &TorrentFilesController::statusMessageRequested,
+            this, [this](const QString &message, int timeoutMs) {
+                statusBar()->showMessage(message, timeoutMs);
+            });
+
+    connect(torrentFilesController,
+            &TorrentFilesController::torrentDetailsRefreshRequested,
+            client,
+            &rpc_client::getTorrentDetails);
 
     ui->statusbar->showMessage(client->getServer());
 
@@ -372,9 +340,6 @@ MainWindow::MainWindow(QWidget *parent)
                     updateChecker->checkForUpdates(true);
             });
 
-    connect(ui->fileTreeWidget, &QTreeWidget::customContextMenuRequested,
-            this, &MainWindow::showFileContextMenu);
-
     connect(ui->trackerTableWidget, &QTableWidget::customContextMenuRequested,
             this, &MainWindow::showTrackerContextMenu);
 
@@ -474,7 +439,11 @@ MainWindow::MainWindow(QWidget *parent)
                 populateGeneralTab(details);
                 torrentDetailsController->update(currentTorrentDetailsCache);
                 populateTrackerTable(details);
-                populateFileTree(
+                torrentFilesController->setTorrentContext(
+                    torrentId,
+                    details.value("downloadDir").toString()
+                    );
+                torrentFilesController->populate(
                     details.value("files").toArray(),
                     details.value("wanted").toArray(),
                     details.value("priorities").toArray()
@@ -616,7 +585,8 @@ void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
     ui->peerTableWidget->clearContents();
     ui->peerTableWidget->setRowCount(0);
     clearTrackerTable();
-    ui->fileTreeWidget->clear();
+    torrentFilesController->setTorrentContext(-1, QString());
+    torrentFilesController->clear();
 
     // get info for the selected torrent
     client->getTorrentDetails(torrentId);
@@ -898,112 +868,6 @@ void MainWindow::setTorrentStateFilter(TorrentSortProxyModel::StateFilter filter
         ui->listWidget->setCurrentRow(7);
         break;
     }
-}
-
-// Create file list folder heirarchy
-QTreeWidgetItem *MainWindow::findOrCreateTopLevelItem(const QString &name)
-{
-    for (int i = 0; i < ui->fileTreeWidget->topLevelItemCount(); ++i) {
-        QTreeWidgetItem *item = ui->fileTreeWidget->topLevelItem(i);
-
-        if (item->text(0) == name)
-            return item;
-    }
-
-    auto *item = new QTreeWidgetItem(ui->fileTreeWidget);
-    item->setText(0, name);
-    item->setData(FileNameColumn, FileKindRole, QStringLiteral("folder"));
-
-    return item;
-}
-
-QTreeWidgetItem *MainWindow::findOrCreateChild(QTreeWidgetItem *parent,
-                                               const QString &name,
-                                               bool isFolder)
-{
-    for (int i = 0; i < parent->childCount(); ++i) {
-        QTreeWidgetItem *child = parent->child(i);
-
-        if (child->text(0) == name)
-            return child;
-    }
-
-    auto *child = new QTreeWidgetItem(parent);
-    child->setText(0, name);
-    child->setData(FileNameColumn,
-                   FileKindRole,
-                   isFolder ? QStringLiteral("folder") : QStringLiteral("file"));
-
-    return child;
-}
-
-void MainWindow::populateFileTree(const QJsonArray &files,
-                                  const QJsonArray &wanted,
-                                  const QJsonArray &priorities)
-{
-    ui->fileTreeWidget->clear();
-    currentTorrentFilePaths.clear();
-
-    for (int fileIndex = 0; fileIndex < files.size(); ++fileIndex) {
-        const QJsonObject file = files.at(fileIndex).toObject();
-
-        const QString path = file.value("name").toString();
-        currentTorrentFilePaths.insert(fileIndex, path);
-
-        const qint64 length = file.value("length").toVariant().toLongLong();
-        const qint64 bytesCompleted = file.value("bytesCompleted").toVariant().toLongLong();
-
-        const bool isWanted =
-            fileIndex < wanted.size()
-                ? jsonValueToBool(wanted.at(fileIndex), true)
-                : true;
-
-        const int priority =
-            fileIndex < priorities.size()
-                ? priorities.at(fileIndex).toInt(0)
-                : 0;
-
-        const QStringList parts = path.split('/', Qt::SkipEmptyParts);
-
-        if (parts.isEmpty())
-            continue;
-
-        QTreeWidgetItem *current = findOrCreateTopLevelItem(parts.first());
-
-        for (int i = 1; i < parts.size(); ++i) {
-            const bool isLast = (i == parts.size() - 1);
-            current = findOrCreateChild(current, parts.at(i), !isLast);
-        }
-
-        const double percentDone =
-            length > 0
-                ? (static_cast<double>(bytesCompleted) / static_cast<double>(length)) * 100.0
-                : 0.0;
-
-        current->setData(FileNameColumn, FileKindRole, QStringLiteral("file"));
-        current->setData(FileNameColumn, FileIndexRole, fileIndex);
-        current->setData(FileNameColumn, FileWantedRole, isWanted);
-        current->setData(FileNameColumn, FilePriorityRole, priority);
-
-        current->setText(FilePriorityColumn, isWanted ? priorityToString(priority) : tr("Skip"));
-
-        current->setText(FileSizeColumn, QLocale().formattedDataSize(
-                                             length, 1, QLocale::DataSizeIecFormat));
-
-        current->setText(FileDoneColumn, QLocale().formattedDataSize(
-                                             bytesCompleted, 1, QLocale::DataSizeIecFormat));
-
-        current->setText(FilePercentColumn, QString("%1%").arg(percentDone, 0, 'f', 1));
-
-        current->setData(FileSizeColumn, Qt::UserRole, length);
-        current->setData(FileDoneColumn, Qt::UserRole, bytesCompleted);
-        current->setData(FilePercentColumn, Qt::UserRole, percentDone);
-    }
-
-    updateFolderPriorityStates();
-
-    ui->fileTreeWidget->expandToDepth(0);
-    ui->fileTreeWidget->resizeColumnToContents(FileNameColumn);
 }
 
 void MainWindow::populatePeerTable(const QJsonArray &peers)
@@ -1524,7 +1388,8 @@ void MainWindow::saveSelectedServerFromCombo()
         return;
     }
 
-    ui->fileTreeWidget->clear();
+    torrentFilesController->setTorrentContext(-1, QString());
+    torrentFilesController->clear();
     ui->peerTableWidget->clearContents();
     ui->peerTableWidget->setRowCount(0);
     updateTorrentActionState();
@@ -1795,8 +1660,6 @@ void MainWindow::populateGeneralTab(const QJsonObject &details)
 
     const QString downloadDir =
         details.value("downloadDir").toString();
-
-    currentTorrentDownloadDir = downloadDir;
 
     const QString hashString =
         details.value("hashString").toString();
@@ -2086,245 +1949,6 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
     refreshCurrentTorrentLiveDetailsIfNeeded();
 }
 
-void MainWindow::updateFolderPriorityStates()
-{
-    for (int i = 0; i < ui->fileTreeWidget->topLevelItemCount(); ++i) {
-        updateFolderPriorityState(ui->fileTreeWidget->topLevelItem(i));
-    }
-}
-
-void MainWindow::updateFolderPriorityState(QTreeWidgetItem *item)
-{
-    if (!item)
-        return;
-
-    const QString kind =
-        item->data(FileNameColumn, FileKindRole).toString();
-
-    if (kind == QStringLiteral("file"))
-        return;
-
-    QSet<QString> effectivePriorities;
-
-    std::function<void(QTreeWidgetItem *)> scan = [&](QTreeWidgetItem *node) {
-        if (!node)
-            return;
-
-        const QString nodeKind =
-            node->data(FileNameColumn, FileKindRole).toString();
-
-        if (nodeKind == QStringLiteral("file")) {
-            const QVariant wantedValue =
-                node->data(FileNameColumn, FileWantedRole);
-
-            const bool wanted =
-                wantedValue.isValid() ? wantedValue.toBool() : true;
-
-            if (!wanted) {
-                effectivePriorities.insert(tr("Skip"));
-                return;
-            }
-
-            const int priority =
-                node->data(FileNameColumn, FilePriorityRole).toInt();
-
-            effectivePriorities.insert(priorityToString(priority));
-            return;
-        }
-
-        for (int i = 0; i < node->childCount(); ++i)
-            scan(node->child(i));
-    };
-
-    scan(item);
-
-    if (effectivePriorities.size() == 1) {
-        item->setText(FilePriorityColumn, *effectivePriorities.constBegin());
-    } else if (effectivePriorities.size() > 1) {
-        item->setText(FilePriorityColumn, tr("Mixed"));
-    } else {
-        item->setText(FilePriorityColumn, QString());
-    }
-}
-
-QList<int> MainWindow::fileIndicesForItem(QTreeWidgetItem *item) const
-{
-    QList<int> indices;
-
-    if (!item)
-        return indices;
-
-    const QString kind =
-        item->data(FileNameColumn, FileKindRole).toString();
-
-    if (kind == QStringLiteral("file")) {
-        const QVariant fileIndexValue =
-            item->data(FileNameColumn, FileIndexRole);
-
-        const int fileIndex =
-            fileIndexValue.isValid() ? fileIndexValue.toInt() : -1;
-
-        if (fileIndex >= 0)
-            indices.append(fileIndex);
-
-        return indices;
-    }
-
-    for (int i = 0; i < item->childCount(); ++i) {
-        indices.append(fileIndicesForItem(item->child(i)));
-    }
-
-    return indices;
-}
-
-QList<int> MainWindow::selectedFileIndicesForContextItem(QTreeWidgetItem *item) const
-{
-    if (!item)
-        return {};
-
-    /*
-     * If the user right-clicks one of several selected items, operate on
-     * all selected items. Otherwise operate on the clicked item only.
-     */
-    QList<QTreeWidgetItem *> items;
-
-    if (item->isSelected()) {
-        items = ui->fileTreeWidget->selectedItems();
-    } else {
-        items.append(item);
-    }
-
-    QSet<int> uniqueIndices;
-
-    for (QTreeWidgetItem *selectedItem : std::as_const(items)) {
-        const QList<int> indices = fileIndicesForItem(selectedItem);
-
-        for (int index : indices)
-            uniqueIndices.insert(index);
-    }
-
-    QList<int> result = uniqueIndices.values();
-    std::sort(result.begin(), result.end());
-
-    return result;
-}
-
-void MainWindow::copyTextToClipboard(const QString &text,
-                                      const QString &statusMessage)
-{
-    const QString trimmed = text.trimmed();
-
-    if (trimmed.isEmpty())
-        return;
-
-    QApplication::clipboard()->setText(trimmed);
-
-    if (!statusMessage.isEmpty())
-        statusBar()->showMessage(statusMessage, 3000);
-}
-
-void MainWindow::copySelectedTorrentMagnetLink()
-{
-    copyTextToClipboard(
-        currentTorrentMagnetLink,
-        tr("Magnet link copied to clipboard.")
-        );
-}
-
-void MainWindow::copySelectedTorrentHash()
-{
-    copyTextToClipboard(
-        currentTorrentHashString,
-        tr("Torrent hash copied to clipboard.")
-        );
-}
-
-
-QString MainWindow::torrentPathForFileTreeItem(QTreeWidgetItem *item) const
-{
-    if (!item)
-        return QString();
-
-    const QString kind =
-        item->data(FileNameColumn, FileKindRole).toString();
-
-    if (kind == QStringLiteral("file")) {
-        bool ok = false;
-        const int fileIndex =
-            item->data(FileNameColumn, FileIndexRole).toInt(&ok);
-
-        if (ok && fileIndex >= 0)
-            return currentTorrentFilePaths.value(fileIndex).trimmed();
-    }
-
-    QStringList parts;
-
-    for (QTreeWidgetItem *current = item;
-         current;
-         current = current->parent()) {
-        parts.prepend(current->text(FileNameColumn));
-    }
-
-    return parts.join(QLatin1Char('/')).trimmed();
-}
-
-void MainWindow::renameFileTreeItem(QTreeWidgetItem *item)
-{
-    const int torrentId = currentTorrentId();
-
-    if (torrentId < 0 || !item)
-        return;
-
-    const QString oldPath = torrentPathForFileTreeItem(item);
-
-    if (oldPath.isEmpty())
-        return;
-
-    const QString oldName = item->text(FileNameColumn).trimmed();
-
-    bool ok = false;
-    const QString newName = QInputDialog::getText(
-        this,
-        tr("Rename Path"),
-        tr("New name:"),
-        QLineEdit::Normal,
-        oldName,
-        &ok
-        ).trimmed();
-
-    if (!ok)
-        return;
-
-    if (newName.isEmpty()) {
-        QMessageBox::warning(
-            this,
-            tr("Rename Path"),
-            tr("The new name cannot be empty.")
-            );
-        return;
-    }
-
-    if (newName.contains(QLatin1Char('/'))
-        || newName.contains(QLatin1Char('\\'))) {
-        QMessageBox::warning(
-            this,
-            tr("Rename Path"),
-            tr("Enter a file or folder name, not a path.")
-            );
-        return;
-    }
-
-    if (newName == oldName)
-        return;
-
-    client->renameTorrentPath(torrentId, oldPath, newName);
-
-    statusBar()->showMessage(
-        tr("Renaming %1...").arg(oldName),
-        3000
-        );
-}
-
 int MainWindow::trackerIdForRow(int row) const
 {
     if (row < 0)
@@ -2518,77 +2142,37 @@ void MainWindow::showTrackerContextMenu(const QPoint &pos)
     menu.exec(ui->trackerTableWidget->viewport()->mapToGlobal(pos));
 }
 
-void MainWindow::showFileContextMenu(const QPoint &pos)
+
+void MainWindow::copyTextToClipboard(const QString &text,
+                                      const QString &statusMessage)
 {
-    QTreeWidgetItem *item = ui->fileTreeWidget->itemAt(pos);
+    const QString trimmed = text.trimmed();
 
-    if (!item)
+    if (trimmed.isEmpty())
         return;
 
-    if (!item->isSelected()) {
-        ui->fileTreeWidget->clearSelection();
-        item->setSelected(true);
-        ui->fileTreeWidget->setCurrentItem(item);
-    }
+    QApplication::clipboard()->setText(trimmed);
 
-    const QList<int> fileIndices =
-        selectedFileIndicesForContextItem(item);
-
-    if (fileIndices.isEmpty())
-        return;
-
-    QMenu menu(this);
-
-    QAction *openAction = menu.addAction(tr("Open"));
-    openAction->setEnabled(fileIndices.size() == 1);
-
-    connect(openAction, &QAction::triggered,
-            this, [this, fileIndices]() {
-                openFileFromContextMenu(fileIndices);
-            });
-
-    QAction *openContainingFolderAction =
-        menu.addAction(tr("Open Containing Folder"));
-    openContainingFolderAction->setEnabled(fileIndices.size() == 1);
-
-    connect(openContainingFolderAction, &QAction::triggered,
-            this, [this, fileIndices]() {
-                openContainingFolderFromContextMenu(fileIndices);
-            });
-
-    QAction *renameAction = menu.addAction(tr("Rename…"));
-    renameAction->setEnabled(ui->fileTreeWidget->selectedItems().size() == 1);
-
-    connect(renameAction, &QAction::triggered,
-            this, [this, item]() { renameFileTreeItem(item); });
-
-    menu.addSeparator();
-
-    QMenu *priorityMenu = menu.addMenu(tr("Priority"));
-
-    QAction *skipPriorityAction =
-        priorityMenu->addAction(tr("Skip"));
-    QAction *lowPriorityAction =
-        priorityMenu->addAction(tr("Low"));
-    QAction *normalPriorityAction =
-        priorityMenu->addAction(tr("Normal"));
-    QAction *highPriorityAction =
-        priorityMenu->addAction(tr("High"));
-
-    connect(skipPriorityAction, &QAction::triggered,
-            this, [this]() { setSelectedFilesPriorityState(0, false); });
-
-    connect(lowPriorityAction, &QAction::triggered,
-            this, [this]() { setSelectedFilesPriorityState(-1, true); });
-
-    connect(normalPriorityAction, &QAction::triggered,
-            this, [this]() { setSelectedFilesPriorityState(0, true); });
-
-    connect(highPriorityAction, &QAction::triggered,
-            this, [this]() { setSelectedFilesPriorityState(1, true); });
-
-    menu.exec(ui->fileTreeWidget->viewport()->mapToGlobal(pos));
+    if (!statusMessage.isEmpty())
+        statusBar()->showMessage(statusMessage, 3000);
 }
+
+void MainWindow::copySelectedTorrentMagnetLink()
+{
+    copyTextToClipboard(
+        currentTorrentMagnetLink,
+        tr("Magnet link copied to clipboard.")
+        );
+}
+
+void MainWindow::copySelectedTorrentHash()
+{
+    copyTextToClipboard(
+        currentTorrentHashString,
+        tr("Torrent hash copied to clipboard.")
+        );
+}
+
 
 QList<FolderMapping> MainWindow::currentServerFolderMappings() const
 {
@@ -2629,257 +2213,6 @@ QList<FolderMapping> MainWindow::currentServerFolderMappings() const
     settings.endArray(); // servers
 
     return mappings;
-}
-
-QString MainWindow::mapRemotePathToLocalPath(
-    const QString &remotePath,
-    const QList<FolderMapping> &mappings) const
-{
-    const QString cleanRemotePath =
-        QDir::cleanPath(remotePath.trimmed());
-
-    if (cleanRemotePath.isEmpty())
-        return {};
-
-    const FolderMapping *bestMatch = nullptr;
-    QString bestRemotePrefix;
-
-    for (const FolderMapping &mapping : mappings) {
-        const QString remotePrefix =
-            QDir::cleanPath(mapping.remotePath.trimmed());
-
-        if (remotePrefix.isEmpty())
-            continue;
-
-        const bool exactMatch = cleanRemotePath == remotePrefix;
-        const bool childMatch =
-            cleanRemotePath.startsWith(remotePrefix + QLatin1Char('/'));
-
-        if (!exactMatch && !childMatch)
-            continue;
-
-        if (!bestMatch || remotePrefix.length() > bestRemotePrefix.length()) {
-            bestMatch = &mapping;
-            bestRemotePrefix = remotePrefix;
-        }
-    }
-
-    if (!bestMatch)
-        return {};
-
-    const QString localPrefix =
-        QDir::cleanPath(bestMatch->localPath.trimmed());
-
-    QString suffix = cleanRemotePath.mid(bestRemotePrefix.length());
-
-    if (suffix.startsWith(QLatin1Char('/')))
-        suffix.remove(0, 1);
-
-    if (suffix.isEmpty())
-        return localPrefix;
-
-    return QDir(localPrefix).filePath(suffix);
-}
-
-bool MainWindow::resolveMappedLocalPathForSingleFile(
-    const QList<int> &fileIndices,
-    const QString &dialogTitle,
-    QString *localPath,
-    QString *remotePath,
-    bool requireFileExists)
-{
-    if (localPath)
-        localPath->clear();
-
-    if (remotePath)
-        remotePath->clear();
-
-    if (fileIndices.isEmpty())
-        return false;
-
-    if (fileIndices.size() != 1) {
-        QMessageBox::information(
-            this,
-            dialogTitle,
-            tr("Please select a single file.")
-            );
-        return false;
-    }
-
-    const int fileIndex = fileIndices.first();
-    const QString relativeFilePath =
-        currentTorrentFilePaths.value(fileIndex).trimmed();
-
-    if (relativeFilePath.isEmpty()) {
-        QMessageBox::warning(
-            this,
-            dialogTitle,
-            tr("Planetary could not determine the selected file path.")
-            );
-        return false;
-    }
-
-    if (currentTorrentDownloadDir.trimmed().isEmpty()) {
-        QMessageBox::warning(
-            this,
-            dialogTitle,
-            tr("Planetary could not determine the torrent download directory.")
-            );
-        return false;
-    }
-
-    const QString resolvedRemotePath =
-        QDir::cleanPath(
-            currentTorrentDownloadDir + QLatin1Char('/') + relativeFilePath
-            );
-
-    const QString resolvedLocalPath =
-        mapRemotePathToLocalPath(resolvedRemotePath, currentServerFolderMappings());
-
-    if (remotePath)
-        *remotePath = resolvedRemotePath;
-
-    if (resolvedLocalPath.isEmpty()) {
-        QMessageBox::information(
-            this,
-            tr("No Folder Mapping"),
-            tr("Planetary could not map this remote file path to a local file path.\n\n"
-               "Remote path:\n%1")
-                .arg(resolvedRemotePath)
-            );
-        return false;
-    }
-
-    if (requireFileExists && !QFileInfo::exists(resolvedLocalPath)) {
-        QMessageBox::warning(
-            this,
-            tr("File Not Found"),
-            tr("The mapped local file does not exist.\n\n"
-               "Remote path:\n%1\n\n"
-               "Local path:\n%2")
-                .arg(resolvedRemotePath, resolvedLocalPath)
-            );
-        return false;
-    }
-
-    if (localPath)
-        *localPath = resolvedLocalPath;
-
-    return true;
-}
-
-void MainWindow::openFileFromContextMenu(const QList<int> &fileIndices)
-{
-    QString localPath;
-
-    if (!resolveMappedLocalPathForSingleFile(
-            fileIndices,
-            tr("Open File"),
-            &localPath,
-            nullptr,
-            true)) {
-        return;
-    }
-
-    const bool opened =
-        QDesktopServices::openUrl(QUrl::fromLocalFile(localPath));
-
-    if (!opened) {
-        QMessageBox::warning(
-            this,
-            tr("Open File Failed"),
-            tr("The operating system could not open this file:\n\n%1")
-                .arg(localPath)
-            );
-        return;
-    }
-
-    statusBar()->showMessage(
-        tr("Opening %1").arg(QFileInfo(localPath).fileName()),
-        3000
-        );
-}
-
-void MainWindow::openContainingFolderFromContextMenu(const QList<int> &fileIndices)
-{
-    QString localPath;
-    QString remotePath;
-
-    if (!resolveMappedLocalPathForSingleFile(
-            fileIndices,
-            tr("Open Containing Folder"),
-            &localPath,
-            &remotePath,
-            false)) {
-        return;
-    }
-
-    const QFileInfo localInfo(localPath);
-    const QString folderPath = localInfo.isDir()
-        ? localInfo.absoluteFilePath()
-        : localInfo.absolutePath();
-
-    if (folderPath.isEmpty() || !QFileInfo::exists(folderPath)) {
-        QMessageBox::warning(
-            this,
-            tr("Folder Not Found"),
-            tr("The mapped containing folder does not exist.\n\n"
-               "Remote path:\n%1\n\n"
-               "Local folder:\n%2")
-                .arg(remotePath, folderPath)
-            );
-        return;
-    }
-
-    const bool opened =
-        QDesktopServices::openUrl(QUrl::fromLocalFile(folderPath));
-
-    if (!opened) {
-        QMessageBox::warning(
-            this,
-            tr("Open Folder Failed"),
-            tr("The operating system could not open this folder:\n\n%1")
-                .arg(folderPath)
-            );
-        return;
-    }
-
-    statusBar()->showMessage(
-        tr("Opening folder %1").arg(QDir::toNativeSeparators(folderPath)),
-        3000
-        );
-}
-
-void MainWindow::setSelectedFilesPriorityState(int priority, bool wanted)
-{
-    const int torrentId = currentTorrentId();
-
-    if (torrentId < 0)
-        return;
-
-    QTreeWidgetItem *item = ui->fileTreeWidget->currentItem();
-
-    if (!item)
-        return;
-
-    const QList<int> fileIndices =
-        selectedFileIndicesForContextItem(item);
-
-    if (fileIndices.isEmpty())
-        return;
-
-    client->setTorrentFilesWantedAndPriority(torrentId, fileIndices, wanted, priority);
-
-    const QString priorityText = wanted ? priorityToString(priority) : tr("Skip");
-
-    statusBar()->showMessage(
-        tr("Setting %1 file(s) to %2...")
-            .arg(fileIndices.size())
-            .arg(priorityText),
-        3000
-        );
-
-    client->getTorrentDetails(torrentId);
 }
 
 void MainWindow::queueMoveSelectedTop()
@@ -3365,3 +2698,47 @@ void MainWindow::importSettings()
             );
     }
 }
+
+/*
+void MainWindow::showTrackerContextMenu(const QPoint &pos)
+{
+    if (!ui->trackerTableWidget)
+        return;
+
+    const QModelIndex index = ui->trackerTableWidget->indexAt(pos);
+    if (!index.isValid())
+        return;
+
+    QMenu menu(this);
+
+    QAction *copyUrlAction = menu.addAction(tr("Copy Tracker URL"));
+    QAction *copyAnnounceAction = menu.addAction(tr("Copy Announce URL"));
+
+    QAction *selectedAction = menu.exec(ui->trackerTableWidget->viewport()->mapToGlobal(pos));
+    if (!selectedAction)
+        return;
+
+    const int row = index.row();
+
+    if (selectedAction == copyUrlAction) {
+        const QString trackerUrl = ui->trackerTableWidget->item(row, 0)
+        ? ui->trackerTableWidget->item(row, 0)->text()
+        : QString();
+
+        if (!trackerUrl.isEmpty())
+            QApplication::clipboard()->setText(trackerUrl);
+
+        return;
+    }
+
+    if (selectedAction == copyAnnounceAction) {
+        const QString announceUrl = ui->trackerTableWidget->item(row, 1)
+        ? ui->trackerTableWidget->item(row, 1)->text()
+        : QString();
+
+        if (!announceUrl.isEmpty())
+            QApplication::clipboard()->setText(announceUrl);
+
+        return;
+    }
+}*/

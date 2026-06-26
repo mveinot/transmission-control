@@ -130,6 +130,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         piecemapwidget.h piecemapwidget.cpp
         piecemapcontroller.h piecemapcontroller.cpp
         torrentdetailstabcontroller.h torrentdetailstabcontroller.cpp
+        torrentfilescontroller.h torrentfilescontroller.cpp
         torrentpropertiesdialog.h torrentpropertiesdialog.cpp
     )
 
