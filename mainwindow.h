@@ -110,6 +110,10 @@ private:
     int currentTorrentId() const;
     QList<int> selectedTorrentIds() const;
     QStringList selectedTorrentNames() const;
+    void invokeSelectedTorrentCommand(void (rpc_client::*command)(const QList<int> &),
+                                      const QString &message);
+    bool currentTabWantsLiveTorrentDetails() const;
+    void refreshCurrentTorrentLiveDetailsIfNeeded();
     QLabel *connectionStatusLabel = nullptr;
     TorrentAddController *torrentAddController = nullptr;
     void startSelectedTorrent();
@@ -218,6 +222,7 @@ private:
     QWidget *torrentDetailsTab = nullptr;
     QTableWidget *torrentDetailsTable = nullptr;
     QJsonObject currentTorrentDetailsCache;
+    QStringList lastTrackerFilterHosts;
 
     void setupPieceMapWidget();
     void updatePieceMap(const QJsonObject &details);

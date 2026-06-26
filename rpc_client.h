@@ -146,6 +146,8 @@ private:
     void postRpc(const QString &method,
                  const QJsonObject &arguments,
                  RpcRequestType type);
+    void postIdsCommand(const QString &method, const QList<int> &ids);
+    void postSingleTorrentSet(int torrentId, const QJsonObject &arguments);
 
 
 public slots:

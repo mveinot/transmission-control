@@ -83,6 +83,29 @@ void rpc_client::postRpc(const RpcRequestContext &context)
     pendingRequests.insert(reply, context);
 }
 
+
+void rpc_client::postIdsCommand(const QString &method, const QList<int> &ids)
+{
+    if (ids.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments[QStringLiteral("ids")] = idsToJsonArray(ids);
+
+    postRpc(method, arguments, RpcRequestType::Command);
+}
+
+void rpc_client::postSingleTorrentSet(int torrentId, const QJsonObject &arguments)
+{
+    if (torrentId < 0 || arguments.isEmpty())
+        return;
+
+    QJsonObject payload = arguments;
+    payload[QStringLiteral("ids")] = QJsonArray { torrentId };
+
+    postRpc(QStringLiteral("torrent-set"), payload, RpcRequestType::Command);
+}
+
 void rpc_client::replyFinished(QNetworkReply *reply)
 {
     RpcRequestContext context =
@@ -519,37 +542,17 @@ void rpc_client::addTorrentFromMagnet(const QString &magnetLink)
 
 void rpc_client::startTorrents(const QList<int> &ids)
 {
-    if (ids.isEmpty())
-        return;
-
-    QJsonObject arguments;
-    arguments["ids"] = idsToJsonArray(ids);
-
-    postRpc("torrent-start", arguments, RpcRequestType::Command);
+    postIdsCommand(QStringLiteral("torrent-start"), ids);
 }
 
 void rpc_client::startTorrentsNow(const QList<int> &ids)
 {
-    if (ids.isEmpty())
-        return;
-
-    QJsonObject arguments;
-    arguments["ids"] = idsToJsonArray(ids);
-
-    postRpc(QStringLiteral("torrent-start-now"),
-            arguments,
-            RpcRequestType::Command);
+    postIdsCommand(QStringLiteral("torrent-start-now"), ids);
 }
 
 void rpc_client::stopTorrents(const QList<int> &ids)
 {
-    if (ids.isEmpty())
-        return;
-
-    QJsonObject arguments;
-    arguments["ids"] = idsToJsonArray(ids);
-
-    postRpc("torrent-stop", arguments, RpcRequestType::Command);
+    postIdsCommand(QStringLiteral("torrent-stop"), ids);
 }
 
 void rpc_client::removeTorrents(const QList<int> &ids, bool deleteLocalData)
@@ -566,24 +569,12 @@ void rpc_client::removeTorrents(const QList<int> &ids, bool deleteLocalData)
 
 void rpc_client::verifyTorrents(const QList<int> &ids)
 {
-    if (ids.isEmpty())
-        return;
-
-    QJsonObject arguments;
-    arguments["ids"] = idsToJsonArray(ids);
-
-    postRpc("torrent-verify", arguments, RpcRequestType::Command);
+    postIdsCommand(QStringLiteral("torrent-verify"), ids);
 }
 
 void rpc_client::reannounceTorrents(const QList<int> &ids)
 {
-    if (ids.isEmpty())
-        return;
-
-    QJsonObject arguments;
-    arguments["ids"] = idsToJsonArray(ids);
-
-    postRpc("torrent-reannounce", arguments, RpcRequestType::Command);
+    postIdsCommand(QStringLiteral("torrent-reannounce"), ids);
 }
 
 void rpc_client::setTorrentLocation(const QList<int> &ids,
@@ -1002,46 +993,22 @@ void rpc_client::setTorrentProperties(int torrentId,
 
 void rpc_client::queueMoveTop(const QList<int> &ids)
 {
-    if (ids.isEmpty())
-        return;
-
-    QJsonObject arguments;
-    arguments["ids"] = idsToJsonArray(ids);
-
-    postRpc("queue-move-top", arguments, RpcRequestType::Command);
+    postIdsCommand(QStringLiteral("queue-move-top"), ids);
 }
 
 void rpc_client::queueMoveUp(const QList<int> &ids)
 {
-    if (ids.isEmpty())
-        return;
-
-    QJsonObject arguments;
-    arguments["ids"] = idsToJsonArray(ids);
-
-    postRpc("queue-move-up", arguments, RpcRequestType::Command);
+    postIdsCommand(QStringLiteral("queue-move-up"), ids);
 }
 
 void rpc_client::queueMoveDown(const QList<int> &ids)
 {
-    if (ids.isEmpty())
-        return;
-
-    QJsonObject arguments;
-    arguments["ids"] = idsToJsonArray(ids);
-
-    postRpc("queue-move-down", arguments, RpcRequestType::Command);
+    postIdsCommand(QStringLiteral("queue-move-down"), ids);
 }
 
 void rpc_client::queueMoveBottom(const QList<int> &ids)
 {
-    if (ids.isEmpty())
-        return;
-
-    QJsonObject arguments;
-    arguments["ids"] = idsToJsonArray(ids);
-
-    postRpc("queue-move-bottom", arguments, RpcRequestType::Command);
+    postIdsCommand(QStringLiteral("queue-move-bottom"), ids);
 }
 
 void rpc_client::getSessionSettings()

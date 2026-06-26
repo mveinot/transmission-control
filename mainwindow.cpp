@@ -374,6 +374,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->trackerTableWidget, &QTableWidget::customContextMenuRequested,
             this, &MainWindow::showTrackerContextMenu);
 
+    connect(ui->tabWidget, &QTabWidget::currentChanged,
+            this, [this](int) {
+                refreshCurrentTorrentLiveDetailsIfNeeded();
+            });
+
     connect(client, &rpc_client::serverChanged,
             torrentModel, &TorrentModel::clear);
 
@@ -1226,36 +1231,14 @@ void MainWindow::showSelectedTorrentProperties()
 
 void MainWindow::startSelectedTorrent()
 {
-    const QList<int> ids = selectedTorrentIds();
-
-    if (ids.isEmpty()) {
-        statusBar()->showMessage(tr("No torrent selected."), 3000);
-        return;
-    }
-
-    client->startTorrents(ids);
-
-    statusBar()->showMessage(
-        tr("Starting %1 torrent(s)...").arg(ids.size()),
-        3000
-        );
+    invokeSelectedTorrentCommand(&rpc_client::startTorrents,
+                                 tr("Starting %1 torrent(s)..."));
 }
 
 void MainWindow::stopSelectedTorrent()
 {
-    const QList<int> ids = selectedTorrentIds();
-
-    if (ids.isEmpty()) {
-        statusBar()->showMessage(tr("No torrent selected."), 3000);
-        return;
-    }
-
-    client->stopTorrents(ids);
-
-    statusBar()->showMessage(
-        tr("Stopping %1 torrent(s)...").arg(ids.size()),
-        3000
-        );
+    invokeSelectedTorrentCommand(&rpc_client::stopTorrents,
+                                 tr("Stopping %1 torrent(s)..."));
 }
 
 void MainWindow::handleLaunchArguments(const QStringList &arguments)
@@ -1343,36 +1326,14 @@ void MainWindow::addTorrentFromMagnet()
 
 void MainWindow::reannounceSelectedTorrent()
 {
-    const QList<int> ids = selectedTorrentIds();
-
-    if (ids.isEmpty()) {
-        statusBar()->showMessage(tr("No torrent selected."), 3000);
-        return;
-    }
-
-    client->reannounceTorrents(ids);
-
-    statusBar()->showMessage(
-        tr("Reannouncing %1 torrent(s)...").arg(ids.size()),
-        3000
-        );
+    invokeSelectedTorrentCommand(&rpc_client::reannounceTorrents,
+                                 tr("Reannouncing %1 torrent(s)..."));
 }
 
 void MainWindow::verifySelectedTorrent()
 {
-    const QList<int> ids = selectedTorrentIds();
-
-    if (ids.isEmpty()) {
-        statusBar()->showMessage(tr("No torrent selected."), 3000);
-        return;
-    }
-
-    client->verifyTorrents(ids);
-
-    statusBar()->showMessage(
-        tr("Verifying %1 torrent(s)...").arg(ids.size()),
-        3000
-        );
+    invokeSelectedTorrentCommand(&rpc_client::verifyTorrents,
+                                 tr("Verifying %1 torrent(s)..."));
 }
 
 void MainWindow::setSelectedTorrentsLocation()
@@ -1739,6 +1700,36 @@ QStringList MainWindow::selectedTorrentNames() const
     }
 
     return names;
+}
+
+void MainWindow::invokeSelectedTorrentCommand(void (rpc_client::*command)(const QList<int> &),
+                                              const QString &message)
+{
+    const QList<int> ids = selectedTorrentIds();
+
+    if (ids.isEmpty()) {
+        statusBar()->showMessage(tr("No torrent selected."), 3000);
+        return;
+    }
+
+    (client->*command)(ids);
+
+    if (!message.isEmpty())
+        statusBar()->showMessage(message.arg(ids.size()), 3000);
+}
+
+bool MainWindow::currentTabWantsLiveTorrentDetails() const
+{
+    QWidget *current = ui->tabWidget->currentWidget();
+    return current == ui->general || current == torrentDetailsTab;
+}
+
+void MainWindow::refreshCurrentTorrentLiveDetailsIfNeeded()
+{
+    if (currentDetailsTorrentId < 0 || !currentTabWantsLiveTorrentDetails())
+        return;
+
+    client->getTorrentPieces(currentDetailsTorrentId);
 }
 
 void MainWindow::setupConnectionStatusIndicator()
@@ -2490,8 +2481,7 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
     if (!remoteDownloadDir.isEmpty())
         client->getFreeSpace(remoteDownloadDir);
 
-    if (currentDetailsTorrentId >= 0)
-        client->getTorrentPieces(currentDetailsTorrentId);
+    refreshCurrentTorrentLiveDetailsIfNeeded();
 }
 
 void MainWindow::updateFolderPriorityStates()
@@ -3292,42 +3282,22 @@ void MainWindow::setSelectedFilesPriorityState(int priority, bool wanted)
 
 void MainWindow::queueMoveSelectedTop()
 {
-    const QList<int> ids = selectedTorrentIds();
-
-    if (ids.isEmpty())
-        return;
-
-    client->queueMoveTop(ids);
+    invokeSelectedTorrentCommand(&rpc_client::queueMoveTop, QString());
 }
 
 void MainWindow::queueMoveSelectedUp()
 {
-    const QList<int> ids = selectedTorrentIds();
-
-    if (ids.isEmpty())
-        return;
-
-    client->queueMoveUp(ids);
+    invokeSelectedTorrentCommand(&rpc_client::queueMoveUp, QString());
 }
 
 void MainWindow::queueMoveSelectedDown()
 {
-    const QList<int> ids = selectedTorrentIds();
-
-    if (ids.isEmpty())
-        return;
-
-    client->queueMoveDown(ids);
+    invokeSelectedTorrentCommand(&rpc_client::queueMoveDown, QString());
 }
 
 void MainWindow::queueMoveSelectedBottom()
 {
-    const QList<int> ids = selectedTorrentIds();
-
-    if (ids.isEmpty())
-        return;
-
-    client->queueMoveBottom(ids);
+    invokeSelectedTorrentCommand(&rpc_client::queueMoveBottom, QString());
 }
 
 void MainWindow::showSessionSettings()
@@ -3419,22 +3389,8 @@ void MainWindow::updateConnectionStatus(int torrentCount)
 
 void MainWindow::forceStartSelectedTorrents()
 {
-    const QList<int> ids = selectedTorrentIds();
-
-    if (ids.isEmpty())
-        return;
-
-    client->startTorrentsNow(ids);
-
-    statusBar()->showMessage(
-        tr("Force starting selected torrent(s)..."),
-        3000
-        );
-/*
-    QTimer::singleShot(500, this, [this]() {
-        client->getTorrents();
-    });
-*/
+    invokeSelectedTorrentCommand(&rpc_client::startTorrentsNow,
+                                 tr("Force starting %1 torrent(s)..."));
 }
 
 void MainWindow::rebuildTorrentFilterList(const QVector<torrent> &torrents)
@@ -3463,6 +3419,11 @@ void MainWindow::rebuildTorrentFilterList(const QVector<torrent> &torrents)
 
     QStringList trackerHosts = uniqueTrackers.values();
     std::sort(trackerHosts.begin(), trackerHosts.end());
+
+    if (trackerHosts == lastTrackerFilterHosts && ui->listWidget->count() > 0)
+        return;
+
+    lastTrackerFilterHosts = trackerHosts;
 
     QSignalBlocker blocker(ui->listWidget);
 
