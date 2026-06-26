@@ -23,7 +23,6 @@ public:
                                const QString &currentVersion);
 
 signals:
-signals:
     void updateAvailable(const QString &currentVersion,
                          const QString &latestVersion,
                          const QUrl &releaseUrl,
@@ -47,7 +46,6 @@ private:
     QString m_owner = QStringLiteral("mveinot");
     QString m_repo = QStringLiteral("transmission-control");
 
-    bool m_userInitiated = false;
 
     QUrl latestReleaseUrl() const;
     static QList<int> parseVersionParts(const QString &version);

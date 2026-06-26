@@ -27,13 +27,12 @@ void UpdateChecker::setRepository(const QString &owner, const QString &repo)
 
 void UpdateChecker::checkForUpdates(bool userInitiated)
 {
-    m_userInitiated = userInitiated;
-
     QNetworkRequest request(latestReleaseUrl());
     request.setRawHeader("Accept", "application/vnd.github+json");
     request.setRawHeader("User-Agent", "Planetary");
 
-    m_network->get(request);
+    QNetworkReply *reply = m_network->get(request);
+    reply->setProperty("userInitiated", userInitiated);
 }
 
 QUrl UpdateChecker::latestReleaseUrl() const
@@ -46,8 +45,11 @@ void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
 {
     reply->deleteLater();
 
+    const bool userInitiated =
+        reply->property("userInitiated").toBool();
+
     if (reply->error() != QNetworkReply::NoError) {
-        emit updateCheckFailed(reply->errorString(), m_userInitiated);
+        emit updateCheckFailed(reply->errorString(), userInitiated);
         return;
     }
 
@@ -55,7 +57,7 @@ void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
         QJsonDocument::fromJson(reply->readAll());
 
     if (!document.isObject()) {
-        emit updateCheckFailed(tr("Invalid update response."), m_userInitiated);
+        emit updateCheckFailed(tr("Invalid update response."), userInitiated);
         return;
     }
 
@@ -69,7 +71,7 @@ void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
 
     if (tagName.isEmpty() || releaseUrlText.isEmpty()) {
         emit updateCheckFailed(tr("Update response did not include release information."),
-                               m_userInitiated);
+                               userInitiated);
         return;
     }
 
@@ -77,14 +79,14 @@ void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
         emit updateAvailable(m_currentVersion,
                              tagName,
                              QUrl(releaseUrlText),
-                             m_userInitiated);
+                             userInitiated);
         return;
     }
 
     emit noUpdateAvailable(m_currentVersion,
                            tagName,
                            QUrl(releaseUrlText),
-                           m_userInitiated);
+                           userInitiated);
 }
 
 bool UpdateChecker::isVersionNewer(const QString &latestVersion,

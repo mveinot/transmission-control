@@ -27,7 +27,7 @@ QT_END_NAMESPACE
 class TorrentAddController;
 class WatchFolderManager;
 class WatchFolderController;
-class UpdateChecker;
+class UpdateCheckController;
 class TorrentGeneralController;
 class TorrentFilesController;
 class TorrentPeersController;
@@ -128,7 +128,7 @@ private:
     void updateConnectionStatus(int torrentCount);
     QString formatBytes(qint64 bytes) const;
 
-    UpdateChecker *updateChecker = nullptr;
+    UpdateCheckController *updateCheckController = nullptr;
     TorrentGeneralController *torrentGeneralController = nullptr;
     TorrentFilesController *torrentFilesController = nullptr;
     TorrentPeersController *torrentPeersController = nullptr;
@@ -136,8 +136,6 @@ private:
     TorrentListController *torrentListController = nullptr;
     TorrentFilterController *torrentFilterController = nullptr;
 
-    void setupUpdateChecker();
-    void maybeCheckForUpdates();
 
 protected:
     void closeEvent(QCloseEvent *event) override;

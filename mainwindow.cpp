@@ -8,14 +8,13 @@
 #include "torrentfiltercontroller.h"
 #include "watchfoldercontroller.h"
 #include "watchfoldermanager.h"
+#include "updatecheckcontroller.h"
 #include <QActionGroup>
 #include <QApplication>
 #include <QAction>
 #include <QCloseEvent>
 #include <QCoreApplication>
 #include <QComboBox>
-#include <QDateTime>
-#include <QDesktopServices>
 #include <QDialog>
 #include <QDir>
 #include <QEvent>
@@ -35,7 +34,6 @@
 #include <QLocale>
 #include <QMenu>
 #include <QMessageBox>
-#include <QPushButton>
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QSizePolicy>
@@ -57,10 +55,8 @@
 #include "sessionsettingsdialog.h"
 #include "settingskeys.h"
 #include "torrentaddcontroller.h"
-#include "updatechecker.h"
 #include "settingsimportexport.h"
 #include "foldermapping.h"
-#include "version.h"
 
 namespace {
 constexpr int DefaultUpdateIntervalSeconds = 10;
@@ -69,18 +65,6 @@ constexpr int MaximumUpdateIntervalSeconds = 3600;
 }
 
 
-QString displayVersion(QString version)
-{
-    version = version.trimmed();
-
-    if (version.isEmpty())
-        return QStringLiteral("Unknown");
-
-    if (!version.startsWith(QLatin1Char('v'), Qt::CaseInsensitive))
-        version.prepend(QLatin1Char('v'));
-
-    return version;
-}
 
 void MainWindow::clearGeneralTab()
 {
@@ -172,8 +156,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Initialization methods
     loadServerCombo();
-    setupUpdateChecker();
-    maybeCheckForUpdates();
+    updateCheckController = new UpdateCheckController(this, this);
+    updateCheckController->setup();
+
+    connect(updateCheckController, &UpdateCheckController::statusMessageRequested,
+            this, [this](const QString &message, int timeoutMs) {
+                statusBar()->showMessage(message, timeoutMs);
+            });
+
+    updateCheckController->maybeCheckAutomatically();
     setupConnectionStatusIndicator();
     watchFolderManager = new WatchFolderManager(this);
     watchFolderController = new WatchFolderController(
@@ -357,8 +348,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->actionCheckForUpdates, &QAction::triggered,
             this, [this]() {
-                if (updateChecker)
-                    updateChecker->checkForUpdates(true);
+                if (updateCheckController)
+                    updateCheckController->checkNow();
             });
 
     connect(ui->tabWidget, &QTabWidget::currentChanged,
@@ -1313,7 +1304,6 @@ void MainWindow::updateConnectionStatus(int torrentCount)
     }
 }
 
-
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
     Q_UNUSED(watched)
@@ -1358,116 +1348,6 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
     }
 
     return QMainWindow::eventFilter(watched, event);
-}
-
-void MainWindow::setupUpdateChecker()
-{
-    updateChecker = new UpdateChecker(this);
-    updateChecker->setCurrentVersion(QStringLiteral(PLANETARY_VERSION_STRING));
-    updateChecker->setRepository(QStringLiteral("mveinot"),
-                                 QStringLiteral("transmission-control"));
-
-    connect(updateChecker, &UpdateChecker::updateAvailable,
-            this,
-            [this](const QString &currentVersion,
-                   const QString &latestVersion,
-                   const QUrl &releaseUrl,
-                   bool userInitiated) {
-                Q_UNUSED(userInitiated)
-
-                QMessageBox messageBox(this);
-                messageBox.setIcon(QMessageBox::Information);
-                messageBox.setWindowTitle(tr("Update Available"));
-                messageBox.setText(tr("A newer version of Planetary is available."));
-                messageBox.setInformativeText(
-                    tr("Installed version: %1\nLatest version: %2")
-                        .arg(displayVersion(currentVersion),
-                             displayVersion(latestVersion))
-                    );
-
-                QPushButton *openButton =
-                    messageBox.addButton(tr("Open Release Page"),
-                                         QMessageBox::AcceptRole);
-
-                messageBox.addButton(QMessageBox::Cancel);
-
-                messageBox.exec();
-
-                if (messageBox.clickedButton() == openButton)
-                    QDesktopServices::openUrl(releaseUrl);
-            });
-
-    connect(updateChecker, &UpdateChecker::noUpdateAvailable,
-            this,
-            [this](const QString &currentVersion,
-                   const QString &latestVersion,
-                   const QUrl &releaseUrl,
-                   bool userInitiated) {
-                if (!userInitiated)
-                    return;
-
-                QMessageBox messageBox(this);
-                messageBox.setIcon(QMessageBox::Information);
-                messageBox.setWindowTitle(tr("Planetary Is Up to Date"));
-                messageBox.setText(tr("You are running the latest available version of Planetary."));
-                messageBox.setInformativeText(
-                    tr("Installed version: %1\nLatest version: %2")
-                        .arg(displayVersion(currentVersion),
-                             displayVersion(latestVersion))
-                    );
-
-                QPushButton *openButton =
-                    messageBox.addButton(tr("Open Release Page"),
-                                         QMessageBox::ActionRole);
-
-                messageBox.addButton(QMessageBox::Ok);
-
-                messageBox.exec();
-
-                if (messageBox.clickedButton() == openButton)
-                    QDesktopServices::openUrl(releaseUrl);
-            });
-
-    connect(updateChecker, &UpdateChecker::updateCheckFailed,
-            this,
-            [this](const QString &message, bool userInitiated) {
-                if (userInitiated) {
-                    QMessageBox::warning(
-                        this,
-                        tr("Update Check Failed"),
-                        tr("Planetary could not check for updates.\n\n%1").arg(message)
-                        );
-                    return;
-                }
-
-                statusBar()->showMessage(
-                    tr("Update check failed: %1").arg(message),
-                    5000
-                    );
-            });
-}
-
-void MainWindow::maybeCheckForUpdates()
-{
-    QSettings settings;
-
-    const bool enabled =
-        settings.value(QStringLiteral("updates/checkAutomatically"), true).toBool();
-
-    if (!enabled)
-        return;
-
-    const QDateTime lastCheck =
-        settings.value(QStringLiteral("updates/lastCheck")).toDateTime();
-
-    const QDateTime now = QDateTime::currentDateTimeUtc();
-
-    if (lastCheck.isValid() && lastCheck.secsTo(now) < 24 * 60 * 60)
-        return;
-
-    settings.setValue(QStringLiteral("updates/lastCheck"), now);
-
-    updateChecker->checkForUpdates(false);
 }
 
 void MainWindow::exportSettings()

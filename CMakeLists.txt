@@ -120,6 +120,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         watchfoldermanager.h watchfoldermanager.cpp
         watchfoldercontroller.h watchfoldercontroller.cpp
         updatechecker.h updatechecker.cpp
+        updatecheckcontroller.h updatecheckcontroller.cpp
         Resources/licenses/gpl-2.0.txt
         Resources/translations/planetary_fr_CA.qm
         settingsimportexport.h settingsimportexport.cpp
