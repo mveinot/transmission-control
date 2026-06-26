@@ -33,6 +33,7 @@ class TorrentAddController;
 class UpdateChecker;
 class PieceMapWidget;
 class QGroupBox;
+class QTableWidget;
 
 class MainWindow : public QMainWindow
 {
@@ -139,6 +140,9 @@ private:
     void populateTrackerTable(const QJsonObject &details);
     void clearGeneralTab();
     void clearTrackerTable();
+    void setupTorrentDetailsTab();
+    void clearTorrentDetailsTab();
+    void updateTorrentDetailsTab(const QJsonObject &details);
     bool trayIconEnabled() const;
     bool trayNotificationsEnabled() const;
     void updateFolderPriorityStates();
@@ -204,6 +208,9 @@ private:
     UpdateChecker *updateChecker = nullptr;
     QGroupBox *pieceMapGroup = nullptr;
     PieceMapWidget *pieceMapWidget = nullptr;
+    QWidget *torrentDetailsTab = nullptr;
+    QTableWidget *torrentDetailsTable = nullptr;
+    QJsonObject currentTorrentDetailsCache;
 
     void setupPieceMapWidget();
     void updatePieceMap(const QJsonObject &details);
