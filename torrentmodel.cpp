@@ -52,6 +52,9 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
         case StatusColumn:
             return t.getStatus();
 
+        case TrackerColumn:
+            return t.getPrimaryTrackerHost();
+
         case RateDownloadColumn:
             return t.getRateDownload();
 
@@ -66,6 +69,18 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
 
         case QueueColumn:
             return t.getQueuePosition();
+
+        case AddedColumn:
+            return t.getAddedDate();
+
+        case DownloadedEverColumn:
+            return t.getDownloadedEver();
+
+        case UploadedEverColumn:
+            return t.getUploadedEver();
+
+        case PeersConnectedColumn:
+            return t.getPeersConnected();
 
         default:
             return {};
@@ -109,20 +124,35 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
         case StatusColumn:
             return t.getStatus();
 
+        case TrackerColumn:
+            return t.getPrimaryTrackerHost();
+
         case RateDownloadColumn:
-            return t.getRateDownload();
+            return t.getRateDownloadBytesPerSecond();
 
         case RateUploadColumn:
-            return t.getRateUpload();
+            return t.getRateUploadBytesPerSecond();
 
         case UploadRatioColumn:
-            return t.getUploadRatio();
+            return t.getUploadRatioValue();
 
         case EtaColumn:
-            return t.getEta();
+            return t.getEtaSeconds();
 
         case QueueColumn:
             return t.getQueuePosition();
+
+        case AddedColumn:
+            return t.getAddedDateSecs();
+
+        case DownloadedEverColumn:
+            return t.getDownloadedEverBytes();
+
+        case UploadedEverColumn:
+            return t.getUploadedEverBytes();
+
+        case PeersConnectedColumn:
+            return t.getPeersConnected();
 
         default:
             return {};
@@ -138,6 +168,11 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
         case RateUploadColumn:
         case UploadRatioColumn:
         case EtaColumn:
+        case QueueColumn:
+        case AddedColumn:
+        case DownloadedEverColumn:
+        case UploadedEverColumn:
+        case PeersConnectedColumn:
             return static_cast<int>(Qt::AlignRight | Qt::AlignVCenter);
 
         default:
@@ -173,6 +208,9 @@ QVariant TorrentModel::headerData(int section,
         case StatusColumn:
             return "Status";
 
+        case TrackerColumn:
+            return "Tracker";
+
         case RateDownloadColumn:
             return "Down";
 
@@ -187,6 +225,18 @@ QVariant TorrentModel::headerData(int section,
 
         case QueueColumn:
             return "Queue";
+
+        case AddedColumn:
+            return "Added";
+
+        case DownloadedEverColumn:
+            return "Downloaded";
+
+        case UploadedEverColumn:
+            return "Uploaded";
+
+        case PeersConnectedColumn:
+            return "Peers";
 
         default:
             return {};

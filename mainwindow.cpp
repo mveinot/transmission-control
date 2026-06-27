@@ -575,15 +575,8 @@ void MainWindow::saveTableViewState()
 {
     QSettings settings;
 
-    settings.setValue(
-        "ui/tableView/horizontalHeaderState/v3",
-        ui->tableView->horizontalHeader()->saveState()
-        );
-
-    settings.setValue(
-        "ui/tableView/verticalHeaderState/v2",
-        ui->tableView->verticalHeader()->saveState()
-        );
+    if (torrentListController)
+        torrentListController->saveViewState();
 
     settings.setValue(
         "ui/fileTreeWidget/headerState/v4",
@@ -606,19 +599,8 @@ void MainWindow::restoreTableViewState()
 {
     QSettings settings;
 
-    const QByteArray horizontalState =
-        settings.value("ui/tableView/horizontalHeaderState/v3").toByteArray();
-
-    if (!horizontalState.isEmpty()) {
-        ui->tableView->horizontalHeader()->restoreState(horizontalState);
-    }
-
-    const QByteArray verticalState =
-        settings.value("ui/tableView/verticalHeaderState/v2").toByteArray();
-
-    if (!verticalState.isEmpty()) {
-        ui->tableView->verticalHeader()->restoreState(verticalState);
-    }
+    if (torrentListController)
+        torrentListController->restoreViewState();
 
     const QByteArray fileTreeHeaderState =
         settings.value("ui/fileTreeWidget/headerState/v4").toByteArray();

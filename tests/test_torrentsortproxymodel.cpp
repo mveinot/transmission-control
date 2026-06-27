@@ -1,5 +1,8 @@
 #include <QtTest/QtTest>
 
+#include <QJsonArray>
+#include <QJsonObject>
+
 #include "torrentmodel.h"
 #include "torrentsortproxymodel.h"
 
@@ -24,6 +27,32 @@ QJsonValue makeTorrentValue(int id,
     object["eta"] = 0;
     object["sizeWhenDone"] = static_cast<double>(sizeWhenDone);
     object["queuePosition"] = queuePosition;
+    return object;
+}
+
+
+QJsonValue makeTorrentValueWithTrackers(int id,
+                                        const QString &name,
+                                        int status,
+                                        double percentDone,
+                                        const QStringList &trackerHosts)
+{
+    QJsonObject object = makeTorrentValue(id,
+                                          name,
+                                          status,
+                                          percentDone,
+                                          0.0,
+                                          1024,
+                                          id).toObject();
+
+    QJsonArray trackerStats;
+    for (const QString &host : trackerHosts) {
+        QJsonObject tracker;
+        tracker[QStringLiteral("host")] = host;
+        trackerStats.append(tracker);
+    }
+
+    object[QStringLiteral("trackerStats")] = trackerStats;
     return object;
 }
 
@@ -54,6 +83,8 @@ private slots:
     void filtersCompletedTorrents();
     void filtersActiveTorrents();
     void filtersInactiveTorrents();
+    void filtersByTrackerHost();
+    void combinesStateAndTrackerFilters();
 };
 
 void TestTorrentSortProxyModel::sortsByQueuePosition()
@@ -124,6 +155,42 @@ void TestTorrentSortProxyModel::filtersInactiveTorrents()
     proxy.setStateFilter(TorrentSortProxyModel::StateFilter::Inactive);
 
     QCOMPARE(proxy.rowCount(), 4);
+}
+
+void TestTorrentSortProxyModel::filtersByTrackerHost()
+{
+    TorrentModel sourceModel;
+    sourceModel.applyUpdate(makeTorrentList({
+        makeTorrentValueWithTrackers(1, "Ubuntu", 4, 0.25, { QStringLiteral("tracker.example.com") }),
+        makeTorrentValueWithTrackers(2, "Debian", 4, 0.25, { QStringLiteral("other.example.com") }),
+        makeTorrentValueWithTrackers(3, "Fedora", 4, 0.25, { QStringLiteral("TRACKER.EXAMPLE.COM:6969") }),
+    }));
+
+    TorrentSortProxyModel proxy;
+    proxy.setSourceModel(&sourceModel);
+    proxy.setTrackerFilter(QStringLiteral("tracker.example.com"));
+
+    QCOMPARE(proxy.rowCount(), 2);
+    QCOMPARE(torrentIdAtProxyRow(proxy, 0), 1);
+    QCOMPARE(torrentIdAtProxyRow(proxy, 1), 3);
+}
+
+void TestTorrentSortProxyModel::combinesStateAndTrackerFilters()
+{
+    TorrentModel sourceModel;
+    sourceModel.applyUpdate(makeTorrentList({
+        makeTorrentValueWithTrackers(1, "Partial Matching Tracker", 4, 0.25, { QStringLiteral("tracker.example.com") }),
+        makeTorrentValueWithTrackers(2, "Complete Matching Tracker", 6, 1.0, { QStringLiteral("tracker.example.com") }),
+        makeTorrentValueWithTrackers(3, "Complete Other Tracker", 6, 1.0, { QStringLiteral("other.example.com") }),
+    }));
+
+    TorrentSortProxyModel proxy;
+    proxy.setSourceModel(&sourceModel);
+    proxy.setStateFilter(TorrentSortProxyModel::StateFilter::Completed);
+    proxy.setTrackerFilter(QStringLiteral("tracker.example.com"));
+
+    QCOMPARE(proxy.rowCount(), 1);
+    QCOMPARE(torrentIdAtProxyRow(proxy, 0), 2);
 }
 
 QTEST_MAIN(TestTorrentSortProxyModel)

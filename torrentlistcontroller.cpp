@@ -5,8 +5,10 @@
 #include "torrentpropertiesdialog.h"
 #include "torrentsortproxymodel.h"
 
+#include <QAbstractItemModel>
 #include <QAbstractItemView>
 #include <QAction>
+#include <QActionGroup>
 #include <QApplication>
 #include <QCheckBox>
 #include <QClipboard>
@@ -21,9 +23,85 @@
 #include <QMessageBox>
 #include <QModelIndex>
 #include <QPushButton>
+#include <QSettings>
 #include <QTableView>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QVector>
+
+
+namespace {
+
+constexpr const char *TorrentTableHeaderStateKey =
+    "ui/torrentTable/horizontalHeaderState/v1";
+constexpr const char *TorrentTableVerticalHeaderStateKey =
+    "ui/torrentTable/verticalHeaderState/v1";
+constexpr const char *TorrentTableVisibleColumnsKey =
+    "ui/torrentTable/visibleColumns/v1";
+
+struct TorrentColumnDefinition
+{
+    TorrentModel::Column column;
+    const char *id;
+    bool defaultVisible;
+    bool userConfigurable;
+};
+
+const QVector<TorrentColumnDefinition> &torrentColumnDefinitions()
+{
+    static const QVector<TorrentColumnDefinition> definitions = {
+        { TorrentModel::IdColumn, "id", false, false },
+        { TorrentModel::NameColumn, "name", true, false },
+        { TorrentModel::SizeColumn, "size", true, true },
+        { TorrentModel::PercentDoneColumn, "completed", true, true },
+        { TorrentModel::StatusColumn, "status", true, true },
+        { TorrentModel::TrackerColumn, "tracker", true, true },
+        { TorrentModel::RateDownloadColumn, "down", true, true },
+        { TorrentModel::RateUploadColumn, "up", true, true },
+        { TorrentModel::UploadRatioColumn, "ratio", true, true },
+        { TorrentModel::EtaColumn, "eta", true, true },
+        { TorrentModel::QueueColumn, "queue", true, true },
+        { TorrentModel::AddedColumn, "added", false, true },
+        { TorrentModel::DownloadedEverColumn, "downloaded", false, true },
+        { TorrentModel::UploadedEverColumn, "uploaded", false, true },
+        { TorrentModel::PeersConnectedColumn, "peers", false, true },
+    };
+
+    return definitions;
+}
+
+const TorrentColumnDefinition *definitionForColumn(int column)
+{
+    for (const TorrentColumnDefinition &definition : torrentColumnDefinitions()) {
+        if (definition.column == column)
+            return &definition;
+    }
+
+    return nullptr;
+}
+
+
+QStringList defaultVisibleColumnIds()
+{
+    QStringList ids;
+
+    for (const TorrentColumnDefinition &definition : torrentColumnDefinitions()) {
+        if (definition.defaultVisible)
+            ids.append(QString::fromLatin1(definition.id));
+    }
+
+    return ids;
+}
+
+QString columnTitle(QAbstractItemModel *model, int column)
+{
+    if (!model)
+        return QString();
+
+    return model->headerData(column, Qt::Horizontal, Qt::DisplayRole).toString();
+}
+
+} // namespace
 
 TorrentListController::TorrentListController(QTableView *tableView,
                                              TorrentSortProxyModel *proxyModel,
@@ -46,12 +124,20 @@ void TorrentListController::setup(const ActionSet &actions)
         return;
 
     m_tableView->setModel(m_proxyModel);
-    m_tableView->hideColumn(TorrentModel::IdColumn);
+    applyDefaultColumnVisibility();
     m_tableView->setSortingEnabled(true);
     m_tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_tableView->sortByColumn(TorrentModel::NameColumn, Qt::AscendingOrder);
     m_tableView->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    if (m_tableView->horizontalHeader()) {
+        m_tableView->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(m_tableView->horizontalHeader(),
+                &QHeaderView::customContextMenuRequested,
+                this,
+                &TorrentListController::showHeaderContextMenu);
+    }
 
     if (m_tableView->selectionModel()) {
         connect(m_tableView->selectionModel(),
@@ -78,6 +164,58 @@ void TorrentListController::setup(const ActionSet &actions)
     }
 
     updateActionState();
+}
+
+void TorrentListController::restoreViewState()
+{
+    if (!m_tableView)
+        return;
+
+    QSettings settings;
+
+    const QByteArray horizontalState =
+        settings.value(QString::fromLatin1(TorrentTableHeaderStateKey)).toByteArray();
+
+    if (!horizontalState.isEmpty() && m_tableView->horizontalHeader())
+        m_tableView->horizontalHeader()->restoreState(horizontalState);
+
+    const QByteArray verticalState =
+        settings.value(QString::fromLatin1(TorrentTableVerticalHeaderStateKey)).toByteArray();
+
+    if (!verticalState.isEmpty() && m_tableView->verticalHeader())
+        m_tableView->verticalHeader()->restoreState(verticalState);
+
+    applySavedColumnVisibility();
+}
+
+void TorrentListController::saveViewState() const
+{
+    if (!m_tableView)
+        return;
+
+    QSettings settings;
+
+    if (m_tableView->horizontalHeader()) {
+        settings.setValue(QString::fromLatin1(TorrentTableHeaderStateKey),
+                          m_tableView->horizontalHeader()->saveState());
+    }
+
+    if (m_tableView->verticalHeader()) {
+        settings.setValue(QString::fromLatin1(TorrentTableVerticalHeaderStateKey),
+                          m_tableView->verticalHeader()->saveState());
+    }
+
+    QStringList visibleColumnIds;
+
+    for (const TorrentColumnDefinition &definition : torrentColumnDefinitions()) {
+        if (!definition.userConfigurable && definition.column != TorrentModel::NameColumn)
+            continue;
+
+        if (!m_tableView->isColumnHidden(definition.column))
+            visibleColumnIds.append(QString::fromLatin1(definition.id));
+    }
+
+    settings.setValue(QString::fromLatin1(TorrentTableVisibleColumnsKey), visibleColumnIds);
 }
 
 int TorrentListController::currentTorrentId() const
@@ -350,6 +488,52 @@ void TorrentListController::showContextMenu(const QPoint &pos)
     menu.exec(m_tableView->viewport()->mapToGlobal(pos));
 }
 
+void TorrentListController::showHeaderContextMenu(const QPoint &pos)
+{
+    if (!m_tableView || !m_tableView->horizontalHeader())
+        return;
+
+    QMenu menu(m_dialogParent);
+    QActionGroup *columnGroup = new QActionGroup(&menu);
+    columnGroup->setExclusive(false);
+
+    for (const TorrentColumnDefinition &definition : torrentColumnDefinitions()) {
+        if (!definition.userConfigurable && definition.column != TorrentModel::NameColumn)
+            continue;
+
+        QAction *action = menu.addAction(
+            columnTitle(m_proxyModel, definition.column)
+            );
+
+        action->setCheckable(true);
+        action->setChecked(!m_tableView->isColumnHidden(definition.column));
+        action->setData(definition.column);
+
+        if (definition.column == TorrentModel::NameColumn)
+            action->setEnabled(false);
+
+        columnGroup->addAction(action);
+
+        connect(action,
+                &QAction::toggled,
+                this,
+                [this, column = int(definition.column)](bool checked) {
+                    setColumnVisible(column, checked);
+                });
+    }
+
+    menu.addSeparator();
+
+    QAction *resetAction = menu.addAction(tr("Reset Columns"));
+
+    connect(resetAction,
+            &QAction::triggered,
+            this,
+            &TorrentListController::resetColumns);
+
+    menu.exec(m_tableView->horizontalHeader()->mapToGlobal(pos));
+}
+
 void TorrentListController::deleteSelectedTorrents()
 {
     const QList<int> ids = selectedTorrentIds();
@@ -620,4 +804,93 @@ void TorrentListController::refreshCurrentTorrentDetails()
 
     if (torrentId >= 0)
         emit torrentDetailsRefreshRequested(torrentId);
+}
+
+void TorrentListController::applyDefaultColumnVisibility()
+{
+    if (!m_tableView)
+        return;
+
+    const QStringList visibleIds = defaultVisibleColumnIds();
+
+    for (const TorrentColumnDefinition &definition : torrentColumnDefinitions()) {
+        const bool visible = visibleIds.contains(QString::fromLatin1(definition.id));
+        m_tableView->setColumnHidden(definition.column, !visible);
+    }
+
+    m_tableView->setColumnHidden(TorrentModel::IdColumn, true);
+    m_tableView->setColumnHidden(TorrentModel::NameColumn, false);
+}
+
+void TorrentListController::applySavedColumnVisibility()
+{
+    if (!m_tableView)
+        return;
+
+    QSettings settings;
+    const QVariant storedValue =
+        settings.value(QString::fromLatin1(TorrentTableVisibleColumnsKey));
+
+    if (!storedValue.isValid()) {
+        applyDefaultColumnVisibility();
+        return;
+    }
+
+    QStringList visibleIds = storedValue.toStringList();
+
+    if (visibleIds.isEmpty())
+        visibleIds = defaultVisibleColumnIds();
+
+    if (!visibleIds.contains(QStringLiteral("name")))
+        visibleIds.append(QStringLiteral("name"));
+
+    for (const TorrentColumnDefinition &definition : torrentColumnDefinitions()) {
+        const QString id = QString::fromLatin1(definition.id);
+        const bool visible = visibleIds.contains(id);
+        m_tableView->setColumnHidden(definition.column, !visible);
+    }
+
+    m_tableView->setColumnHidden(TorrentModel::IdColumn, true);
+    m_tableView->setColumnHidden(TorrentModel::NameColumn, false);
+}
+
+void TorrentListController::setColumnVisible(int column, bool visible)
+{
+    if (!m_tableView)
+        return;
+
+    if (column == TorrentModel::IdColumn)
+        return;
+
+    if (column == TorrentModel::NameColumn) {
+        m_tableView->setColumnHidden(TorrentModel::NameColumn, false);
+        return;
+    }
+
+    if (!definitionForColumn(column))
+        return;
+
+    m_tableView->setColumnHidden(column, !visible);
+    saveViewState();
+}
+
+void TorrentListController::resetColumns()
+{
+    if (!m_tableView)
+        return;
+
+    QSettings settings;
+    settings.remove(QString::fromLatin1(TorrentTableHeaderStateKey));
+    settings.remove(QString::fromLatin1(TorrentTableVerticalHeaderStateKey));
+    settings.remove(QString::fromLatin1(TorrentTableVisibleColumnsKey));
+
+    if (m_tableView->horizontalHeader())
+        m_tableView->horizontalHeader()->reset();
+
+    if (m_tableView->verticalHeader())
+        m_tableView->verticalHeader()->reset();
+
+    applyDefaultColumnVisibility();
+    m_tableView->sortByColumn(TorrentModel::NameColumn, Qt::AscendingOrder);
+    saveViewState();
 }

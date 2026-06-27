@@ -29,10 +29,13 @@ bool TorrentSortProxyModel::lessThan(const QModelIndex &left, const QModelIndex 
 
     switch (left.column()) {
     case TorrentModel::IdColumn:
-    case TorrentModel::StatusColumn:
     case TorrentModel::EtaColumn:
     case TorrentModel::QueueColumn:
-        return lhs.toInt() < rhs.toInt();
+    case TorrentModel::AddedColumn:
+    case TorrentModel::DownloadedEverColumn:
+    case TorrentModel::UploadedEverColumn:
+    case TorrentModel::PeersConnectedColumn:
+        return lhs.toLongLong() < rhs.toLongLong();
 
     case TorrentModel::PercentDoneColumn:
     case TorrentModel::RateDownloadColumn:
@@ -43,6 +46,8 @@ bool TorrentSortProxyModel::lessThan(const QModelIndex &left, const QModelIndex 
         return lhs.toLongLong() < rhs.toLongLong();
 
     case TorrentModel::NameColumn:
+    case TorrentModel::StatusColumn:
+    case TorrentModel::TrackerColumn:
     default:
         return QString::localeAwareCompare(lhs.toString(), rhs.toString()) < 0;
     }

@@ -498,6 +498,10 @@ void rpc_client::getTorrentList()
         "eta",
         "sizeWhenDone",
         "queuePosition",
+        "addedDate",
+        "downloadedEver",
+        "uploadedEver",
+        "peersConnected",
         "trackers",
         "trackerStats"
     };

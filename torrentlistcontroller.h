@@ -37,6 +37,8 @@ public:
                                    QObject *parent = nullptr);
 
     void setup(const ActionSet &actions);
+    void restoreViewState();
+    void saveViewState() const;
 
     int currentTorrentId() const;
     QList<int> selectedTorrentIds() const;
@@ -53,6 +55,7 @@ public slots:
     void handleTableClicked(const QModelIndex &proxyIndex);
     void updateActionState();
     void showContextMenu(const QPoint &pos);
+    void showHeaderContextMenu(const QPoint &pos);
 
     void deleteSelectedTorrents();
     void startSelectedTorrents();
@@ -93,6 +96,10 @@ private:
     void copyTextToClipboard(const QString &text,
                              const QString &statusMessage);
     void refreshCurrentTorrentDetails();
+    void applyDefaultColumnVisibility();
+    void applySavedColumnVisibility();
+    void setColumnVisible(int column, bool visible);
+    void resetColumns();
 };
 
 #endif // TORRENTLISTCONTROLLER_H

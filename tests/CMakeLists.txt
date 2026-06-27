@@ -1,4 +1,4 @@
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Test Widgets Core)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Test Widgets Core Network)
 
 function(add_planetary_test target)
     add_executable(${target}
@@ -14,6 +14,7 @@ function(add_planetary_test target)
         Qt${QT_VERSION_MAJOR}::Core
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Test
+        Qt${QT_VERSION_MAJOR}::Network
     )
 
     add_test(NAME ${target} COMMAND ${target})
@@ -58,4 +59,28 @@ add_planetary_test(test_bencodeparser
     ${CMAKE_SOURCE_DIR}/bencodeparser.h
     ${CMAKE_SOURCE_DIR}/torrentmetadataparser.cpp
     ${CMAKE_SOURCE_DIR}/torrentmetadataparser.h
+)
+
+add_planetary_test(test_updatechecker
+    test_updatechecker.cpp
+    ${CMAKE_SOURCE_DIR}/updatechecker.cpp
+    ${CMAKE_SOURCE_DIR}/updatechecker.h
+)
+
+add_planetary_test(test_watchfoldermanager
+    test_watchfoldermanager.cpp
+    ${CMAKE_SOURCE_DIR}/watchfoldermanager.cpp
+    ${CMAKE_SOURCE_DIR}/watchfoldermanager.h
+)
+
+add_planetary_test(test_torrentfiltercontroller
+    test_torrentfiltercontroller.cpp
+    ${CMAKE_SOURCE_DIR}/torrent.cpp
+    ${CMAKE_SOURCE_DIR}/torrent.h
+    ${CMAKE_SOURCE_DIR}/torrentmodel.cpp
+    ${CMAKE_SOURCE_DIR}/torrentmodel.h
+    ${CMAKE_SOURCE_DIR}/torrentsortproxymodel.cpp
+    ${CMAKE_SOURCE_DIR}/torrentsortproxymodel.h
+    ${CMAKE_SOURCE_DIR}/torrentfiltercontroller.cpp
+    ${CMAKE_SOURCE_DIR}/torrentfiltercontroller.h
 )

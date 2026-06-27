@@ -19,11 +19,16 @@ public:
         SizeColumn,
         PercentDoneColumn,
         StatusColumn,
+        TrackerColumn,
         RateDownloadColumn,
         RateUploadColumn,
         UploadRatioColumn,
         EtaColumn,
         QueueColumn,
+        AddedColumn,
+        DownloadedEverColumn,
+        UploadedEverColumn,
+        PeersConnectedColumn,
         ColumnCount
     };
 

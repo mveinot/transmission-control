@@ -1,4 +1,5 @@
 #include "torrent.h"
+#include <QDateTime>
 #include <QUrl>
 
 static QString normalizedTrackerHost(QString host)
@@ -39,6 +40,10 @@ torrent::torrent(const QJsonValue &val)
     files = obj.value("files");
     peers = obj.value("peers");
     sizeWhenDone = obj.value("sizeWhenDone").toDouble();
+    addedDate = static_cast<qint64>(obj.value("addedDate").toDouble());
+    downloadedEver = static_cast<qint64>(obj.value("downloadedEver").toDouble());
+    uploadedEver = static_cast<qint64>(obj.value("uploadedEver").toDouble());
+    peersConnected = obj.value("peersConnected").toInt();
     queuePosition = obj.value("queuePosition").toInt();
 
     trackerHosts.clear();
@@ -95,11 +100,6 @@ torrent::torrent(const QJsonValue &val)
 
         addTrackerHost(host);
     }
-
-    std::sort(trackerHosts.begin(), trackerHosts.end());
-
-    if (!trackerHosts.isEmpty())
-        primaryTrackerHost = trackerHosts.first();
 
     std::sort(trackerHosts.begin(), trackerHosts.end());
 
@@ -164,6 +164,11 @@ QString torrent::getRateDownload() const
     return rateDownloadStr;
 }
 
+double torrent::getRateDownloadBytesPerSecond() const
+{
+    return rateDownload;
+}
+
 QString torrent::getRateUpload() const
 {
     if (rateUpload == 0)
@@ -174,9 +179,19 @@ QString torrent::getRateUpload() const
     return rateUploadStr;
 }
 
+double torrent::getRateUploadBytesPerSecond() const
+{
+    return rateUpload;
+}
+
 QString torrent::getUploadRatio() const
 {
     return QString("%1").arg(uploadRatio,5, 'f', 3);
+}
+
+double torrent::getUploadRatioValue() const
+{
+    return uploadRatio;
 }
 
 QString torrent::getSize() const
@@ -191,6 +206,63 @@ QString torrent::getSize() const
 qint64 torrent::getSizeBytes() const
 {
     return sizeWhenDone;
+}
+
+QString torrent::getAddedDate() const
+{
+    if (addedDate <= 0)
+        return QString();
+
+    return QDateTime::fromSecsSinceEpoch(addedDate).toString(QStringLiteral("yyyy-MM-dd HH:mm"));
+}
+
+qint64 torrent::getAddedDateSecs() const
+{
+    return addedDate;
+}
+
+QString torrent::getDownloadedEver() const
+{
+    if (downloadedEver <= 0)
+        return QString();
+
+    return QLocale().formattedDataSize(
+        downloadedEver,
+        1,
+        QLocale::DataSizeIecFormat
+        );
+}
+
+qint64 torrent::getDownloadedEverBytes() const
+{
+    return downloadedEver;
+}
+
+QString torrent::getUploadedEver() const
+{
+    if (uploadedEver <= 0)
+        return QString();
+
+    return QLocale().formattedDataSize(
+        uploadedEver,
+        1,
+        QLocale::DataSizeIecFormat
+        );
+}
+
+qint64 torrent::getUploadedEverBytes() const
+{
+    return uploadedEver;
+}
+
+int torrent::getPeersConnected() const
+{
+    return peersConnected;
+}
+
+int torrent::getEtaSeconds() const
+{
+    return eta;
 }
 
 QString torrent::getEta() const
@@ -245,6 +317,10 @@ bool torrent::sameDisplayData(const torrent &other) const
            && status == other.status
            && eta == other.eta
            && sizeWhenDone == other.sizeWhenDone
+           && addedDate == other.addedDate
+           && downloadedEver == other.downloadedEver
+           && uploadedEver == other.uploadedEver
+           && peersConnected == other.peersConnected
            && queuePosition == other.queuePosition
            && primaryTrackerHost == other.primaryTrackerHost
            && trackerHosts == other.trackerHosts;
