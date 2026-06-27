@@ -122,6 +122,21 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         }
     };
 
+    const auto emitRequestFailed = [this, isTorrentGet, requestType, &context](const QString &message) {
+        if (isTorrentGet) {
+            emit updateFailed(message);
+            return;
+        }
+
+        if (requestType == RpcRequestType::Command
+            && context.method == QStringLiteral("torrent-add")
+            && !context.torrentFilePath.isEmpty()) {
+            emit torrentFileAddFailed(context.torrentFilePath, message);
+        }
+
+        emit commandFailed(context.method, message);
+    };
+
     if (reply->error() == QNetworkReply::ContentConflictError) {
         const QByteArray token =
             reply->rawHeader("X-Transmission-Session-Id");
@@ -132,17 +147,7 @@ void rpc_client::replyFinished(QNetworkReply *reply)
             const QString message =
                 tr("Transmission returned 409 without a session token.");
 
-            if (isTorrentGet) {
-                emit updateFailed(message);
-            } else if (requestType == RpcRequestType::Command) {
-                if (context.method == QStringLiteral("torrent-add")
-                    && !context.torrentFilePath.isEmpty()) {
-                    emit torrentFileAddFailed(context.torrentFilePath, message);
-                }
-
-                emit commandFailed(context.method, message);
-            }
-
+            emitRequestFailed(message);
             finishTorrentGet();
             return;
         }
@@ -153,25 +158,12 @@ void rpc_client::replyFinished(QNetworkReply *reply)
             const QString message =
                 tr("Transmission session token retry failed.");
 
-            if (isTorrentGet) {
-                emit updateFailed(message);
-            } else if (requestType == RpcRequestType::Command) {
-                if (context.method == QStringLiteral("torrent-add")
-                    && !context.torrentFilePath.isEmpty()) {
-                    emit torrentFileAddFailed(context.torrentFilePath, message);
-                }
-
-                emit commandFailed(context.method, message);
-            }
-
+            emitRequestFailed(message);
             finishTorrentGet();
             return;
         }
 
         context.retriedAfterAuth = true;
-
-        if (isTorrentGet)
-            updateInProgress = false;
 
         postRpc(context);
 
@@ -183,16 +175,7 @@ void rpc_client::replyFinished(QNetworkReply *reply)
 
         qDebug() << "Network reply ERROR:" << message;
 
-        if (isTorrentGet) {
-            emit updateFailed(message);
-        } else if (requestType == RpcRequestType::Command) {
-            if (context.method == QStringLiteral("torrent-add")
-                && !context.torrentFilePath.isEmpty()) {
-                emit torrentFileAddFailed(context.torrentFilePath, message);
-            }
-
-            emit commandFailed(context.method, message);
-        }
+        emitRequestFailed(message);
 
         reply->deleteLater();
         finishTorrentGet();
@@ -211,40 +194,8 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         const QString message =
             tr("Invalid JSON response from Transmission.");
 
-        if (isTorrentGet) {
-            emit updateFailed(message);
-        } else if (requestType == RpcRequestType::Command) {
-            if (context.method == QStringLiteral("torrent-add")
-                && !context.torrentFilePath.isEmpty()) {
-                emit torrentFileAddFailed(context.torrentFilePath, message);
-            }
-
-            emit commandFailed(context.method, message);
-        }
-
+        emitRequestFailed(message);
         finishTorrentGet();
-        return;
-    }
-
-    if (requestType == RpcRequestType::SessionGet) {
-        const QJsonObject arguments =
-            doc.object().value("arguments").toObject();
-
-        emit sessionSettingsReceived(arguments);
-        return;
-    }
-
-    if (requestType == RpcRequestType::FreeSpace) {
-        const QJsonObject arguments =
-            doc.object().value(QStringLiteral("arguments")).toObject();
-
-        const QString path =
-            arguments.value(QStringLiteral("path")).toString();
-
-        const qint64 sizeBytes =
-            static_cast<qint64>(arguments.value(QStringLiteral("size-bytes")).toDouble());
-
-        emit freeSpaceReceived(path, sizeBytes);
         return;
     }
 
@@ -259,18 +210,30 @@ void rpc_client::replyFinished(QNetworkReply *reply)
 
         qDebug() << "Transmission RPC error:" << message;
 
-        if (isTorrentGet) {
-            emit updateFailed(message);
-        } else if (requestType == RpcRequestType::Command) {
-            if (context.method == QStringLiteral("torrent-add")
-                && !context.torrentFilePath.isEmpty()) {
-                emit torrentFileAddFailed(context.torrentFilePath, message);
-            }
-
-            emit commandFailed(context.method, message);
-        }
-
+        emitRequestFailed(message);
         finishTorrentGet();
+        return;
+    }
+
+    if (requestType == RpcRequestType::SessionGet) {
+        const QJsonObject arguments =
+            root.value("arguments").toObject();
+
+        emit sessionSettingsReceived(arguments);
+        return;
+    }
+
+    if (requestType == RpcRequestType::FreeSpace) {
+        const QJsonObject arguments =
+            root.value(QStringLiteral("arguments")).toObject();
+
+        const QString path =
+            arguments.value(QStringLiteral("path")).toString();
+
+        const qint64 sizeBytes =
+            static_cast<qint64>(arguments.value(QStringLiteral("size-bytes")).toDouble());
+
+        emit freeSpaceReceived(path, sizeBytes);
         return;
     }
 
@@ -306,7 +269,7 @@ void rpc_client::replyFinished(QNetworkReply *reply)
     if (!torrentsValue.isArray()) {
         qDebug() << "torrent-get response did not contain arguments.torrents";
 
-        emit updateFailed(tr("Torrent list response did not contain torrents."));
+        emitRequestFailed(tr("Torrent response did not contain torrents."));
         finishTorrentGet();
         return;
     }
