@@ -28,6 +28,7 @@ public:
         AddedColumn,
         DownloadedEverColumn,
         UploadedEverColumn,
+        SeedsColumn,
         PeersConnectedColumn,
         ColumnCount
     };

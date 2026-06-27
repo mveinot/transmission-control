@@ -502,6 +502,8 @@ void rpc_client::getTorrentList()
         "downloadedEver",
         "uploadedEver",
         "peersConnected",
+        "peersSendingToUs",
+        "peersGettingFromUs",
         "trackers",
         "trackerStats"
     };

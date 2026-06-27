@@ -44,7 +44,14 @@ public:
     qint64 getDownloadedEverBytes() const;
     QString getUploadedEver() const;
     qint64 getUploadedEverBytes() const;
-    int getPeersConnected() const;
+    QString getSeedsSummary() const;
+    int getConnectedSeeds() const;
+    int getTotalSeeds() const;
+    QString getPeersSummary() const;
+    int getConnectedPeers() const;
+    int getTotalPeers() const;
+    qint64 getSeedsSortValue() const;
+    qint64 getPeersSortValue() const;
     int getQueuePosition() const;
     bool sameDisplayData(const torrent &other) const;
     int getId() const;
@@ -71,6 +78,10 @@ private:
     qint64 downloadedEver = 0;
     qint64 uploadedEver = 0;
     int peersConnected = 0;
+    int peersSendingToUs = 0;
+    int peersGettingFromUs = 0;
+    int totalSeeders = -1;
+    int totalLeechers = -1;
     int queuePosition = 0;
     QString primaryTrackerHost;
     QStringList trackerHosts;

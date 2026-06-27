@@ -1,6 +1,8 @@
 #include "torrent.h"
 #include <QDateTime>
+#include <algorithm>
 #include <QUrl>
+#include <QtGlobal>
 
 static QString normalizedTrackerHost(QString host)
 {
@@ -44,6 +46,8 @@ torrent::torrent(const QJsonValue &val)
     downloadedEver = static_cast<qint64>(obj.value("downloadedEver").toDouble());
     uploadedEver = static_cast<qint64>(obj.value("uploadedEver").toDouble());
     peersConnected = obj.value("peersConnected").toInt();
+    peersSendingToUs = obj.value("peersSendingToUs").toInt();
+    peersGettingFromUs = obj.value("peersGettingFromUs").toInt();
     queuePosition = obj.value("queuePosition").toInt();
 
     trackerHosts.clear();
@@ -99,6 +103,17 @@ torrent::torrent(const QJsonValue &val)
         }
 
         addTrackerHost(host);
+
+        const int seeders =
+            trackerObject.value(QStringLiteral("seederCount")).toInt(-1);
+        const int leechers =
+            trackerObject.value(QStringLiteral("leecherCount")).toInt(-1);
+
+        if (seeders >= 0)
+            totalSeeders = qMax(totalSeeders, seeders);
+
+        if (leechers >= 0)
+            totalLeechers = qMax(totalLeechers, leechers);
     }
 
     std::sort(trackerHosts.begin(), trackerHosts.end());
@@ -255,9 +270,65 @@ qint64 torrent::getUploadedEverBytes() const
     return uploadedEver;
 }
 
-int torrent::getPeersConnected() const
+namespace {
+
+QString connectedTotalSummary(int connected, int total)
 {
-    return peersConnected;
+    if (total >= 0)
+        return QStringLiteral("%1/%2").arg(connected).arg(total);
+
+    if (connected > 0)
+        return QStringLiteral("%1/?").arg(connected);
+
+    return QString();
+}
+
+qint64 connectedTotalSortValue(int connected, int total)
+{
+    const qint64 safeTotal = total >= 0 ? total : 0;
+    return (static_cast<qint64>(connected) << 32) | safeTotal;
+}
+
+} // namespace
+
+QString torrent::getSeedsSummary() const
+{
+    return connectedTotalSummary(peersSendingToUs, totalSeeders);
+}
+
+int torrent::getConnectedSeeds() const
+{
+    return peersSendingToUs;
+}
+
+int torrent::getTotalSeeds() const
+{
+    return totalSeeders;
+}
+
+QString torrent::getPeersSummary() const
+{
+    return connectedTotalSummary(peersGettingFromUs, totalLeechers);
+}
+
+int torrent::getConnectedPeers() const
+{
+    return peersGettingFromUs;
+}
+
+int torrent::getTotalPeers() const
+{
+    return totalLeechers;
+}
+
+qint64 torrent::getSeedsSortValue() const
+{
+    return connectedTotalSortValue(peersSendingToUs, totalSeeders);
+}
+
+qint64 torrent::getPeersSortValue() const
+{
+    return connectedTotalSortValue(peersGettingFromUs, totalLeechers);
 }
 
 int torrent::getEtaSeconds() const
@@ -321,6 +392,10 @@ bool torrent::sameDisplayData(const torrent &other) const
            && downloadedEver == other.downloadedEver
            && uploadedEver == other.uploadedEver
            && peersConnected == other.peersConnected
+           && peersSendingToUs == other.peersSendingToUs
+           && peersGettingFromUs == other.peersGettingFromUs
+           && totalSeeders == other.totalSeeders
+           && totalLeechers == other.totalLeechers
            && queuePosition == other.queuePosition
            && primaryTrackerHost == other.primaryTrackerHost
            && trackerHosts == other.trackerHosts;

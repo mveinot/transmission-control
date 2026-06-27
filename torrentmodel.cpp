@@ -79,8 +79,11 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
         case UploadedEverColumn:
             return t.getUploadedEver();
 
+        case SeedsColumn:
+            return t.getSeedsSummary();
+
         case PeersConnectedColumn:
-            return t.getPeersConnected();
+            return t.getPeersSummary();
 
         default:
             return {};
@@ -151,8 +154,11 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
         case UploadedEverColumn:
             return t.getUploadedEverBytes();
 
+        case SeedsColumn:
+            return t.getSeedsSortValue();
+
         case PeersConnectedColumn:
-            return t.getPeersConnected();
+            return t.getPeersSortValue();
 
         default:
             return {};
@@ -172,6 +178,7 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
         case AddedColumn:
         case DownloadedEverColumn:
         case UploadedEverColumn:
+        case SeedsColumn:
         case PeersConnectedColumn:
             return static_cast<int>(Qt::AlignRight | Qt::AlignVCenter);
 
@@ -234,6 +241,9 @@ QVariant TorrentModel::headerData(int section,
 
         case UploadedEverColumn:
             return "Uploaded";
+
+        case SeedsColumn:
+            return "Seeds";
 
         case PeersConnectedColumn:
             return "Peers";

@@ -27,10 +27,14 @@ QJsonValue makeTorrentValue(int id,
     object["downloadedEver"] = 4096.0;
     object["uploadedEver"] = 8192.0;
     object["peersConnected"] = 7;
+    object["peersSendingToUs"] = 2;
+    object["peersGettingFromUs"] = 3;
 
     QJsonArray trackerStats;
     QJsonObject tracker;
     tracker["host"] = "tracker.example.com:6969";
+    tracker["seederCount"] = 9;
+    tracker["leecherCount"] = 11;
     trackerStats.append(tracker);
     object["trackerStats"] = trackerStats;
     return object;
@@ -106,6 +110,10 @@ void TestTorrentModel::exposesOptionalColumns()
                               Qt::Horizontal,
                               Qt::DisplayRole).toString(),
              QStringLiteral("Uploaded"));
+    QCOMPARE(model.headerData(TorrentModel::SeedsColumn,
+                              Qt::Horizontal,
+                              Qt::DisplayRole).toString(),
+             QStringLiteral("Seeds"));
     QCOMPARE(model.headerData(TorrentModel::PeersConnectedColumn,
                               Qt::Horizontal,
                               Qt::DisplayRole).toString(),
@@ -119,8 +127,12 @@ void TestTorrentModel::exposesOptionalColumns()
              qint64(4096));
     QCOMPARE(model.data(model.index(0, TorrentModel::UploadedEverColumn), TorrentModel::SortRole).toLongLong(),
              qint64(8192));
-    QCOMPARE(model.data(model.index(0, TorrentModel::PeersConnectedColumn), Qt::DisplayRole).toInt(),
-             7);
+    QCOMPARE(model.data(model.index(0, TorrentModel::SeedsColumn), Qt::DisplayRole).toString(),
+             QStringLiteral("2/9"));
+    QCOMPARE(model.data(model.index(0, TorrentModel::PeersConnectedColumn), Qt::DisplayRole).toString(),
+             QStringLiteral("3/11"));
+    QVERIFY(model.data(model.index(0, TorrentModel::SeedsColumn), TorrentModel::SortRole).toLongLong() > 0);
+    QVERIFY(model.data(model.index(0, TorrentModel::PeersConnectedColumn), TorrentModel::SortRole).toLongLong() > 0);
 }
 
 void TestTorrentModel::indexesRowsByTorrentId()
