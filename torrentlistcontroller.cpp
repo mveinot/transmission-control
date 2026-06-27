@@ -131,12 +131,18 @@ void TorrentListController::setup(const ActionSet &actions)
     m_tableView->sortByColumn(TorrentModel::NameColumn, Qt::AscendingOrder);
     m_tableView->setContextMenuPolicy(Qt::CustomContextMenu);
 
-    if (m_tableView->horizontalHeader()) {
-        m_tableView->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
-        connect(m_tableView->horizontalHeader(),
+    if (QHeaderView *header = m_tableView->horizontalHeader()) {
+        configureHorizontalHeader();
+
+        connect(header,
                 &QHeaderView::customContextMenuRequested,
                 this,
                 &TorrentListController::showHeaderContextMenu);
+
+        connect(header,
+                &QHeaderView::sectionMoved,
+                this,
+                [this]() { saveViewState(); });
     }
 
     if (m_tableView->selectionModel()) {
@@ -178,6 +184,8 @@ void TorrentListController::restoreViewState()
 
     if (!horizontalState.isEmpty() && m_tableView->horizontalHeader())
         m_tableView->horizontalHeader()->restoreState(horizontalState);
+
+    configureHorizontalHeader();
 
     const QByteArray verticalState =
         settings.value(QString::fromLatin1(TorrentTableVerticalHeaderStateKey)).toByteArray();
@@ -874,6 +882,35 @@ void TorrentListController::setColumnVisible(int column, bool visible)
     saveViewState();
 }
 
+void TorrentListController::restoreDefaultColumnOrder()
+{
+    if (!m_tableView || !m_tableView->horizontalHeader())
+        return;
+
+    QHeaderView *header = m_tableView->horizontalHeader();
+
+    for (int logicalColumn = 0; logicalColumn < TorrentModel::ColumnCount; ++logicalColumn) {
+        const int currentVisualIndex = header->visualIndex(logicalColumn);
+
+        if (currentVisualIndex >= 0 && currentVisualIndex != logicalColumn)
+            header->moveSection(currentVisualIndex, logicalColumn);
+    }
+}
+
+void TorrentListController::configureHorizontalHeader()
+{
+    if (!m_tableView || !m_tableView->horizontalHeader())
+        return;
+
+    QHeaderView *header = m_tableView->horizontalHeader();
+
+    header->setContextMenuPolicy(Qt::CustomContextMenu);
+    header->setSectionsClickable(true);
+    header->setSectionsMovable(true);
+    header->setFirstSectionMovable(true);
+    header->setHighlightSections(false);
+}
+
 void TorrentListController::resetColumns()
 {
     if (!m_tableView)
@@ -890,6 +927,7 @@ void TorrentListController::resetColumns()
     if (m_tableView->verticalHeader())
         m_tableView->verticalHeader()->reset();
 
+    restoreDefaultColumnOrder();
     applyDefaultColumnVisibility();
     m_tableView->sortByColumn(TorrentModel::NameColumn, Qt::AscendingOrder);
     saveViewState();

@@ -98,8 +98,10 @@ private:
     void refreshCurrentTorrentDetails();
     void applyDefaultColumnVisibility();
     void applySavedColumnVisibility();
+    void restoreDefaultColumnOrder();
     void setColumnVisible(int column, bool visible);
     void resetColumns();
+    void configureHorizontalHeader();
 };
 
 #endif // TORRENTLISTCONTROLLER_H
