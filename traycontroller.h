@@ -36,6 +36,7 @@ signals:
 private:
     bool trayIconEnabled() const;
     bool trayNotificationsEnabled() const;
+    bool shouldCloseToTray() const;
     void updateTrayIconVisibility();
     void showNotification(const QString &title,
                           const QString &message,
