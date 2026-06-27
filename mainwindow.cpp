@@ -9,6 +9,7 @@
 #include "watchfoldercontroller.h"
 #include "watchfoldermanager.h"
 #include "updatecheckcontroller.h"
+#include "traycontroller.h"
 #include <QActionGroup>
 #include <QApplication>
 #include <QAction>
@@ -37,14 +38,12 @@
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QSizePolicy>
-#include <QSystemTrayIcon>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <functional>
-#include <algorithm>
 
 #include "rpc_client.h"
 #include "dialogabout.h"
@@ -64,8 +63,6 @@ constexpr int MinimumUpdateIntervalSeconds = 1;
 constexpr int MaximumUpdateIntervalSeconds = 3600;
 }
 
-
-
 void MainWindow::clearGeneralTab()
 {
     if (torrentGeneralController)
@@ -84,7 +81,6 @@ void MainWindow::clearGeneralTab()
     if (torrentPeersController)
         torrentPeersController->clear();
 }
-
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -184,7 +180,8 @@ MainWindow::MainWindow(QWidget *parent)
             client, &rpc_client::getTorrentList);
 
     watchFolderController->loadSettings();
-    setupTrayIcon();
+    trayController = new TrayController(this, this);
+    trayController->setup();
 
     // UI setup
     this->mainMenu = new QMenu(0);
@@ -649,11 +646,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
 {
     saveTableViewState();
 
-    if (!reallyQuit && trayIcon && trayIcon->isVisible()) {
-        event->ignore();
-        hide();
+    if (trayController && trayController->handleCloseEvent(event))
         return;
-    }
 
     QMainWindow::closeEvent(event);
 }
@@ -877,49 +871,13 @@ void MainWindow::saveSelectedServerFromCombo()
     client->getSessionSettings();
 }
 
-void MainWindow::setupTrayIcon()
-{
-    if (!QSystemTrayIcon::isSystemTrayAvailable())
-        return;
-
-    trayIcon = new QSystemTrayIcon(this);
-
-    QIcon menuBarIcon(":/icons/planetary_menu.png");
-    menuBarIcon.setIsMask(true);
-
-    trayIcon->setIcon(menuBarIcon);
-    trayIcon->setToolTip("Planetary");
-
-    trayMenu = new QMenu(this);
-
-    QAction *showAction = trayMenu->addAction(tr("Show Planetary"));
-    QAction *quitAction = trayMenu->addAction(tr("Quit"));
-
-    connect(showAction, &QAction::triggered,
-            this, &MainWindow::showMainWindow);
-
-    connect(quitAction, &QAction::triggered,
-            this, [this]() {
-                reallyQuit = true;
-                close();
-            });
-
-    trayIcon->setContextMenu(trayMenu);
-
-    connect(trayIcon, &QSystemTrayIcon::activated,
-            this,
-            [this](QSystemTrayIcon::ActivationReason reason) {
-                if (reason == QSystemTrayIcon::Trigger ||
-                    reason == QSystemTrayIcon::DoubleClick) {
-                    showMainWindow();
-                }
-            });
-
-    updateTrayIconVisibility();
-}
-
 void MainWindow::showMainWindow()
 {
+    if (trayController) {
+        trayController->showMainWindow();
+        return;
+    }
+
     show();
     setWindowState(windowState() & ~Qt::WindowMinimized);
     raise();
@@ -928,10 +886,10 @@ void MainWindow::showMainWindow()
 
 void MainWindow::quitApplication()
 {
-    reallyQuit = true;
-
-    if (trayIcon)
-        trayIcon->hide();
+    if (trayController) {
+        trayController->quitApplication();
+        return;
+    }
 
     close();
     qApp->quit();
@@ -1065,100 +1023,18 @@ bool MainWindow::event(QEvent *event)
     return QMainWindow::event(event);
 }
 
-bool MainWindow::trayIconEnabled() const
-{
-    QSettings settings;
-    return settings.value(SettingsKeys::ShowTrayIcon, true).toBool();
-}
-
-bool MainWindow::trayNotificationsEnabled() const
-{
-    QSettings settings;
-
-    return trayIconEnabled() &&
-           settings.value(SettingsKeys::ShowTrayNotifications, true).toBool();
-}
-
-void MainWindow::updateTrayIconVisibility()
-{
-    if (!trayIcon)
-        return;
-
-    if (trayIconEnabled()) {
-        trayIcon->show();
-    } else {
-        trayIcon->hide();
-    }
-}
-
-void MainWindow::showTrayNotification(const QString &title,
-                                      const QString &message,
-                                      QSystemTrayIcon::MessageIcon icon,
-                                      int millisecondsTimeoutHint)
-{
-    if (!trayIcon || !trayIcon->isVisible())
-        return;
-
-    if (!trayNotificationsEnabled())
-        return;
-
-    trayIcon->showMessage(title, message, icon, millisecondsTimeoutHint);
-}
-
 void MainWindow::applyAppSettings()
 {
     applyUpdateInterval();
-    updateTrayIconVisibility();
-}
 
-bool MainWindow::isTorrentCompleteForNotification(const torrent &torrentItem)
-{
-    const QString status = torrentItem.getStatus();
-
-    return torrentItem.getPercentDone() >= 99.9 ||
-           status == tr("Seeding") ||
-           status == tr("Waiting to Seed");
-}
-
-void MainWindow::processFinishedTorrentNotifications(const QVector<torrent> &torrents)
-{
-    QSet<int> currentlyCompleted;
-
-    for (const torrent &torrentItem : torrents) {
-        if (isTorrentCompleteForNotification(torrentItem)) {
-            currentlyCompleted.insert(torrentItem.getId());
-        }
-    }
-
-    if (!completedTorrentNotificationBaselineLoaded) {
-        knownCompletedTorrentIds = currentlyCompleted;
-        completedTorrentNotificationBaselineLoaded = true;
-        return;
-    }
-
-    for (const torrent &torrentItem : torrents) {
-        const int id = torrentItem.getId();
-
-        if (!currentlyCompleted.contains(id))
-            continue;
-
-        if (knownCompletedTorrentIds.contains(id))
-            continue;
-
-        showTrayNotification(
-            tr("Torrent finished"),
-            torrentItem.getName(),
-            QSystemTrayIcon::Information,
-            5000
-            );
-    }
-
-    knownCompletedTorrentIds = currentlyCompleted;
+    if (trayController)
+        trayController->applySettings();
 }
 
 void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
 {
-    processFinishedTorrentNotifications(torrents);
+    if (trayController)
+        trayController->processTorrentList(torrents);
 
     if (torrentFilterController)
         torrentFilterController->rebuild(torrents);

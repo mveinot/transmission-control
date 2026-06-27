@@ -10,10 +10,8 @@
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QPoint>
-#include <QSystemTrayIcon>
 #include <QEvent>
 #include <QLabel>
-#include <QSet>
 #include "foldermapping.h"
 #include "rpc_client.h"
 #include "torrentsortproxymodel.h"
@@ -28,6 +26,7 @@ class TorrentAddController;
 class WatchFolderManager;
 class WatchFolderController;
 class UpdateCheckController;
+class TrayController;
 class TorrentGeneralController;
 class TorrentFilesController;
 class TorrentPeersController;
@@ -43,14 +42,9 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-    QSystemTrayIcon *trayIcon = nullptr;
-    QMenu *trayMenu = nullptr;
-    bool reallyQuit = false;
-
     void showAbout();
     void loadServerCombo();
     void saveSelectedServerFromCombo();
-    void setupTrayIcon();
     void showMainWindow();
     void quitApplication();
     void handleLaunchArguments(const QStringList &arguments);
@@ -105,21 +99,8 @@ private:
     void applyUpdateInterval();
     void setupConnectionStatusIndicator();
     void clearGeneralTab();
-    bool trayIconEnabled() const;
-    bool trayNotificationsEnabled() const;
     QList<FolderMapping> currentServerFolderMappings() const;
     void applyAppSettings();
-    void updateTrayIconVisibility();
-    void showTrayNotification(const QString &title,
-                              const QString &message,
-                              QSystemTrayIcon::MessageIcon icon =
-                              QSystemTrayIcon::Information,
-                              int millisecondsTimeoutHint = 5000);
-
-    QSet<int> knownCompletedTorrentIds;
-    void processFinishedTorrentNotifications(const QVector<torrent> &torrents);
-    static bool isTorrentCompleteForNotification(const torrent &torrentItem);
-    bool completedTorrentNotificationBaselineLoaded = false;
     bool openSessionSettingsWhenReceived = false;
     QString remoteDownloadDir;
     qint64 remoteFreeSpaceBytes = -1;
@@ -135,7 +116,7 @@ private:
     TorrentTrackersController *torrentTrackersController = nullptr;
     TorrentListController *torrentListController = nullptr;
     TorrentFilterController *torrentFilterController = nullptr;
-
+    TrayController *trayController = nullptr;
 
 protected:
     void closeEvent(QCloseEvent *event) override;
