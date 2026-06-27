@@ -12,7 +12,65 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Network Core Test)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Network Core Test)
 
-set(TS_FILES transmission-control_en_CA.ts)
+file(GLOB PLANETARY_TS_FILES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/translations/*.ts"
+)
+
+set(PLANETARY_GENERATED_DIR
+    "${CMAKE_CURRENT_BINARY_DIR}/generated"
+)
+
+set(PLANETARY_GENERATED_TRANSLATIONS_DIR
+    "${PLANETARY_GENERATED_DIR}/translations"
+)
+
+set(PLANETARY_GENERATED_TRANSLATIONS_QRC
+    "${PLANETARY_GENERATED_DIR}/planetary_translations.qrc"
+)
+
+set(PLANETARY_QM_FILES)
+set(PLANETARY_TRANSLATION_QRC_ENTRIES "")
+
+foreach(PLANETARY_TS_FILE IN LISTS PLANETARY_TS_FILES)
+    get_filename_component(PLANETARY_TRANSLATION_NAME "${PLANETARY_TS_FILE}" NAME_WE)
+
+    set(PLANETARY_QM_FILE
+        "${PLANETARY_GENERATED_TRANSLATIONS_DIR}/${PLANETARY_TRANSLATION_NAME}.qm"
+    )
+
+    add_custom_command(
+        OUTPUT "${PLANETARY_QM_FILE}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PLANETARY_GENERATED_TRANSLATIONS_DIR}"
+        COMMAND Qt${QT_VERSION_MAJOR}::lrelease "${PLANETARY_TS_FILE}" -qm "${PLANETARY_QM_FILE}"
+        DEPENDS "${PLANETARY_TS_FILE}"
+        COMMENT "Generating ${PLANETARY_TRANSLATION_NAME}.qm"
+        VERBATIM
+    )
+
+    list(APPEND PLANETARY_QM_FILES "${PLANETARY_QM_FILE}")
+    string(APPEND PLANETARY_TRANSLATION_QRC_ENTRIES
+        "        <file alias=\"translations/${PLANETARY_TRANSLATION_NAME}.qm\">translations/${PLANETARY_TRANSLATION_NAME}.qm</file>\n"
+    )
+endforeach()
+
+file(MAKE_DIRECTORY "${PLANETARY_GENERATED_DIR}")
+file(WRITE "${PLANETARY_GENERATED_TRANSLATIONS_QRC}"
+"<RCC>
+"
+"    <qresource prefix=\"/\">
+"
+"${PLANETARY_TRANSLATION_QRC_ENTRIES}"
+"    </qresource>
+"
+"</RCC>
+"
+)
+
+set_source_files_properties(
+    ${PLANETARY_QM_FILES}
+    "${PLANETARY_GENERATED_TRANSLATIONS_QRC}"
+    PROPERTIES GENERATED TRUE
+)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -26,7 +84,7 @@ set(PROJECT_SOURCES
         dialogabout.cpp
         dialogabout.h
         dialogabout.ui
-        ${TS_FILES}
+        ${PLANETARY_TS_FILES}
 )
 
 # The MACOSX_BUNDLE_ICON_FILE variable is added to the Info.plist
@@ -100,6 +158,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
         Resources/resources.qrc
+        ${PLANETARY_GENERATED_TRANSLATIONS_QRC}
         ${app_icon_macos}
         appsettings.ui
         appsettings.h
@@ -122,7 +181,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         updatechecker.h updatechecker.cpp
         updatecheckcontroller.h updatecheckcontroller.cpp
         Resources/licenses/gpl-2.0.txt
-        Resources/translations/planetary_fr_CA.qm
         settingsimportexport.h settingsimportexport.cpp
         foldermapping.h
         foldermappingsdialog.h foldermappingsdialog.cpp foldermappingsdialog.ui
@@ -158,7 +216,6 @@ find_program(IWYU_PATH NAMES include-what-you-use iwyu)
 #                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
 # For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
 
-    qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 else()
     if(ANDROID)
         add_library(Planetary SHARED
@@ -172,7 +229,11 @@ else()
         )
     endif()
 
-    qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
+endif()
+
+if(PLANETARY_QM_FILES)
+    add_custom_target(PlanetaryTranslations DEPENDS ${PLANETARY_QM_FILES})
+    add_dependencies(Planetary PlanetaryTranslations)
 endif()
 
 find_library(MAXMINDDB_LIBRARY maxminddb)
