@@ -46,14 +46,8 @@ void TrayController::setup()
 
     m_trayIcon->setContextMenu(m_trayMenu);
 
-    connect(m_trayIcon, &QSystemTrayIcon::activated,
-            this,
-            [this](QSystemTrayIcon::ActivationReason reason) {
-                if (reason == QSystemTrayIcon::Trigger ||
-                    reason == QSystemTrayIcon::DoubleClick) {
-                    showMainWindow();
-                }
-            });
+    // Do not restore the main window from a plain tray icon click.
+    // The user-facing restore path is the explicit "Show Planetary" tray menu action.
 
     updateTrayIconVisibility();
 }
