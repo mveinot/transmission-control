@@ -61,6 +61,7 @@ class TestTorrentModel : public QObject
 private slots:
     void exposesQueueColumn();
     void exposesOptionalColumns();
+    void exposesTorrentErrorState();
     void indexesRowsByTorrentId();
     void queuePositionChangeEmitsDataChanged();
     void removesMissingRowsOnUpdate();
@@ -144,6 +145,28 @@ void TestTorrentModel::exposesOptionalColumns()
              QStringLiteral("3/11"));
     QVERIFY(model.data(model.index(0, TorrentModel::SeedsColumn), TorrentModel::SortRole).toLongLong() > 0);
     QVERIFY(model.data(model.index(0, TorrentModel::PeersConnectedColumn), TorrentModel::SortRole).toLongLong() > 0);
+}
+
+void TestTorrentModel::exposesTorrentErrorState()
+{
+    TorrentModel model;
+
+    QJsonObject errored = makeTorrentValue(10, "Broken", 0, 0.25, 1024, 3).toObject();
+    errored[QStringLiteral("error")] = 3;
+    errored[QStringLiteral("errorString")] = QStringLiteral("No data found! Ensure your drives are connected?");
+
+    model.applyUpdate(makeTorrentList({ errored }));
+
+    const QModelIndex nameIndex = model.index(0, TorrentModel::NameColumn);
+    const QModelIndex statusIndex = model.index(0, TorrentModel::StatusColumn);
+
+    QCOMPARE(model.data(statusIndex, Qt::DisplayRole).toString(), QStringLiteral("Error"));
+    QCOMPARE(model.data(nameIndex, TorrentModel::HasErrorRole).toBool(), true);
+    QCOMPARE(model.data(nameIndex, TorrentModel::ErrorStringRole).toString(),
+             QStringLiteral("No data found! Ensure your drives are connected?"));
+    QCOMPARE(model.data(nameIndex, TorrentModel::StatusValueRole).toInt(), 0);
+    QCOMPARE(model.data(statusIndex, Qt::ToolTipRole).toString(),
+             QStringLiteral("No data found! Ensure your drives are connected?"));
 }
 
 void TestTorrentModel::indexesRowsByTorrentId()

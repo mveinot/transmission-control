@@ -46,6 +46,8 @@ torrent::torrent(const QJsonValue &val)
     downloadedEver = static_cast<qint64>(obj.value("downloadedEver").toDouble());
     uploadedEver = static_cast<qint64>(obj.value("uploadedEver").toDouble());
     downloadDir = obj.value("downloadDir").toString().trimmed();
+    errorCode = obj.value("error").toInt();
+    errorString = obj.value("errorString").toString().trimmed();
     peersConnected = obj.value("peersConnected").toInt();
     peersSendingToUs = obj.value("peersSendingToUs").toInt();
     peersGettingFromUs = obj.value("peersGettingFromUs").toInt();
@@ -167,7 +169,30 @@ QString torrent::statusToString(Status status)
 
 QString torrent::getStatus() const
 {
+    if (hasError())
+        return QStringLiteral("Error");
+
     return statusToString(status);
+}
+
+int torrent::getStatusValue() const
+{
+    return static_cast<int>(status);
+}
+
+bool torrent::hasError() const
+{
+    return errorCode != 0 || !errorString.isEmpty();
+}
+
+int torrent::getErrorCode() const
+{
+    return errorCode;
+}
+
+QString torrent::getErrorString() const
+{
+    return errorString;
 }
 
 QString torrent::getRateDownload() const
@@ -398,6 +423,8 @@ bool torrent::sameDisplayData(const torrent &other) const
            && downloadedEver == other.downloadedEver
            && uploadedEver == other.uploadedEver
            && downloadDir == other.downloadDir
+           && errorCode == other.errorCode
+           && errorString == other.errorString
            && peersConnected == other.peersConnected
            && peersSendingToUs == other.peersSendingToUs
            && peersGettingFromUs == other.peersGettingFromUs

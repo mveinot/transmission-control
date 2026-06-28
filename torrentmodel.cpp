@@ -38,6 +38,26 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
     if (role == DownloadDirRole)
         return t.getDownloadDir();
 
+    if (role == StatusValueRole)
+        return t.getStatusValue();
+
+    if (role == HasErrorRole)
+        return t.hasError();
+
+    if (role == ErrorStringRole)
+        return t.getErrorString();
+
+    if (role == Qt::ToolTipRole) {
+        if (t.hasError()) {
+            const QString message = t.getErrorString().isEmpty()
+                ? tr("Transmission reports an error for this torrent.")
+                : t.getErrorString();
+
+            if (index.column() == NameColumn || index.column() == StatusColumn)
+                return message;
+        }
+    }
+
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
         case IdColumn:

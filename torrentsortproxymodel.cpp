@@ -121,19 +121,22 @@ bool TorrentSortProxyModel::matchesStateFilter(int sourceRow,
     if (!model)
         return true;
 
-    const QModelIndex statusIndex =
-        model->index(sourceRow, TorrentModel::StatusColumn, sourceParent);
+    const QModelIndex nameIndex =
+        model->index(sourceRow, TorrentModel::NameColumn, sourceParent);
 
-    const QString status =
-        model->data(statusIndex, Qt::DisplayRole).toString();
+    if (m_stateFilter == StateFilter::Error)
+        return model->data(nameIndex, TorrentModel::HasErrorRole).toBool();
+
+    const int statusValue =
+        model->data(nameIndex, TorrentModel::StatusValueRole).toInt();
 
     switch (m_stateFilter) {
     case StateFilter::All:
         return true;
 
     case StateFilter::Downloading:
-        return status == QStringLiteral("Downloading")
-               || status == QStringLiteral("Queued");
+        return statusValue == 4 // Downloading
+               || statusValue == 3; // Queued
 
     case StateFilter::Completed: {
         const QModelIndex percentIndex =
@@ -146,9 +149,9 @@ bool TorrentSortProxyModel::matchesStateFilter(int sourceRow,
     }
 
     case StateFilter::Active: {
-        if (status == QStringLiteral("Downloading")
-            || status == QStringLiteral("Seeding")
-            || status == QStringLiteral("Queued")) {
+        if (statusValue == 4 // Downloading
+            || statusValue == 6 // Seeding
+            || statusValue == 3) { // Queued
             return true;
         }
 
@@ -168,15 +171,15 @@ bool TorrentSortProxyModel::matchesStateFilter(int sourceRow,
     }
 
     case StateFilter::Inactive:
-        return status == QStringLiteral("Paused")
-               || status == QStringLiteral("Waiting to Verify")
-               || status == QStringLiteral("Waiting to Seed");
+        return statusValue == 0 // Paused
+               || statusValue == 1 // Waiting to Verify
+               || statusValue == 5; // Waiting to Seed
 
     case StateFilter::Stopped:
-        return status == QStringLiteral("Paused");
+        return statusValue == 0; // Paused
 
     case StateFilter::Error:
-        return status.contains(QStringLiteral("Error"), Qt::CaseInsensitive);
+        return false;
     }
 
     return true;

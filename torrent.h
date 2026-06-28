@@ -28,6 +28,10 @@ public:
     QString getName() const;
     double getPercentDone() const;
     QString getStatus() const;
+    int getStatusValue() const;
+    bool hasError() const;
+    int getErrorCode() const;
+    QString getErrorString() const;
     QString getRateDownload() const;
     double getRateDownloadBytesPerSecond() const;
     QString getRateUpload() const;
@@ -79,6 +83,8 @@ private:
     qint64 downloadedEver = 0;
     qint64 uploadedEver = 0;
     QString downloadDir;
+    int errorCode = 0;
+    QString errorString;
     int peersConnected = 0;
     int peersSendingToUs = 0;
     int peersGettingFromUs = 0;

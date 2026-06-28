@@ -83,6 +83,7 @@ private slots:
     void filtersCompletedTorrents();
     void filtersActiveTorrents();
     void filtersInactiveTorrents();
+    void filtersErroredTorrents();
     void filtersByTrackerHost();
     void filtersByDownloadDir();
     void combinesStateAndTrackerFilters();
@@ -156,6 +157,31 @@ void TestTorrentSortProxyModel::filtersInactiveTorrents()
     proxy.setStateFilter(TorrentSortProxyModel::StateFilter::Inactive);
 
     QCOMPARE(proxy.rowCount(), 4);
+}
+
+void TestTorrentSortProxyModel::filtersErroredTorrents()
+{
+    TorrentModel sourceModel;
+
+    QJsonObject pausedErrored = makeTorrentValue(1, "Paused with error", 0, 0.25, 0.0, 1024, 0).toObject();
+    pausedErrored[QStringLiteral("error")] = 3;
+    pausedErrored[QStringLiteral("errorString")] = QStringLiteral("Permission denied");
+
+    QJsonObject downloadingOk = makeTorrentValue(2, "Fine", 4, 0.25, 0.0, 1024, 1).toObject();
+
+    sourceModel.applyUpdate(makeTorrentList({ pausedErrored, downloadingOk }));
+
+    TorrentSortProxyModel proxy;
+    proxy.setSourceModel(&sourceModel);
+    proxy.setStateFilter(TorrentSortProxyModel::StateFilter::Error);
+
+    QCOMPARE(proxy.rowCount(), 1);
+    QCOMPARE(torrentIdAtProxyRow(proxy, 0), 1);
+
+    proxy.setStateFilter(TorrentSortProxyModel::StateFilter::Stopped);
+
+    QCOMPARE(proxy.rowCount(), 1);
+    QCOMPARE(torrentIdAtProxyRow(proxy, 0), 1);
 }
 
 void TestTorrentSortProxyModel::filtersByTrackerHost()

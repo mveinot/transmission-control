@@ -38,7 +38,10 @@ public:
         SortRole = Qt::UserRole + 1,
         TrackerHostsRole,
         PrimaryTrackerHostRole,
-        DownloadDirRole
+        DownloadDirRole,
+        StatusValueRole,
+        HasErrorRole,
+        ErrorStringRole
     };
 
     explicit TorrentModel(QObject *parent = nullptr);

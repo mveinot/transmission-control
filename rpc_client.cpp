@@ -465,6 +465,8 @@ void rpc_client::getTorrentList()
         "downloadedEver",
         "uploadedEver",
         "downloadDir",
+        "error",
+        "errorString",
         "peersConnected",
         "peersSendingToUs",
         "peersGettingFromUs",
