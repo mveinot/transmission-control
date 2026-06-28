@@ -592,7 +592,7 @@ void MainWindow::saveTableViewState()
         );
 
     settings.setValue(
-        "ui/peerTableWidget/horizontalHeaderState/v2",
+        "ui/peerTableWidget/horizontalHeaderState/v3",
         ui->peerTableWidget->horizontalHeader()->saveState()
         );
 
@@ -618,7 +618,7 @@ void MainWindow::restoreTableViewState()
     }
 
     const QByteArray peerTableHeaderState =
-        settings.value("ui/peerTableWidget/horizontalHeaderState/v2").toByteArray();
+        settings.value("ui/peerTableWidget/horizontalHeaderState/v3").toByteArray();
 
     if (!peerTableHeaderState.isEmpty()) {
         ui->peerTableWidget->horizontalHeader()->restoreState(peerTableHeaderState);

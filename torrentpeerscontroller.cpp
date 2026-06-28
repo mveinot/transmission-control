@@ -3,11 +3,19 @@
 #include "geoipservice.h"
 
 #include <QAbstractItemView>
+#include <QHostInfo>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QLocale>
 #include <QTableWidget>
 #include <QTableWidgetItem>
+
+namespace {
+QString normalizedAddress(const QString &address)
+{
+    return address.trimmed();
+}
+}
 
 TorrentPeersController::TorrentPeersController(QTableWidget *peerTableWidget,
                                                GeoIpService *geoIpService,
@@ -27,6 +35,7 @@ void TorrentPeersController::setup()
     peerTableWidget->setHorizontalHeaderLabels({
         tr("Country"),
         tr("Address"),
+        tr("Host"),
         tr("Port"),
         tr("Client"),
         tr("Progress"),
@@ -65,7 +74,7 @@ void TorrentPeersController::populate(const QJsonArray &peers)
     for (const QJsonValue &peerValue : peers) {
         const QJsonObject peer = peerValue.toObject();
 
-        const QString address = peer.value("address").toString();
+        const QString address = normalizedAddress(peer.value("address").toString());
 
         const GeoIpResult geoIp =
             geoIpService ? geoIpService->lookup(address) : GeoIpResult {};
@@ -97,6 +106,14 @@ void TorrentPeersController::populate(const QJsonArray &peers)
         countryItem->setData(Qt::UserRole, geoIp.countryCode);
 
         auto *addressItem = new QTableWidgetItem(address);
+        addressItem->setToolTip(address);
+
+        startHostnameLookupIfNeeded(address);
+
+        const QString hostnameText = hostnameDisplayText(address);
+        auto *hostnameItem = new QTableWidgetItem(hostnameText);
+        hostnameItem->setToolTip(hostnameToolTip(address));
+        hostnameItem->setData(Qt::UserRole, hostnameText.toCaseFolded());
 
         auto *portItem = new QTableWidgetItem(QString::number(port));
         portItem->setData(Qt::UserRole, port);
@@ -137,6 +154,7 @@ void TorrentPeersController::populate(const QJsonArray &peers)
 
         peerTableWidget->setItem(row, CountryColumn, countryItem);
         peerTableWidget->setItem(row, AddressColumn, addressItem);
+        peerTableWidget->setItem(row, HostnameColumn, hostnameItem);
         peerTableWidget->setItem(row, PortColumn, portItem);
         peerTableWidget->setItem(row, ClientColumn, clientItem);
         peerTableWidget->setItem(row, ProgressColumn, progressItem);
@@ -149,4 +167,119 @@ void TorrentPeersController::populate(const QJsonArray &peers)
     }
 
     peerTableWidget->setSortingEnabled(true);
+}
+
+void TorrentPeersController::handleHostLookup(const QHostInfo &hostInfo)
+{
+    const int lookupId = hostInfo.lookupId();
+    const QString address = hostnameLookupIds.take(lookupId);
+
+    if (address.isEmpty())
+        return;
+
+    pendingHostnameLookups.remove(address);
+
+    QString hostname;
+
+    if (hostInfo.error() == QHostInfo::NoError) {
+        hostname = hostInfo.hostName().trimmed();
+
+        if (hostname == address)
+            hostname.clear();
+    }
+
+    applyHostnameLookupResult(address, hostname);
+}
+
+void TorrentPeersController::updateHostnameItem(int row, const QString &address)
+{
+    if (!peerTableWidget)
+        return;
+
+    QTableWidgetItem *hostnameItem = peerTableWidget->item(row, HostnameColumn);
+
+    if (!hostnameItem) {
+        hostnameItem = new QTableWidgetItem;
+        peerTableWidget->setItem(row, HostnameColumn, hostnameItem);
+    }
+
+    const QString displayText = hostnameDisplayText(address);
+
+    hostnameItem->setText(displayText);
+    hostnameItem->setToolTip(hostnameToolTip(address));
+    hostnameItem->setData(Qt::UserRole, displayText.toCaseFolded());
+}
+
+void TorrentPeersController::startHostnameLookupIfNeeded(const QString &address)
+{
+    if (address.isEmpty())
+        return;
+
+    if (hostnameCache.contains(address) || pendingHostnameLookups.contains(address))
+        return;
+
+    pendingHostnameLookups.insert(address);
+
+    const int lookupId = QHostInfo::lookupHost(
+        address,
+        this,
+        SLOT(handleHostLookup(QHostInfo))
+        );
+
+    hostnameLookupIds.insert(lookupId, address);
+}
+
+void TorrentPeersController::applyHostnameLookupResult(const QString &address,
+                                                       const QString &hostname)
+{
+    hostnameCache.insert(address, hostname);
+
+    if (!peerTableWidget)
+        return;
+
+    const bool sortingWasEnabled = peerTableWidget->isSortingEnabled();
+    peerTableWidget->setSortingEnabled(false);
+
+    for (int row = 0; row < peerTableWidget->rowCount(); ++row) {
+        const QTableWidgetItem *addressItem = peerTableWidget->item(row, AddressColumn);
+
+        if (!addressItem || addressItem->text() != address)
+            continue;
+
+        updateHostnameItem(row, address);
+    }
+
+    peerTableWidget->setSortingEnabled(sortingWasEnabled);
+}
+
+QString TorrentPeersController::hostnameDisplayText(const QString &address) const
+{
+    if (address.isEmpty())
+        return QString();
+
+    if (!hostnameCache.contains(address))
+        return pendingHostnameLookups.contains(address) ? tr("Resolving…") : QString();
+
+    const QString hostname = hostnameCache.value(address);
+
+    return hostname.isEmpty() ? QStringLiteral("—") : hostname;
+}
+
+QString TorrentPeersController::hostnameToolTip(const QString &address) const
+{
+    if (address.isEmpty())
+        return QString();
+
+    if (!hostnameCache.contains(address)) {
+        return pendingHostnameLookups.contains(address)
+            ? tr("Reverse DNS lookup pending for %1").arg(address)
+            : address;
+    }
+
+    const QString hostname = hostnameCache.value(address);
+
+    if (hostname.isEmpty())
+        return tr("No reverse DNS hostname found for %1").arg(address);
+
+    return QStringLiteral("%1 (%2)").arg(hostname, address);
 }
