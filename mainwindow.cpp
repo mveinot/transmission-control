@@ -371,6 +371,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionTransmission_Settings, &QAction::triggered,
             this, &MainWindow::showSessionSettings);
 
+    updateAlternativeSpeedAction(false, false);
+
+    connect(ui->actionAlternative_Speed_Mode, &QAction::triggered,
+            this, &MainWindow::toggleAlternativeSpeedMode);
+
     connect(ui->actionServer_Setup, &QAction::triggered, this, &MainWindow::onServerSetupTriggered);
 
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTorrentList);
@@ -459,11 +464,17 @@ MainWindow::MainWindow(QWidget *parent)
 
                     if (torrentId >= 0)
                         client->getTorrentDetails(torrentId);
+                } else if (method == QStringLiteral("session-set")) {
+                    client->getSessionSettings();
                 }
             });
 
     connect(client, &rpc_client::commandFailed,
-            this, [this](const QString &, const QString &message) {
+            this, [this](const QString &method, const QString &message) {
+                if (method == QStringLiteral("session-set"))
+                    updateAlternativeSpeedAction(confirmedAlternativeSpeedEnabled,
+                                                 alternativeSpeedSettingsAvailable);
+
                 if (statusBarController)
                     statusBarController->showMessage(message, 5000);
             });
@@ -1038,6 +1049,40 @@ QList<FolderMapping> MainWindow::currentServerFolderMappings() const
     return mappings;
 }
 
+void MainWindow::updateAlternativeSpeedAction(bool enabled, bool available)
+{
+    if (!ui || !ui->actionAlternative_Speed_Mode)
+        return;
+
+    const QSignalBlocker blocker(ui->actionAlternative_Speed_Mode);
+    ui->actionAlternative_Speed_Mode->setEnabled(available);
+    ui->actionAlternative_Speed_Mode->setChecked(enabled);
+}
+
+void MainWindow::toggleAlternativeSpeedMode(bool enabled)
+{
+    if (!alternativeSpeedSettingsAvailable) {
+        updateAlternativeSpeedAction(confirmedAlternativeSpeedEnabled, false);
+        return;
+    }
+
+    updateAlternativeSpeedAction(enabled, true);
+
+    QJsonObject changes;
+    changes[QStringLiteral("alt-speed-enabled")] = enabled;
+
+    client->setSessionSettings(changes);
+
+    if (statusBarController) {
+        statusBarController->showMessage(
+            enabled
+                ? tr("Enabling alternative speed mode...")
+                : tr("Disabling alternative speed mode..."),
+            3000
+            );
+    }
+}
+
 void MainWindow::showSessionSettings()
 {
     openSessionSettingsWhenReceived = true;
@@ -1056,6 +1101,13 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
 {
     remoteDownloadDir =
         sessionSettings.value(QStringLiteral("download-dir")).toString();
+
+    confirmedAlternativeSpeedEnabled =
+        sessionSettings.value(QStringLiteral("alt-speed-enabled")).toBool(false);
+    alternativeSpeedSettingsAvailable =
+        sessionSettings.contains(QStringLiteral("alt-speed-enabled"));
+    updateAlternativeSpeedAction(confirmedAlternativeSpeedEnabled,
+                                 alternativeSpeedSettingsAvailable);
 
     if (torrentAddController)
         torrentAddController->setDefaultDownloadDir(remoteDownloadDir);

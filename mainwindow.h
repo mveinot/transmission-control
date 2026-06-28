@@ -67,6 +67,7 @@ private slots:
     void handleTorrentsReceived(const QVector<torrent> &torrents);
     void showSessionSettings();
     void handleSessionSettingsReceived(const QJsonObject &settings);
+    void toggleAlternativeSpeedMode(bool enabled);
     void on_actionAbout_triggered();
     void on_actionQuit_triggered();
     void exportSettings();
@@ -100,7 +101,10 @@ private:
     void clearGeneralTab();
     QList<FolderMapping> currentServerFolderMappings() const;
     void applyAppSettings();
+    void updateAlternativeSpeedAction(bool enabled, bool available);
     bool openSessionSettingsWhenReceived = false;
+    bool alternativeSpeedSettingsAvailable = false;
+    bool confirmedAlternativeSpeedEnabled = false;
     QString remoteDownloadDir;
 
     UpdateCheckController *updateCheckController = nullptr;

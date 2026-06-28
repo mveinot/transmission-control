@@ -568,6 +568,7 @@
     <addaction name="actionServer_Setup"/>
     <addaction name="actionSettings"/>
     <addaction name="actionTransmission_Settings"/>
+    <addaction name="actionAlternative_Speed_Mode"/>
     <addaction name="separator"/>
     <addaction name="actionExport_Settings"/>
     <addaction name="actionImport_Settings"/>
@@ -780,6 +781,17 @@
   <action name="actionTransmission_Settings">
    <property name="text">
     <string>Transmission Settings...</string>
+   </property>
+  </action>
+  <action name="actionAlternative_Speed_Mode">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Alternative Speed Mode</string>
    </property>
   </action>
   <action name="actionQuit">
