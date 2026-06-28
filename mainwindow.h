@@ -11,7 +11,6 @@
 #include <QJsonValue>
 #include <QPoint>
 #include <QEvent>
-#include <QLabel>
 #include "foldermapping.h"
 #include "rpc_client.h"
 #include "torrentsortproxymodel.h"
@@ -33,6 +32,7 @@ class TorrentPeersController;
 class TorrentTrackersController;
 class TorrentListController;
 class TorrentFilterController;
+class StatusBarController;
 
 class MainWindow : public QMainWindow
 {
@@ -89,7 +89,6 @@ private:
     int currentTorrentId() const;
     bool currentTabWantsLiveTorrentDetails() const;
     void refreshCurrentTorrentLiveDetailsIfNeeded();
-    QLabel *connectionStatusLabel = nullptr;
     TorrentAddController *torrentAddController = nullptr;
     void addTorrentFromFile();
     void addTorrentFromMagnet();
@@ -103,11 +102,6 @@ private:
     void applyAppSettings();
     bool openSessionSettingsWhenReceived = false;
     QString remoteDownloadDir;
-    qint64 remoteFreeSpaceBytes = -1;
-    int lastTorrentCount = 0;
-
-    void updateConnectionStatus(int torrentCount);
-    QString formatBytes(qint64 bytes) const;
 
     UpdateCheckController *updateCheckController = nullptr;
     TorrentGeneralController *torrentGeneralController = nullptr;
@@ -117,6 +111,7 @@ private:
     TorrentListController *torrentListController = nullptr;
     TorrentFilterController *torrentFilterController = nullptr;
     TrayController *trayController = nullptr;
+    StatusBarController *statusBarController = nullptr;
 
 protected:
     void closeEvent(QCloseEvent *event) override;

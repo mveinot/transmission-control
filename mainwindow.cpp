@@ -10,6 +10,7 @@
 #include "watchfoldermanager.h"
 #include "updatecheckcontroller.h"
 #include "traycontroller.h"
+#include "statusbarcontroller.h"
 #include <QActionGroup>
 #include <QApplication>
 #include <QAction>
@@ -152,16 +153,17 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Initialization methods
     loadServerCombo();
+    setupConnectionStatusIndicator();
     updateCheckController = new UpdateCheckController(this, this);
     updateCheckController->setup();
 
     connect(updateCheckController, &UpdateCheckController::statusMessageRequested,
             this, [this](const QString &message, int timeoutMs) {
-                statusBar()->showMessage(message, timeoutMs);
+                if (statusBarController)
+                    statusBarController->showMessage(message, timeoutMs);
             });
 
     updateCheckController->maybeCheckAutomatically();
-    setupConnectionStatusIndicator();
     watchFolderManager = new WatchFolderManager(this);
     watchFolderController = new WatchFolderController(
         watchFolderManager,
@@ -173,7 +175,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(watchFolderController, &WatchFolderController::statusMessageRequested,
             this, [this](const QString &message, int timeoutMs) {
-                statusBar()->showMessage(message, timeoutMs);
+                if (statusBarController)
+                    statusBarController->showMessage(message, timeoutMs);
             });
 
     connect(watchFolderController, &WatchFolderController::torrentListRefreshRequested,
@@ -204,7 +207,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(torrentFilesController, &TorrentFilesController::statusMessageRequested,
             this, [this](const QString &message, int timeoutMs) {
-                statusBar()->showMessage(message, timeoutMs);
+                if (statusBarController)
+                    statusBarController->showMessage(message, timeoutMs);
             });
 
     connect(torrentFilesController,
@@ -223,7 +227,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(torrentTrackersController,
             &TorrentTrackersController::statusMessageRequested,
             this, [this](const QString &message, int timeoutMs) {
-                statusBar()->showMessage(message, timeoutMs);
+                if (statusBarController)
+                    statusBarController->showMessage(message, timeoutMs);
             });
 
     torrentPeersController = new TorrentPeersController(
@@ -232,8 +237,6 @@ MainWindow::MainWindow(QWidget *parent)
         this
         );
     torrentPeersController->setup();
-
-    ui->statusbar->showMessage(client->getServer());
 
     ui->actionAll->setCheckable(true);
     ui->actionDownloading->setCheckable(true);
@@ -304,7 +307,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(torrentListController, &TorrentListController::statusMessageRequested,
             this, [this](const QString &message, int timeoutMs) {
-                statusBar()->showMessage(message, timeoutMs);
+                if (statusBarController)
+                    statusBarController->showMessage(message, timeoutMs);
             });
 
     connect(torrentListController, &TorrentListController::torrentSelected,
@@ -326,20 +330,24 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(torrentAddController, &TorrentAddController::addStarted,
             this, [this]() {
-                statusBar()->showMessage(
-                    tr("Adding torrent..."),
-                    3000
-                    );
+                if (statusBarController) {
+                    statusBarController->showMessage(
+                        tr("Adding torrent..."),
+                        3000
+                        );
+                }
             });
 
     connect(torrentAddController, &TorrentAddController::addFailed,
             this, [this](const QString &message) {
-                statusBar()->showMessage(message, 5000);
+                if (statusBarController)
+                    statusBarController->showMessage(message, 5000);
             });
 
     connect(torrentAddController, &TorrentAddController::addCancelled,
             this, [this]() {
-                statusBar()->showMessage(tr("Torrent add cancelled."), 3000);
+                if (statusBarController)
+                    statusBarController->showMessage(tr("Torrent add cancelled."), 3000);
             });
 
 
@@ -395,22 +403,6 @@ MainWindow::MainWindow(QWidget *parent)
                 torrentGeneralController->updatePieces(torrentId, details);
             });
 
-    connect(client, &rpc_client::updateStarted,
-            this,
-            [this]() {
-                connectionStatusLabel->setStyleSheet("");
-                connectionStatusLabel->setText(tr("Updating..."));
-            });
-
-    connect(client, &rpc_client::updateFailed,
-            this,
-            [this](const QString &message) {
-                connectionStatusLabel->setStyleSheet("color: #ff6b6b;");
-                connectionStatusLabel->setText(
-                    tr("Connection error: %1").arg(message)
-                    );
-            });
-
     // Data path: required for the table to show anything
     connect(client, &rpc_client::torrentsReceived,
                 torrentModel, &TorrentModel::applyUpdate);
@@ -428,17 +420,19 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(client, &rpc_client::freeSpaceReceived,
             this, [this](const QString &, qint64 sizeBytes) {
-                remoteFreeSpaceBytes = sizeBytes;
-                updateConnectionStatus(lastTorrentCount);
+                if (statusBarController)
+                    statusBarController->setFreeSpace(sizeBytes);
             });
 
     connect(client, &rpc_client::commandSucceeded,
             this, [this](const QString &method) {
                 if (method == QStringLiteral("torrent-set-location")) {
-                    statusBar()->showMessage(
-                        tr("Torrent location updated."),
-                        3000
-                        );
+                    if (statusBarController) {
+                        statusBarController->showMessage(
+                            tr("Torrent location updated."),
+                            3000
+                            );
+                    }
 
                     client->getTorrentList();
 
@@ -447,10 +441,12 @@ MainWindow::MainWindow(QWidget *parent)
                     if (torrentId >= 0)
                         client->getTorrentDetails(torrentId);
                 } else if (method == QStringLiteral("torrent-rename-path")) {
-                    statusBar()->showMessage(
-                        tr("Torrent path renamed."),
-                        3000
-                        );
+                    if (statusBarController) {
+                        statusBarController->showMessage(
+                            tr("Torrent path renamed."),
+                            3000
+                            );
+                    }
 
                     client->getTorrentList();
 
@@ -468,7 +464,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(client, &rpc_client::commandFailed,
             this, [this](const QString &, const QString &message) {
-                statusBar()->showMessage(message, 5000);
+                if (statusBarController)
+                    statusBarController->showMessage(message, 5000);
             });
 
 
@@ -646,7 +643,8 @@ void MainWindow::onServerSetupTriggered()
 
         if (serverIndex >= 0) {
             client->setServerFromSettingsIndex(serverIndex);
-            statusBar()->showMessage(client->getServer());
+            if (statusBarController)
+                statusBarController->showMessage(client->getServer());
             client->getTorrentList();
         }
     }
@@ -820,7 +818,8 @@ void MainWindow::saveSelectedServerFromCombo()
     settings.sync();
 
     if (!client->setServerFromSettingsIndex(serverIndex)) {
-        statusBar()->showMessage(tr("Could not switch server."), 5000);
+        if (statusBarController)
+            statusBarController->showMessage(tr("Could not switch server."), 5000);
         return;
     }
 
@@ -832,10 +831,12 @@ void MainWindow::saveSelectedServerFromCombo()
     if (torrentListController)
         torrentListController->updateActionState();
 
-    statusBar()->showMessage(
-        tr("Selected server: %1").arg(client->getServer()),
-        3000
-        );
+    if (statusBarController) {
+        statusBarController->showMessage(
+            tr("Selected server: %1").arg(client->getServer()),
+            3000
+            );
+    }
 
     client->getTorrentList();
 
@@ -846,9 +847,10 @@ void MainWindow::saveSelectedServerFromCombo()
         torrentListController->setDefaultDownloadDir(remoteDownloadDir);
     }
 
-    remoteFreeSpaceBytes = -1;
-    lastTorrentCount = 0;
-    updateConnectionStatus(0);
+    if (statusBarController) {
+        statusBarController->clearFreeSpace();
+        statusBarController->updateTorrents({});
+    }
 
     client->getSessionSettings();
 }
@@ -904,10 +906,13 @@ void MainWindow::applyUpdateInterval()
     if (!timer->isActive())
         timer->start();
 
-    statusBar()->showMessage(
-        tr("Update interval: %1 seconds").arg(timer->interval() / 1000),
-        3000
-        );
+    if (statusBarController) {
+        statusBarController->setUpdateIntervalSeconds(timer->interval() / 1000);
+        statusBarController->showMessage(
+            tr("Update interval: %1 seconds").arg(timer->interval() / 1000),
+            3000
+            );
+    }
 }
 
 bool MainWindow::currentTabWantsLiveTorrentDetails() const
@@ -931,47 +936,9 @@ void MainWindow::refreshCurrentTorrentLiveDetailsIfNeeded()
 
 void MainWindow::setupConnectionStatusIndicator()
 {
-    connectionStatusLabel = new QLabel(this);
-    connectionStatusLabel->setText(tr("Not connected"));
-
-    connectionStatusLabel->setMinimumWidth(260);
-    connectionStatusLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-
-    ui->statusbar->addPermanentWidget(connectionStatusLabel);
-
-    connect(client, &rpc_client::updateStarted,
-            this,
-            [this]() {
-                connectionStatusLabel->setText(tr("Updating..."));
-            });
-
-    connect(client, &rpc_client::updateFailed,
-            this,
-            [this](const QString &message) {
-                QString displayMessage = message;
-
-                if (message.contains("timed out", Qt::CaseInsensitive)) {
-                    displayMessage = tr("Timed out contacting Transmission");
-                } else if (message.contains("connection refused", Qt::CaseInsensitive)) {
-                    displayMessage = tr("Connection refused by Transmission");
-                } else if (message.contains("host not found", Qt::CaseInsensitive)) {
-                    displayMessage = tr("Host not found");
-                } else if (message.contains("network", Qt::CaseInsensitive)) {
-                    displayMessage = message;
-                }
-
-                connectionStatusLabel->setText(
-                    tr("Connection error: %1").arg(displayMessage)
-                    );
-            });
-
-    connect(client, &rpc_client::serverChanged,
-            this,
-            [this]() {
-                connectionStatusLabel->setText(
-                    tr("Server changed: %1").arg(client->getServer())
-                    );
-            });
+    statusBarController = new StatusBarController(ui->statusbar, client, this);
+    statusBarController->setup();
+    statusBarController->setServerName(client->getServer());
 }
 
 void MainWindow::bringToFront()
@@ -1020,7 +987,9 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
 
     if (torrentFilterController)
         torrentFilterController->rebuild(torrents);
-    updateConnectionStatus(torrents.size());
+
+    if (statusBarController)
+        statusBarController->updateTorrents(torrents);
 
     if (!remoteDownloadDir.isEmpty())
         client->getFreeSpace(remoteDownloadDir);
@@ -1073,10 +1042,12 @@ void MainWindow::showSessionSettings()
 {
     openSessionSettingsWhenReceived = true;
 
-    statusBar()->showMessage(
-        tr("Loading Transmission session settings..."),
-        3000
-        );
+    if (statusBarController) {
+        statusBarController->showMessage(
+            tr("Loading Transmission session settings..."),
+            3000
+            );
+    }
 
     client->getSessionSettings();
 }
@@ -1092,8 +1063,14 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     if (torrentListController)
         torrentListController->setDefaultDownloadDir(remoteDownloadDir);
 
-    if (!remoteDownloadDir.isEmpty())
+    if (statusBarController)
+        statusBarController->setSessionSettings(sessionSettings);
+
+    if (!remoteDownloadDir.isEmpty()) {
         client->getFreeSpace(remoteDownloadDir);
+    } else if (statusBarController) {
+        statusBarController->clearFreeSpace();
+    }
 
     if (!openSessionSettingsWhenReceived)
         return;
@@ -1109,10 +1086,12 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     const QJsonObject changes = dialog.changedSettings();
 
     if (changes.isEmpty()) {
-        statusBar()->showMessage(
-            tr("No Transmission session settings changed"),
-            3000
-            );
+        if (statusBarController) {
+            statusBarController->showMessage(
+                tr("No Transmission session settings changed"),
+                3000
+                );
+        }
         return;
     }
 
@@ -1132,33 +1111,11 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
             client->getFreeSpace(remoteDownloadDir);
     }
 
-    statusBar()->showMessage(
-        tr("Saving Transmission session settings..."),
-        3000
-        );
-}
-
-void MainWindow::updateConnectionStatus(int torrentCount)
-{
-    lastTorrentCount = torrentCount;
-
-    QString text = tr("Connected: %1 · %2 torrent(s)")
-                       .arg(client->getServer(),
-                            QString::number(torrentCount));
-
-    if (remoteFreeSpaceBytes >= 0) {
-        text += tr(" · Free: %1").arg(
-            QLocale().formattedDataSize(
-                remoteFreeSpaceBytes,
-                1,
-                QLocale::DataSizeTraditionalFormat
-                )
+    if (statusBarController) {
+        statusBarController->showMessage(
+            tr("Saving Transmission session settings..."),
+            3000
             );
-    }
-
-    if (connectionStatusLabel) {
-        connectionStatusLabel->setStyleSheet(QString());
-        connectionStatusLabel->setText(text);
     }
 }
 
