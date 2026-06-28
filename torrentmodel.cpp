@@ -35,6 +35,9 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
     if (role == PrimaryTrackerHostRole)
         return t.getPrimaryTrackerHost();
 
+    if (role == DownloadDirRole)
+        return t.getDownloadDir();
+
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
         case IdColumn:
@@ -78,6 +81,9 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
 
         case UploadedEverColumn:
             return t.getUploadedEver();
+
+        case DownloadDirColumn:
+            return t.getDownloadDir();
 
         case SeedsColumn:
             return t.getSeedsSummary();
@@ -153,6 +159,9 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
 
         case UploadedEverColumn:
             return t.getUploadedEverBytes();
+
+        case DownloadDirColumn:
+            return t.getDownloadDir();
 
         case SeedsColumn:
             return t.getSeedsSortValue();
@@ -241,6 +250,9 @@ QVariant TorrentModel::headerData(int section,
 
         case UploadedEverColumn:
             return "Uploaded";
+
+        case DownloadDirColumn:
+            return "Download Folder";
 
         case SeedsColumn:
             return "Seeds";

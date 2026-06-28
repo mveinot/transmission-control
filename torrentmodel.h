@@ -28,6 +28,7 @@ public:
         AddedColumn,
         DownloadedEverColumn,
         UploadedEverColumn,
+        DownloadDirColumn,
         SeedsColumn,
         PeersConnectedColumn,
         ColumnCount
@@ -36,7 +37,8 @@ public:
     enum Roles {
         SortRole = Qt::UserRole + 1,
         TrackerHostsRole,
-        PrimaryTrackerHostRole
+        PrimaryTrackerHostRole,
+        DownloadDirRole
     };
 
     explicit TorrentModel(QObject *parent = nullptr);

@@ -85,18 +85,23 @@ void TorrentFilterController::setup()
     // runtime rebuild replaced it with plain text rows. Build the initial
     // contents here instead so the sidebar looks the same before and after
     // the first torrent refresh. Humanity survives another scrollbar.
-    rebuildWithTrackers(QStringList());
+    rebuildWithFilters(QStringList(), QStringList());
     setStateFilter(TorrentSortProxyModel::StateFilter::All);
 }
 
 void TorrentFilterController::rebuild(const QVector<torrent> &torrents)
 {
     const QStringList trackerHosts = trackerHostsFromTorrents(torrents);
+    const QStringList downloadDirs = downloadDirsFromTorrents(torrents);
 
-    if (trackerHosts == m_lastTrackerHosts && m_filterList && m_filterList->count() > 0)
+    if (trackerHosts == m_lastTrackerHosts
+        && downloadDirs == m_lastDownloadDirs
+        && m_filterList
+        && m_filterList->count() > 0) {
         return;
+    }
 
-    rebuildWithTrackers(trackerHosts);
+    rebuildWithFilters(trackerHosts, downloadDirs);
 }
 
 void TorrentFilterController::setStateFilter(TorrentSortProxyModel::StateFilter filter)
@@ -106,11 +111,13 @@ void TorrentFilterController::setStateFilter(TorrentSortProxyModel::StateFilter 
 
     m_proxy->setStateFilter(filter);
     m_proxy->setTrackerFilter(QString());
+    m_proxy->setDownloadDirFilter(QString());
     updateCheckedAction(filter);
     selectStatusFilter(filter);
 }
 
-void TorrentFilterController::rebuildWithTrackers(const QStringList &trackerHosts)
+void TorrentFilterController::rebuildWithFilters(const QStringList &trackerHosts,
+                                                     const QStringList &downloadDirs)
 {
     if (!m_filterList)
         return;
@@ -124,18 +131,21 @@ void TorrentFilterController::rebuildWithTrackers(const QStringList &trackerHost
                                      : QString::number(static_cast<int>(TorrentSortProxyModel::StateFilter::All));
 
     m_lastTrackerHosts = trackerHosts;
+    m_lastDownloadDirs = downloadDirs;
 
     QSignalBlocker blocker(m_filterList);
     m_filterList->clear();
 
     addStatusFilterItems();
     addTrackerFilterItems(trackerHosts);
+    addFolderFilterItems(downloadDirs);
 
     const bool restoredSelection = selectItem(currentType, currentValue, 1);
 
     if (!restoredSelection && m_proxy) {
         m_proxy->setStateFilter(TorrentSortProxyModel::StateFilter::All);
         m_proxy->setTrackerFilter(QString());
+        m_proxy->setDownloadDirFilter(QString());
         updateCheckedAction(TorrentSortProxyModel::StateFilter::All);
     }
 }
@@ -165,6 +175,18 @@ void TorrentFilterController::addTrackerFilterItems(const QStringList &trackerHo
 
     for (const QString &trackerHost : trackerHosts)
         m_filterList->addItem(createTrackerItem(trackerHost, trackerHost));
+}
+
+void TorrentFilterController::addFolderFilterItems(const QStringList &downloadDirs)
+{
+    if (!m_filterList || downloadDirs.isEmpty())
+        return;
+
+    m_filterList->addItem(createHeaderItem(tr("Folders")));
+    m_filterList->addItem(createFolderItem(tr("All Folders"), QString()));
+
+    for (const QString &downloadDir : downloadDirs)
+        m_filterList->addItem(createFolderItem(downloadDir, downloadDir));
 }
 
 QListWidgetItem *TorrentFilterController::createHeaderItem(const QString &label) const
@@ -258,6 +280,21 @@ QListWidgetItem *TorrentFilterController::createTrackerItem(const QString &label
     return item;
 }
 
+QListWidgetItem *TorrentFilterController::createFolderItem(const QString &label,
+                                                           const QString &downloadDir) const
+{
+    static const QIcon folderIcon = iconFromTheme({
+        QStringLiteral("folder-download"),
+        QStringLiteral("folder"),
+        QStringLiteral("inode-directory")
+    });
+
+    auto *item = new QListWidgetItem(folderIcon, label);
+    item->setData(FilterTypeRole, typeToInt(ItemType::Folder));
+    item->setData(FilterValueRole, downloadDir);
+    return item;
+}
+
 void TorrentFilterController::applyCurrentListSelection(QListWidgetItem *current)
 {
     if (!current || !m_proxy)
@@ -272,6 +309,7 @@ void TorrentFilterController::applyCurrentListSelection(QListWidgetItem *current
 
         m_proxy->setStateFilter(stateFilter);
         m_proxy->setTrackerFilter(QString());
+        m_proxy->setDownloadDirFilter(QString());
         updateCheckedAction(stateFilter);
         return;
     }
@@ -279,6 +317,15 @@ void TorrentFilterController::applyCurrentListSelection(QListWidgetItem *current
     if (type == ItemType::Tracker) {
         m_proxy->setStateFilter(TorrentSortProxyModel::StateFilter::All);
         m_proxy->setTrackerFilter(current->data(FilterValueRole).toString());
+        m_proxy->setDownloadDirFilter(QString());
+        updateCheckedAction(TorrentSortProxyModel::StateFilter::All);
+        return;
+    }
+
+    if (type == ItemType::Folder) {
+        m_proxy->setStateFilter(TorrentSortProxyModel::StateFilter::All);
+        m_proxy->setTrackerFilter(QString());
+        m_proxy->setDownloadDirFilter(current->data(FilterValueRole).toString());
         updateCheckedAction(TorrentSortProxyModel::StateFilter::All);
     }
 }
@@ -368,6 +415,24 @@ QStringList TorrentFilterController::trackerHostsFromTorrents(const QVector<torr
     return trackerHosts;
 }
 
+QStringList TorrentFilterController::downloadDirsFromTorrents(const QVector<torrent> &torrents)
+{
+    QSet<QString> uniqueDirs;
+
+    for (const torrent &torrentItem : torrents) {
+        const QString downloadDir = torrentItem.getDownloadDir().trimmed();
+
+        if (!downloadDir.isEmpty())
+            uniqueDirs.insert(downloadDir);
+    }
+
+    QStringList downloadDirs = uniqueDirs.values();
+    std::sort(downloadDirs.begin(), downloadDirs.end(), [](const QString &lhs, const QString &rhs) {
+        return QString::localeAwareCompare(lhs, rhs) < 0;
+    });
+    return downloadDirs;
+}
+
 QIcon TorrentFilterController::iconFromTheme(const QStringList &themeNames)
 {
     for (const QString &themeName : themeNames) {
@@ -392,6 +457,8 @@ TorrentFilterController::ItemType TorrentFilterController::intToType(int value)
         return ItemType::Status;
     case ItemType::Tracker:
         return ItemType::Tracker;
+    case ItemType::Folder:
+        return ItemType::Folder;
     case ItemType::Header:
     default:
         return ItemType::Header;

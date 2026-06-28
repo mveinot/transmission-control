@@ -44,6 +44,7 @@ public:
     qint64 getDownloadedEverBytes() const;
     QString getUploadedEver() const;
     qint64 getUploadedEverBytes() const;
+    QString getDownloadDir() const;
     QString getSeedsSummary() const;
     int getConnectedSeeds() const;
     int getTotalSeeds() const;
@@ -77,6 +78,7 @@ private:
     qint64 addedDate = 0;
     qint64 downloadedEver = 0;
     qint64 uploadedEver = 0;
+    QString downloadDir;
     int peersConnected = 0;
     int peersSendingToUs = 0;
     int peersGettingFromUs = 0;

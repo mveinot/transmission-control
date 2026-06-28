@@ -26,6 +26,7 @@ QJsonValue makeTorrentValue(int id,
     object["addedDate"] = 1710000000.0;
     object["downloadedEver"] = 4096.0;
     object["uploadedEver"] = 8192.0;
+    object["downloadDir"] = "/downloads/linux";
     object["peersConnected"] = 7;
     object["peersSendingToUs"] = 2;
     object["peersGettingFromUs"] = 3;
@@ -110,6 +111,10 @@ void TestTorrentModel::exposesOptionalColumns()
                               Qt::Horizontal,
                               Qt::DisplayRole).toString(),
              QStringLiteral("Uploaded"));
+    QCOMPARE(model.headerData(TorrentModel::DownloadDirColumn,
+                              Qt::Horizontal,
+                              Qt::DisplayRole).toString(),
+             QStringLiteral("Download Folder"));
     QCOMPARE(model.headerData(TorrentModel::SeedsColumn,
                               Qt::Horizontal,
                               Qt::DisplayRole).toString(),
@@ -127,6 +132,12 @@ void TestTorrentModel::exposesOptionalColumns()
              qint64(4096));
     QCOMPARE(model.data(model.index(0, TorrentModel::UploadedEverColumn), TorrentModel::SortRole).toLongLong(),
              qint64(8192));
+    QCOMPARE(model.data(model.index(0, TorrentModel::DownloadDirColumn), Qt::DisplayRole).toString(),
+             QStringLiteral("/downloads/linux"));
+    QCOMPARE(model.data(model.index(0, TorrentModel::DownloadDirColumn), TorrentModel::SortRole).toString(),
+             QStringLiteral("/downloads/linux"));
+    QCOMPARE(model.data(model.index(0, TorrentModel::NameColumn), TorrentModel::DownloadDirRole).toString(),
+             QStringLiteral("/downloads/linux"));
     QCOMPARE(model.data(model.index(0, TorrentModel::SeedsColumn), Qt::DisplayRole).toString(),
              QStringLiteral("2/9"));
     QCOMPARE(model.data(model.index(0, TorrentModel::PeersConnectedColumn), Qt::DisplayRole).toString(),

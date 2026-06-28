@@ -464,6 +464,7 @@ void rpc_client::getTorrentList()
         "addedDate",
         "downloadedEver",
         "uploadedEver",
+        "downloadDir",
         "peersConnected",
         "peersSendingToUs",
         "peersGettingFromUs",

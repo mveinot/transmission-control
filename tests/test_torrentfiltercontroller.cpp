@@ -16,7 +16,8 @@ QJsonValue makeTorrentValue(int id,
                             const QString &name,
                             int status,
                             double percentDone,
-                            const QStringList &trackerHosts)
+                            const QStringList &trackerHosts,
+                            const QString &downloadDir = QString())
 {
     QJsonObject object;
     object["id"] = id;
@@ -29,6 +30,7 @@ QJsonValue makeTorrentValue(int id,
     object["eta"] = 0;
     object["sizeWhenDone"] = 1024.0;
     object["queuePosition"] = id;
+    object["downloadDir"] = downloadDir;
 
     QJsonArray trackerStats;
     for (const QString &host : trackerHosts) {
@@ -113,10 +115,15 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
     QVERIFY(!findItemByText(list, QStringLiteral("All"))->icon().isNull());
     QCOMPARE(proxy.stateFilter(), TorrentSortProxyModel::StateFilter::All);
     QVERIFY(proxy.trackerFilter().isEmpty());
+    QVERIFY(proxy.downloadDirFilter().isEmpty());
 
     const QVector<torrent> torrents = makeTorrentList({
-        makeTorrentValue(1, QStringLiteral("Ubuntu"), 4, 0.25, { QStringLiteral("tracker.example.com") }),
-        makeTorrentValue(2, QStringLiteral("Debian"), 6, 1.0, { QStringLiteral("other.example.com") }),
+        makeTorrentValue(1, QStringLiteral("Ubuntu"), 4, 0.25,
+                         { QStringLiteral("tracker.example.com") },
+                         QStringLiteral("/downloads/linux")),
+        makeTorrentValue(2, QStringLiteral("Debian"), 6, 1.0,
+                         { QStringLiteral("other.example.com") },
+                         QStringLiteral("/downloads/archive")),
     });
 
     sourceModel.applyUpdate(torrents);
@@ -129,6 +136,17 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
     list.setCurrentItem(trackerItem);
     QCOMPARE(proxy.stateFilter(), TorrentSortProxyModel::StateFilter::All);
     QCOMPARE(proxy.trackerFilter(), QStringLiteral("tracker.example.com"));
+    QVERIFY(proxy.downloadDirFilter().isEmpty());
+    QCOMPARE(proxy.rowCount(), 1);
+
+    QListWidgetItem *folderItem = findItemByText(list, QStringLiteral("/downloads/archive"));
+    QVERIFY(folderItem != nullptr);
+    QVERIFY(!folderItem->icon().isNull());
+
+    list.setCurrentItem(folderItem);
+    QCOMPARE(proxy.stateFilter(), TorrentSortProxyModel::StateFilter::All);
+    QVERIFY(proxy.trackerFilter().isEmpty());
+    QCOMPARE(proxy.downloadDirFilter(), QStringLiteral("/downloads/archive"));
     QCOMPARE(proxy.rowCount(), 1);
 
     QListWidgetItem *completeItem = findItemByText(list, QStringLiteral("Complete"));
@@ -138,6 +156,7 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
     list.setCurrentItem(completeItem);
     QCOMPARE(proxy.stateFilter(), TorrentSortProxyModel::StateFilter::Completed);
     QVERIFY(proxy.trackerFilter().isEmpty());
+    QVERIFY(proxy.downloadDirFilter().isEmpty());
     QCOMPARE(proxy.rowCount(), 1);
 }
 

@@ -34,6 +34,7 @@ bool TorrentSortProxyModel::lessThan(const QModelIndex &left, const QModelIndex 
     case TorrentModel::AddedColumn:
     case TorrentModel::DownloadedEverColumn:
     case TorrentModel::UploadedEverColumn:
+    case TorrentModel::SeedsColumn:
     case TorrentModel::PeersConnectedColumn:
         return lhs.toLongLong() < rhs.toLongLong();
 
@@ -48,6 +49,7 @@ bool TorrentSortProxyModel::lessThan(const QModelIndex &left, const QModelIndex 
     case TorrentModel::NameColumn:
     case TorrentModel::StatusColumn:
     case TorrentModel::TrackerColumn:
+    case TorrentModel::DownloadDirColumn:
     default:
         return QString::localeAwareCompare(lhs.toString(), rhs.toString()) < 0;
     }
@@ -57,8 +59,9 @@ bool TorrentSortProxyModel::filterAcceptsRow(int sourceRow,
                                              const QModelIndex &sourceParent) const
 {
     return matchesStateFilter(sourceRow, sourceParent)
-    && matchesSearchFilter(sourceRow, sourceParent)
-        && matchesTrackerFilter(sourceRow, sourceParent);
+        && matchesSearchFilter(sourceRow, sourceParent)
+        && matchesTrackerFilter(sourceRow, sourceParent)
+        && matchesDownloadDirFilter(sourceRow, sourceParent);
 }
 
 void TorrentSortProxyModel::refreshFilter()
@@ -218,4 +221,39 @@ bool TorrentSortProxyModel::matchesTrackerFilter(int sourceRow,
     }
 
     return false;
+}
+void TorrentSortProxyModel::setDownloadDirFilter(const QString &downloadDir)
+{
+    const QString normalized = downloadDir.trimmed();
+
+    if (m_downloadDirFilter == normalized)
+        return;
+
+    m_downloadDirFilter = normalized;
+    refreshFilter();
+}
+
+QString TorrentSortProxyModel::downloadDirFilter() const
+{
+    return m_downloadDirFilter;
+}
+
+bool TorrentSortProxyModel::matchesDownloadDirFilter(int sourceRow,
+                                                     const QModelIndex &sourceParent) const
+{
+    if (m_downloadDirFilter.isEmpty())
+        return true;
+
+    const QAbstractItemModel *model = sourceModel();
+
+    if (!model)
+        return true;
+
+    const QModelIndex nameIndex =
+        model->index(sourceRow, TorrentModel::NameColumn, sourceParent);
+
+    const QString downloadDir =
+        model->data(nameIndex, TorrentModel::DownloadDirRole).toString();
+
+    return downloadDir.compare(m_downloadDirFilter, Qt::CaseSensitive) == 0;
 }

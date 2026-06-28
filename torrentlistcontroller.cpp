@@ -33,7 +33,7 @@
 namespace {
 
 constexpr const char *TorrentTableHeaderStateKey =
-    "ui/torrentTable/horizontalHeaderState/v2";
+    "ui/torrentTable/horizontalHeaderState/v3";
 constexpr const char *TorrentTableVerticalHeaderStateKey =
     "ui/torrentTable/verticalHeaderState/v1";
 constexpr const char *TorrentTableVisibleColumnsKey =
@@ -64,6 +64,7 @@ const QVector<TorrentColumnDefinition> &torrentColumnDefinitions()
         { TorrentModel::AddedColumn, "added", false, true },
         { TorrentModel::DownloadedEverColumn, "downloaded", false, true },
         { TorrentModel::UploadedEverColumn, "uploaded", false, true },
+        { TorrentModel::DownloadDirColumn, "downloadDir", false, true },
         { TorrentModel::SeedsColumn, "seeds", false, true },
         { TorrentModel::PeersConnectedColumn, "peers", false, true },
     };

@@ -84,6 +84,7 @@ private slots:
     void filtersActiveTorrents();
     void filtersInactiveTorrents();
     void filtersByTrackerHost();
+    void filtersByDownloadDir();
     void combinesStateAndTrackerFilters();
 };
 
@@ -169,6 +170,31 @@ void TestTorrentSortProxyModel::filtersByTrackerHost()
     TorrentSortProxyModel proxy;
     proxy.setSourceModel(&sourceModel);
     proxy.setTrackerFilter(QStringLiteral("tracker.example.com"));
+
+    QCOMPARE(proxy.rowCount(), 2);
+    QCOMPARE(torrentIdAtProxyRow(proxy, 0), 1);
+    QCOMPARE(torrentIdAtProxyRow(proxy, 1), 3);
+}
+
+
+void TestTorrentSortProxyModel::filtersByDownloadDir()
+{
+    TorrentModel sourceModel;
+
+    QJsonObject one = makeTorrentValue(1, "Ubuntu", 4, 0.25, 0.0, 1024, 0).toObject();
+    one[QStringLiteral("downloadDir")] = QStringLiteral("/downloads/linux");
+
+    QJsonObject two = makeTorrentValue(2, "Movie", 4, 0.25, 0.0, 1024, 1).toObject();
+    two[QStringLiteral("downloadDir")] = QStringLiteral("/downloads/media");
+
+    QJsonObject three = makeTorrentValue(3, "Fedora", 4, 0.25, 0.0, 1024, 2).toObject();
+    three[QStringLiteral("downloadDir")] = QStringLiteral("/downloads/linux");
+
+    sourceModel.applyUpdate(makeTorrentList({ one, two, three }));
+
+    TorrentSortProxyModel proxy;
+    proxy.setSourceModel(&sourceModel);
+    proxy.setDownloadDirFilter(QStringLiteral("/downloads/linux"));
 
     QCOMPARE(proxy.rowCount(), 2);
     QCOMPARE(torrentIdAtProxyRow(proxy, 0), 1);

@@ -45,6 +45,7 @@ torrent::torrent(const QJsonValue &val)
     addedDate = static_cast<qint64>(obj.value("addedDate").toDouble());
     downloadedEver = static_cast<qint64>(obj.value("downloadedEver").toDouble());
     uploadedEver = static_cast<qint64>(obj.value("uploadedEver").toDouble());
+    downloadDir = obj.value("downloadDir").toString().trimmed();
     peersConnected = obj.value("peersConnected").toInt();
     peersSendingToUs = obj.value("peersSendingToUs").toInt();
     peersGettingFromUs = obj.value("peersGettingFromUs").toInt();
@@ -270,6 +271,11 @@ qint64 torrent::getUploadedEverBytes() const
     return uploadedEver;
 }
 
+QString torrent::getDownloadDir() const
+{
+    return downloadDir;
+}
+
 namespace {
 
 QString connectedTotalSummary(int connected, int total)
@@ -391,6 +397,7 @@ bool torrent::sameDisplayData(const torrent &other) const
            && addedDate == other.addedDate
            && downloadedEver == other.downloadedEver
            && uploadedEver == other.uploadedEver
+           && downloadDir == other.downloadDir
            && peersConnected == other.peersConnected
            && peersSendingToUs == other.peersSendingToUs
            && peersGettingFromUs == other.peersGettingFromUs
