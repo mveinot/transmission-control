@@ -1,6 +1,7 @@
 #include "torrentpeerscontroller.h"
 
 #include "geoipservice.h"
+#include "tablecolumncontroller.h"
 
 #include <QAbstractItemView>
 #include <QHostInfo>
@@ -9,6 +10,7 @@
 #include <QLocale>
 #include <QTableWidget>
 #include <QTableWidgetItem>
+#include <QHeaderView>
 
 namespace {
 QString normalizedAddress(const QString &address)
@@ -25,6 +27,8 @@ TorrentPeersController::TorrentPeersController(QTableWidget *peerTableWidget,
     , geoIpService(geoIpService)
 {
 }
+
+TorrentPeersController::~TorrentPeersController() = default;
 
 void TorrentPeersController::setup()
 {
@@ -49,6 +53,37 @@ void TorrentPeersController::setup()
     peerTableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
     peerTableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     peerTableWidget->setSortingEnabled(true);
+
+    columnController = std::make_unique<TableColumnController>(
+        peerTableWidget->horizontalHeader(),
+        QStringLiteral("ui/peerTableWidget/horizontalHeaderState/v4"),
+        QStringLiteral("ui/peerTableWidget/visibleColumns/v1"),
+        QVector<TableColumnController::ColumnDefinition> {
+            { CountryColumn, QStringLiteral("country"), true, true, false },
+            { AddressColumn, QStringLiteral("address"), true, false, true },
+            { HostnameColumn, QStringLiteral("host"), true, true, false },
+            { PortColumn, QStringLiteral("port"), true, true, false },
+            { ClientColumn, QStringLiteral("client"), true, true, false },
+            { ProgressColumn, QStringLiteral("progress"), true, true, false },
+            { DownloadColumn, QStringLiteral("download"), true, true, false },
+            { UploadColumn, QStringLiteral("upload"), true, true, false },
+            { EncryptedColumn, QStringLiteral("encrypted"), true, true, false },
+            { IncomingColumn, QStringLiteral("incoming"), true, true, false },
+        },
+        this);
+    columnController->setup();
+}
+
+void TorrentPeersController::saveViewState() const
+{
+    if (columnController)
+        columnController->saveState();
+}
+
+void TorrentPeersController::restoreViewState()
+{
+    if (columnController)
+        columnController->restoreState();
 }
 
 void TorrentPeersController::clear()

@@ -2,6 +2,7 @@
 
 #include "percentfilldelegate.h"
 #include "rpc_client.h"
+#include "tablecolumncontroller.h"
 
 #include <QCoreApplication>
 #include <QDesktopServices>
@@ -34,6 +35,8 @@ TorrentFilesController::TorrentFilesController(QTreeWidget *fileTreeWidget,
 {
 }
 
+TorrentFilesController::~TorrentFilesController() = default;
+
 void TorrentFilesController::setup()
 {
     if (!fileTreeWidget)
@@ -55,8 +58,34 @@ void TorrentFilesController::setup()
         new PercentFillDelegate(FilePercentColumn, Qt::UserRole, fileTreeWidget)
         );
 
+    columnController = std::make_unique<TableColumnController>(
+        fileTreeWidget->header(),
+        QStringLiteral("ui/fileTreeWidget/headerState/v5"),
+        QStringLiteral("ui/fileTreeWidget/visibleColumns/v1"),
+        QVector<TableColumnController::ColumnDefinition> {
+            { FileNameColumn, QStringLiteral("name"), true, false, true },
+            { FilePriorityColumn, QStringLiteral("priority"), true, true, false },
+            { FileSizeColumn, QStringLiteral("size"), true, true, false },
+            { FileDoneColumn, QStringLiteral("done"), true, true, false },
+            { FilePercentColumn, QStringLiteral("completed"), true, true, false },
+        },
+        this);
+    columnController->setup();
+
     connect(fileTreeWidget, &QTreeWidget::customContextMenuRequested,
             this, &TorrentFilesController::showContextMenu);
+}
+
+void TorrentFilesController::saveViewState() const
+{
+    if (columnController)
+        columnController->saveState();
+}
+
+void TorrentFilesController::restoreViewState()
+{
+    if (columnController)
+        columnController->restoreState();
 }
 
 void TorrentFilesController::clear()

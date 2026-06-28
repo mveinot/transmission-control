@@ -1,6 +1,7 @@
 #include "torrenttrackerscontroller.h"
 
 #include "rpc_client.h"
+#include "tablecolumncontroller.h"
 
 #include <QAbstractItemView>
 #include <QApplication>
@@ -29,6 +30,8 @@ TorrentTrackersController::TorrentTrackersController(QTableWidget *trackerTableW
 {
 }
 
+TorrentTrackersController::~TorrentTrackersController() = default;
+
 void TorrentTrackersController::setup()
 {
     if (!trackerTableWidget)
@@ -50,8 +53,35 @@ void TorrentTrackersController::setup()
         tr("Result")
     });
 
+    columnController = std::make_unique<TableColumnController>(
+        trackerTableWidget->horizontalHeader(),
+        QStringLiteral("ui/trackerTableWidget/headerState/v3"),
+        QStringLiteral("ui/trackerTableWidget/visibleColumns/v1"),
+        QVector<TableColumnController::ColumnDefinition> {
+            { HostColumn, QStringLiteral("host"), true, false, true },
+            { AnnounceColumn, QStringLiteral("announce"), true, true, false },
+            { SeedsColumn, QStringLiteral("seeds"), true, true, false },
+            { LeechersColumn, QStringLiteral("leechers"), true, true, false },
+            { LastAnnounceColumn, QStringLiteral("lastAnnounce"), true, true, false },
+            { ResultColumn, QStringLiteral("result"), true, true, false },
+        },
+        this);
+    columnController->setup();
+
     connect(trackerTableWidget, &QTableWidget::customContextMenuRequested,
             this, &TorrentTrackersController::showContextMenu);
+}
+
+void TorrentTrackersController::saveViewState() const
+{
+    if (columnController)
+        columnController->saveState();
+}
+
+void TorrentTrackersController::restoreViewState()
+{
+    if (columnController)
+        columnController->restoreState();
 }
 
 void TorrentTrackersController::clear()

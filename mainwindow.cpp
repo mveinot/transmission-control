@@ -581,55 +581,33 @@ int MainWindow::currentTorrentId() const
 // save header dimensions of all tables
 void MainWindow::saveTableViewState()
 {
-    QSettings settings;
-
     if (torrentListController)
         torrentListController->saveViewState();
 
-    settings.setValue(
-        "ui/fileTreeWidget/headerState/v4",
-        ui->fileTreeWidget->header()->saveState()
-        );
+    if (torrentFilesController)
+        torrentFilesController->saveViewState();
 
-    settings.setValue(
-        "ui/peerTableWidget/horizontalHeaderState/v3",
-        ui->peerTableWidget->horizontalHeader()->saveState()
-        );
+    if (torrentPeersController)
+        torrentPeersController->saveViewState();
 
-    settings.setValue(
-        "ui/trackerTableWidget/headerState/v2",
-        ui->trackerTableWidget->horizontalHeader()->saveState()
-        );
+    if (torrentTrackersController)
+        torrentTrackersController->saveViewState();
 }
 
 // restore header dimensions
 void MainWindow::restoreTableViewState()
 {
-    QSettings settings;
-
     if (torrentListController)
         torrentListController->restoreViewState();
 
-    const QByteArray fileTreeHeaderState =
-        settings.value("ui/fileTreeWidget/headerState/v4").toByteArray();
+    if (torrentFilesController)
+        torrentFilesController->restoreViewState();
 
-    if (!fileTreeHeaderState.isEmpty()) {
-        ui->fileTreeWidget->header()->restoreState(fileTreeHeaderState);
-    }
+    if (torrentPeersController)
+        torrentPeersController->restoreViewState();
 
-    const QByteArray peerTableHeaderState =
-        settings.value("ui/peerTableWidget/horizontalHeaderState/v3").toByteArray();
-
-    if (!peerTableHeaderState.isEmpty()) {
-        ui->peerTableWidget->horizontalHeader()->restoreState(peerTableHeaderState);
-    }
-
-    const QByteArray headerState =
-        settings.value("ui/trackerTableWidget/headerState/v2").toByteArray();
-
-    if (!headerState.isEmpty()) {
-        ui->trackerTableWidget->horizontalHeader()->restoreState(headerState);
-    }
+    if (torrentTrackersController)
+        torrentTrackersController->restoreViewState();
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)

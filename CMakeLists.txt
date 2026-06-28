@@ -194,6 +194,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         torrentpeerscontroller.h torrentpeerscontroller.cpp
         torrenttrackerscontroller.h torrenttrackerscontroller.cpp
         torrentlistcontroller.h torrentlistcontroller.cpp
+        tablecolumncontroller.h tablecolumncontroller.cpp
         torrentfiltercontroller.h torrentfiltercontroller.cpp
         torrentgeneralcontroller.h torrentgeneralcontroller.cpp
         traycontroller.h traycontroller.cpp

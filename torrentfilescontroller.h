@@ -8,6 +8,7 @@
 #include <QPoint>
 #include <QString>
 #include <functional>
+#include <memory>
 
 #include "foldermapping.h"
 
@@ -15,6 +16,7 @@ class QTreeWidget;
 class QTreeWidgetItem;
 class QWidget;
 class rpc_client;
+class TableColumnController;
 
 class TorrentFilesController : public QObject
 {
@@ -25,6 +27,7 @@ public:
                                     rpc_client *client,
                                     QWidget *dialogParent,
                                     QObject *parent = nullptr);
+    ~TorrentFilesController() override;
 
     void setup();
     void clear();
@@ -34,6 +37,8 @@ public:
     void setTorrentContext(int torrentId, const QString &downloadDir);
     void setFolderMappingsProvider(
         std::function<QList<FolderMapping>()> folderMappingsProvider);
+    void saveViewState() const;
+    void restoreViewState();
 
 signals:
     void statusMessageRequested(const QString &message, int timeoutMs);
@@ -89,6 +94,7 @@ private:
     QString torrentDownloadDir;
     QHash<int, QString> torrentFilePaths;
     std::function<QList<FolderMapping>()> folderMappingsProvider;
+    std::unique_ptr<TableColumnController> columnController;
 };
 
 #endif // TORRENTFILESCONTROLLER_H

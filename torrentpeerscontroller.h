@@ -5,10 +5,12 @@
 #include <QJsonArray>
 #include <QObject>
 #include <QSet>
+#include <memory>
 
 class GeoIpService;
 class QHostInfo;
 class QTableWidget;
+class TableColumnController;
 
 class TorrentPeersController : public QObject
 {
@@ -18,10 +20,13 @@ public:
     explicit TorrentPeersController(QTableWidget *peerTableWidget,
                                     GeoIpService *geoIpService,
                                     QObject *parent = nullptr);
+    ~TorrentPeersController() override;
 
     void setup();
     void clear();
     void populate(const QJsonArray &peers);
+    void saveViewState() const;
+    void restoreViewState();
 
 private slots:
     void handleHostLookup(const QHostInfo &hostInfo);
@@ -52,6 +57,7 @@ private:
     QHash<QString, QString> hostnameCache;
     QSet<QString> pendingHostnameLookups;
     QHash<int, QString> hostnameLookupIds;
+    std::unique_ptr<TableColumnController> columnController;
 };
 
 #endif // TORRENTPEERSCONTROLLER_H
