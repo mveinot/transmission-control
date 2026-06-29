@@ -8,7 +8,6 @@
 #include <QFileInfo>
 #include <QSettings>
 #include <QTimer>
-//#include <QDebug>
 
 WatchFolderController::WatchFolderController(WatchFolderManager *manager,
                                              TorrentAddController *torrentAddController,
@@ -85,13 +84,6 @@ void WatchFolderController::loadSettings()
     m_manager->setRequiredStableChecks(stableChecks);
     m_manager->setWatchFolder(folderPath);
     m_manager->setEnabled(enabled);
-
-    /*
-    qDebug() << "Watch folder settings:"
-             << "enabled=" << enabled
-             << "path=" << folderPath
-             << "stableChecks=" << stableChecks;
-    */
 }
 
 void WatchFolderController::handleTorrentFileAddFailed(const QString &filePath,

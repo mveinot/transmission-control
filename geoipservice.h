@@ -2,12 +2,33 @@
 #define GEOIPSERVICE_H
 
 #include <QObject>
+#include <QDateTime>
 #include <QHash>
 #include <QString>
 
 #ifdef PLANETARY_HAVE_MAXMINDDB
 #include <maxminddb.h>
 #endif
+
+struct GeoIpDatabaseInfo
+{
+    bool maxMindDbSupport = false;
+    bool loaded = false;
+    bool fallbackLookupActive = true;
+
+    QString path;
+    QString errorMessage;
+
+    QString databaseType;
+    QString description;
+    QString buildDateUtc;
+    int ipVersion = 0;
+    quint32 nodeCount = 0;
+    int recordSize = 0;
+    int binaryFormatMajor = 0;
+    int binaryFormatMinor = 0;
+    int cacheEntries = 0;
+};
 
 struct GeoIpResult
 {
@@ -46,11 +67,13 @@ public:
 
     bool loadDatabase(const QString &path);
     bool isDatabaseLoaded() const;
+    GeoIpDatabaseInfo databaseInfo() const;
 
     GeoIpResult lookup(const QString &ipAddress);
 
 private:
     QHash<QString, GeoIpResult> cache;
+    GeoIpDatabaseInfo dbInfo;
 
 #ifdef PLANETARY_HAVE_MAXMINDDB
     MMDB_s mmdb {};
@@ -62,6 +85,7 @@ private:
 
     static bool isPrivateOrLocalAddress(const QString &ipAddress);
     static QString countryCodeToFlagEmoji(const QString &countryCode);
+    void updateCacheEntryCount();
 
 #ifdef PLANETARY_HAVE_MAXMINDDB
     static QString readUtf8Value(MMDB_entry_s *entry,

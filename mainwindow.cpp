@@ -571,7 +571,7 @@ void MainWindow::updateTorrentList()
 
 void MainWindow::showAbout()
 {
-    DialogAbout dialog(this);
+    DialogAbout dialog(geoIpService, this);
     dialog.exec();
 }
 

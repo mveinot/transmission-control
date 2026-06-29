@@ -1,11 +1,23 @@
 #include "geoipservice.h"
 
-#include <QDebug>
+#include <QDateTime>
+//#include <QDebug>
 #include <QFileInfo>
 #include <QHostAddress>
+#include <QTimeZone>
 #include <QStringList>
 
 namespace {
+
+#ifdef PLANETARY_HAVE_MAXMINDDB
+QString mmdbCString(const char *text)
+{
+    if (!text || *text == '\0')
+        return {};
+
+    return QString::fromUtf8(text);
+}
+#endif
 
 struct DummyCountry
 {
@@ -37,7 +49,14 @@ const QList<DummyCountry> DummyCountries {
 GeoIpService::GeoIpService(QObject *parent)
     : QObject(parent)
 {
+#ifdef PLANETARY_HAVE_MAXMINDDB
+    dbInfo.maxMindDbSupport = true;
+#else
+    dbInfo.maxMindDbSupport = false;
+    dbInfo.errorMessage = tr("Planetary was built without libmaxminddb support.");
+#endif
 }
+
 
 GeoIpService::~GeoIpService()
 {
@@ -52,6 +71,15 @@ GeoIpService::~GeoIpService()
 bool GeoIpService::loadDatabase(const QString &path)
 {
     cache.clear();
+    updateCacheEntryCount();
+
+    dbInfo = {};
+
+#ifdef PLANETARY_HAVE_MAXMINDDB
+    dbInfo.maxMindDbSupport = true;
+#else
+    dbInfo.maxMindDbSupport = false;
+#endif
 
 #ifdef PLANETARY_HAVE_MAXMINDDB
     if (mmdbOpen) {
@@ -60,14 +88,17 @@ bool GeoIpService::loadDatabase(const QString &path)
     }
 
     const QString cleanPath = path.trimmed();
+    dbInfo.path = cleanPath;
 
     if (cleanPath.isEmpty()) {
-        qWarning() << "GeoIP database path is empty";
+        dbInfo.errorMessage = tr("GeoIP database path is empty.");
+        //qWarning() << "GeoIP database path is empty";
         return false;
     }
 
     if (!QFileInfo::exists(cleanPath)) {
-        qWarning() << "GeoIP database not found:" << cleanPath;
+        dbInfo.errorMessage = tr("GeoIP database file was not found.");
+        //qWarning() << "GeoIP database not found:" << cleanPath;
         return false;
     }
 
@@ -78,18 +109,59 @@ bool GeoIpService::loadDatabase(const QString &path)
         );
 
     if (status != MMDB_SUCCESS) {
-        qWarning() << "Could not open GeoIP database:"
-                   << cleanPath
-                   << MMDB_strerror(status);
+        dbInfo.errorMessage = tr("Could not open GeoIP database: %1")
+                                  .arg(QString::fromUtf8(MMDB_strerror(status)));
+        //qWarning() << "Could not open GeoIP database:"
+        //           << cleanPath
+        //           << MMDB_strerror(status);
         return false;
     }
 
     mmdbOpen = true;
 
-    qDebug() << "Loaded GeoIP database:" << cleanPath;
+    dbInfo.loaded = true;
+    dbInfo.fallbackLookupActive = false;
+    dbInfo.databaseType = mmdbCString(mmdb.metadata.database_type);
+    dbInfo.ipVersion = static_cast<int>(mmdb.metadata.ip_version);
+    dbInfo.nodeCount = mmdb.metadata.node_count;
+    dbInfo.recordSize = static_cast<int>(mmdb.metadata.record_size);
+    dbInfo.binaryFormatMajor = static_cast<int>(mmdb.metadata.binary_format_major_version);
+    dbInfo.binaryFormatMinor = static_cast<int>(mmdb.metadata.binary_format_minor_version);
+
+    if (mmdb.metadata.build_epoch > 0) {
+        dbInfo.buildDateUtc =
+            QDateTime::fromSecsSinceEpoch(
+                static_cast<qint64>(mmdb.metadata.build_epoch),
+                QTimeZone::UTC
+                ).toString(Qt::ISODate);
+    }
+
+    for (uint32_t i = 0; i < mmdb.metadata.description.count; ++i) {
+        const MMDB_description_s *description = mmdb.metadata.description.descriptions[i];
+
+        if (!description)
+            continue;
+
+        const QString language = mmdbCString(description->language);
+        const QString text = mmdbCString(description->description);
+
+        if (text.isEmpty())
+            continue;
+
+        if (language == QStringLiteral("en")) {
+            dbInfo.description = text;
+            break;
+        }
+
+        if (dbInfo.description.isEmpty())
+            dbInfo.description = text;
+    }
+
+    //qDebug() << "Loaded GeoIP database:" << cleanPath;
     return true;
 #else
     Q_UNUSED(path);
+    dbInfo.errorMessage = tr("Planetary was built without libmaxminddb support.");
     qWarning() << "Planetary was built without libmaxminddb support";
     return false;
 #endif
@@ -102,6 +174,13 @@ bool GeoIpService::isDatabaseLoaded() const
 #else
     return false;
 #endif
+}
+
+GeoIpDatabaseInfo GeoIpService::databaseInfo() const
+{
+    GeoIpDatabaseInfo info = dbInfo;
+    info.cacheEntries = cache.size();
+    return info;
 }
 
 GeoIpResult GeoIpService::lookup(const QString &ipAddress)
@@ -130,6 +209,7 @@ GeoIpResult GeoIpService::lookup(const QString &ipAddress)
     }
 
     cache.insert(key, result);
+    updateCacheEntryCount();
     return result;
 }
 
@@ -153,16 +233,16 @@ GeoIpResult GeoIpService::lookupInDatabase(const QString &ipAddress) const
             );
 
     if (gaiError != 0) {
-        qWarning() << "GeoIP getaddrinfo error for"
-                   << ipAddress
-                   << gai_strerror(gaiError);
+        //qWarning() << "GeoIP getaddrinfo error for"
+        //           << ipAddress
+        //           << gai_strerror(gaiError);
         return result;
     }
 
     if (mmdbError != MMDB_SUCCESS) {
-        qWarning() << "GeoIP lookup error for"
-                   << ipAddress
-                   << MMDB_strerror(mmdbError);
+        //qWarning() << "GeoIP lookup error for"
+        //           << ipAddress
+        //           << MMDB_strerror(mmdbError);
         return result;
     }
 
@@ -261,6 +341,11 @@ bool GeoIpService::isPrivateOrLocalAddress(const QString &ipAddress)
     }
 
     return false;
+}
+
+void GeoIpService::updateCacheEntryCount()
+{
+    dbInfo.cacheEntries = cache.size();
 }
 
 QString GeoIpService::countryCodeToFlagEmoji(const QString &countryCode)

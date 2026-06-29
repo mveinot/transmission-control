@@ -1,8 +1,11 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QStringList>
 #include <QTextStream>
+
 #include "dialogabout.h"
+#include "geoipservice.h"
 #include "ui_dialogabout.h"
 
 static QString readTextFile(const QString &path)
@@ -26,9 +29,18 @@ static QString bundledResourcePath(const QString &relativePath)
         );
 }
 
-DialogAbout::DialogAbout(QWidget *parent)
+static QString htmlValue(const QString &value)
+{
+    if (value.trimmed().isEmpty())
+        return QStringLiteral("<em>Unknown</em>");
+
+    return value.toHtmlEscaped();
+}
+
+DialogAbout::DialogAbout(GeoIpService *geoIpService, QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::DialogAbout)
+    , geoIpService(geoIpService)
 {
     ui->setupUi(this);
 
@@ -38,13 +50,7 @@ DialogAbout::DialogAbout(QWidget *parent)
     ui->textCredits->setOpenExternalLinks(true);
     ui->textLicense->setReadOnly(true);
 
-    ui->textAbout->setHtml(QString(
-                               "<h2>Planetary</h2>"
-                               "<p>A native Qt Transmission remote client.</p>"
-                               "<p>Version: %1</p>"
-                               "<p>Build date: %2</p>"
-                               "<p>Copyright © Mark Veinot</p>"
-                               ).arg(QCoreApplication::applicationVersion(), QStringLiteral(__DATE__)));
+    ui->textAbout->setHtml(buildAboutHtml());
 
     const QString creditsPath =
         bundledResourcePath("licenses/THIRD_PARTY_NOTICES.txt");
@@ -87,12 +93,94 @@ DialogAbout::~DialogAbout()
     delete ui;
 }
 
+QString DialogAbout::buildAboutHtml() const
+{
+    return QString(
+               "<h2>Planetary</h2>"
+               "<p>A native Qt Transmission remote client.</p>"
+               "<p>Version: %1</p>"
+               "<p>Build date: %2</p>"
+               "<p>Copyright © Mark Veinot</p>"
+               ).arg(QCoreApplication::applicationVersion().toHtmlEscaped(),
+                     QStringLiteral(__DATE__).toHtmlEscaped());
+}
+
+QString DialogAbout::buildGeoIpHtml() const
+{
+    if (!geoIpService) {
+        return QStringLiteral(
+            "<h3>GeoIP</h3>"
+            "<p><strong>Status:</strong> <em>Not initialized</em></p>"
+            );
+    }
+
+    const GeoIpDatabaseInfo info = geoIpService->databaseInfo();
+
+    QStringList rows;
+
+    const QString status = info.loaded
+        ? tr("Loaded real MaxMind DB-compatible database")
+        : tr("Using fallback country lookup");
+
+    rows << QStringLiteral("<tr><th align=\"left\">Status</th><td>%1</td></tr>")
+                .arg(status.toHtmlEscaped());
+
+    rows << QStringLiteral("<tr><th align=\"left\">libmaxminddb support</th><td>%1</td></tr>")
+                .arg(info.maxMindDbSupport ? tr("Available") : tr("Not built in"));
+
+    if (!info.path.isEmpty()) {
+        rows << QStringLiteral("<tr><th align=\"left\">Database path</th><td>%1</td></tr>")
+                    .arg(info.path.toHtmlEscaped());
+    }
+
+    if (!info.errorMessage.isEmpty()) {
+        rows << QStringLiteral("<tr><th align=\"left\">Load message</th><td>%1</td></tr>")
+                    .arg(info.errorMessage.toHtmlEscaped());
+    }
+
+    if (info.loaded) {
+        rows << QStringLiteral("<tr><th align=\"left\">Database type</th><td>%1</td></tr>")
+                    .arg(htmlValue(info.databaseType));
+
+        if (!info.description.isEmpty()) {
+            rows << QStringLiteral("<tr><th align=\"left\">Description</th><td>%1</td></tr>")
+                        .arg(info.description.toHtmlEscaped());
+        }
+
+        rows << QStringLiteral("<tr><th align=\"left\">Build date</th><td>%1</td></tr>")
+                    .arg(htmlValue(info.buildDateUtc));
+
+        rows << QStringLiteral("<tr><th align=\"left\">IP version</th><td>%1</td></tr>")
+                    .arg(info.ipVersion > 0 ? QString::number(info.ipVersion) : tr("Unknown"));
+
+        rows << QStringLiteral("<tr><th align=\"left\">Node count</th><td>%1</td></tr>")
+                    .arg(info.nodeCount > 0 ? QString::number(info.nodeCount) : tr("Unknown"));
+
+        rows << QStringLiteral("<tr><th align=\"left\">Record size</th><td>%1</td></tr>")
+                    .arg(info.recordSize > 0 ? QString::number(info.recordSize) : tr("Unknown"));
+
+        if (info.binaryFormatMajor > 0) {
+            rows << QStringLiteral("<tr><th align=\"left\">Binary format</th><td>%1.%2</td></tr>")
+                        .arg(info.binaryFormatMajor)
+                        .arg(info.binaryFormatMinor);
+        }
+    }
+
+    rows << QStringLiteral("<tr><th align=\"left\">Lookup cache entries</th><td>%1</td></tr>")
+                .arg(info.cacheEntries);
+
+    return QStringLiteral(
+               "<h3>GeoIP</h3>"
+               "<table cellspacing=\"4\" cellpadding=\"2\">%1</table>"
+               ).arg(rows.join(QString()));
+}
+
 bool DialogAbout::eventFilter(QObject *watched, QEvent *event)
 {
     if (watched == ui->image &&
         event->type() == QEvent::MouseButtonDblClick) {
-            triggerEasterEgg();
-            return true;
+        triggerEasterEgg();
+        return true;
     }
 
     return QDialog::eventFilter(watched, event);
@@ -105,8 +193,10 @@ void DialogAbout::triggerEasterEgg()
                                "<p>Qt: %1</p>"
                                "<p>Build: %2 %3</p>"
                                "<p>Caffeine level: Unhealthy</p>"
+                               "%4"
                                )
                                .arg(QStringLiteral(QT_VERSION_STR),
                                     QStringLiteral(__DATE__),
-                                    QStringLiteral(__TIME__)));
+                                    QStringLiteral(__TIME__),
+                                    buildGeoIpHtml()));
 }
