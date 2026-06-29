@@ -38,6 +38,7 @@
 #include <QMessageBox>
 #include <QSettings>
 #include <QSignalBlocker>
+#include <QStringList>
 #include <QSizePolicy>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -45,6 +46,7 @@
 #include <QUrl>
 #include <QVBoxLayout>
 #include <functional>
+#include <initializer_list>
 
 #include "rpc_client.h"
 #include "dialogabout.h"
@@ -62,6 +64,60 @@ namespace {
 constexpr int DefaultUpdateIntervalSeconds = 10;
 constexpr int MinimumUpdateIntervalSeconds = 1;
 constexpr int MaximumUpdateIntervalSeconds = 3600;
+
+bool semverAtLeast(const QString &version, int requiredMajor, int requiredMinor, int requiredPatch)
+{
+    const QStringList parts = version.split(QLatin1Char('.'));
+
+    const int major = parts.value(0).toInt();
+    const int minor = parts.value(1).toInt();
+    const int patch = parts.value(2).toInt();
+
+    if (major != requiredMajor)
+        return major > requiredMajor;
+
+    if (minor != requiredMinor)
+        return minor > requiredMinor;
+
+    return patch >= requiredPatch;
+}
+
+bool sessionSupportsSequentialDownload(const QJsonObject &settings)
+{
+    const int rpcVersion = settings.value(QStringLiteral("rpc-version")).toInt(
+        settings.value(QStringLiteral("rpc_version")).toInt()
+        );
+
+    if (rpcVersion >= 18)
+        return true;
+
+    const QString rpcVersionSemver = settings.value(QStringLiteral("rpc-version-semver")).toString(
+        settings.value(QStringLiteral("rpc_version_semver")).toString()
+        );
+
+    return semverAtLeast(rpcVersionSemver, 6, 0, 0);
+}
+
+bool jsonBoolAny(const QJsonObject &object,
+                 std::initializer_list<const char *> keys,
+                 bool *found = nullptr)
+{
+    for (const char *key : keys) {
+        const QJsonValue value = object.value(QString::fromLatin1(key));
+
+        if (!value.isUndefined()) {
+            if (found)
+                *found = true;
+
+            return value.toBool(false);
+        }
+    }
+
+    if (found)
+        *found = false;
+
+    return false;
+}
 }
 
 void MainWindow::clearGeneralTab()
@@ -388,6 +444,22 @@ MainWindow::MainWindow(QWidget *parent)
                     return;
 
                 torrentGeneralController->update(details);
+
+                if (torrentListController) {
+                    bool hasSequentialDownload = false;
+                    const bool sequentialDownloadEnabled = jsonBoolAny(
+                        details,
+                        { "sequential_download", "sequentialDownload" },
+                        &hasSequentialDownload
+                        );
+
+                    torrentListController->setCurrentTorrentSequentialDownload(
+                        torrentId,
+                        sequentialDownloadEnabled,
+                        hasSequentialDownload
+                        );
+                }
+
                 torrentTrackersController->setTorrentId(torrentId);
                 torrentTrackersController->populate(details);
                 torrentFilesController->setTorrentContext(
@@ -1086,6 +1158,11 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
         sessionSettings.contains(QStringLiteral("alt-speed-enabled"));
     updateAlternativeSpeedAction(confirmedAlternativeSpeedEnabled,
                                  alternativeSpeedSettingsAvailable);
+
+    if (torrentListController)
+        torrentListController->setSequentialDownloadSupported(
+            sessionSupportsSequentialDownload(sessionSettings)
+            );
 
     if (torrentAddController)
         torrentAddController->setDefaultDownloadDir(remoteDownloadDir);

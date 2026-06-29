@@ -321,11 +321,28 @@ void TorrentListController::clearCurrentTorrentDetails()
     m_currentDetailsTorrentId = -1;
     m_currentTorrentHashString.clear();
     m_currentTorrentMagnetLink.clear();
+    m_currentSequentialDownloadTorrentId = -1;
+    m_currentSequentialDownloadEnabled = false;
+    m_currentSequentialDownloadKnown = false;
 }
 
 void TorrentListController::setDefaultDownloadDir(const QString &downloadDir)
 {
     m_defaultDownloadDir = downloadDir.trimmed();
+}
+
+void TorrentListController::setSequentialDownloadSupported(bool supported)
+{
+    m_sequentialDownloadSupported = supported;
+}
+
+void TorrentListController::setCurrentTorrentSequentialDownload(int torrentId,
+                                                                bool enabled,
+                                                                bool known)
+{
+    m_currentSequentialDownloadTorrentId = torrentId;
+    m_currentSequentialDownloadEnabled = enabled;
+    m_currentSequentialDownloadKnown = known;
 }
 
 void TorrentListController::setCurrentDetailsDownloadDirProvider(const std::function<QString()> &provider)
@@ -408,6 +425,33 @@ void TorrentListController::showContextMenu(const QPoint &pos)
 
     menu.addSeparator();
 
+    QAction *sequentialDownloadAction = menu.addAction(tr("Sequential Download"));
+    sequentialDownloadAction->setCheckable(true);
+
+    const QList<int> contextTorrentIds = selectedTorrentIds();
+    const bool canSetSequentialDownload =
+        m_sequentialDownloadSupported
+        && contextTorrentIds.size() == 1
+        && m_currentSequentialDownloadKnown
+        && m_currentSequentialDownloadTorrentId == contextTorrentIds.first();
+
+    sequentialDownloadAction->setEnabled(canSetSequentialDownload);
+    sequentialDownloadAction->setChecked(
+        canSetSequentialDownload && m_currentSequentialDownloadEnabled
+        );
+
+    if (!m_sequentialDownloadSupported) {
+        sequentialDownloadAction->setToolTip(
+            tr("Sequential download requires Transmission RPC 18 / 4.1.0 or newer.")
+            );
+    } else if (!canSetSequentialDownload) {
+        sequentialDownloadAction->setToolTip(
+            tr("Select one torrent and wait for its details to load.")
+            );
+    }
+
+    menu.addSeparator();
+
     if (m_actions.verify)
         menu.addAction(m_actions.verify);
 
@@ -422,7 +466,6 @@ void TorrentListController::showContextMenu(const QPoint &pos)
     QAction *copyMagnetAction = menu.addAction(tr("Copy Magnet Link"));
     QAction *copyHashAction = menu.addAction(tr("Copy Hash"));
 
-    const QList<int> contextTorrentIds = selectedTorrentIds();
     const bool canCopyCurrentTorrentDetails =
         contextTorrentIds.size() == 1
         && m_currentDetailsTorrentId == contextTorrentIds.first();
@@ -479,6 +522,11 @@ void TorrentListController::showContextMenu(const QPoint &pos)
             &QAction::triggered,
             this,
             &TorrentListController::setSelectedTorrentsLocation);
+
+    connect(sequentialDownloadAction,
+            &QAction::triggered,
+            this,
+            &TorrentListController::setSelectedTorrentsSequentialDownload);
 
     connect(propertiesAction,
             &QAction::triggered,
@@ -721,6 +769,38 @@ void TorrentListController::setSelectedTorrentsLocation()
         );
 
     QTimer::singleShot(1500, this, [this]() {
+        emit torrentListRefreshRequested();
+        refreshCurrentTorrentDetails();
+    });
+}
+
+void TorrentListController::setSelectedTorrentsSequentialDownload(bool enabled)
+{
+    const QList<int> ids = selectedTorrentIds();
+
+    if (ids.isEmpty()) {
+        emit statusMessageRequested(tr("No torrent selected."), 3000);
+        return;
+    }
+
+    if (!m_sequentialDownloadSupported) {
+        emit statusMessageRequested(
+            tr("Sequential download is not supported by this Transmission server."),
+            5000
+            );
+        return;
+    }
+
+    m_client->setTorrentsSequentialDownload(ids, enabled);
+
+    emit statusMessageRequested(
+        enabled
+            ? tr("Enabling sequential download for %1 torrent(s)...").arg(ids.size())
+            : tr("Disabling sequential download for %1 torrent(s)...").arg(ids.size()),
+        3000
+        );
+
+    QTimer::singleShot(1000, this, [this]() {
         emit torrentListRefreshRequested();
         refreshCurrentTorrentDetails();
     });

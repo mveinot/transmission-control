@@ -82,6 +82,9 @@ public:
     void setTorrentProperties(int torrentId,
                               const QJsonObject &properties);
 
+    void setTorrentsSequentialDownload(const QList<int> &ids,
+                                       bool enabled);
+
     void queueMoveTop(const QList<int> &ids);
     void queueMoveUp(const QList<int> &ids);
     void queueMoveDown(const QList<int> &ids);
@@ -131,6 +134,7 @@ private:
     QString password;
     bool _clientReady = false;
     bool updateInProgress = false;
+    bool m_sequentialDownloadSupported = false;
     QByteArray _session_token;
     QNetworkAccessManager *na_manager;
     QString serverName;

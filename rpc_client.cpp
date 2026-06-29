@@ -31,6 +31,40 @@ static QJsonArray idsToJsonArray(const QList<int> &ids)
     return array;
 }
 
+
+static bool semverAtLeast(const QString &version, int requiredMajor, int requiredMinor, int requiredPatch)
+{
+    const QStringList parts = version.split(QLatin1Char('.'));
+
+    const int major = parts.value(0).toInt();
+    const int minor = parts.value(1).toInt();
+    const int patch = parts.value(2).toInt();
+
+    if (major != requiredMajor)
+        return major > requiredMajor;
+
+    if (minor != requiredMinor)
+        return minor > requiredMinor;
+
+    return patch >= requiredPatch;
+}
+
+static bool sessionSupportsSequentialDownload(const QJsonObject &settings)
+{
+    const int legacyRpcVersion = settings.value(QStringLiteral("rpc-version")).toInt(
+        settings.value(QStringLiteral("rpc_version")).toInt()
+        );
+
+    if (legacyRpcVersion >= 18)
+        return true;
+
+    const QString rpcVersionSemver = settings.value(QStringLiteral("rpc-version-semver")).toString(
+        settings.value(QStringLiteral("rpc_version_semver")).toString()
+        );
+
+    return semverAtLeast(rpcVersionSemver, 6, 0, 0);
+}
+
 rpc_client::rpc_client(QObject *parent)
     : QObject(parent)
 {
@@ -218,6 +252,8 @@ void rpc_client::replyFinished(QNetworkReply *reply)
     if (requestType == RpcRequestType::SessionGet) {
         const QJsonObject arguments =
             root.value("arguments").toObject();
+
+        m_sequentialDownloadSupported = sessionSupportsSequentialDownload(arguments);
 
         emit sessionSettingsReceived(arguments);
         return;
@@ -706,6 +742,13 @@ void rpc_client::getTorrentDetails(int id)
         QStringLiteral("wanted")
     };
 
+    if (m_sequentialDownloadSupported) {
+        QJsonArray fields = arguments.value(QStringLiteral("fields")).toArray();
+        fields.append(QStringLiteral("sequential_download"));
+        fields.append(QStringLiteral("sequential_download_from_piece"));
+        arguments[QStringLiteral("fields")] = fields;
+    }
+
     postRpc("torrent-get", arguments, RpcRequestType::TorrentDetails);
 }
 
@@ -852,6 +895,13 @@ void rpc_client::getTorrentProperties(int id)
         QStringLiteral("webseeds"),
         QStringLiteral("webseedsSendingToUs")
     };
+
+    if (m_sequentialDownloadSupported) {
+        QJsonArray fields = arguments.value(QStringLiteral("fields")).toArray();
+        fields.append(QStringLiteral("sequential_download"));
+        fields.append(QStringLiteral("sequential_download_from_piece"));
+        arguments[QStringLiteral("fields")] = fields;
+    }
 
     postRpc(QStringLiteral("torrent-get"),
             arguments,
@@ -1020,6 +1070,21 @@ void rpc_client::setTorrentProperties(int torrentId,
             RpcRequestType::Command);
 }
 
+void rpc_client::setTorrentsSequentialDownload(const QList<int> &ids,
+                                               bool enabled)
+{
+    if (ids.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments[QStringLiteral("ids")] = idsToJsonArray(ids);
+    arguments[QStringLiteral("sequential_download")] = enabled;
+
+    postRpc(QStringLiteral("torrent-set"),
+            arguments,
+            RpcRequestType::Command);
+}
+
 void rpc_client::queueMoveTop(const QList<int> &ids)
 {
     postIdsCommand(QStringLiteral("queue-move-top"), ids);
@@ -1054,6 +1119,8 @@ void rpc_client::getSessionSettings()
         "lpd-enabled",
         "peer-limit-global",
         "peer-limit-per-torrent",
+        "rpc-version",
+        "rpc-version-semver",
 
         "speed-limit-down-enabled",
         "speed-limit-down",

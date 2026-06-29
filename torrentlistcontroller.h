@@ -49,6 +49,8 @@ public:
                                   const QString &magnetLink);
     void clearCurrentTorrentDetails();
     void setDefaultDownloadDir(const QString &downloadDir);
+    void setSequentialDownloadSupported(bool supported);
+    void setCurrentTorrentSequentialDownload(int torrentId, bool enabled, bool known);
     void setCurrentDetailsDownloadDirProvider(const std::function<QString()> &provider);
 
 public slots:
@@ -64,6 +66,7 @@ public slots:
     void verifySelectedTorrents();
     void forceStartSelectedTorrents();
     void setSelectedTorrentsLocation();
+    void setSelectedTorrentsSequentialDownload(bool enabled);
     void showSelectedTorrentProperties();
     void copySelectedTorrentMagnetLink();
     void copySelectedTorrentHash();
@@ -88,6 +91,10 @@ private:
     int m_currentDetailsTorrentId = -1;
     QString m_currentTorrentHashString;
     QString m_currentTorrentMagnetLink;
+    bool m_sequentialDownloadSupported = false;
+    int m_currentSequentialDownloadTorrentId = -1;
+    bool m_currentSequentialDownloadEnabled = false;
+    bool m_currentSequentialDownloadKnown = false;
     QString m_defaultDownloadDir;
     std::function<QString()> m_currentDetailsDownloadDirProvider;
 
