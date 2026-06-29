@@ -1119,7 +1119,10 @@ void rpc_client::getSessionSettings()
         "lpd-enabled",
         "peer-limit-global",
         "peer-limit-per-torrent",
+
+        "version",
         "rpc-version",
+        "rpc-version-minimum",
         "rpc-version-semver",
 
         "speed-limit-down-enabled",

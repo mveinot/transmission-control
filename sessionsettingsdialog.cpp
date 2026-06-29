@@ -55,6 +55,25 @@ QString jsonString(const QJsonObject &object,
     return value.toString();
 }
 
+
+QString displayValueOrUnknown(const QString &value)
+{
+    if (!value.trimmed().isEmpty())
+        return value;
+
+    return QStringLiteral("Unknown");
+}
+
+QString displayNumberOrUnknown(const QJsonObject &object, const QString &key)
+{
+    const QJsonValue value = object.value(key);
+
+    if (value.isDouble())
+        return QString::number(value.toInt());
+
+    return QStringLiteral("Unknown");
+}
+
 QString encryptionLabelForValue(const QString &value)
 {
     if (value == QStringLiteral("required"))
@@ -177,6 +196,22 @@ void SessionSettingsDialog::setComboCurrentData(const QString &value)
 void SessionSettingsDialog::setSessionSettings(const QJsonObject &settings)
 {
     originalSettings = settings;
+
+    ui->labelTransmissionVersionValue->setText(
+        displayValueOrUnknown(jsonString(settings, QStringLiteral("version")))
+        );
+
+    ui->labelRpcVersionValue->setText(
+        displayNumberOrUnknown(settings, QStringLiteral("rpc-version"))
+        );
+
+    ui->labelRpcMinimumValue->setText(
+        displayNumberOrUnknown(settings, QStringLiteral("rpc-version-minimum"))
+        );
+
+    ui->labelRpcSemverValue->setText(
+        displayValueOrUnknown(jsonString(settings, QStringLiteral("rpc-version-semver")))
+        );
 
     const QString encryption =
         jsonString(settings, QStringLiteral("encryption"), QStringLiteral("tolerated"));
