@@ -5,9 +5,11 @@
 #include <QJsonObject>
 #include <QPoint>
 #include <QString>
+#include <QVariant>
 #include <memory>
 
 class QTableWidget;
+class QTableWidgetItem;
 class QWidget;
 class rpc_client;
 class TableColumnController;
@@ -35,12 +37,22 @@ signals:
 
 private:
     enum TrackerColumn {
-        HostColumn = 0,
+        TierColumn = 0,
+        HostColumn,
+        SiteColumn,
         AnnounceColumn,
+        ScrapeColumn,
+        AnnounceStateColumn,
+        ScrapeStateColumn,
         SeedsColumn,
         LeechersColumn,
+        DownloadsColumn,
         LastAnnounceColumn,
-        ResultColumn,
+        NextAnnounceColumn,
+        LastScrapeColumn,
+        NextScrapeColumn,
+        LastAnnounceResultColumn,
+        LastScrapeResultColumn,
         TrackerColumnCount
     };
 
@@ -56,6 +68,11 @@ private:
     void removeTrackerFromContextMenu(int row);
     void showContextMenu(const QPoint &pos);
     void copyTrackerUrlToClipboard(const QString &trackerUrl);
+    QString formatTrackerTime(qint64 seconds, const QString &emptyText) const;
+    QString formatTrackerCount(int count) const;
+    QString formatTrackerState(int state) const;
+    QString displayTrackerResult(const QString &result, bool succeeded, bool timedOut) const;
+    QTableWidgetItem *makeTextItem(const QString &text, const QVariant &sortValue = QVariant()) const;
 
     QTableWidget *trackerTableWidget = nullptr;
     rpc_client *client = nullptr;

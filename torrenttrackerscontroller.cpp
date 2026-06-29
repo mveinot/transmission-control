@@ -45,25 +45,45 @@ void TorrentTrackersController::setup()
     trackerTableWidget->horizontalHeader()->setStretchLastSection(true);
     trackerTableWidget->setColumnCount(TrackerColumnCount);
     trackerTableWidget->setHorizontalHeaderLabels({
+        tr("Tier"),
         tr("Host"),
+        tr("Site"),
         tr("Announce"),
+        tr("Scrape"),
+        tr("Announce State"),
+        tr("Scrape State"),
         tr("Seeds"),
         tr("Leechers"),
+        tr("Downloads"),
         tr("Last Announce"),
-        tr("Result")
+        tr("Next Announce"),
+        tr("Last Scrape"),
+        tr("Next Scrape"),
+        tr("Announce Result"),
+        tr("Scrape Result")
     });
 
     columnController = std::make_unique<TableColumnController>(
         trackerTableWidget->horizontalHeader(),
-        QStringLiteral("ui/trackerTableWidget/headerState/v3"),
-        QStringLiteral("ui/trackerTableWidget/visibleColumns/v1"),
+        QStringLiteral("ui/trackerTableWidget/headerState/v4"),
+        QStringLiteral("ui/trackerTableWidget/visibleColumns/v2"),
         QVector<TableColumnController::ColumnDefinition> {
+            { TierColumn, QStringLiteral("tier"), true, true, false },
             { HostColumn, QStringLiteral("host"), true, false, true },
+            { SiteColumn, QStringLiteral("site"), false, true, false },
             { AnnounceColumn, QStringLiteral("announce"), true, true, false },
+            { ScrapeColumn, QStringLiteral("scrape"), false, true, false },
+            { AnnounceStateColumn, QStringLiteral("announceState"), true, true, false },
+            { ScrapeStateColumn, QStringLiteral("scrapeState"), false, true, false },
             { SeedsColumn, QStringLiteral("seeds"), true, true, false },
             { LeechersColumn, QStringLiteral("leechers"), true, true, false },
+            { DownloadsColumn, QStringLiteral("downloads"), false, true, false },
             { LastAnnounceColumn, QStringLiteral("lastAnnounce"), true, true, false },
-            { ResultColumn, QStringLiteral("result"), true, true, false },
+            { NextAnnounceColumn, QStringLiteral("nextAnnounce"), true, true, false },
+            { LastScrapeColumn, QStringLiteral("lastScrape"), false, true, false },
+            { NextScrapeColumn, QStringLiteral("nextScrape"), false, true, false },
+            { LastAnnounceResultColumn, QStringLiteral("announceResult"), true, true, false },
+            { LastScrapeResultColumn, QStringLiteral("scrapeResult"), false, true, false },
         },
         this);
     columnController->setup();
@@ -115,8 +135,11 @@ void TorrentTrackersController::populate(const QJsonObject &details)
     for (const QJsonValue &value : trackerStats) {
         const QJsonObject tracker = value.toObject();
 
+        const int tier = tracker.value("tier").toInt(-1);
         const QString host = tracker.value("host").toString();
+        const QString siteName = tracker.value("sitename").toString();
         const QString announce = tracker.value("announce").toString();
+        const QString scrape = tracker.value("scrape").toString();
 
         int trackerId = tracker.value("id").toInt(-1);
 
@@ -134,47 +157,94 @@ void TorrentTrackersController::populate(const QJsonObject &details)
             }
         }
 
+        const int announceState = tracker.value("announceState").toInt(-1);
+        const int scrapeState = tracker.value("scrapeState").toInt(-1);
         const int seeders = tracker.value("seederCount").toInt(-1);
         const int leechers = tracker.value("leecherCount").toInt(-1);
+        const int downloads = tracker.value("downloadCount").toInt(-1);
 
         const qint64 lastAnnounceSeconds =
             tracker.value("lastAnnounceTime").toVariant().toLongLong();
+        const qint64 nextAnnounceSeconds =
+            tracker.value("nextAnnounceTime").toVariant().toLongLong();
+        const qint64 lastScrapeSeconds =
+            tracker.value("lastScrapeTime").toVariant().toLongLong();
+        const qint64 nextScrapeSeconds =
+            tracker.value("nextScrapeTime").toVariant().toLongLong();
 
-        const QString lastAnnounceTime =
-            lastAnnounceSeconds > 0
-                ? QLocale().toString(QDateTime::fromSecsSinceEpoch(lastAnnounceSeconds),
-                                      QLocale::ShortFormat)
-                : tr("Never");
+        const QString lastAnnounceResult = displayTrackerResult(
+            tracker.value("lastAnnounceResult").toString(),
+            tracker.value("lastAnnounceSucceeded").toBool(false),
+            tracker.value("lastAnnounceTimedOut").toBool(false));
+        const QString lastScrapeResult = displayTrackerResult(
+            tracker.value("lastScrapeResult").toString(),
+            tracker.value("lastScrapeSucceeded").toBool(false),
+            tracker.value("lastScrapeTimedOut").toBool(false));
 
-        const QString lastAnnounceResult =
-            tracker.value("lastAnnounceResult").toString();
+        auto *tierItem = makeTextItem(tier >= 0 ? QString::number(tier) : tr("Unknown"), tier);
+        auto *hostItem = makeTextItem(host);
+        auto *siteItem = makeTextItem(siteName.isEmpty() ? tr("—") : siteName);
+        auto *announceItem = makeTextItem(announce);
+        auto *scrapeItem = makeTextItem(scrape.isEmpty() ? tr("—") : scrape);
+        auto *announceStateItem = makeTextItem(formatTrackerState(announceState), announceState);
+        auto *scrapeStateItem = makeTextItem(formatTrackerState(scrapeState), scrapeState);
+        auto *seedersItem = makeTextItem(formatTrackerCount(seeders), seeders);
+        auto *leechersItem = makeTextItem(formatTrackerCount(leechers), leechers);
+        auto *downloadsItem = makeTextItem(formatTrackerCount(downloads), downloads);
+        auto *lastAnnounceItem = makeTextItem(formatTrackerTime(lastAnnounceSeconds, tr("Never")), lastAnnounceSeconds);
+        auto *nextAnnounceItem = makeTextItem(formatTrackerTime(nextAnnounceSeconds, tr("Unknown")), nextAnnounceSeconds);
+        auto *lastScrapeItem = makeTextItem(formatTrackerTime(lastScrapeSeconds, tr("Never")), lastScrapeSeconds);
+        auto *nextScrapeItem = makeTextItem(formatTrackerTime(nextScrapeSeconds, tr("Unknown")), nextScrapeSeconds);
+        auto *lastAnnounceResultItem = makeTextItem(lastAnnounceResult);
+        auto *lastScrapeResultItem = makeTextItem(lastScrapeResult);
 
-        auto *hostItem = new QTableWidgetItem(host);
-        auto *announceItem = new QTableWidgetItem(announce);
         announceItem->setData(TrackerAnnounceRole, announce);
         announceItem->setData(TrackerIdRole, trackerId);
         hostItem->setData(TrackerIdRole, trackerId);
 
-        auto *seedersItem = new QTableWidgetItem(
-            seeders >= 0 ? QString::number(seeders) : tr("Unknown")
-            );
+        const QString tooltip = tr("Host: %1\nAnnounce: %2\nScrape: %3\nTier: %4")
+                                .arg(host.isEmpty() ? tr("Unknown") : host,
+                                     announce.isEmpty() ? tr("Unknown") : announce,
+                                     scrape.isEmpty() ? tr("Unknown") : scrape,
+                                     tier >= 0 ? QString::number(tier) : tr("Unknown"));
 
-        auto *leechersItem = new QTableWidgetItem(
-            leechers >= 0 ? QString::number(leechers) : tr("Unknown")
-            );
+        for (QTableWidgetItem *tableItem : {
+                 tierItem,
+                 hostItem,
+                 siteItem,
+                 announceItem,
+                 scrapeItem,
+                 announceStateItem,
+                 scrapeStateItem,
+                 seedersItem,
+                 leechersItem,
+                 downloadsItem,
+                 lastAnnounceItem,
+                 nextAnnounceItem,
+                 lastScrapeItem,
+                 nextScrapeItem,
+                 lastAnnounceResultItem,
+                 lastScrapeResultItem
+             }) {
+            tableItem->setToolTip(tooltip);
+        }
 
-        auto *lastAnnounceItem = new QTableWidgetItem(lastAnnounceTime);
-        auto *resultItem = new QTableWidgetItem(lastAnnounceResult);
-
-        seedersItem->setData(Qt::UserRole, seeders);
-        leechersItem->setData(Qt::UserRole, leechers);
-
+        trackerTableWidget->setItem(row, TierColumn, tierItem);
         trackerTableWidget->setItem(row, HostColumn, hostItem);
+        trackerTableWidget->setItem(row, SiteColumn, siteItem);
         trackerTableWidget->setItem(row, AnnounceColumn, announceItem);
+        trackerTableWidget->setItem(row, ScrapeColumn, scrapeItem);
+        trackerTableWidget->setItem(row, AnnounceStateColumn, announceStateItem);
+        trackerTableWidget->setItem(row, ScrapeStateColumn, scrapeStateItem);
         trackerTableWidget->setItem(row, SeedsColumn, seedersItem);
         trackerTableWidget->setItem(row, LeechersColumn, leechersItem);
+        trackerTableWidget->setItem(row, DownloadsColumn, downloadsItem);
         trackerTableWidget->setItem(row, LastAnnounceColumn, lastAnnounceItem);
-        trackerTableWidget->setItem(row, ResultColumn, resultItem);
+        trackerTableWidget->setItem(row, NextAnnounceColumn, nextAnnounceItem);
+        trackerTableWidget->setItem(row, LastScrapeColumn, lastScrapeItem);
+        trackerTableWidget->setItem(row, NextScrapeColumn, nextScrapeItem);
+        trackerTableWidget->setItem(row, LastAnnounceResultColumn, lastAnnounceResultItem);
+        trackerTableWidget->setItem(row, LastScrapeResultColumn, lastScrapeResultItem);
 
         ++row;
     }
@@ -356,6 +426,62 @@ void TorrentTrackersController::showContextMenu(const QPoint &pos)
             this, [this, trackerUrl]() { copyTrackerUrlToClipboard(trackerUrl); });
 
     menu.exec(trackerTableWidget->viewport()->mapToGlobal(pos));
+}
+
+QString TorrentTrackersController::formatTrackerTime(qint64 seconds, const QString &emptyText) const
+{
+    if (seconds <= 0)
+        return emptyText;
+
+    return QLocale().toString(QDateTime::fromSecsSinceEpoch(seconds), QLocale::ShortFormat);
+}
+
+QString TorrentTrackersController::formatTrackerCount(int count) const
+{
+    return count >= 0 ? QString::number(count) : tr("Unknown");
+}
+
+QString TorrentTrackersController::formatTrackerState(int state) const
+{
+    switch (state) {
+    case 0:
+        return tr("Inactive");
+    case 1:
+        return tr("Waiting");
+    case 2:
+        return tr("Queued");
+    case 3:
+        return tr("Active");
+    default:
+        return tr("Unknown");
+    }
+}
+
+QString TorrentTrackersController::displayTrackerResult(const QString &result,
+                                                        bool succeeded,
+                                                        bool timedOut) const
+{
+    if (timedOut)
+        return tr("Timed out");
+
+    if (!result.trimmed().isEmpty())
+        return result.trimmed();
+
+    if (succeeded)
+        return tr("Success");
+
+    return tr("—");
+}
+
+QTableWidgetItem *TorrentTrackersController::makeTextItem(const QString &text,
+                                                          const QVariant &sortValue) const
+{
+    auto *item = new QTableWidgetItem(text);
+
+    if (sortValue.isValid())
+        item->setData(Qt::UserRole, sortValue);
+
+    return item;
 }
 
 void TorrentTrackersController::copyTrackerUrlToClipboard(const QString &trackerUrl)
