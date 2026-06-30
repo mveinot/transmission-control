@@ -131,9 +131,7 @@ echo "Remote tag exists but could not be fetched cleanly."
 exit 1
 fi
 
-git tag -a "$TAG" 
--m "${APP_NAME} ${TAG}" 
--m "Commit: ${COMMIT}"
+git tag -a "$TAG" -m "${APP_NAME} ${TAG}" -m "Commit: ${COMMIT}"
 
 git push "$REMOTE_NAME" "$TAG"
 
