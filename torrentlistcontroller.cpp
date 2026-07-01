@@ -24,6 +24,7 @@
 #include <QModelIndex>
 #include <QPushButton>
 #include <QSettings>
+#include <QSize>
 #include <QTableView>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -132,6 +133,7 @@ void TorrentListController::setup(const ActionSet &actions)
     m_tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_tableView->sortByColumn(TorrentModel::NameColumn, Qt::AscendingOrder);
     m_tableView->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_tableView->setIconSize(QSize(16, 16));
 
     if (QHeaderView *header = m_tableView->horizontalHeader()) {
         configureHorizontalHeader();

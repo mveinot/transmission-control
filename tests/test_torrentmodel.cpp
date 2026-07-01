@@ -1,5 +1,8 @@
 #include <QtTest/QtTest>
 #include <QSignalSpy>
+#include <QBrush>
+#include <QFont>
+#include <QIcon>
 
 #include "torrentmodel.h"
 
@@ -166,7 +169,11 @@ void TestTorrentModel::exposesTorrentErrorState()
              QStringLiteral("No data found! Ensure your drives are connected?"));
     QCOMPARE(model.data(nameIndex, TorrentModel::StatusValueRole).toInt(), 0);
     QCOMPARE(model.data(statusIndex, Qt::ToolTipRole).toString(),
-             QStringLiteral("No data found! Ensure your drives are connected?"));
+             QStringLiteral("Error: No data found! Ensure your drives are connected?"));
+    QVERIFY(qvariant_cast<QIcon>(model.data(statusIndex, Qt::DecorationRole)).isNull() == false);
+    QVERIFY(qvariant_cast<QIcon>(model.data(nameIndex, Qt::DecorationRole)).isNull() == false);
+    QVERIFY(qvariant_cast<QBrush>(model.data(statusIndex, Qt::ForegroundRole)).style() != Qt::NoBrush);
+    QVERIFY(qvariant_cast<QFont>(model.data(statusIndex, Qt::FontRole)).bold());
 }
 
 void TestTorrentModel::indexesRowsByTorrentId()

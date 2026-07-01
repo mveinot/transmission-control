@@ -1,8 +1,118 @@
 #include "torrentmodel.h"
 
+#include <QApplication>
+#include <QBrush>
+#include <QColor>
+#include <QFont>
+#include <QIcon>
+#include <QPalette>
 #include <QSet>
+#include <QStringList>
+#include <QStyle>
 #include <QVariant>
 #include <Qt>
+
+
+namespace {
+
+QIcon themedIcon(const QStringList &names, QStyle::StandardPixmap fallback)
+{
+    for (const QString &name : names) {
+        const QIcon icon = QIcon::fromTheme(name);
+
+        if (!icon.isNull())
+            return icon;
+    }
+
+    if (QApplication *app = qobject_cast<QApplication *>(QApplication::instance()))
+        return app->style()->standardIcon(fallback);
+
+    return {};
+}
+
+QIcon statusIcon(int statusValue, bool hasError)
+{
+    if (hasError) {
+        return themedIcon({
+                              QStringLiteral("dialog-error"),
+                              QStringLiteral("emblem-important"),
+                              QStringLiteral("process-stop")
+                          },
+                          QStyle::SP_MessageBoxCritical);
+    }
+
+    switch (statusValue) {
+    case 0: // Paused
+        return themedIcon({
+                              QStringLiteral("media-playback-pause"),
+                              QStringLiteral("player_pause")
+                          },
+                          QStyle::SP_MediaPause);
+
+    case 1: // Waiting to verify
+    case 3: // Queued
+    case 5: // Waiting to seed
+        return themedIcon({
+                              QStringLiteral("appointment-soon"),
+                              QStringLiteral("chronometer"),
+                              QStringLiteral("view-calendar-upcoming")
+                          },
+                          QStyle::SP_BrowserReload);
+
+    case 2: // Verifying
+        return themedIcon({
+                              QStringLiteral("view-refresh"),
+                              QStringLiteral("emblem-synchronizing")
+                          },
+                          QStyle::SP_BrowserReload);
+
+    case 4: // Downloading
+        return themedIcon({
+                              QStringLiteral("go-down"),
+                              QStringLiteral("download"),
+                              QStringLiteral("folder-download")
+                          },
+                          QStyle::SP_ArrowDown);
+
+    case 6: // Seeding
+        return themedIcon({
+                              QStringLiteral("go-up"),
+                              QStringLiteral("upload"),
+                              QStringLiteral("folder-upload")
+                          },
+                          QStyle::SP_ArrowUp);
+
+    default:
+        return themedIcon({
+                              QStringLiteral("dialog-question"),
+                              QStringLiteral("help-about")
+                          },
+                          QStyle::SP_MessageBoxQuestion);
+    }
+}
+
+QBrush errorTextBrush()
+{
+    const QPalette palette = QApplication::palette();
+    const QColor base = palette.color(QPalette::Base);
+
+    if (base.lightness() < 128)
+        return QBrush(QColor(255, 120, 120));
+
+    return QBrush(QColor(170, 0, 0));
+}
+
+QBrush disabledTextBrush()
+{
+    return QBrush(QApplication::palette().color(QPalette::Disabled, QPalette::Text));
+}
+
+bool isStatusCueColumn(int column)
+{
+    return column == TorrentModel::NameColumn || column == TorrentModel::StatusColumn;
+}
+
+} // namespace
 
 TorrentModel::TorrentModel(QObject *parent)
     : QAbstractTableModel(parent)
@@ -53,9 +163,37 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
                 ? tr("Transmission reports an error for this torrent.")
                 : t.getErrorString();
 
-            if (index.column() == NameColumn || index.column() == StatusColumn)
-                return message;
+            if (index.column() == NameColumn)
+                return tr("Error: %1").arg(message);
+
+            if (index.column() == StatusColumn)
+                return tr("Error: %1").arg(message);
         }
+
+        if (index.column() == StatusColumn)
+            return tr("Status: %1").arg(t.getStatus());
+    }
+
+    if (role == Qt::DecorationRole) {
+        if (index.column() == StatusColumn)
+            return statusIcon(t.getStatusValue(), t.hasError());
+
+        if (index.column() == NameColumn && t.hasError())
+            return statusIcon(t.getStatusValue(), true);
+    }
+
+    if (role == Qt::ForegroundRole) {
+        if (t.hasError() && isStatusCueColumn(index.column()))
+            return errorTextBrush();
+
+        if (index.column() == StatusColumn && t.getStatusValue() == 0)
+            return disabledTextBrush();
+    }
+
+    if (role == Qt::FontRole && t.hasError() && isStatusCueColumn(index.column())) {
+        QFont font;
+        font.setBold(true);
+        return font;
     }
 
     if (role == Qt::DisplayRole) {
