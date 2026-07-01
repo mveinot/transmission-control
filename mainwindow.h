@@ -68,6 +68,8 @@ private slots:
     void showSessionSettings();
     void handleSessionSettingsReceived(const QJsonObject &settings);
     void toggleAlternativeSpeedMode(bool enabled);
+    void refreshRemoteFreeSpace();
+    void showQuickSpeedLimitsDialog();
     void on_actionAbout_triggered();
     void on_actionQuit_triggered();
     void exportSettings();
@@ -103,9 +105,11 @@ private:
     void applyAppSettings();
     void updateAlternativeSpeedAction(bool enabled, bool available);
     bool openSessionSettingsWhenReceived = false;
+    bool openQuickSpeedLimitsWhenReceived = false;
     bool alternativeSpeedSettingsAvailable = false;
     bool confirmedAlternativeSpeedEnabled = false;
     QString remoteDownloadDir;
+    QJsonObject cachedSessionSettings;
 
     UpdateCheckController *updateCheckController = nullptr;
     TorrentGeneralController *torrentGeneralController = nullptr;

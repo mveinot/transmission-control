@@ -14,16 +14,19 @@
 #include <QActionGroup>
 #include <QApplication>
 #include <QAction>
+#include <QCheckBox>
 #include <QCloseEvent>
 #include <QCoreApplication>
 #include <QComboBox>
 #include <QDialog>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QEvent>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFileOpenEvent>
 #include <QFont>
+#include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -38,6 +41,7 @@
 #include <QMessageBox>
 #include <QSettings>
 #include <QSignalBlocker>
+#include <QSpinBox>
 #include <QStringList>
 #include <QSizePolicy>
 #include <QTableWidget>
@@ -1041,6 +1045,23 @@ void MainWindow::setupConnectionStatusIndicator()
     statusBarController = new StatusBarController(ui->statusbar, client, this);
     statusBarController->setup();
     statusBarController->setServerName(client->getServer());
+
+    connect(statusBarController, &StatusBarController::alternativeSpeedToggleRequested,
+            this, [this]() {
+                toggleAlternativeSpeedMode(!confirmedAlternativeSpeedEnabled);
+            });
+
+    connect(statusBarController, &StatusBarController::freeSpaceRefreshRequested,
+            this, &MainWindow::refreshRemoteFreeSpace);
+
+    connect(statusBarController, &StatusBarController::serverSetupRequested,
+            this, &MainWindow::onServerSetupTriggered);
+
+    connect(statusBarController, &StatusBarController::speedLimitsDialogRequested,
+            this, &MainWindow::showQuickSpeedLimitsDialog);
+
+    connect(statusBarController, &StatusBarController::appSettingsRequested,
+            this, &MainWindow::on_actionSettings_triggered);
 }
 
 void MainWindow::bringToFront()
@@ -1153,6 +1174,130 @@ void MainWindow::updateAlternativeSpeedAction(bool enabled, bool available)
     ui->actionAlternative_Speed_Mode->setChecked(enabled);
 }
 
+
+void MainWindow::refreshRemoteFreeSpace()
+{
+    if (remoteDownloadDir.trimmed().isEmpty()) {
+        if (statusBarController) {
+            statusBarController->showMessage(
+                tr("No remote download directory is available yet."),
+                3000
+                );
+        }
+
+        client->getSessionSettings();
+        return;
+    }
+
+    if (statusBarController) {
+        statusBarController->showMessage(
+            tr("Refreshing free-space information..."),
+            2000
+            );
+    }
+
+    client->getFreeSpace(remoteDownloadDir);
+}
+
+void MainWindow::showQuickSpeedLimitsDialog()
+{
+    if (cachedSessionSettings.isEmpty()) {
+        openQuickSpeedLimitsWhenReceived = true;
+
+        if (statusBarController) {
+            statusBarController->showMessage(
+                tr("Loading Transmission speed settings..."),
+                3000
+                );
+        }
+
+        client->getSessionSettings();
+        return;
+    }
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Speed Limits"));
+
+    auto *layout = new QVBoxLayout(&dialog);
+    auto *form = new QFormLayout();
+    layout->addLayout(form);
+
+    auto *downloadLimitEnabled = new QCheckBox(tr("Limit download speed"), &dialog);
+    auto *downloadLimit = new QSpinBox(&dialog);
+    downloadLimit->setRange(0, 1000000);
+    downloadLimit->setSuffix(tr(" KB/s"));
+    downloadLimit->setValue(cachedSessionSettings.value(QStringLiteral("speed-limit-down")).toInt(100));
+    downloadLimitEnabled->setChecked(
+        cachedSessionSettings.value(QStringLiteral("speed-limit-down-enabled")).toBool(false)
+        );
+    downloadLimit->setEnabled(downloadLimitEnabled->isChecked());
+    form->addRow(downloadLimitEnabled, downloadLimit);
+
+    auto *uploadLimitEnabled = new QCheckBox(tr("Limit upload speed"), &dialog);
+    auto *uploadLimit = new QSpinBox(&dialog);
+    uploadLimit->setRange(0, 1000000);
+    uploadLimit->setSuffix(tr(" KB/s"));
+    uploadLimit->setValue(cachedSessionSettings.value(QStringLiteral("speed-limit-up")).toInt(100));
+    uploadLimitEnabled->setChecked(
+        cachedSessionSettings.value(QStringLiteral("speed-limit-up-enabled")).toBool(false)
+        );
+    uploadLimit->setEnabled(uploadLimitEnabled->isChecked());
+    form->addRow(uploadLimitEnabled, uploadLimit);
+
+    auto *altSpeedEnabled = new QCheckBox(tr("Alternative speed mode"), &dialog);
+    altSpeedEnabled->setChecked(
+        cachedSessionSettings.value(QStringLiteral("alt-speed-enabled")).toBool(false)
+        );
+    layout->addWidget(altSpeedEnabled);
+
+    auto *altDownloadLimit = new QSpinBox(&dialog);
+    altDownloadLimit->setRange(0, 1000000);
+    altDownloadLimit->setSuffix(tr(" KB/s"));
+    altDownloadLimit->setValue(cachedSessionSettings.value(QStringLiteral("alt-speed-down")).toInt(50));
+    form->addRow(tr("Alternative download limit"), altDownloadLimit);
+
+    auto *altUploadLimit = new QSpinBox(&dialog);
+    altUploadLimit->setRange(0, 1000000);
+    altUploadLimit->setSuffix(tr(" KB/s"));
+    altUploadLimit->setValue(cachedSessionSettings.value(QStringLiteral("alt-speed-up")).toInt(50));
+    form->addRow(tr("Alternative upload limit"), altUploadLimit);
+
+    connect(downloadLimitEnabled, &QCheckBox::toggled,
+            downloadLimit, &QSpinBox::setEnabled);
+    connect(uploadLimitEnabled, &QCheckBox::toggled,
+            uploadLimit, &QSpinBox::setEnabled);
+
+    auto *buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+        &dialog
+        );
+    layout->addWidget(buttons);
+
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    QJsonObject changes;
+    changes[QStringLiteral("speed-limit-down-enabled")] = downloadLimitEnabled->isChecked();
+    changes[QStringLiteral("speed-limit-down")] = downloadLimit->value();
+    changes[QStringLiteral("speed-limit-up-enabled")] = uploadLimitEnabled->isChecked();
+    changes[QStringLiteral("speed-limit-up")] = uploadLimit->value();
+    changes[QStringLiteral("alt-speed-enabled")] = altSpeedEnabled->isChecked();
+    changes[QStringLiteral("alt-speed-down")] = altDownloadLimit->value();
+    changes[QStringLiteral("alt-speed-up")] = altUploadLimit->value();
+
+    client->setSessionSettings(changes);
+
+    if (statusBarController) {
+        statusBarController->showMessage(
+            tr("Updating speed limits..."),
+            3000
+            );
+    }
+}
+
 void MainWindow::toggleAlternativeSpeedMode(bool enabled)
 {
     if (!alternativeSpeedSettingsAvailable) {
@@ -1193,6 +1338,8 @@ void MainWindow::showSessionSettings()
 
 void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSettings)
 {
+    cachedSessionSettings = sessionSettings;
+
     remoteDownloadDir =
         sessionSettings.value(QStringLiteral("download-dir")).toString();
 
@@ -1221,6 +1368,11 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
         client->getFreeSpace(remoteDownloadDir);
     } else if (statusBarController) {
         statusBarController->clearFreeSpace();
+    }
+
+    if (openQuickSpeedLimitsWhenReceived) {
+        openQuickSpeedLimitsWhenReceived = false;
+        showQuickSpeedLimitsDialog();
     }
 
     if (!openSessionSettingsWhenReceived)

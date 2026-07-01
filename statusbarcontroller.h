@@ -8,6 +8,7 @@
 #include "torrent.h"
 
 class QLabel;
+class QEvent;
 class QStatusBar;
 class rpc_client;
 
@@ -30,6 +31,16 @@ public:
     void setServerName(const QString &serverName);
     void setTorrentResultCount(int visibleCount, int totalCount);
     void setFilterSummary(const QString &summary);
+
+signals:
+    void alternativeSpeedToggleRequested();
+    void freeSpaceRefreshRequested();
+    void serverSetupRequested();
+    void speedLimitsDialogRequested();
+    void appSettingsRequested();
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
     QStatusBar *m_statusBar = nullptr;
@@ -55,6 +66,7 @@ private:
     QString m_serverName;
 
     QLabel *makeSectionLabel(const QString &text = QString()) const;
+    void makeLabelClickable(QLabel *label, const QString &tooltip);
     QString normalizedErrorMessage(const QString &message) const;
     QString formattedRate(double bytesPerSecond) const;
     QString formattedBytes(qint64 bytes) const;

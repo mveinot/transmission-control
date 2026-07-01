@@ -2,8 +2,11 @@
 
 #include "rpc_client.h"
 
+#include <QCursor>
+#include <QEvent>
 #include <QLabel>
 #include <QLocale>
+#include <QMouseEvent>
 #include <QStatusBar>
 
 StatusBarController::StatusBarController(QStatusBar *statusBar,
@@ -37,6 +40,12 @@ void StatusBarController::setup()
     m_statusBar->addPermanentWidget(m_freeSpaceLabel);
     m_statusBar->addPermanentWidget(m_speedModeLabel);
     m_statusBar->addPermanentWidget(m_intervalLabel);
+
+    makeLabelClickable(m_serverLabel, tr("Open server setup"));
+    makeLabelClickable(m_rateLabel, tr("Open quick speed limits"));
+    makeLabelClickable(m_freeSpaceLabel, tr("Refresh free-space information"));
+    makeLabelClickable(m_speedModeLabel, tr("Toggle alternative speed mode"));
+    makeLabelClickable(m_intervalLabel, tr("Open application settings"));
 
     refreshServerLabel();
     refreshTorrentCountLabel();
@@ -147,6 +156,52 @@ QLabel *StatusBarController::makeSectionLabel(const QString &text) const
     label->setTextInteractionFlags(Qt::TextSelectableByMouse);
     label->setContentsMargins(8, 0, 8, 0);
     return label;
+}
+
+void StatusBarController::makeLabelClickable(QLabel *label, const QString &tooltip)
+{
+    if (!label)
+        return;
+
+    label->setCursor(Qt::PointingHandCursor);
+    label->setToolTip(tooltip);
+    label->installEventFilter(this);
+}
+
+bool StatusBarController::eventFilter(QObject *watched, QEvent *event)
+{
+    if (event && event->type() == QEvent::MouseButtonRelease) {
+        auto *mouseEvent = static_cast<QMouseEvent *>(event);
+
+        if (mouseEvent->button() == Qt::LeftButton) {
+            if (watched == m_serverLabel) {
+                emit serverSetupRequested();
+                return true;
+            }
+
+            if (watched == m_rateLabel) {
+                emit speedLimitsDialogRequested();
+                return true;
+            }
+
+            if (watched == m_freeSpaceLabel) {
+                emit freeSpaceRefreshRequested();
+                return true;
+            }
+
+            if (watched == m_speedModeLabel) {
+                emit alternativeSpeedToggleRequested();
+                return true;
+            }
+
+            if (watched == m_intervalLabel) {
+                emit appSettingsRequested();
+                return true;
+            }
+        }
+    }
+
+    return QObject::eventFilter(watched, event);
 }
 
 QString StatusBarController::normalizedErrorMessage(const QString &message) const
