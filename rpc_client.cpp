@@ -1085,6 +1085,21 @@ void rpc_client::setTorrentsSequentialDownload(const QList<int> &ids,
             RpcRequestType::Command);
 }
 
+void rpc_client::setTorrentsBandwidthPriority(const QList<int> &ids,
+                                              int priority)
+{
+    if (ids.isEmpty())
+        return;
+
+    QJsonObject arguments;
+    arguments[QStringLiteral("ids")] = idsToJsonArray(ids);
+    arguments[QStringLiteral("bandwidthPriority")] = priority;
+
+    postRpc(QStringLiteral("torrent-set"),
+            arguments,
+            RpcRequestType::Command);
+}
+
 void rpc_client::queueMoveTop(const QList<int> &ids)
 {
     postIdsCommand(QStringLiteral("queue-move-top"), ids);

@@ -24,10 +24,12 @@
 #include <QMessageBox>
 #include <QModelIndex>
 #include <QPushButton>
+#include <QPair>
 #include <QSettings>
 #include <QSize>
 #include <QTableView>
 #include <QTimer>
+#include <QtGlobal>
 #include <QVBoxLayout>
 #include <QVector>
 
@@ -378,6 +380,9 @@ void TorrentListController::clearCurrentTorrentDetails()
     m_currentSequentialDownloadTorrentId = -1;
     m_currentSequentialDownloadEnabled = false;
     m_currentSequentialDownloadKnown = false;
+    m_currentBandwidthPriorityTorrentId = -1;
+    m_currentBandwidthPriority = 0;
+    m_currentBandwidthPriorityKnown = false;
 }
 
 void TorrentListController::setDefaultDownloadDir(const QString &downloadDir)
@@ -397,6 +402,15 @@ void TorrentListController::setCurrentTorrentSequentialDownload(int torrentId,
     m_currentSequentialDownloadTorrentId = torrentId;
     m_currentSequentialDownloadEnabled = enabled;
     m_currentSequentialDownloadKnown = known;
+}
+
+void TorrentListController::setCurrentTorrentBandwidthPriority(int torrentId,
+                                                              int priority,
+                                                              bool known)
+{
+    m_currentBandwidthPriorityTorrentId = torrentId;
+    m_currentBandwidthPriority = priority;
+    m_currentBandwidthPriorityKnown = known;
 }
 
 void TorrentListController::setCurrentDetailsDownloadDirProvider(const std::function<QString()> &provider)
@@ -466,26 +480,78 @@ void TorrentListController::showContextMenu(const QPoint &pos)
         m_tableView->setCurrentIndex(index);
     }
 
+    const QList<int> contextTorrentIds = selectedTorrentIds();
+    const bool hasSelection = !contextTorrentIds.isEmpty();
+    const bool hasSingleSelection = contextTorrentIds.size() == 1;
+    const bool canCopyCurrentTorrentDetails =
+        hasSingleSelection
+        && m_currentDetailsTorrentId == contextTorrentIds.first();
+
     QMenu menu(m_dialogParent);
 
     if (m_actions.start)
         menu.addAction(m_actions.start);
 
-    if (m_actions.forceStart)
-        menu.addAction(m_actions.forceStart);
-
     if (m_actions.stop)
         menu.addAction(m_actions.stop);
 
+    if (m_actions.forceStart)
+        menu.addAction(m_actions.forceStart);
+
     menu.addSeparator();
+
+    if (m_actions.verify)
+        menu.addAction(m_actions.verify);
+
+    if (m_actions.reannounce)
+        menu.addAction(m_actions.reannounce);
+
+    menu.addSeparator();
+
+    QMenu *priorityMenu = menu.addMenu(tr("Priority"));
+    priorityMenu->setEnabled(hasSelection);
+
+    QActionGroup *priorityGroup = new QActionGroup(priorityMenu);
+    priorityGroup->setExclusive(true);
+
+    QAction *lowPriorityAction = priorityMenu->addAction(tr("Low"));
+    QAction *normalPriorityAction = priorityMenu->addAction(tr("Normal"));
+    QAction *highPriorityAction = priorityMenu->addAction(tr("High"));
+
+    const QList<QPair<QAction *, int>> priorityActions = {
+        { lowPriorityAction, -1 },
+        { normalPriorityAction, 0 },
+        { highPriorityAction, 1 }
+    };
+
+    const bool canShowCurrentPriority =
+        hasSingleSelection
+        && m_currentBandwidthPriorityKnown
+        && m_currentBandwidthPriorityTorrentId == contextTorrentIds.first();
+
+    for (const auto &priorityAction : priorityActions) {
+        QAction *action = priorityAction.first;
+        const int priority = priorityAction.second;
+
+        action->setCheckable(true);
+        action->setData(priority);
+        action->setChecked(canShowCurrentPriority && m_currentBandwidthPriority == priority);
+        priorityGroup->addAction(action);
+
+        connect(action,
+                &QAction::triggered,
+                this,
+                [this, priority]() {
+                    setSelectedTorrentsBandwidthPriority(priority);
+                });
+    }
 
     QAction *sequentialDownloadAction = menu.addAction(tr("Sequential Download"));
     sequentialDownloadAction->setCheckable(true);
 
-    const QList<int> contextTorrentIds = selectedTorrentIds();
     const bool canSetSequentialDownload =
         m_sequentialDownloadSupported
-        && contextTorrentIds.size() == 1
+        && hasSingleSelection
         && m_currentSequentialDownloadKnown
         && m_currentSequentialDownloadTorrentId == contextTorrentIds.first();
 
@@ -506,23 +572,28 @@ void TorrentListController::showContextMenu(const QPoint &pos)
 
     menu.addSeparator();
 
-    if (m_actions.verify)
-        menu.addAction(m_actions.verify);
+    QMenu *queueMenu = menu.addMenu(tr("Queue"));
+    queueMenu->setEnabled(hasSelection);
 
-    if (m_actions.reannounce)
-        menu.addAction(m_actions.reannounce);
-
-    QAction *propertiesAction = menu.addAction(tr("Properties…"));
-    propertiesAction->setEnabled(selectedTorrentIds().size() == 1);
+    QAction *moveTopAction = queueMenu->addAction(tr("Move to Top"));
+    QAction *moveUpAction = queueMenu->addAction(tr("Move Up"));
+    QAction *moveDownAction = queueMenu->addAction(tr("Move Down"));
+    QAction *moveBottomAction = queueMenu->addAction(tr("Move to Bottom"));
 
     menu.addSeparator();
 
-    QAction *copyMagnetAction = menu.addAction(tr("Copy Magnet Link"));
-    QAction *copyHashAction = menu.addAction(tr("Copy Hash"));
+    QAction *setLocationAction = menu.addAction(tr("Set Location…"));
+    setLocationAction->setEnabled(hasSelection);
 
-    const bool canCopyCurrentTorrentDetails =
-        contextTorrentIds.size() == 1
-        && m_currentDetailsTorrentId == contextTorrentIds.first();
+    QAction *propertiesAction = menu.addAction(tr("Properties…"));
+    propertiesAction->setEnabled(hasSingleSelection);
+
+    menu.addSeparator();
+
+    QMenu *copyMenu = menu.addMenu(tr("Copy"));
+
+    QAction *copyMagnetAction = copyMenu->addAction(tr("Magnet Link"));
+    QAction *copyHashAction = copyMenu->addAction(tr("Hash"));
 
     copyMagnetAction->setEnabled(
         canCopyCurrentTorrentDetails
@@ -534,18 +605,7 @@ void TorrentListController::showContextMenu(const QPoint &pos)
         && !m_currentTorrentHashString.trimmed().isEmpty()
         );
 
-    menu.addSeparator();
-
-    QMenu *queueMenu = menu.addMenu(tr("Queue"));
-
-    QAction *moveTopAction = queueMenu->addAction(tr("Move to Top"));
-    QAction *moveUpAction = queueMenu->addAction(tr("Move Up"));
-    QAction *moveDownAction = queueMenu->addAction(tr("Move Down"));
-    QAction *moveBottomAction = queueMenu->addAction(tr("Move to Bottom"));
-
-    menu.addSeparator();
-
-    QAction *setLocationAction = menu.addAction(tr("Set Location…"));
+    copyMenu->setEnabled(copyMagnetAction->isEnabled() || copyHashAction->isEnabled());
 
     menu.addSeparator();
 
@@ -851,6 +911,45 @@ void TorrentListController::setSelectedTorrentsSequentialDownload(bool enabled)
         enabled
             ? tr("Enabling sequential download for %1 torrent(s)...").arg(ids.size())
             : tr("Disabling sequential download for %1 torrent(s)...").arg(ids.size()),
+        3000
+        );
+
+    QTimer::singleShot(1000, this, [this]() {
+        emit torrentListRefreshRequested();
+        refreshCurrentTorrentDetails();
+    });
+}
+
+void TorrentListController::setSelectedTorrentsBandwidthPriority(int priority)
+{
+    const QList<int> ids = selectedTorrentIds();
+
+    if (ids.isEmpty()) {
+        emit statusMessageRequested(tr("No torrent selected."), 3000);
+        return;
+    }
+
+    const int normalizedPriority = qBound(-1, priority, 1);
+
+    m_client->setTorrentsBandwidthPriority(ids, normalizedPriority);
+
+    QString priorityLabel;
+
+    switch (normalizedPriority) {
+    case -1:
+        priorityLabel = tr("Low");
+        break;
+    case 1:
+        priorityLabel = tr("High");
+        break;
+    case 0:
+    default:
+        priorityLabel = tr("Normal");
+        break;
+    }
+
+    emit statusMessageRequested(
+        tr("Setting priority for %1 torrent(s) to %2...").arg(ids.size()).arg(priorityLabel),
         3000
         );
 

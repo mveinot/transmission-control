@@ -56,6 +56,7 @@ public:
     void setDefaultDownloadDir(const QString &downloadDir);
     void setSequentialDownloadSupported(bool supported);
     void setCurrentTorrentSequentialDownload(int torrentId, bool enabled, bool known);
+    void setCurrentTorrentBandwidthPriority(int torrentId, int priority, bool known);
     void setCurrentDetailsDownloadDirProvider(const std::function<QString()> &provider);
 
 public slots:
@@ -72,6 +73,7 @@ public slots:
     void forceStartSelectedTorrents();
     void setSelectedTorrentsLocation();
     void setSelectedTorrentsSequentialDownload(bool enabled);
+    void setSelectedTorrentsBandwidthPriority(int priority);
     void showSelectedTorrentProperties();
     void copySelectedTorrentMagnetLink();
     void copySelectedTorrentHash();
@@ -100,6 +102,9 @@ private:
     int m_currentSequentialDownloadTorrentId = -1;
     bool m_currentSequentialDownloadEnabled = false;
     bool m_currentSequentialDownloadKnown = false;
+    int m_currentBandwidthPriorityTorrentId = -1;
+    int m_currentBandwidthPriority = 0;
+    bool m_currentBandwidthPriorityKnown = false;
     QString m_defaultDownloadDir;
     std::function<QString()> m_currentDetailsDownloadDirProvider;
     bool m_torrentListLoaded = false;

@@ -85,6 +85,9 @@ public:
     void setTorrentsSequentialDownload(const QList<int> &ids,
                                        bool enabled);
 
+    void setTorrentsBandwidthPriority(const QList<int> &ids,
+                                      int priority);
+
     void queueMoveTop(const QList<int> &ids);
     void queueMoveUp(const QList<int> &ids);
     void queueMoveDown(const QList<int> &ids);

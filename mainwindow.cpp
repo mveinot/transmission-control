@@ -461,6 +461,15 @@ MainWindow::MainWindow(QWidget *parent)
                         sequentialDownloadEnabled,
                         hasSequentialDownload
                         );
+
+                    const bool hasBandwidthPriority =
+                        details.contains(QStringLiteral("bandwidthPriority"));
+
+                    torrentListController->setCurrentTorrentBandwidthPriority(
+                        torrentId,
+                        details.value(QStringLiteral("bandwidthPriority")).toInt(0),
+                        hasBandwidthPriority
+                        );
                 }
 
                 torrentTrackersController->setTorrentId(torrentId);
