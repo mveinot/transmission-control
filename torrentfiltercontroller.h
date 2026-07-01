@@ -12,6 +12,7 @@ class QAction;
 class QLineEdit;
 class QListWidget;
 class QListWidgetItem;
+class QPoint;
 
 
 class TorrentFilterController : public QObject
@@ -39,6 +40,13 @@ public:
     void rebuild(const QVector<torrent> &torrents);
     void setStateFilter(TorrentSortProxyModel::StateFilter filter);
 
+signals:
+    void resultCountChanged(int visibleCount, int totalCount);
+    void filterSummaryChanged(const QString &summary);
+
+private slots:
+    void showFilterContextMenu(const QPoint &position);
+
 private:
     enum class ItemType {
         Header,
@@ -53,6 +61,8 @@ private:
     Actions m_actions;
     QStringList m_lastTrackerHosts;
     QStringList m_lastDownloadDirs;
+    bool m_trackersCollapsed = false;
+    bool m_foldersCollapsed = false;
 
     void rebuildWithFilters(const QStringList &trackerHosts,
                             const QStringList &downloadDirs);
@@ -70,6 +80,12 @@ private:
     void selectStatusFilter(TorrentSortProxyModel::StateFilter filter);
     bool selectItem(ItemType type, const QString &value, int fallbackRow);
     void updateCheckedAction(TorrentSortProxyModel::StateFilter filter);
+    void updateFilterStatusSignals();
+    void applySectionCollapseState();
+    void setSectionCollapsed(ItemType type, bool collapsed);
+    void copyFilterValueToClipboard(QListWidgetItem *item) const;
+    QString filterSummary() const;
+    QString statusFilterName(TorrentSortProxyModel::StateFilter filter) const;
     static QStringList trackerHostsFromTorrents(const QVector<torrent> &torrents);
     static QStringList downloadDirsFromTorrents(const QVector<torrent> &torrents);
     static QIcon iconFromTheme(const QStringList &themeNames);

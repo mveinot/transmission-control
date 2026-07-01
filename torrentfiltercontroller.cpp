@@ -1,11 +1,14 @@
 #include "torrentfiltercontroller.h"
 
+#include <QAbstractItemModel>
 #include <QAction>
 #include <QApplication>
+#include <QClipboard>
 #include <QFont>
 #include <QIcon>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMenu>
 #include <QListWidgetItem>
 #include <QSet>
 #include <QSignalBlocker>
@@ -37,8 +40,16 @@ void TorrentFilterController::setup()
         return;
 
     if (m_searchEdit) {
+        m_searchEdit->setClearButtonEnabled(true);
+        m_searchEdit->setPlaceholderText(tr("Search torrents..."));
+
         connect(m_searchEdit, &QLineEdit::textChanged,
                 m_proxy, &TorrentSortProxyModel::setSearchText);
+
+        connect(m_searchEdit, &QLineEdit::textChanged,
+                this, [this]() {
+                    updateFilterStatusSignals();
+                });
     }
 
     if (m_actions.all)
@@ -81,12 +92,28 @@ void TorrentFilterController::setup()
                 applyCurrentListSelection(current);
             });
 
+    m_filterList->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_filterList, &QListWidget::customContextMenuRequested,
+            this, &TorrentFilterController::showFilterContextMenu);
+
     // The .ui file used to pre-populate this list with icons, then the
     // runtime rebuild replaced it with plain text rows. Build the initial
     // contents here instead so the sidebar looks the same before and after
     // the first torrent refresh. Humanity survives another scrollbar.
+    if (m_proxy) {
+        connect(m_proxy, &QAbstractItemModel::modelReset,
+                this, &TorrentFilterController::updateFilterStatusSignals);
+        connect(m_proxy, &QAbstractItemModel::rowsInserted,
+                this, &TorrentFilterController::updateFilterStatusSignals);
+        connect(m_proxy, &QAbstractItemModel::rowsRemoved,
+                this, &TorrentFilterController::updateFilterStatusSignals);
+        connect(m_proxy, &QAbstractItemModel::layoutChanged,
+                this, &TorrentFilterController::updateFilterStatusSignals);
+    }
+
     rebuildWithFilters(QStringList(), QStringList());
     setStateFilter(TorrentSortProxyModel::StateFilter::All);
+    updateFilterStatusSignals();
 }
 
 void TorrentFilterController::rebuild(const QVector<torrent> &torrents)
@@ -114,10 +141,11 @@ void TorrentFilterController::setStateFilter(TorrentSortProxyModel::StateFilter 
     m_proxy->setDownloadDirFilter(QString());
     updateCheckedAction(filter);
     selectStatusFilter(filter);
+    updateFilterStatusSignals();
 }
 
 void TorrentFilterController::rebuildWithFilters(const QStringList &trackerHosts,
-                                                     const QStringList &downloadDirs)
+                                                 const QStringList &downloadDirs)
 {
     if (!m_filterList)
         return;
@@ -139,6 +167,7 @@ void TorrentFilterController::rebuildWithFilters(const QStringList &trackerHosts
     addStatusFilterItems();
     addTrackerFilterItems(trackerHosts);
     addFolderFilterItems(downloadDirs);
+    applySectionCollapseState();
 
     const bool restoredSelection = selectItem(currentType, currentValue, 1);
 
@@ -148,6 +177,8 @@ void TorrentFilterController::rebuildWithFilters(const QStringList &trackerHosts
         m_proxy->setDownloadDirFilter(QString());
         updateCheckedAction(TorrentSortProxyModel::StateFilter::All);
     }
+
+    updateFilterStatusSignals();
 }
 
 void TorrentFilterController::addStatusFilterItems()
@@ -311,6 +342,7 @@ void TorrentFilterController::applyCurrentListSelection(QListWidgetItem *current
         m_proxy->setTrackerFilter(QString());
         m_proxy->setDownloadDirFilter(QString());
         updateCheckedAction(stateFilter);
+        updateFilterStatusSignals();
         return;
     }
 
@@ -319,6 +351,7 @@ void TorrentFilterController::applyCurrentListSelection(QListWidgetItem *current
         m_proxy->setTrackerFilter(current->data(FilterValueRole).toString());
         m_proxy->setDownloadDirFilter(QString());
         updateCheckedAction(TorrentSortProxyModel::StateFilter::All);
+        updateFilterStatusSignals();
         return;
     }
 
@@ -327,6 +360,7 @@ void TorrentFilterController::applyCurrentListSelection(QListWidgetItem *current
         m_proxy->setTrackerFilter(QString());
         m_proxy->setDownloadDirFilter(current->data(FilterValueRole).toString());
         updateCheckedAction(TorrentSortProxyModel::StateFilter::All);
+        updateFilterStatusSignals();
     }
 }
 
@@ -395,6 +429,182 @@ void TorrentFilterController::updateCheckedAction(TorrentSortProxyModel::StateFi
 
     if (action)
         action->setChecked(true);
+}
+
+
+void TorrentFilterController::updateFilterStatusSignals()
+{
+    if (!m_proxy)
+        return;
+
+    const int visibleCount = m_proxy->rowCount();
+    const QAbstractItemModel *source = m_proxy->sourceModel();
+    const int totalCount = source ? source->rowCount() : visibleCount;
+
+    emit resultCountChanged(visibleCount, totalCount);
+    emit filterSummaryChanged(filterSummary());
+}
+
+QString TorrentFilterController::filterSummary() const
+{
+    if (!m_proxy)
+        return QString();
+
+    QStringList parts;
+
+    const QString tracker = m_proxy->trackerFilter();
+    const QString folder = m_proxy->downloadDirFilter();
+
+    if (!tracker.isEmpty()) {
+        parts << tr("Filtered by tracker: %1").arg(tracker);
+    } else if (!folder.isEmpty()) {
+        parts << tr("Filtered by folder: %1").arg(folder);
+    } else if (m_proxy->stateFilter() != TorrentSortProxyModel::StateFilter::All) {
+        parts << tr("Filtered by status: %1").arg(statusFilterName(m_proxy->stateFilter()));
+    }
+
+    const QString searchText = m_proxy->searchText();
+    if (!searchText.isEmpty())
+        parts << tr("Search: %1").arg(searchText);
+
+    return parts.join(QStringLiteral(" · "));
+}
+
+QString TorrentFilterController::statusFilterName(TorrentSortProxyModel::StateFilter filter) const
+{
+    switch (filter) {
+    case TorrentSortProxyModel::StateFilter::All:
+        return tr("All");
+    case TorrentSortProxyModel::StateFilter::Downloading:
+        return tr("Downloading");
+    case TorrentSortProxyModel::StateFilter::Completed:
+        return tr("Complete");
+    case TorrentSortProxyModel::StateFilter::Active:
+        return tr("Active");
+    case TorrentSortProxyModel::StateFilter::Inactive:
+        return tr("Inactive");
+    case TorrentSortProxyModel::StateFilter::Stopped:
+        return tr("Stopped");
+    case TorrentSortProxyModel::StateFilter::Error:
+        return tr("Error");
+    }
+
+    return QString();
+}
+
+void TorrentFilterController::showFilterContextMenu(const QPoint &position)
+{
+    if (!m_filterList)
+        return;
+
+    QListWidgetItem *item = m_filterList->itemAt(position);
+    if (!item)
+        return;
+
+    const ItemType type = intToType(item->data(FilterTypeRole).toInt());
+    if (type != ItemType::Tracker && type != ItemType::Folder && type != ItemType::Header)
+        return;
+
+    ItemType sectionType = type;
+    if (type == ItemType::Header) {
+        const QString label = item->text();
+        if (label == tr("Trackers")) {
+            sectionType = ItemType::Tracker;
+        } else if (label == tr("Folders")) {
+            sectionType = ItemType::Folder;
+        } else {
+            return;
+        }
+    }
+
+    QMenu menu(m_filterList);
+
+    QAction *copyAction = nullptr;
+    if (type == ItemType::Tracker || type == ItemType::Folder) {
+        const QString value = item->data(FilterValueRole).toString();
+        if (!value.isEmpty())
+            copyAction = menu.addAction(tr("Copy"));
+    }
+
+    if (copyAction)
+        menu.addSeparator();
+
+    QAction *collapseAction = menu.addAction(sectionType == ItemType::Tracker
+                                                 ? tr("Collapse Trackers")
+                                                 : tr("Collapse Folders"));
+    QAction *expandAction = menu.addAction(sectionType == ItemType::Tracker
+                                               ? tr("Expand Trackers")
+                                               : tr("Expand Folders"));
+
+    const bool collapsed = sectionType == ItemType::Tracker
+                               ? m_trackersCollapsed
+                               : m_foldersCollapsed;
+    collapseAction->setEnabled(!collapsed);
+    expandAction->setEnabled(collapsed);
+
+    QAction *selectedAction = menu.exec(m_filterList->viewport()->mapToGlobal(position));
+
+    if (!selectedAction)
+        return;
+
+    if (selectedAction == copyAction) {
+        copyFilterValueToClipboard(item);
+        return;
+    }
+
+    if (selectedAction == collapseAction) {
+        setSectionCollapsed(sectionType, true);
+        return;
+    }
+
+    if (selectedAction == expandAction)
+        setSectionCollapsed(sectionType, false);
+}
+
+void TorrentFilterController::copyFilterValueToClipboard(QListWidgetItem *item) const
+{
+    if (!item)
+        return;
+
+    const QString value = item->data(FilterValueRole).toString();
+    if (value.isEmpty())
+        return;
+
+    QClipboard *clipboard = QApplication::clipboard();
+    if (clipboard)
+        clipboard->setText(value);
+}
+
+void TorrentFilterController::setSectionCollapsed(ItemType type, bool collapsed)
+{
+    if (type == ItemType::Tracker) {
+        m_trackersCollapsed = collapsed;
+    } else if (type == ItemType::Folder) {
+        m_foldersCollapsed = collapsed;
+    } else {
+        return;
+    }
+
+    applySectionCollapseState();
+}
+
+void TorrentFilterController::applySectionCollapseState()
+{
+    if (!m_filterList)
+        return;
+
+    for (int row = 0; row < m_filterList->count(); ++row) {
+        QListWidgetItem *item = m_filterList->item(row);
+        if (!item)
+            continue;
+
+        const ItemType type = intToType(item->data(FilterTypeRole).toInt());
+        if (type == ItemType::Tracker) {
+            item->setHidden(m_trackersCollapsed);
+        } else if (type == ItemType::Folder) {
+            item->setHidden(m_foldersCollapsed);
+        }
+    }
 }
 
 QStringList TorrentFilterController::trackerHostsFromTorrents(const QVector<torrent> &torrents)

@@ -331,6 +331,22 @@ MainWindow::MainWindow(QWidget *parent)
         );
     torrentFilterController->setup();
 
+    connect(torrentFilterController,
+            &TorrentFilterController::resultCountChanged,
+            this,
+            [this](int visibleCount, int totalCount) {
+                if (statusBarController)
+                    statusBarController->setTorrentResultCount(visibleCount, totalCount);
+            });
+
+    connect(torrentFilterController,
+            &TorrentFilterController::filterSummaryChanged,
+            this,
+            [this](const QString &summary) {
+                if (statusBarController)
+                    statusBarController->setFilterSummary(summary);
+            });
+
     torrentListController = new TorrentListController(
         ui->tableView,
         proxy,

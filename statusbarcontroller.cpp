@@ -23,6 +23,7 @@ void StatusBarController::setup()
     m_activityLabel = makeSectionLabel(tr("Not connected"));
     m_serverLabel = makeSectionLabel();
     m_torrentCountLabel = makeSectionLabel(tr("Torrents: 0"));
+    m_filterLabel = makeSectionLabel();
     m_rateLabel = makeSectionLabel();
     m_freeSpaceLabel = makeSectionLabel();
     m_speedModeLabel = makeSectionLabel();
@@ -31,6 +32,7 @@ void StatusBarController::setup()
     m_statusBar->addPermanentWidget(m_activityLabel);
     m_statusBar->addPermanentWidget(m_serverLabel);
     m_statusBar->addPermanentWidget(m_torrentCountLabel);
+    m_statusBar->addPermanentWidget(m_filterLabel);
     m_statusBar->addPermanentWidget(m_rateLabel);
     m_statusBar->addPermanentWidget(m_freeSpaceLabel);
     m_statusBar->addPermanentWidget(m_speedModeLabel);
@@ -38,6 +40,7 @@ void StatusBarController::setup()
 
     refreshServerLabel();
     refreshTorrentCountLabel();
+    refreshFilterLabel();
     refreshRateLabel();
     refreshFreeSpaceLabel();
     refreshSpeedModeLabel();
@@ -90,6 +93,7 @@ void StatusBarController::updateTorrents(const QVector<torrent> &torrents)
     }
 
     refreshTorrentCountLabel();
+    refreshFilterLabel();
     refreshRateLabel();
 }
 
@@ -121,6 +125,19 @@ void StatusBarController::setServerName(const QString &serverName)
 {
     m_serverName = serverName.trimmed();
     refreshServerLabel();
+}
+
+void StatusBarController::setTorrentResultCount(int visibleCount, int totalCount)
+{
+    m_visibleTorrentCount = visibleCount;
+    m_torrentCount = totalCount;
+    refreshTorrentCountLabel();
+}
+
+void StatusBarController::setFilterSummary(const QString &summary)
+{
+    m_filterSummary = summary.trimmed();
+    refreshFilterLabel();
 }
 
 QLabel *StatusBarController::makeSectionLabel(const QString &text) const
@@ -186,8 +203,27 @@ void StatusBarController::refreshServerLabel()
 
 void StatusBarController::refreshTorrentCountLabel()
 {
-    if (m_torrentCountLabel)
-        m_torrentCountLabel->setText(tr("Torrents: %1").arg(m_torrentCount));
+    if (!m_torrentCountLabel)
+        return;
+
+    if (m_visibleTorrentCount >= 0 && m_visibleTorrentCount != m_torrentCount) {
+        m_torrentCountLabel->setText(
+            tr("Torrents: %1 of %2").arg(m_visibleTorrentCount).arg(m_torrentCount)
+            );
+        return;
+    }
+
+    m_torrentCountLabel->setText(tr("Torrents: %1").arg(m_torrentCount));
+}
+
+void StatusBarController::refreshFilterLabel()
+{
+    if (!m_filterLabel)
+        return;
+
+    m_filterLabel->setText(m_filterSummary);
+    m_filterLabel->setToolTip(m_filterSummary);
+    m_filterLabel->setVisible(!m_filterSummary.isEmpty());
 }
 
 void StatusBarController::refreshRateLabel()

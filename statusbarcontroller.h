@@ -28,6 +28,8 @@ public:
     void setSessionSettings(const QJsonObject &settings);
     void setUpdateIntervalSeconds(int seconds);
     void setServerName(const QString &serverName);
+    void setTorrentResultCount(int visibleCount, int totalCount);
+    void setFilterSummary(const QString &summary);
 
 private:
     QStatusBar *m_statusBar = nullptr;
@@ -36,12 +38,15 @@ private:
     QLabel *m_activityLabel = nullptr;
     QLabel *m_serverLabel = nullptr;
     QLabel *m_torrentCountLabel = nullptr;
+    QLabel *m_filterLabel = nullptr;
     QLabel *m_rateLabel = nullptr;
     QLabel *m_freeSpaceLabel = nullptr;
     QLabel *m_speedModeLabel = nullptr;
     QLabel *m_intervalLabel = nullptr;
 
     int m_torrentCount = 0;
+    int m_visibleTorrentCount = -1;
+    QString m_filterSummary;
     double m_downloadRateBytesPerSecond = 0.0;
     double m_uploadRateBytesPerSecond = 0.0;
     qint64 m_freeSpaceBytes = -1;
@@ -56,6 +61,7 @@ private:
 
     void refreshServerLabel();
     void refreshTorrentCountLabel();
+    void refreshFilterLabel();
     void refreshRateLabel();
     void refreshFreeSpaceLabel();
     void refreshSpeedModeLabel();
