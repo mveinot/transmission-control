@@ -247,9 +247,9 @@ MainWindow::MainWindow(QWidget *parent)
     trayController->setup();
 
     // UI setup
-    this->mainMenu = new QMenu(0);
+    mainMenu = new QMenu(this);
     this->menuBar()->addMenu(this->mainMenu);
-    this->aboutAction = new QAction(0);
+    aboutAction = new QAction(this);
     this->aboutAction->setMenuRole(QAction::AboutRole);
     this->mainMenu->addAction(this->aboutAction);
     this->setMenuBar(this->menuBar());
@@ -541,6 +541,23 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(client, &rpc_client::commandSucceeded,
             this, [this](const QString &method) {
+                if (method == QStringLiteral("session-set")) {
+                    client->getSessionSettings();
+                    return;
+                }
+
+                const auto refreshTorrentState = [this](bool refreshDetails) {
+                    client->getTorrentList();
+
+                    if (!refreshDetails)
+                        return;
+
+                    const int torrentId = currentTorrentId();
+
+                    if (torrentId >= 0)
+                        client->getTorrentDetails(torrentId);
+                };
+
                 if (method == QStringLiteral("torrent-set-location")) {
                     if (statusBarController) {
                         statusBarController->showMessage(
@@ -549,13 +566,11 @@ MainWindow::MainWindow(QWidget *parent)
                             );
                     }
 
-                    client->getTorrentList();
+                    refreshTorrentState(true);
+                    return;
+                }
 
-                    const int torrentId = currentTorrentId();
-
-                    if (torrentId >= 0)
-                        client->getTorrentDetails(torrentId);
-                } else if (method == QStringLiteral("torrent-rename-path")) {
+                if (method == QStringLiteral("torrent-rename-path")) {
                     if (statusBarController) {
                         statusBarController->showMessage(
                             tr("Torrent path renamed."),
@@ -563,19 +578,32 @@ MainWindow::MainWindow(QWidget *parent)
                             );
                     }
 
-                    client->getTorrentList();
+                    refreshTorrentState(true);
+                    return;
+                }
 
-                    const int torrentId = currentTorrentId();
+                if (method == QStringLiteral("torrent-set")) {
+                    refreshTorrentState(true);
+                    return;
+                }
 
-                    if (torrentId >= 0)
-                        client->getTorrentDetails(torrentId);
-                } else if (method == QStringLiteral("torrent-set")) {
-                    const int torrentId = currentTorrentId();
+                if (method == QStringLiteral("torrent-add")
+                    || method == QStringLiteral("torrent-remove")) {
+                    refreshTorrentState(false);
+                    return;
+                }
 
-                    if (torrentId >= 0)
-                        client->getTorrentDetails(torrentId);
-                } else if (method == QStringLiteral("session-set")) {
-                    client->getSessionSettings();
+                if (method == QStringLiteral("torrent-start")
+                    || method == QStringLiteral("torrent-start-now")
+                    || method == QStringLiteral("torrent-stop")
+                    || method == QStringLiteral("torrent-verify")
+                    || method == QStringLiteral("torrent-reannounce")
+                    || method == QStringLiteral("queue-move-top")
+                    || method == QStringLiteral("queue-move-up")
+                    || method == QStringLiteral("queue-move-down")
+                    || method == QStringLiteral("queue-move-bottom")) {
+                    refreshTorrentState(true);
+                    return;
                 }
             });
 

@@ -28,7 +28,6 @@
 #include <QSettings>
 #include <QSize>
 #include <QTableView>
-#include <QTimer>
 #include <QtGlobal>
 #include <QVBoxLayout>
 #include <QVector>
@@ -881,11 +880,6 @@ void TorrentListController::setSelectedTorrentsLocation()
             : tr("Setting location for %1 torrent(s) to %2...").arg(ids.size()).arg(location),
         5000
         );
-
-    QTimer::singleShot(1500, this, [this]() {
-        emit torrentListRefreshRequested();
-        refreshCurrentTorrentDetails();
-    });
 }
 
 void TorrentListController::setSelectedTorrentsSequentialDownload(bool enabled)
@@ -913,11 +907,6 @@ void TorrentListController::setSelectedTorrentsSequentialDownload(bool enabled)
             : tr("Disabling sequential download for %1 torrent(s)...").arg(ids.size()),
         3000
         );
-
-    QTimer::singleShot(1000, this, [this]() {
-        emit torrentListRefreshRequested();
-        refreshCurrentTorrentDetails();
-    });
 }
 
 void TorrentListController::setSelectedTorrentsBandwidthPriority(int priority)
@@ -952,11 +941,6 @@ void TorrentListController::setSelectedTorrentsBandwidthPriority(int priority)
         tr("Setting priority for %1 torrent(s) to %2...").arg(ids.size()).arg(priorityLabel),
         3000
         );
-
-    QTimer::singleShot(1000, this, [this]() {
-        emit torrentListRefreshRequested();
-        refreshCurrentTorrentDetails();
-    });
 }
 
 void TorrentListController::showSelectedTorrentProperties()

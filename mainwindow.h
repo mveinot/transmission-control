@@ -74,8 +74,6 @@ private slots:
     void on_actionQuit_triggered();
     void exportSettings();
     void importSettings();
-    //void showFilesContextMenu(const QPoint &position);
-    //void openSelectedTorrentFile();
 
 private:
     Ui::MainWindow *ui;
