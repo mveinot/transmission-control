@@ -4,6 +4,7 @@
 #include "torrentmodel.h"
 #include "torrentpropertiesdialog.h"
 #include "torrentsortproxymodel.h"
+#include "tableplaceholdercontroller.h"
 
 #include <QAbstractItemModel>
 #include <QAbstractItemView>
@@ -127,6 +128,10 @@ void TorrentListController::setup(const ActionSet &actions)
         return;
 
     m_tableView->setModel(m_proxyModel);
+
+    m_placeholderController = std::make_unique<TablePlaceholderController>(m_tableView, this);
+    m_placeholderController->setMessage(tr("Loading torrents…"));
+
     applyDefaultColumnVisibility();
     m_tableView->setSortingEnabled(true);
     m_tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -161,6 +166,25 @@ void TorrentListController::setup(const ActionSet &actions)
                 [this]() { updateActionState(); });
     }
 
+    if (m_proxyModel) {
+        connect(m_proxyModel,
+                &QAbstractItemModel::modelReset,
+                this,
+                &TorrentListController::updatePlaceholder);
+        connect(m_proxyModel,
+                &QAbstractItemModel::rowsInserted,
+                this,
+                &TorrentListController::updatePlaceholder);
+        connect(m_proxyModel,
+                &QAbstractItemModel::rowsRemoved,
+                this,
+                &TorrentListController::updatePlaceholder);
+        connect(m_proxyModel,
+                &QAbstractItemModel::layoutChanged,
+                this,
+                &TorrentListController::updatePlaceholder);
+    }
+
     connect(m_tableView,
             &QTableView::customContextMenuRequested,
             this,
@@ -174,6 +198,34 @@ void TorrentListController::setup(const ActionSet &actions)
     }
 
     updateActionState();
+    updatePlaceholder();
+}
+
+void TorrentListController::beginTorrentListRefresh()
+{
+    m_torrentListLoadFailed = false;
+    m_torrentListLoadFailureMessage.clear();
+
+    if (!m_torrentListLoaded)
+        updatePlaceholder();
+}
+
+void TorrentListController::markTorrentListLoaded()
+{
+    m_torrentListLoaded = true;
+    m_torrentListLoadFailed = false;
+    m_torrentListLoadFailureMessage.clear();
+    updatePlaceholder();
+}
+
+void TorrentListController::markTorrentListLoadFailed(const QString &message)
+{
+    if (m_torrentListLoaded)
+        return;
+
+    m_torrentListLoadFailed = true;
+    m_torrentListLoadFailureMessage = message;
+    updatePlaceholder();
 }
 
 void TorrentListController::restoreViewState()
@@ -1015,4 +1067,35 @@ void TorrentListController::resetColumns()
     applyDefaultColumnVisibility();
     m_tableView->sortByColumn(TorrentModel::NameColumn, Qt::AscendingOrder);
     saveViewState();
+}
+
+void TorrentListController::updatePlaceholder()
+{
+    if (!m_placeholderController || !m_proxyModel)
+        return;
+
+    if (m_torrentListLoadFailed) {
+        const QString message = m_torrentListLoadFailureMessage.trimmed().isEmpty()
+                                    ? tr("Could not load torrents.")
+                                    : tr("Could not load torrents.\n%1").arg(m_torrentListLoadFailureMessage);
+        m_placeholderController->setMessage(message);
+        return;
+    }
+
+    if (!m_torrentListLoaded) {
+        m_placeholderController->setMessage(tr("Loading torrents…"));
+        return;
+    }
+
+    const QAbstractItemModel *sourceModel = m_proxyModel->sourceModel();
+    const int sourceRows = sourceModel ? sourceModel->rowCount() : 0;
+    const int visibleRows = m_proxyModel->rowCount();
+
+    if (sourceRows == 0) {
+        m_placeholderController->setMessage(tr("No torrents."));
+    } else if (visibleRows == 0) {
+        m_placeholderController->setMessage(tr("No torrents match the current filters."));
+    } else {
+        m_placeholderController->clearMessage();
+    }
 }

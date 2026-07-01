@@ -13,6 +13,7 @@ class QTableWidgetItem;
 class QWidget;
 class rpc_client;
 class TableColumnController;
+class TablePlaceholderController;
 
 class TorrentTrackersController : public QObject
 {
@@ -31,6 +32,7 @@ public:
     void setTorrentId(int torrentId);
     void saveViewState() const;
     void restoreViewState();
+    void setLoading();
 
 signals:
     void statusMessageRequested(const QString &message, int timeoutMs);
@@ -79,6 +81,7 @@ private:
     QWidget *dialogParent = nullptr;
     int torrentId = -1;
     std::unique_ptr<TableColumnController> columnController;
+    std::unique_ptr<TablePlaceholderController> placeholderController;
 };
 
 #endif // TORRENTTRACKERSCONTROLLER_H

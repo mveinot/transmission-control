@@ -3,6 +3,7 @@
 #include "percentfilldelegate.h"
 #include "rpc_client.h"
 #include "tablecolumncontroller.h"
+#include "tableplaceholdercontroller.h"
 
 #include <QCoreApplication>
 #include <QDesktopServices>
@@ -72,6 +73,9 @@ void TorrentFilesController::setup()
         this);
     columnController->setup();
 
+    placeholderController = std::make_unique<TablePlaceholderController>(fileTreeWidget, this);
+    placeholderController->setMessage(tr("No torrent selected."));
+
     connect(fileTreeWidget, &QTreeWidget::customContextMenuRequested,
             this, &TorrentFilesController::showContextMenu);
 }
@@ -94,6 +98,20 @@ void TorrentFilesController::clear()
         fileTreeWidget->clear();
 
     torrentFilePaths.clear();
+
+    if (placeholderController)
+        placeholderController->setMessage(tr("No torrent selected."));
+}
+
+void TorrentFilesController::setLoading()
+{
+    if (fileTreeWidget)
+        fileTreeWidget->clear();
+
+    torrentFilePaths.clear();
+
+    if (placeholderController)
+        placeholderController->setMessage(tr("Loading files…"));
 }
 
 void TorrentFilesController::setTorrentContext(int torrentId,
@@ -202,6 +220,9 @@ void TorrentFilesController::populate(const QJsonArray &files,
         return;
 
     clear();
+
+    if (placeholderController)
+        placeholderController->setMessage(files.isEmpty() ? tr("No files reported for this torrent.") : QString());
 
     for (int fileIndex = 0; fileIndex < files.size(); ++fileIndex) {
         const QJsonObject file = files.at(fileIndex).toObject();

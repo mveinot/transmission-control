@@ -11,6 +11,7 @@ class GeoIpService;
 class QHostInfo;
 class QTableWidget;
 class TableColumnController;
+class TablePlaceholderController;
 
 class TorrentPeersController : public QObject
 {
@@ -27,6 +28,7 @@ public:
     void populate(const QJsonArray &peers);
     void saveViewState() const;
     void restoreViewState();
+    void setLoading();
 
 private slots:
     void handleHostLookup(const QHostInfo &hostInfo);
@@ -58,6 +60,7 @@ private:
     QSet<QString> pendingHostnameLookups;
     QHash<int, QString> hostnameLookupIds;
     std::unique_ptr<TableColumnController> columnController;
+    std::unique_ptr<TablePlaceholderController> placeholderController;
 };
 
 #endif // TORRENTPEERSCONTROLLER_H

@@ -2,6 +2,7 @@
 
 #include "geoipservice.h"
 #include "tablecolumncontroller.h"
+#include "tableplaceholdercontroller.h"
 
 #include <QAbstractItemView>
 #include <QHostInfo>
@@ -72,6 +73,9 @@ void TorrentPeersController::setup()
         },
         this);
     columnController->setup();
+
+    placeholderController = std::make_unique<TablePlaceholderController>(peerTableWidget, this);
+    placeholderController->setMessage(tr("No torrent selected."));
 }
 
 void TorrentPeersController::saveViewState() const
@@ -93,12 +97,30 @@ void TorrentPeersController::clear()
 
     peerTableWidget->clearContents();
     peerTableWidget->setRowCount(0);
+
+    if (placeholderController)
+        placeholderController->setMessage(tr("No torrent selected."));
+}
+
+void TorrentPeersController::setLoading()
+{
+    if (!peerTableWidget)
+        return;
+
+    peerTableWidget->clearContents();
+    peerTableWidget->setRowCount(0);
+
+    if (placeholderController)
+        placeholderController->setMessage(tr("Loading peers…"));
 }
 
 void TorrentPeersController::populate(const QJsonArray &peers)
 {
     if (!peerTableWidget)
         return;
+
+    if (placeholderController)
+        placeholderController->setMessage(peers.isEmpty() ? tr("No peers connected.") : QString());
 
     peerTableWidget->setSortingEnabled(false);
     peerTableWidget->clearContents();

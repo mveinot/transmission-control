@@ -17,6 +17,7 @@ class QTreeWidgetItem;
 class QWidget;
 class rpc_client;
 class TableColumnController;
+class TablePlaceholderController;
 
 class TorrentFilesController : public QObject
 {
@@ -39,6 +40,7 @@ public:
         std::function<QList<FolderMapping>()> folderMappingsProvider);
     void saveViewState() const;
     void restoreViewState();
+    void setLoading();
 
 signals:
     void statusMessageRequested(const QString &message, int timeoutMs);
@@ -95,6 +97,7 @@ private:
     QHash<int, QString> torrentFilePaths;
     std::function<QList<FolderMapping>()> folderMappingsProvider;
     std::unique_ptr<TableColumnController> columnController;
+    std::unique_ptr<TablePlaceholderController> placeholderController;
 };
 
 #endif // TORRENTFILESCONTROLLER_H

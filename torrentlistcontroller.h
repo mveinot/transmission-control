@@ -6,6 +6,7 @@
 #include <QString>
 #include <QStringList>
 #include <functional>
+#include <memory>
 
 class QAction;
 class QModelIndex;
@@ -14,6 +15,7 @@ class QTableView;
 class QWidget;
 class rpc_client;
 class TorrentSortProxyModel;
+class TablePlaceholderController;
 
 class TorrentListController : public QObject
 {
@@ -39,6 +41,9 @@ public:
     void setup(const ActionSet &actions);
     void restoreViewState();
     void saveViewState() const;
+    void beginTorrentListRefresh();
+    void markTorrentListLoaded();
+    void markTorrentListLoadFailed(const QString &message);
 
     int currentTorrentId() const;
     QList<int> selectedTorrentIds() const;
@@ -97,6 +102,10 @@ private:
     bool m_currentSequentialDownloadKnown = false;
     QString m_defaultDownloadDir;
     std::function<QString()> m_currentDetailsDownloadDirProvider;
+    bool m_torrentListLoaded = false;
+    bool m_torrentListLoadFailed = false;
+    QString m_torrentListLoadFailureMessage;
+    std::unique_ptr<TablePlaceholderController> m_placeholderController;
 
     void invokeSelectedTorrentCommand(void (rpc_client::*command)(const QList<int> &),
                                       const QString &message);
@@ -109,6 +118,7 @@ private:
     void setColumnVisible(int column, bool visible);
     void resetColumns();
     void configureHorizontalHeader();
+    void updatePlaceholder();
 };
 
 #endif // TORRENTLISTCONTROLLER_H

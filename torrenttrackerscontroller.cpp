@@ -2,6 +2,7 @@
 
 #include "rpc_client.h"
 #include "tablecolumncontroller.h"
+#include "tableplaceholdercontroller.h"
 
 #include <QAbstractItemView>
 #include <QApplication>
@@ -88,6 +89,9 @@ void TorrentTrackersController::setup()
         this);
     columnController->setup();
 
+    placeholderController = std::make_unique<TablePlaceholderController>(trackerTableWidget, this);
+    placeholderController->setMessage(tr("No torrent selected."));
+
     connect(trackerTableWidget, &QTableWidget::customContextMenuRequested,
             this, &TorrentTrackersController::showContextMenu);
 }
@@ -111,6 +115,21 @@ void TorrentTrackersController::clear()
 
     trackerTableWidget->clearContents();
     trackerTableWidget->setRowCount(0);
+
+    if (placeholderController)
+        placeholderController->setMessage(tr("No torrent selected."));
+}
+
+void TorrentTrackersController::setLoading()
+{
+    if (!trackerTableWidget)
+        return;
+
+    trackerTableWidget->clearContents();
+    trackerTableWidget->setRowCount(0);
+
+    if (placeholderController)
+        placeholderController->setMessage(tr("Loading trackers…"));
 }
 
 void TorrentTrackersController::setTorrentId(int torrentId)
@@ -125,6 +144,9 @@ void TorrentTrackersController::populate(const QJsonObject &details)
 
     const QJsonArray trackerStats = details.value("trackerStats").toArray();
     const QJsonArray trackers = details.value("trackers").toArray();
+
+    if (placeholderController)
+        placeholderController->setMessage(trackerStats.isEmpty() ? tr("No trackers reported for this torrent.") : QString());
 
     trackerTableWidget->setSortingEnabled(false);
     trackerTableWidget->clearContents();

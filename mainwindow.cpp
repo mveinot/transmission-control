@@ -375,6 +375,9 @@ MainWindow::MainWindow(QWidget *parent)
                 torrentTrackersController->setTorrentId(torrentId);
                 torrentFilesController->setTorrentContext(-1, QString());
                 torrentFilesController->clear();
+                torrentPeersController->setLoading();
+                torrentTrackersController->setLoading();
+                torrentFilesController->setLoading();
                 client->getTorrentDetails(torrentId);
             });
 
@@ -488,6 +491,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(client, &rpc_client::torrentsReceived,
             this, &MainWindow::handleTorrentsReceived);
 
+    connect(client, &rpc_client::updateFailed,
+            this, [this](const QString &message) {
+                if (torrentListController)
+                    torrentListController->markTorrentListLoadFailed(message);
+            });
+
     connect(ui->comboServers,
             QOverload<int>::of(&QComboBox::currentIndexChanged),
             this,
@@ -566,6 +575,9 @@ MainWindow::~MainWindow()
 
 void MainWindow::updateTorrentList()
 {
+    if (torrentListController)
+        torrentListController->beginTorrentListRefresh();
+
     client->getTorrentList();
 }
 
@@ -706,6 +718,8 @@ void MainWindow::onServerSetupTriggered()
             client->setServerFromSettingsIndex(serverIndex);
             if (statusBarController)
                 statusBarController->showMessage(client->getServer());
+            if (torrentListController)
+                torrentListController->beginTorrentListRefresh();
             client->getTorrentList();
         }
     }
@@ -899,6 +913,8 @@ void MainWindow::saveSelectedServerFromCombo()
             );
     }
 
+    if (torrentListController)
+        torrentListController->beginTorrentListRefresh();
     client->getTorrentList();
 
     remoteDownloadDir.clear();
@@ -1043,6 +1059,9 @@ void MainWindow::applyAppSettings()
 
 void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
 {
+    if (torrentListController)
+        torrentListController->markTorrentListLoaded();
+
     if (trayController)
         trayController->processTorrentList(torrents);
 
