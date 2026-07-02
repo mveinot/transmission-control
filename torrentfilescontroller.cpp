@@ -52,7 +52,7 @@ void TorrentFilesController::setup()
         tr("Completed")
     });
     fileTreeWidget->setContextMenuPolicy(Qt::CustomContextMenu);
-    fileTreeWidget->setAlternatingRowColors(true);
+    fileTreeWidget->setAlternatingRowColors(false);
     fileTreeWidget->setRootIsDecorated(true);
     fileTreeWidget->setItemDelegateForColumn(
         FilePercentColumn,
