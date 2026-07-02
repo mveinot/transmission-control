@@ -324,7 +324,7 @@ install(FILES
 )
 
 install(FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/geoip/dbip-country-lite-2026-06.mmdb"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/geoip/country.mmdb"
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/planetary/geoip"
     OPTIONAL
 )

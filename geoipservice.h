@@ -5,6 +5,7 @@
 #include <QDateTime>
 #include <QHash>
 #include <QString>
+#include <QStringList>
 
 #ifdef PLANETARY_HAVE_MAXMINDDB
 #include <maxminddb.h>
@@ -66,6 +67,8 @@ public:
     ~GeoIpService();
 
     bool loadDatabase(const QString &path);
+    bool loadDefaultDatabase();
+    static QStringList candidateDatabasePaths();
     bool isDatabaseLoaded() const;
     GeoIpDatabaseInfo databaseInfo() const;
 

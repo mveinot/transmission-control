@@ -158,13 +158,8 @@ MainWindow::MainWindow(QWidget *parent)
     // geo ip lookup
     geoIpService = new GeoIpService(this);
 
-    // TODO: needs fixing for non-macos builds
-    const QString geoIpPath =
-        QCoreApplication::applicationDirPath()
-        + "/../Resources/geoip/country.mmdb";
-
-    if (!geoIpService->loadDatabase(geoIpPath)) {
-        qWarning() << "GeoIP database could not be loaded; using dummy lookup";
+    if (!geoIpService->loadDefaultDatabase()) {
+        qWarning() << "GeoIP database could not be loaded; using fallback lookup";
     }
 
     torrentAddController = new TorrentAddController(client, this, this);

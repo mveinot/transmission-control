@@ -1,13 +1,66 @@
 #include "geoipservice.h"
 
+#include <QCoreApplication>
 #include <QDateTime>
 //#include <QDebug>
+#include <QDir>
 #include <QFileInfo>
 #include <QHostAddress>
 #include <QTimeZone>
+#include <QSet>
 #include <QStringList>
+#include <QStandardPaths>
 
 namespace {
+
+
+QString normalizedPath(const QString &path)
+{
+    if (path.trimmed().isEmpty())
+        return {};
+
+    return QDir::cleanPath(QFileInfo(path).absoluteFilePath());
+}
+
+void appendUniquePath(QStringList *paths, QSet<QString> *seen, const QString &path)
+{
+    const QString cleanPath = normalizedPath(path);
+
+    if (cleanPath.isEmpty())
+        return;
+
+#ifdef Q_OS_WIN
+    const QString key = cleanPath.toCaseFolded();
+#else
+    const QString key = cleanPath;
+#endif
+
+    if (seen->contains(key))
+        return;
+
+    seen->insert(key);
+    paths->append(cleanPath);
+}
+
+void appendDatabaseFilesFromDirectory(QStringList *paths,
+                                      QSet<QString> *seen,
+                                      const QString &directoryPath)
+{
+    const QDir directory(directoryPath);
+
+    if (!directory.exists())
+        return;
+
+    const QStringList fileNames = directory.entryList(
+        QStringList() << QStringLiteral("*.mmdb"),
+        QDir::Files | QDir::Readable,
+        QDir::Name
+        );
+
+    for (const QString &fileName : fileNames)
+        appendUniquePath(paths, seen, directory.filePath(fileName));
+}
+
 
 #ifdef PLANETARY_HAVE_MAXMINDDB
 QString mmdbCString(const char *text)
@@ -67,6 +120,110 @@ GeoIpService::~GeoIpService()
     }
 #endif
 }
+
+
+QStringList GeoIpService::candidateDatabasePaths()
+{
+    QStringList paths;
+    QSet<QString> seen;
+
+    const QString appDir = QCoreApplication::applicationDirPath();
+
+    const QStringList preferredFileNames {
+        QStringLiteral("country.mmdb"),
+        QStringLiteral("dbip-country-lite.mmdb"),
+        QStringLiteral("dbip-country-lite-2026-06.mmdb")
+    };
+
+    QStringList candidateDirectories {
+        // macOS bundle layout: Planetary.app/Contents/MacOS -> Planetary.app/Contents/Resources
+        QDir(appDir).filePath(QStringLiteral("../Resources/geoip")),
+
+        // Windows / portable layouts beside the executable.
+        QDir(appDir).filePath(QStringLiteral("geoip")),
+        QDir(appDir).filePath(QStringLiteral("Resources/geoip")),
+        QDir(appDir).filePath(QStringLiteral("resources/geoip")),
+
+        // Linux install layouts relative to bin/.
+        QDir(appDir).filePath(QStringLiteral("../share/planetary/geoip")),
+        QDir(appDir).filePath(QStringLiteral("../share/Planetary/geoip")),
+
+        // Developer/source-tree convenience when launched from the project root.
+        QDir(QDir::currentPath()).filePath(QStringLiteral("Resources/geoip"))
+    };
+
+    for (const QString &location : QStandardPaths::standardLocations(QStandardPaths::AppDataLocation))
+        candidateDirectories.append(QDir(location).filePath(QStringLiteral("geoip")));
+
+    for (const QString &location : QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation)) {
+        candidateDirectories.append(QDir(location).filePath(QStringLiteral("planetary/geoip")));
+        candidateDirectories.append(QDir(location).filePath(QStringLiteral("Planetary/geoip")));
+    }
+
+#ifndef Q_OS_MACOS
+    candidateDirectories.append(QStringLiteral("/usr/local/share/planetary/geoip"));
+    candidateDirectories.append(QStringLiteral("/usr/share/planetary/geoip"));
+    candidateDirectories.append(QStringLiteral("/opt/planetary/share/geoip"));
+#endif
+
+    for (const QString &directory : candidateDirectories) {
+        const QDir dir(directory);
+
+        for (const QString &fileName : preferredFileNames)
+            appendUniquePath(&paths, &seen, dir.filePath(fileName));
+
+        appendDatabaseFilesFromDirectory(&paths, &seen, directory);
+    }
+
+    return paths;
+}
+
+bool GeoIpService::loadDefaultDatabase()
+{
+    const QStringList candidates = candidateDatabasePaths();
+    QStringList attemptedPaths;
+    QStringList failureMessages;
+
+    for (const QString &candidate : candidates) {
+        if (!QFileInfo::exists(candidate))
+            continue;
+
+        attemptedPaths.append(candidate);
+
+        if (loadDatabase(candidate))
+            return true;
+
+        const GeoIpDatabaseInfo failedInfo = databaseInfo();
+        if (!failedInfo.errorMessage.isEmpty())
+            failureMessages.append(tr("%1: %2").arg(candidate, failedInfo.errorMessage));
+    }
+
+    cache.clear();
+    updateCacheEntryCount();
+
+    dbInfo = {};
+#ifdef PLANETARY_HAVE_MAXMINDDB
+    dbInfo.maxMindDbSupport = true;
+#else
+    dbInfo.maxMindDbSupport = false;
+#endif
+    dbInfo.fallbackLookupActive = true;
+
+#ifndef PLANETARY_HAVE_MAXMINDDB
+    dbInfo.errorMessage = tr("Planetary was built without libmaxminddb support.");
+#else
+    if (attemptedPaths.isEmpty()) {
+        dbInfo.errorMessage = tr("GeoIP database file was not found. Checked: %1")
+                                  .arg(candidates.join(QStringLiteral("; ")));
+    } else {
+        dbInfo.errorMessage = tr("GeoIP database could not be loaded. %1")
+                                  .arg(failureMessages.join(QStringLiteral("; ")));
+    }
+#endif
+
+    return false;
+}
+
 
 bool GeoIpService::loadDatabase(const QString &path)
 {
