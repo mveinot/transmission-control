@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(Planetary VERSION 0.1 LANGUAGES CXX)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/PLANETARY_VERSION" PLANETARY_VERSION_BASE)
+string(STRIP "${PLANETARY_VERSION_BASE}" PLANETARY_VERSION_BASE)
+
+if(NOT PLANETARY_VERSION_BASE MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+    message(FATAL_ERROR "PLANETARY_VERSION must be in major.minor.patch format, e.g. 0.8.0")
+endif()
+
+project(Planetary VERSION ${PLANETARY_VERSION_BASE} LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -97,15 +104,6 @@ set(app_icon_macos "${CMAKE_CURRENT_SOURCE_DIR}/Resources/icons/planetary.icns")
 set_source_files_properties(${app_icon_macos} PROPERTIES
     MACOSX_PACKAGE_LOCATION "Resources")
 
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/PLANETARY_VERSION" PLANETARY_VERSION_BASE)
-string(STRIP "${PLANETARY_VERSION_BASE}" PLANETARY_VERSION_BASE)
-
-if(NOT PLANETARY_VERSION_BASE MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
-    message(FATAL_ERROR "VERSION must be in major.minor.patch format, e.g. 0.8.0")
-endif()
-
-project(Planetary VERSION ${PLANETARY_VERSION_BASE} LANGUAGES CXX)
-
 set(PLANETARY_VERSION_BUILD "0")
 
 find_package(Git QUIET)
@@ -141,12 +139,6 @@ configure_file(
     "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
     @ONLY
 )
-
-#configure_file(
-#    "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
-#    "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
-#    @ONLY
-#)
 
 file(WRITE
     "${CMAKE_CURRENT_BINARY_DIR}/planetary-version.txt"
@@ -299,7 +291,6 @@ if(EXISTS "${THIRD_PARTY_NOTICES_FILE}")
     )
 endif()
 
-#target_link_libraries(Planetary PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt6::Network)
 target_link_libraries(Planetary PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Network
@@ -316,10 +307,10 @@ set_target_properties(Planetary PROPERTIES
 
 include(GNUInstallDirs)
 
-install(TARGETS Planetary
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    BUNDLE DESTINATION .
-)
+#install(TARGETS Planetary
+#    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+#    BUNDLE DESTINATION .
+#)
 
 install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/Resources/icons/planetary.png"
