@@ -610,6 +610,11 @@ void rpc_client::startTorrents(const QList<int> &ids)
     postIdsCommand(QStringLiteral("torrent-start"), ids);
 }
 
+void rpc_client::startAllTorrents()
+{
+    postRpc(QStringLiteral("torrent-start"), QJsonObject(), RpcRequestType::Command);
+}
+
 void rpc_client::startTorrentsNow(const QList<int> &ids)
 {
     postIdsCommand(QStringLiteral("torrent-start-now"), ids);
@@ -618,6 +623,11 @@ void rpc_client::startTorrentsNow(const QList<int> &ids)
 void rpc_client::stopTorrents(const QList<int> &ids)
 {
     postIdsCommand(QStringLiteral("torrent-stop"), ids);
+}
+
+void rpc_client::stopAllTorrents()
+{
+    postRpc(QStringLiteral("torrent-stop"), QJsonObject(), RpcRequestType::Command);
 }
 
 void rpc_client::removeTorrents(const QList<int> &ids, bool deleteLocalData)

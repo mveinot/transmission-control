@@ -50,8 +50,10 @@ public:
                        const QString &downloadDir = QString(),
                        bool paused = false);
     void startTorrents(const QList<int> &ids);
+    void startAllTorrents();
     void startTorrentsNow(const QList<int> &ids);
     void stopTorrents(const QList<int> &ids);
+    void stopAllTorrents();
     void removeTorrents(const QList<int> &ids, bool deleteLocalData);
     void verifyTorrents(const QList<int> &ids);
     void reannounceTorrents(const QList<int> &ids);

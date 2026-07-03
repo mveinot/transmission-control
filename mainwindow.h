@@ -60,6 +60,8 @@ private slots:
     void onServerSetupTriggered();
     void on_actionStart_Torrent_triggered();
     void on_actionStop_Torrent_triggered();
+    void on_actionStart_All_Torrents_triggered();
+    void on_actionStop_All_Torrents_triggered();
     void on_action_Open_Torrent_triggered();
     void on_actionAdd_Torrent_from_Magnet_Link_triggered();
     void on_actionReannounce_triggered();

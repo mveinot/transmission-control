@@ -18,6 +18,7 @@ public:
     explicit TrayController(QMainWindow *window, QObject *parent = nullptr);
 
     void setup();
+    void setTorrentGlobalActions(QAction *startAllAction, QAction *stopAllAction);
     void applySettings();
     void showMainWindow();
     void quitApplication();
@@ -32,9 +33,15 @@ private:
     bool trayIconEnabled() const;
     bool shouldCloseToTray() const;
     void updateTrayIconVisibility();
+    void rebuildTrayMenu();
+
     QMainWindow *m_window = nullptr;
     QSystemTrayIcon *m_trayIcon = nullptr;
     QMenu *m_trayMenu = nullptr;
+    QAction *m_showAction = nullptr;
+    QAction *m_quitAction = nullptr;
+    QAction *m_startAllAction = nullptr;
+    QAction *m_stopAllAction = nullptr;
     bool m_reallyQuit = false;
 };
 

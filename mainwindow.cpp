@@ -241,6 +241,8 @@ MainWindow::MainWindow(QWidget *parent)
     watchFolderController->loadSettings();
     trayController = new TrayController(this, this);
     trayController->setup();
+    trayController->setTorrentGlobalActions(ui->actionStart_All_Torrents,
+                                            ui->actionStop_All_Torrents);
 
     notificationController = new NotificationController(this);
 
@@ -665,6 +667,22 @@ void MainWindow::on_actionStop_Torrent_triggered()
 {
     if (torrentListController)
         torrentListController->stopSelectedTorrents();
+}
+
+void MainWindow::on_actionStart_All_Torrents_triggered()
+{
+    if (statusBarController)
+        statusBarController->showMessage(tr("Starting all torrents..."), 3000);
+
+    client->startAllTorrents();
+}
+
+void MainWindow::on_actionStop_All_Torrents_triggered()
+{
+    if (statusBarController)
+        statusBarController->showMessage(tr("Stopping all torrents..."), 3000);
+
+    client->stopAllTorrents();
 }
 
 void MainWindow::on_action_Open_Torrent_triggered()

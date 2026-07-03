@@ -33,21 +33,30 @@ void TrayController::setup()
 
     m_trayMenu = new QMenu(m_window);
 
-    QAction *showAction = m_trayMenu->addAction(tr("Show Planetary"));
-    QAction *quitAction = m_trayMenu->addAction(tr("Quit"));
+    m_showAction = new QAction(tr("Show Planetary"), this);
+    m_quitAction = new QAction(tr("Quit"), this);
 
-    connect(showAction, &QAction::triggered,
+    connect(m_showAction, &QAction::triggered,
             this, &TrayController::showMainWindow);
 
-    connect(quitAction, &QAction::triggered,
+    connect(m_quitAction, &QAction::triggered,
             this, &TrayController::quitApplication);
 
+    rebuildTrayMenu();
     m_trayIcon->setContextMenu(m_trayMenu);
 
     // Do not restore the main window from a plain tray icon click.
     // The user-facing restore path is the explicit "Show Planetary" tray menu action.
 
     updateTrayIconVisibility();
+}
+
+
+void TrayController::setTorrentGlobalActions(QAction *startAllAction, QAction *stopAllAction)
+{
+    m_startAllAction = startAllAction;
+    m_stopAllAction = stopAllAction;
+    rebuildTrayMenu();
 }
 
 void TrayController::applySettings()
@@ -142,5 +151,31 @@ void TrayController::updateTrayIconVisibility()
         m_trayIcon->show();
     } else {
         m_trayIcon->hide();
+    }
+}
+
+void TrayController::rebuildTrayMenu()
+{
+    if (!m_trayMenu)
+        return;
+
+    m_trayMenu->clear();
+
+    if (m_showAction)
+        m_trayMenu->addAction(m_showAction);
+
+    if (m_startAllAction || m_stopAllAction) {
+        m_trayMenu->addSeparator();
+
+        if (m_startAllAction)
+            m_trayMenu->addAction(m_startAllAction);
+
+        if (m_stopAllAction)
+            m_trayMenu->addAction(m_stopAllAction);
+    }
+
+    if (m_quitAction) {
+        m_trayMenu->addSeparator();
+        m_trayMenu->addAction(m_quitAction);
     }
 }

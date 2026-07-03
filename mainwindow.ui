@@ -600,6 +600,10 @@
    <addaction name="actionAdd_Torrent_from_Magnet_Link"/>
    <addaction name="actionStart_Torrent"/>
    <addaction name="actionStop_Torrent"/>
+   <addaction name="separator"/>
+   <addaction name="actionStart_All_Torrents"/>
+   <addaction name="actionStop_All_Torrents"/>
+   <addaction name="separator"/>
    <addaction name="actionVerify_Torrent"/>
    <addaction name="actionReannounce"/>
    <addaction name="actionDelete_Torrent"/>
@@ -689,6 +693,34 @@
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::TextHeuristicRole</enum>
+   </property>
+  </action>
+  <action name="actionStart_All_Torrents">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::MediaPlaybackStart"/>
+   </property>
+   <property name="text">
+    <string>Start All</string>
+   </property>
+   <property name="toolTip">
+    <string>Start all torrents</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionStop_All_Torrents">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::MediaPlaybackPause"/>
+   </property>
+   <property name="text">
+    <string>Stop All</string>
+   </property>
+   <property name="toolTip">
+    <string>Stop all torrents</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
   <action name="actionAdd_Torrent_from_Magnet_Link">
