@@ -1,4 +1,5 @@
 #include "torrentmodel.h"
+#include "appicons.h"
 
 #include <QApplication>
 #include <QBrush>
@@ -8,88 +9,40 @@
 #include <QPalette>
 #include <QSet>
 #include <QStringList>
-#include <QStyle>
 #include <QVariant>
 #include <Qt>
 
 
 namespace {
 
-QIcon themedIcon(const QStringList &names, QStyle::StandardPixmap fallback)
-{
-    for (const QString &name : names) {
-        const QIcon icon = QIcon::fromTheme(name);
-
-        if (!icon.isNull())
-            return icon;
-    }
-
-    if (QApplication *app = qobject_cast<QApplication *>(QApplication::instance()))
-        return app->style()->standardIcon(fallback);
-
-    return {};
-}
-
 QIcon statusIcon(int statusValue, bool hasError)
 {
-    if (hasError) {
-        return themedIcon({
-                              QStringLiteral("dialog-error"),
-                              QStringLiteral("emblem-important"),
-                              QStringLiteral("process-stop")
-                          },
-                          QStyle::SP_MessageBoxCritical);
-    }
+    if (hasError)
+        return AppIcons::icon(AppIcons::Icon::StatusError);
 
     switch (statusValue) {
     case 0: // Paused
-        return themedIcon({
-                              QStringLiteral("media-playback-pause"),
-                              QStringLiteral("player_pause")
-                          },
-                          QStyle::SP_MediaPause);
+        return AppIcons::icon(AppIcons::Icon::StatusStopped);
 
     case 1: // Waiting to verify
     case 3: // Queued
     case 5: // Waiting to seed
-        return themedIcon({
-                              QStringLiteral("appointment-soon"),
-                              QStringLiteral("chronometer"),
-                              QStringLiteral("view-calendar-upcoming")
-                          },
-                          QStyle::SP_BrowserReload);
+        return AppIcons::icon(AppIcons::Icon::StatusQueued);
 
     case 2: // Verifying
-        return themedIcon({
-                              QStringLiteral("view-refresh"),
-                              QStringLiteral("emblem-synchronizing")
-                          },
-                          QStyle::SP_BrowserReload);
+        return AppIcons::icon(AppIcons::Icon::StatusVerifying);
 
     case 4: // Downloading
-        return themedIcon({
-                              QStringLiteral("go-down"),
-                              QStringLiteral("download"),
-                              QStringLiteral("folder-download")
-                          },
-                          QStyle::SP_ArrowDown);
+        return AppIcons::icon(AppIcons::Icon::StatusDownloading);
 
     case 6: // Seeding
-        return themedIcon({
-                              QStringLiteral("go-up"),
-                              QStringLiteral("upload"),
-                              QStringLiteral("folder-upload")
-                          },
-                          QStyle::SP_ArrowUp);
+        return AppIcons::icon(AppIcons::Icon::StatusSeeding);
 
     default:
-        return themedIcon({
-                              QStringLiteral("dialog-question"),
-                              QStringLiteral("help-about")
-                          },
-                          QStyle::SP_MessageBoxQuestion);
+        return AppIcons::icon(AppIcons::Icon::StatusUnknown);
     }
 }
+
 
 QBrush errorTextBrush()
 {

@@ -88,7 +88,6 @@ private:
     QString statusFilterName(TorrentSortProxyModel::StateFilter filter) const;
     static QStringList trackerHostsFromTorrents(const QVector<torrent> &torrents);
     static QStringList downloadDirsFromTorrents(const QVector<torrent> &torrents);
-    static QIcon iconFromTheme(const QStringList &themeNames);
     static int typeToInt(ItemType type);
     static ItemType intToType(int value);
 };

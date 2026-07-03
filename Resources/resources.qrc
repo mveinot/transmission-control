@@ -4,6 +4,33 @@
         <file>icons/planetary.png</file>
         <file>icons/planetary_menu.png</file>
         <file>icons/planetary-512px.png</file>
+        <file>icons/ui/action-add-magnet.png</file>
+        <file>icons/ui/action-add-torrent.png</file>
+        <file>icons/ui/action-delete.png</file>
+        <file>icons/ui/action-force-start.png</file>
+        <file>icons/ui/action-reannounce.png</file>
+        <file>icons/ui/action-start-all.png</file>
+        <file>icons/ui/action-start.png</file>
+        <file>icons/ui/action-stop-all.png</file>
+        <file>icons/ui/action-stop.png</file>
+        <file>icons/ui/action-verify.png</file>
+        <file>icons/ui/filter-all.png</file>
+        <file>icons/ui/filter-folder.png</file>
+        <file>icons/ui/filter-tracker.png</file>
+        <file>icons/ui/queue-bottom.png</file>
+        <file>icons/ui/queue-down.png</file>
+        <file>icons/ui/queue-top.png</file>
+        <file>icons/ui/queue-up.png</file>
+        <file>icons/ui/status-active.png</file>
+        <file>icons/ui/status-complete.png</file>
+        <file>icons/ui/status-downloading.png</file>
+        <file>icons/ui/status-error.png</file>
+        <file>icons/ui/status-inactive.png</file>
+        <file>icons/ui/status-queued.png</file>
+        <file>icons/ui/status-seeding.png</file>
+        <file>icons/ui/status-stopped.png</file>
+        <file>icons/ui/status-unknown.png</file>
+        <file>icons/ui/status-verifying.png</file>
         <file>licenses/gpl-2.0.txt</file>
     </qresource>
 </RCC>

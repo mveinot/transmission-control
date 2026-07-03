@@ -91,6 +91,8 @@ set(PROJECT_SOURCES
         dialogabout.cpp
         dialogabout.h
         dialogabout.ui
+        appicons.h
+        appicons.cpp
         ${PLANETARY_TS_FILES}
 )
 
@@ -160,6 +162,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         serverconfig.h serverconfig.cpp serverconfig.ui
         percentfilldelegate.h percentfilldelegate.cpp
         torrentmodel.h torrentmodel.cpp
+        appicons.h appicons.cpp
         Resources/icons/planetary_menu.png
         geoipservice.h geoipservice.cpp
         Resources/geoip/country.mmdb
@@ -228,8 +231,17 @@ else()
 endif()
 
 if(PLANETARY_QM_FILES)
-    add_custom_target(PlanetaryTranslations DEPENDS ${PLANETARY_QM_FILES})
+    add_custom_target(PlanetaryTranslations
+        DEPENDS ${PLANETARY_QM_FILES}
+    )
+
     add_dependencies(Planetary PlanetaryTranslations)
+
+    # AutoRCC creates a separate target for the generated translation .qrc.
+    # Make sure lrelease creates the .qm files before rcc tries to embed them.
+    if(TARGET Planetary_arcc_planetary_translations)
+        add_dependencies(Planetary_arcc_planetary_translations PlanetaryTranslations)
+    endif()
 endif()
 
 find_library(MAXMINDDB_LIBRARY maxminddb)

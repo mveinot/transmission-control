@@ -1,4 +1,5 @@
 #include "torrentfiltercontroller.h"
+#include "appicons.h"
 
 #include <QAbstractItemModel>
 #include <QAction>
@@ -12,7 +13,7 @@
 #include <QListWidgetItem>
 #include <QSet>
 #include <QSignalBlocker>
-#include <QStyle>
+#include <QSize>
 
 #include <algorithm>
 
@@ -38,6 +39,8 @@ void TorrentFilterController::setup()
 {
     if (!m_filterList || !m_proxy)
         return;
+
+    m_filterList->setIconSize(QSize(20, 20));
 
     if (m_searchEdit) {
         m_searchEdit->setClearButtonEnabled(true);
@@ -238,31 +241,13 @@ QListWidgetItem *TorrentFilterController::createStatusItem(
     const QString &label,
     TorrentSortProxyModel::StateFilter filter) const
 {
-    static const QIcon allIcon = iconFromTheme({
-        QStringLiteral("view-list-details"),
-        QStringLiteral("mail-mark-important")
-    });
-    static const QIcon downloadingIcon = iconFromTheme({
-        QStringLiteral("go-down"),
-        QStringLiteral("go-next")
-    });
-    static const QIcon completeIcon = iconFromTheme({
-        QStringLiteral("emblem-default"),
-        QStringLiteral("go-up")
-    });
-    static const QIcon activeIcon = iconFromTheme({
-        QStringLiteral("media-playback-start")
-    });
-    static const QIcon inactiveIcon = iconFromTheme({
-        QStringLiteral("media-playback-stop")
-    });
-    static const QIcon stoppedIcon = iconFromTheme({
-        QStringLiteral("media-playback-pause")
-    });
-    static const QIcon errorIcon = iconFromTheme({
-        QStringLiteral("dialog-error"),
-        QStringLiteral("edit-clear")
-    });
+    static const QIcon allIcon = AppIcons::icon(AppIcons::Icon::FilterAll);
+    static const QIcon downloadingIcon = AppIcons::icon(AppIcons::Icon::StatusDownloading);
+    static const QIcon completeIcon = AppIcons::icon(AppIcons::Icon::StatusComplete);
+    static const QIcon activeIcon = AppIcons::icon(AppIcons::Icon::StatusActive);
+    static const QIcon inactiveIcon = AppIcons::icon(AppIcons::Icon::StatusInactive);
+    static const QIcon stoppedIcon = AppIcons::icon(AppIcons::Icon::StatusStopped);
+    static const QIcon errorIcon = AppIcons::icon(AppIcons::Icon::StatusError);
 
     QIcon icon;
 
@@ -299,11 +284,7 @@ QListWidgetItem *TorrentFilterController::createStatusItem(
 QListWidgetItem *TorrentFilterController::createTrackerItem(const QString &label,
                                                             const QString &trackerHost) const
 {
-    static const QIcon trackerIcon = iconFromTheme({
-        QStringLiteral("network-server"),
-        QStringLiteral("network-workgroup"),
-        QStringLiteral("folder-remote")
-    });
+    static const QIcon trackerIcon = AppIcons::icon(AppIcons::Icon::FilterTracker);
 
     auto *item = new QListWidgetItem(trackerIcon, label);
     item->setData(FilterTypeRole, typeToInt(ItemType::Tracker));
@@ -314,11 +295,7 @@ QListWidgetItem *TorrentFilterController::createTrackerItem(const QString &label
 QListWidgetItem *TorrentFilterController::createFolderItem(const QString &label,
                                                            const QString &downloadDir) const
 {
-    static const QIcon folderIcon = iconFromTheme({
-        QStringLiteral("folder-download"),
-        QStringLiteral("folder"),
-        QStringLiteral("inode-directory")
-    });
+    static const QIcon folderIcon = AppIcons::icon(AppIcons::Icon::FilterFolder);
 
     auto *item = new QListWidgetItem(folderIcon, label);
     item->setData(FilterTypeRole, typeToInt(ItemType::Folder));
@@ -641,18 +618,6 @@ QStringList TorrentFilterController::downloadDirsFromTorrents(const QVector<torr
         return QString::localeAwareCompare(lhs, rhs) < 0;
     });
     return downloadDirs;
-}
-
-QIcon TorrentFilterController::iconFromTheme(const QStringList &themeNames)
-{
-    for (const QString &themeName : themeNames) {
-        const QIcon icon = QIcon::fromTheme(themeName);
-
-        if (!icon.isNull())
-            return icon;
-    }
-
-    return QApplication::style()->standardIcon(QStyle::SP_FileIcon);
 }
 
 int TorrentFilterController::typeToInt(ItemType type)

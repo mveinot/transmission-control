@@ -12,6 +12,7 @@
 #include "traycontroller.h"
 #include "statusbarcontroller.h"
 #include "notificationcontroller.h"
+#include "appicons.h"
 #include <QActionGroup>
 #include <QApplication>
 #include <QAction>
@@ -123,6 +124,24 @@ bool jsonBoolAny(const QJsonObject &object,
 
     return false;
 }
+
+void applyCustomActionIcons(Ui::MainWindow *ui)
+{
+    ui->action_Open_Torrent->setIcon(AppIcons::icon(AppIcons::Icon::ActionAddTorrent));
+    ui->actionAdd_Torrent_from_Magnet_Link->setIcon(AppIcons::icon(AppIcons::Icon::ActionAddMagnet));
+    ui->actionStart_Torrent->setIcon(AppIcons::icon(AppIcons::Icon::ActionStart));
+    ui->actionStop_Torrent->setIcon(AppIcons::icon(AppIcons::Icon::ActionStop));
+    ui->actionStart_All_Torrents->setIcon(AppIcons::icon(AppIcons::Icon::ActionStartAll));
+    ui->actionStop_All_Torrents->setIcon(AppIcons::icon(AppIcons::Icon::ActionStopAll));
+    ui->actionForce_Start_Torrent->setIcon(AppIcons::icon(AppIcons::Icon::ActionForceStart));
+    ui->actionVerify_Torrent->setIcon(AppIcons::icon(AppIcons::Icon::ActionVerify));
+    ui->actionReannounce->setIcon(AppIcons::icon(AppIcons::Icon::ActionReannounce));
+    ui->actionDelete_Torrent->setIcon(AppIcons::icon(AppIcons::Icon::ActionDelete));
+    ui->moveTopAction->setIcon(AppIcons::icon(AppIcons::Icon::QueueTop));
+    ui->moveUpAction->setIcon(AppIcons::icon(AppIcons::Icon::QueueUp));
+    ui->moveDownAction->setIcon(AppIcons::icon(AppIcons::Icon::QueueDown));
+    ui->moveBottomAction->setIcon(AppIcons::icon(AppIcons::Icon::QueueBottom));
+}
 }
 
 void MainWindow::clearGeneralTab()
@@ -167,6 +186,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // set up the main UI
     ui->setupUi(this);
+    applyCustomActionIcons(ui);
     TorrentGeneralController::Widgets generalWidgets;
     generalWidgets.generalTab = ui->general;
     generalWidgets.generalLayout = ui->verticalLayoutGeneral;
