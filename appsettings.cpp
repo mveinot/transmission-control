@@ -87,7 +87,10 @@ void AppSettings::loadSettings()
         );
 
     ui->showNotifications->setChecked(
-        settings.value(SettingsKeys::ShowTrayNotifications, true).toBool()
+        settings.value(
+            SettingsKeys::ShowNotifications,
+            settings.value(SettingsKeys::ShowTrayNotifications, true)
+            ).toBool()
         );
 
     ui->checkWatchFolderEnabled->setChecked(
@@ -126,8 +129,13 @@ void AppSettings::saveSettings()
     settings.setValue(SettingsKeys::ShowTrayIcon,
                       trayIconEnabled);
 
+    settings.setValue(SettingsKeys::ShowNotifications,
+                      ui->showNotifications->isChecked());
+
+    // Keep writing the old key for downgrade/backward compatibility, but do
+    // not make notifications depend on the tray icon anymore.
     settings.setValue(SettingsKeys::ShowTrayNotifications,
-                      trayIconEnabled && ui->showNotifications->isChecked());
+                      ui->showNotifications->isChecked());
 
     settings.setValue(SettingsKeys::HideApplicationIcon,
                       trayIconEnabled && false);
@@ -148,9 +156,10 @@ void AppSettings::updateTrayOptionAvailability()
 {
     const bool trayIconEnabled = ui->showTrayIcon->isChecked();
 
-    ui->showNotifications->setEnabled(trayIconEnabled);
+    Q_UNUSED(trayIconEnabled);
 
-    if (!trayIconEnabled) {
-        ui->showNotifications->setChecked(false);
-    }
+    // Notifications are no longer coupled to the tray/menu-bar icon. On macOS
+    // Planetary can use basic native notifications even when the menu-bar icon
+    // is disabled, and other platforms fall back gracefully.
+    ui->showNotifications->setEnabled(true);
 }

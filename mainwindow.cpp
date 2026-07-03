@@ -11,6 +11,7 @@
 #include "updatecheckcontroller.h"
 #include "traycontroller.h"
 #include "statusbarcontroller.h"
+#include "notificationcontroller.h"
 #include <QActionGroup>
 #include <QApplication>
 #include <QAction>
@@ -240,6 +241,14 @@ MainWindow::MainWindow(QWidget *parent)
     watchFolderController->loadSettings();
     trayController = new TrayController(this, this);
     trayController->setup();
+
+    notificationController = new NotificationController(this);
+
+    connect(notificationController, &NotificationController::statusMessageRequested,
+            this, [this](const QString &message, int timeoutMs) {
+                if (statusBarController)
+                    statusBarController->showMessage(message, timeoutMs);
+            });
 
     // UI setup
     mainMenu = new QMenu(this);
@@ -1131,8 +1140,8 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
     if (torrentListController)
         torrentListController->markTorrentListLoaded();
 
-    if (trayController)
-        trayController->processTorrentList(torrents);
+    if (notificationController)
+        notificationController->processTorrentList(torrents);
 
     if (torrentFilterController)
         torrentFilterController->rebuild(torrents);

@@ -33,6 +33,7 @@ class TorrentTrackersController;
 class TorrentListController;
 class TorrentFilterController;
 class StatusBarController;
+class NotificationController;
 
 class MainWindow : public QMainWindow
 {
@@ -118,6 +119,7 @@ private:
     TorrentFilterController *torrentFilterController = nullptr;
     TrayController *trayController = nullptr;
     StatusBarController *statusBarController = nullptr;
+    NotificationController *notificationController = nullptr;
 
 protected:
     void closeEvent(QCloseEvent *event) override;

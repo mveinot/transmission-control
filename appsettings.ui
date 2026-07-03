@@ -125,7 +125,7 @@
          <item row="0" column="1">
           <widget class="QCheckBox" name="showNotifications">
            <property name="text">
-            <string>Show Tray Notifications</string>
+            <string>Show Notifications</string>
            </property>
           </widget>
          </item>

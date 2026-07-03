@@ -1,8 +1,6 @@
 #include "traycontroller.h"
 
 #include "settingskeys.h"
-#include "torrent.h"
-
 #include <QAction>
 #include <QApplication>
 #include <QCloseEvent>
@@ -128,14 +126,6 @@ bool TrayController::trayIconEnabled() const
     return settings.value(SettingsKeys::ShowTrayIcon, true).toBool();
 }
 
-bool TrayController::trayNotificationsEnabled() const
-{
-    QSettings settings;
-
-    return trayIconEnabled() &&
-           settings.value(SettingsKeys::ShowTrayNotifications, true).toBool();
-}
-
 bool TrayController::shouldCloseToTray() const
 {
     return trayIconEnabled() &&
@@ -153,62 +143,4 @@ void TrayController::updateTrayIconVisibility()
     } else {
         m_trayIcon->hide();
     }
-}
-
-void TrayController::showNotification(const QString &title,
-                                      const QString &message,
-                                      QSystemTrayIcon::MessageIcon icon,
-                                      int millisecondsTimeoutHint)
-{
-    if (!m_trayIcon || !m_trayIcon->isVisible())
-        return;
-
-    if (!trayNotificationsEnabled())
-        return;
-
-    m_trayIcon->showMessage(title, message, icon, millisecondsTimeoutHint);
-}
-
-bool TrayController::isTorrentCompleteForNotification(const torrent &torrentItem)
-{
-    const QString status = torrentItem.getStatus();
-
-    return torrentItem.getPercentDone() >= 99.9 ||
-           status == QStringLiteral("Seeding") ||
-           status == QStringLiteral("Waiting to Seed");
-}
-
-void TrayController::processTorrentList(const QVector<torrent> &torrents)
-{
-    QSet<int> currentlyCompleted;
-
-    for (const torrent &torrentItem : torrents) {
-        if (isTorrentCompleteForNotification(torrentItem))
-            currentlyCompleted.insert(torrentItem.getId());
-    }
-
-    if (!m_completedTorrentNotificationBaselineLoaded) {
-        m_knownCompletedTorrentIds = currentlyCompleted;
-        m_completedTorrentNotificationBaselineLoaded = true;
-        return;
-    }
-
-    for (const torrent &torrentItem : torrents) {
-        const int id = torrentItem.getId();
-
-        if (!currentlyCompleted.contains(id))
-            continue;
-
-        if (m_knownCompletedTorrentIds.contains(id))
-            continue;
-
-        showNotification(
-            tr("Torrent finished"),
-            torrentItem.getName(),
-            QSystemTrayIcon::Information,
-            5000
-            );
-    }
-
-    m_knownCompletedTorrentIds = currentlyCompleted;
 }
