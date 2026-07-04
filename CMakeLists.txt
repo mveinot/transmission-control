@@ -16,8 +16,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Network Core Test)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Network Core Test)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Network Core Test Svg)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Network Core Test Svg)
 
 file(GLOB PLANETARY_TS_FILES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/Resources/translations/*.ts"
@@ -152,6 +152,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
         Resources/resources.qrc
+        Resources/flags.qrc
         ${PLANETARY_GENERATED_TRANSLATIONS_QRC}
         ${app_icon_macos}
         appsettings.ui
@@ -341,9 +342,24 @@ if(EXISTS "${THIRD_PARTY_NOTICES_FILE}")
     )
 endif()
 
+set(FLAG_ICONS_LICENSE_FILE
+    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/flag-icons.txt"
+)
+
+if(EXISTS "${FLAG_ICONS_LICENSE_FILE}")
+    set_source_files_properties("${FLAG_ICONS_LICENSE_FILE}" PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources/licenses"
+    )
+
+    target_sources(Planetary PRIVATE
+        "${FLAG_ICONS_LICENSE_FILE}"
+    )
+endif()
+
 target_link_libraries(Planetary PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Network
+    Qt${QT_VERSION_MAJOR}::Svg
 )
 
 set_target_properties(Planetary PROPERTIES
@@ -381,7 +397,8 @@ install(FILES
 
 install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
-    "${CMAKE_CURRENT_SOURCE_DIR}/THIRD_PARTY_NOTICES.txt"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/THIRD_PARTY_NOTICES.txt"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/flag-icons.txt"
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/planetary/licenses"
     OPTIONAL
 )

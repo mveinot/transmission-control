@@ -13,3 +13,8 @@ DB-IP Lite Country Database
 IP geolocation data provided by DB-IP.com.
 Licensed under Creative Commons Attribution 4.0 International.
 https://db-ip.com/
+
+flag-icons
+Copyright (c) 2013 Panayiotis Lipiridis.
+Licensed under the MIT License.
+https://github.com/lipis/flag-icons

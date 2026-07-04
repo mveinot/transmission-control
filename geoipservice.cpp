@@ -426,7 +426,6 @@ GeoIpResult GeoIpService::lookupInDatabase(const QString &ipAddress) const
 
     result.countryCode = countryCode.toUpper();
     result.countryName = countryName.isEmpty() ? result.countryCode : countryName;
-    result.flagEmoji = countryCodeToFlagEmoji(result.countryCode);
     result.found = true;
 #else
     Q_UNUSED(ipAddress);
@@ -449,7 +448,6 @@ GeoIpResult GeoIpService::dummyLookup(const QString &ipAddress) const
 
     result.countryCode = QString::fromLatin1(country.code);
     result.countryName = QString::fromLatin1(country.name);
-    result.flagEmoji = countryCodeToFlagEmoji(result.countryCode);
     result.found = true;
 
     return result;
@@ -503,31 +501,6 @@ bool GeoIpService::isPrivateOrLocalAddress(const QString &ipAddress)
 void GeoIpService::updateCacheEntryCount()
 {
     dbInfo.cacheEntries = cache.size();
-}
-
-QString GeoIpService::countryCodeToFlagEmoji(const QString &countryCode)
-{
-    const QString code = countryCode.trimmed().toUpper();
-
-    if (code.size() != 2)
-        return {};
-
-    const QChar first = code.at(0);
-    const QChar second = code.at(1);
-
-    if (first < QLatin1Char('A') || first > QLatin1Char('Z') ||
-        second < QLatin1Char('A') || second > QLatin1Char('Z')) {
-        return {};
-    }
-
-    const char32_t regionalIndicatorA = 0x1F1E6;
-
-    char32_t flagChars[2] = {
-        regionalIndicatorA + static_cast<char32_t>(first.unicode() - 'A'),
-        regionalIndicatorA + static_cast<char32_t>(second.unicode() - 'A')
-    };
-
-    return QString::fromUcs4(flagChars, 2);
 }
 
 #ifdef PLANETARY_HAVE_MAXMINDDB

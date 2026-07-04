@@ -5,18 +5,43 @@
 #include "tableplaceholdercontroller.h"
 
 #include <QAbstractItemView>
+#include <QFile>
 #include <QHostInfo>
+#include <QIcon>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QLocale>
 #include <QTableWidget>
 #include <QTableWidgetItem>
+#include <QSize>
 #include <QHeaderView>
 
 namespace {
 QString normalizedAddress(const QString &address)
 {
     return address.trimmed();
+}
+
+QString flagResourcePathForCountryCode(QString countryCode)
+{
+    countryCode = countryCode.trimmed().toLower();
+
+    if (countryCode.size() != 2)
+        return {};
+
+    for (const QChar ch : countryCode) {
+        if (ch < QLatin1Char('a') || ch > QLatin1Char('z'))
+            return {};
+    }
+
+    const QString path = QStringLiteral(":/flags/%1.svg").arg(countryCode);
+    return QFile::exists(path) ? path : QString {};
+}
+
+QIcon flagIconForCountryCode(const QString &countryCode)
+{
+    const QString path = flagResourcePathForCountryCode(countryCode);
+    return path.isEmpty() ? QIcon {} : QIcon(path);
 }
 }
 
@@ -54,6 +79,7 @@ void TorrentPeersController::setup()
     peerTableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
     peerTableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     peerTableWidget->setSortingEnabled(true);
+    peerTableWidget->setIconSize(QSize(24, 16));
 
     columnController = std::make_unique<TableColumnController>(
         peerTableWidget->horizontalHeader(),
@@ -155,9 +181,10 @@ void TorrentPeersController::populate(const QJsonArray &peers)
         const bool isIncoming = peer.value("isIncoming").toBool();
 
         auto *countryItem = new QTableWidgetItem(geoIp.displayText());
+        countryItem->setIcon(flagIconForCountryCode(geoIp.countryCode));
         countryItem->setToolTip(
             geoIp.found
-                ? QString("%1 (%2)").arg(geoIp.countryName, address)
+                ? QString("%1 (%2) - %3").arg(geoIp.countryName, geoIp.countryCode, address)
                 : QString("%1").arg(address)
             );
         countryItem->setData(Qt::UserRole, geoIp.countryCode);

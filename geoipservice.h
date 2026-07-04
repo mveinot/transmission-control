@@ -35,8 +35,6 @@ struct GeoIpResult
 {
     QString countryCode;
     QString countryName;
-    QString flagEmoji;
-
     bool found = false;
     bool isPrivateAddress = false;
 
@@ -47,9 +45,6 @@ struct GeoIpResult
 
         if (!found)
             return QStringLiteral("Unknown");
-
-        if (!flagEmoji.isEmpty() && !countryCode.isEmpty())
-            return QStringLiteral("%1 %2").arg(flagEmoji, countryCode);
 
         if (!countryCode.isEmpty())
             return countryCode;
@@ -87,7 +82,6 @@ private:
     GeoIpResult dummyLookup(const QString &ipAddress) const;
 
     static bool isPrivateOrLocalAddress(const QString &ipAddress);
-    static QString countryCodeToFlagEmoji(const QString &countryCode);
     void updateCacheEntryCount();
 
 #ifdef PLANETARY_HAVE_MAXMINDDB
