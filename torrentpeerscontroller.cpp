@@ -22,6 +22,7 @@ QString normalizedAddress(const QString &address)
     return address.trimmed();
 }
 
+// provide a path to a SVG flag resource for a given country code
 QString flagResourcePathForCountryCode(QString countryCode)
 {
     countryCode = countryCode.trimmed().toLower();
@@ -29,7 +30,7 @@ QString flagResourcePathForCountryCode(QString countryCode)
     if (countryCode.size() != 2)
         return {};
 
-    for (const QChar ch : countryCode) {
+    for (const QChar ch : std::as_const(countryCode)) {
         if (ch < QLatin1Char('a') || ch > QLatin1Char('z'))
             return {};
     }
@@ -38,6 +39,7 @@ QString flagResourcePathForCountryCode(QString countryCode)
     return QFile::exists(path) ? path : QString {};
 }
 
+// return a qicon for a given country code
 QIcon flagIconForCountryCode(const QString &countryCode)
 {
     const QString path = flagResourcePathForCountryCode(countryCode);
