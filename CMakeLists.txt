@@ -244,6 +244,43 @@ if(PLANETARY_QM_FILES)
     endif()
 endif()
 
+if(WIN32)
+    set(MAXMINDDB_ROOT "C:/dev/vcpkg/installed/x64-mingw-dynamic")
+
+    find_path(MAXMINDDB_INCLUDE_DIR
+        NAMES maxminddb.h
+        PATHS "${MAXMINDDB_ROOT}/include"
+        NO_DEFAULT_PATH
+    )
+
+    find_library(MAXMINDDB_LIBRARY
+        NAMES maxminddb libmaxminddb
+        PATHS "${MAXMINDDB_ROOT}/lib"
+        NO_DEFAULT_PATH
+    )
+
+    message(STATUS "MAXMINDDB_INCLUDE_DIR=${MAXMINDDB_INCLUDE_DIR}")
+    message(STATUS "MAXMINDDB_LIBRARY=${MAXMINDDB_LIBRARY}")
+
+    if(MAXMINDDB_INCLUDE_DIR AND MAXMINDDB_LIBRARY)
+        target_include_directories(Planetary PRIVATE
+            "${MAXMINDDB_INCLUDE_DIR}"
+        )
+
+        target_link_libraries(Planetary PRIVATE
+            "${MAXMINDDB_LIBRARY}"
+        )
+
+        target_compile_definitions(Planetary PRIVATE
+            PLANETARY_WITH_GEOIP=1
+        )
+
+        message(STATUS "GeoIP support enabled on Windows")
+    else()
+        message(WARNING "libmaxminddb not found on Windows; lookup will be disabled")
+    endif()
+endif()
+
 find_library(MAXMINDDB_LIBRARY maxminddb)
 find_path(MAXMINDDB_INCLUDE_DIR maxminddb.h)
 
