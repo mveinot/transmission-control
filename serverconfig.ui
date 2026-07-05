@@ -138,6 +138,22 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="buttonExportServer">
+            <property name="minimumSize">
+             <size>
+              <width>70</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="toolTip">
+             <string>Export selected server to a file</string>
+            </property>
+            <property name="text">
+             <string>Export…</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="horizontalSpacerLeftButtons">
             <property name="orientation">
              <enum>Qt::Orientation::Horizontal</enum>

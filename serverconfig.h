@@ -5,6 +5,7 @@
 
 #include <QDialog>
 #include <QList>
+#include <QJsonObject>
 #include <QStringListModel>
 #include <QVector>
 
@@ -48,11 +49,18 @@ private:
     void updateFolderMappingsSummary();
 
     void addServer();
+    void importServerFromFile();
+    void exportSelectedServer();
     void removeSelectedServer();
     bool saveSelectedServer();
     void configureFolderMappings();
     int defaultServerIndex = -1;
     void setSelectedServerAsDefault();
+
+    QJsonObject serverToJson(const TransmissionServer &server, bool includePassword) const;
+    bool serverFromJson(const QJsonObject &object, TransmissionServer *server, QString *errorMessage) const;
+    QString suggestedExportFileName(const TransmissionServer &server) const;
+    QString uniqueServerName(const QString &baseName) const;
 };
 
 #endif // SERVERCONFIG_H
