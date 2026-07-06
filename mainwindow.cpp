@@ -427,6 +427,9 @@ MainWindow::MainWindow(QWidget *parent)
                 client->getTorrentDetails(torrentId);
             });
 
+    connect(torrentListController, &TorrentListController::torrentSelectionCleared,
+            this, [this]() { clearGeneralTab(); });
+
     connect(torrentListController, &TorrentListController::torrentListRefreshRequested,
             client, &rpc_client::getTorrentList);
 

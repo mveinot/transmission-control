@@ -84,6 +84,7 @@ public slots:
 
 signals:
     void torrentSelected(int torrentId);
+    void torrentSelectionCleared();
     void statusMessageRequested(const QString &message, int timeoutMs);
     void torrentListRefreshRequested();
     void torrentDetailsRefreshRequested(int torrentId);
@@ -107,6 +108,7 @@ private:
     bool m_currentBandwidthPriorityKnown = false;
     QString m_defaultDownloadDir;
     std::function<QString()> m_currentDetailsDownloadDirProvider;
+    int m_lastEmittedTorrentId = -1;
     bool m_torrentListLoaded = false;
     bool m_torrentListLoadFailed = false;
     QString m_torrentListLoadFailureMessage;
@@ -118,6 +120,7 @@ private:
                              const QString &statusMessage);
     void refreshCurrentTorrentDetails();
     void applyDefaultColumnVisibility();
+    void updateCurrentTorrentSelection();
     void applySavedColumnVisibility();
     void restoreDefaultColumnOrder();
     void setColumnVisible(int column, bool visible);

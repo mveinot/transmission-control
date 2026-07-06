@@ -159,19 +159,28 @@ void TorrentListController::setup(const ActionSet &actions)
         connect(m_tableView->selectionModel(),
                 &QItemSelectionModel::selectionChanged,
                 this,
-                [this]() { updateActionState(); });
+                [this]() {
+                    updateActionState();
+                    updateCurrentTorrentSelection();
+                });
 
         connect(m_tableView->selectionModel(),
                 &QItemSelectionModel::currentChanged,
                 this,
-                [this]() { updateActionState(); });
+                [this]() {
+                    updateActionState();
+                    updateCurrentTorrentSelection();
+                });
     }
 
     if (m_proxyModel) {
         connect(m_proxyModel,
                 &QAbstractItemModel::modelReset,
                 this,
-                &TorrentListController::updatePlaceholder);
+                [this]() {
+                    updatePlaceholder();
+                    updateCurrentTorrentSelection();
+                });
         connect(m_proxyModel,
                 &QAbstractItemModel::rowsInserted,
                 this,
@@ -179,11 +188,17 @@ void TorrentListController::setup(const ActionSet &actions)
         connect(m_proxyModel,
                 &QAbstractItemModel::rowsRemoved,
                 this,
-                &TorrentListController::updatePlaceholder);
+                [this]() {
+                    updatePlaceholder();
+                    updateCurrentTorrentSelection();
+                });
         connect(m_proxyModel,
                 &QAbstractItemModel::layoutChanged,
                 this,
-                &TorrentListController::updatePlaceholder);
+                [this]() {
+                    updatePlaceholder();
+                    updateCurrentTorrentSelection();
+                });
     }
 
     connect(m_tableView,
@@ -288,10 +303,22 @@ int TorrentListController::currentTorrentId() const
     if (!m_tableView || !m_proxyModel)
         return -1;
 
-    const QModelIndex proxyIndex = m_tableView->currentIndex();
+    const QItemSelectionModel *selection = m_tableView->selectionModel();
 
-    if (!proxyIndex.isValid())
+    if (!selection)
         return -1;
+
+    const QModelIndexList proxyRows = selection->selectedRows();
+
+    if (proxyRows.isEmpty())
+        return -1;
+
+    QModelIndex proxyIndex = m_tableView->currentIndex();
+
+    if (!proxyIndex.isValid()
+        || !selection->isRowSelected(proxyIndex.row(), proxyIndex.parent())) {
+        proxyIndex = proxyRows.first();
+    }
 
     const QModelIndex sourceIndex = m_proxyModel->mapToSource(proxyIndex);
 
@@ -419,17 +446,26 @@ void TorrentListController::setCurrentDetailsDownloadDirProvider(const std::func
 
 void TorrentListController::handleTableClicked(const QModelIndex &proxyIndex)
 {
-    if (!proxyIndex.isValid() || !m_proxyModel)
+    Q_UNUSED(proxyIndex);
+    updateCurrentTorrentSelection();
+}
+
+void TorrentListController::updateCurrentTorrentSelection()
+{
+    const int torrentId = currentTorrentId();
+
+    if (torrentId == m_lastEmittedTorrentId)
         return;
 
-    const QModelIndex sourceIndex = m_proxyModel->mapToSource(proxyIndex);
+    m_lastEmittedTorrentId = torrentId;
 
-    if (!sourceIndex.isValid())
+    if (torrentId >= 0) {
+        emit torrentSelected(torrentId);
         return;
+    }
 
-    const int torrentId = sourceIndex.data(Qt::UserRole).toInt();
-
-    emit torrentSelected(torrentId);
+    clearCurrentTorrentDetails();
+    emit torrentSelectionCleared();
 }
 
 void TorrentListController::updateActionState()
