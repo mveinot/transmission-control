@@ -16,6 +16,7 @@
 *_pch.h.cpp
 *_resource.rc
 *.qm
+*.zip
 .#*
 *.*#
 core
