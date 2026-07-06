@@ -49,6 +49,12 @@ DialogAbout::DialogAbout(GeoIpService *geoIpService, QWidget *parent)
     ui->textAbout->setOpenExternalLinks(true);
     ui->textCredits->setOpenExternalLinks(true);
     ui->textLicense->setReadOnly(true);
+    ui->textAbout->setFrameShape(QFrame::NoFrame);
+
+    const QColor bg = palette().color(QPalette::Window);
+    QPalette p = ui->textAbout->palette();
+    p.setColor(QPalette::Base, this->palette().color(QPalette::Window));
+    ui->textAbout->setPalette(p);
 
     ui->textAbout->setHtml(buildAboutHtml());
 

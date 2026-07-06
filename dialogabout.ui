@@ -77,6 +77,12 @@
          </item>
          <item>
           <widget class="QTextBrowser" name="textAbout">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>350</height>
+            </size>
+           </property>
            <property name="frameShape">
             <enum>QFrame::Shape::NoFrame</enum>
            </property>
