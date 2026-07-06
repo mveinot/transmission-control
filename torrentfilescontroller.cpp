@@ -1,11 +1,13 @@
 #include "torrentfilescontroller.h"
 
+#include "appicons.h"
 #include "percentfilldelegate.h"
 #include "rpc_client.h"
 #include "tablecolumncontroller.h"
 #include "tableplaceholdercontroller.h"
 
 #include <QCoreApplication>
+#include <QIcon>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileInfo>
@@ -18,12 +20,22 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QSet>
+#include <QSize>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QUrl>
 #include <algorithm>
 #include <functional>
 #include <utility>
+
+namespace {
+
+bool isComplete(qint64 length, qint64 bytesCompleted)
+{
+    return length <= 0 || bytesCompleted >= length;
+}
+
+} // namespace
 
 TorrentFilesController::TorrentFilesController(QTreeWidget *fileTreeWidget,
                                                rpc_client *client,
@@ -54,6 +66,7 @@ void TorrentFilesController::setup()
     fileTreeWidget->setContextMenuPolicy(Qt::CustomContextMenu);
     fileTreeWidget->setAlternatingRowColors(false);
     fileTreeWidget->setRootIsDecorated(true);
+    fileTreeWidget->setIconSize(QSize(16, 16));
     fileTreeWidget->setItemDelegateForColumn(
         FilePercentColumn,
         new PercentFillDelegate(FilePercentColumn, Qt::UserRole, fileTreeWidget)
@@ -168,6 +181,116 @@ QString TorrentFilesController::priorityToString(int priority)
     }
 }
 
+void TorrentFilesController::setItemVisualState(QTreeWidgetItem *item,
+                                                 FileTransferVisualState state)
+{
+    if (!item)
+        return;
+
+    QIcon icon;
+    QString tooltip;
+
+    switch (state) {
+    case FileTransferVisualState::Complete:
+        icon = AppIcons::icon(AppIcons::Icon::StatusComplete);
+        tooltip = tr("Complete");
+        break;
+    case FileTransferVisualState::Transferring:
+        icon = AppIcons::icon(AppIcons::Icon::StatusDownloading);
+        tooltip = tr("Transferring");
+        break;
+    case FileTransferVisualState::Skipped:
+        icon = AppIcons::icon(AppIcons::Icon::StatusStopped);
+        tooltip = tr("Skipped");
+        break;
+    case FileTransferVisualState::Mixed:
+        icon = AppIcons::icon(AppIcons::Icon::StatusActive);
+        tooltip = tr("Mixed");
+        break;
+    case FileTransferVisualState::Unknown:
+    default:
+        icon = AppIcons::icon(AppIcons::Icon::StatusUnknown);
+        tooltip = tr("Unknown");
+        break;
+    }
+
+    item->setIcon(FileNameColumn, icon);
+    item->setToolTip(FileNameColumn, tooltip);
+}
+
+void TorrentFilesController::updateFolderVisualStates()
+{
+    if (!fileTreeWidget)
+        return;
+
+    for (int i = 0; i < fileTreeWidget->topLevelItemCount(); ++i)
+        updateFolderVisualState(fileTreeWidget->topLevelItem(i));
+}
+
+TorrentFilesController::FileTransferVisualState TorrentFilesController::updateFolderVisualState(
+    QTreeWidgetItem *item)
+{
+    if (!item)
+        return FileTransferVisualState::Unknown;
+
+    const QString kind = item->data(FileNameColumn, FileKindRole).toString();
+
+    if (kind == QStringLiteral("file")) {
+        const bool wanted = item->data(FileNameColumn, FileWantedRole).toBool();
+        const qint64 length = item->data(FileSizeColumn, Qt::UserRole).toLongLong();
+        const qint64 bytesCompleted = item->data(FileDoneColumn, Qt::UserRole).toLongLong();
+
+        if (!wanted)
+            return FileTransferVisualState::Skipped;
+
+        return isComplete(length, bytesCompleted)
+            ? FileTransferVisualState::Complete
+            : FileTransferVisualState::Transferring;
+    }
+
+    bool sawComplete = false;
+    bool sawTransferring = false;
+    bool sawSkipped = false;
+    bool sawUnknown = false;
+
+    for (int i = 0; i < item->childCount(); ++i) {
+        switch (updateFolderVisualState(item->child(i))) {
+        case FileTransferVisualState::Complete:
+            sawComplete = true;
+            break;
+        case FileTransferVisualState::Transferring:
+            sawTransferring = true;
+            break;
+        case FileTransferVisualState::Skipped:
+            sawSkipped = true;
+            break;
+        case FileTransferVisualState::Mixed:
+            sawComplete = true;
+            sawSkipped = true;
+            break;
+        case FileTransferVisualState::Unknown:
+        default:
+            sawUnknown = true;
+            break;
+        }
+    }
+
+    FileTransferVisualState state = FileTransferVisualState::Unknown;
+
+    if (sawTransferring)
+        state = FileTransferVisualState::Transferring;
+    else if (sawComplete && !sawSkipped && !sawUnknown)
+        state = FileTransferVisualState::Complete;
+    else if (sawSkipped && !sawComplete && !sawUnknown)
+        state = FileTransferVisualState::Skipped;
+    else if (sawComplete || sawSkipped)
+        state = FileTransferVisualState::Mixed;
+
+    setItemVisualState(item, state);
+
+    return state;
+}
+
 QTreeWidgetItem *TorrentFilesController::findOrCreateTopLevelItem(
     const QString &name)
 {
@@ -269,6 +392,14 @@ void TorrentFilesController::populate(const QJsonArray &files,
         current->setData(FileNameColumn, FileWantedRole, isWanted);
         current->setData(FileNameColumn, FilePriorityRole, priority);
 
+        setItemVisualState(
+            current,
+            !isWanted
+                ? FileTransferVisualState::Skipped
+                : (isComplete(length, bytesCompleted)
+                       ? FileTransferVisualState::Complete
+                       : FileTransferVisualState::Transferring));
+
         current->setText(FilePriorityColumn,
                          isWanted ? priorityToString(priority) : tr("Skip"));
 
@@ -289,6 +420,7 @@ void TorrentFilesController::populate(const QJsonArray &files,
     }
 
     updateFolderPriorityStates();
+    updateFolderVisualStates();
 
     fileTreeWidget->expandToDepth(0);
     fileTreeWidget->resizeColumnToContents(FileNameColumn);

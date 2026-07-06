@@ -63,9 +63,21 @@ private:
         FilePriorityRole
     };
 
+    enum class FileTransferVisualState {
+        Complete,
+        Transferring,
+        Skipped,
+        Mixed,
+        Unknown
+    };
+
     static bool jsonValueToBool(const QJsonValue &value,
                                 bool defaultValue = false);
     static QString priorityToString(int priority);
+
+    void setItemVisualState(QTreeWidgetItem *item, FileTransferVisualState state);
+    void updateFolderVisualStates();
+    FileTransferVisualState updateFolderVisualState(QTreeWidgetItem *item);
 
     QTreeWidgetItem *findOrCreateTopLevelItem(const QString &name);
     QTreeWidgetItem *findOrCreateChild(QTreeWidgetItem *parent,
