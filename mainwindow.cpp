@@ -75,6 +75,19 @@ constexpr int MaximumUpdateIntervalSeconds = 3600;
 constexpr const char *MainWindowToolBarVisibleKey = "mainWindow/toolBarVisible";
 constexpr const char *MainWindowStatusBarVisibleKey = "mainWindow/statusBarVisible";
 constexpr const char *MainWindowToolBarStyleKey = "mainWindow/toolBarButtonStyle";
+constexpr Qt::ToolButtonStyle DefaultToolBarButtonStyle = Qt::ToolButtonIconOnly;
+
+bool isSupportedToolBarButtonStyle(Qt::ToolButtonStyle style)
+{
+    switch (style) {
+    case Qt::ToolButtonIconOnly:
+    case Qt::ToolButtonTextOnly:
+    case Qt::ToolButtonTextBesideIcon:
+        return true;
+    default:
+        return false;
+    }
+}
 
 Qt::ToolButtonStyle toolButtonStyleFromVariant(const QVariant &value, Qt::ToolButtonStyle fallback)
 {
@@ -84,16 +97,9 @@ Qt::ToolButtonStyle toolButtonStyleFromVariant(const QVariant &value, Qt::ToolBu
     if (!ok)
         return fallback;
 
-    switch (styleValue) {
-    case Qt::ToolButtonIconOnly:
-    case Qt::ToolButtonTextOnly:
-    case Qt::ToolButtonTextBesideIcon:
-    case Qt::ToolButtonTextUnderIcon:
-    case Qt::ToolButtonFollowStyle:
-        return static_cast<Qt::ToolButtonStyle>(styleValue);
-    default:
-        return fallback;
-    }
+    const auto style = static_cast<Qt::ToolButtonStyle>(styleValue);
+
+    return isSupportedToolBarButtonStyle(style) ? style : fallback;
 }
 
 
@@ -103,9 +109,10 @@ void syncToolBarStyleActionGroup(QActionGroup *group, Qt::ToolButtonStyle style)
         return;
 
     QAction *matchingAction = nullptr;
+    const QList<QAction *> actions = group->actions();
 
-    for (QAction *action : group->actions()) {
-        if (toolButtonStyleFromVariant(action->data(), Qt::ToolButtonFollowStyle) == style) {
+    for (QAction *action : std::as_const(actions)) {
+        if (toolButtonStyleFromVariant(action->data(), DefaultToolBarButtonStyle) == style) {
             matchingAction = action;
             break;
         }
@@ -116,7 +123,7 @@ void syncToolBarStyleActionGroup(QActionGroup *group, Qt::ToolButtonStyle style)
 
     group->setExclusive(false);
 
-    for (QAction *action : group->actions())
+    for (QAction *action : std::as_const(actions))
         action->setChecked(false);
 
     group->setExclusive(wasExclusive);
@@ -269,6 +276,7 @@ void MainWindow::setupViewMenu()
 
                 QSettings settings;
                 settings.setValue(QString::fromLatin1(MainWindowToolBarVisibleKey), visible);
+                settings.sync();
             });
 
     restoreViewSettings();
@@ -284,8 +292,8 @@ void MainWindow::restoreViewSettings()
         settings.value(QString::fromLatin1(MainWindowStatusBarVisibleKey), true).toBool();
     const Qt::ToolButtonStyle toolBarStyle = toolButtonStyleFromVariant(
         settings.value(QString::fromLatin1(MainWindowToolBarStyleKey),
-                       static_cast<int>(ui->toolBar->toolButtonStyle())),
-        ui->toolBar->toolButtonStyle());
+                       static_cast<int>(DefaultToolBarButtonStyle)),
+        DefaultToolBarButtonStyle);
 
     {
         const QSignalBlocker blocker(showToolBarAction);
@@ -307,8 +315,13 @@ void MainWindow::saveViewSettings() const
     QSettings settings;
     settings.setValue(QString::fromLatin1(MainWindowToolBarVisibleKey), ui->toolBar->isVisible());
     settings.setValue(QString::fromLatin1(MainWindowStatusBarVisibleKey), ui->statusbar->isVisible());
+
+    const Qt::ToolButtonStyle toolBarStyle = toolButtonStyleFromVariant(
+        static_cast<int>(ui->toolBar->toolButtonStyle()),
+        DefaultToolBarButtonStyle);
     settings.setValue(QString::fromLatin1(MainWindowToolBarStyleKey),
-                      static_cast<int>(ui->toolBar->toolButtonStyle()));
+                      static_cast<int>(toolBarStyle));
+    settings.sync();
 }
 
 void MainWindow::setToolBarVisibleFromAction(bool visible)
@@ -317,6 +330,7 @@ void MainWindow::setToolBarVisibleFromAction(bool visible)
 
     QSettings settings;
     settings.setValue(QString::fromLatin1(MainWindowToolBarVisibleKey), visible);
+    settings.sync();
 }
 
 void MainWindow::setStatusBarVisibleFromAction(bool visible)
@@ -325,6 +339,7 @@ void MainWindow::setStatusBarVisibleFromAction(bool visible)
 
     QSettings settings;
     settings.setValue(QString::fromLatin1(MainWindowStatusBarVisibleKey), visible);
+    settings.sync();
 }
 
 void MainWindow::setToolBarButtonStyleFromAction(QAction *action)
@@ -340,10 +355,14 @@ void MainWindow::setToolBarButtonStyleFromAction(QAction *action)
 
     QSettings settings;
     settings.setValue(QString::fromLatin1(MainWindowToolBarStyleKey), static_cast<int>(style));
+    settings.sync();
 }
 
 void MainWindow::applyToolBarButtonStyle(Qt::ToolButtonStyle style)
 {
+    if (!isSupportedToolBarButtonStyle(style))
+        style = DefaultToolBarButtonStyle;
+
     ui->toolBar->setToolButtonStyle(style);
     syncToolBarStyleActionGroup(toolBarStyleActionGroup, style);
 }
