@@ -48,10 +48,12 @@
 #include <QSizePolicy>
 #include <QTableWidget>
 #include <QTableWidgetItem>
+#include <QToolBar>
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <functional>
+#include <utility>
 #include <initializer_list>
 
 #include "rpc_client.h"
@@ -70,6 +72,58 @@ namespace {
 constexpr int DefaultUpdateIntervalSeconds = 10;
 constexpr int MinimumUpdateIntervalSeconds = 1;
 constexpr int MaximumUpdateIntervalSeconds = 3600;
+constexpr const char *MainWindowToolBarVisibleKey = "mainWindow/toolBarVisible";
+constexpr const char *MainWindowStatusBarVisibleKey = "mainWindow/statusBarVisible";
+constexpr const char *MainWindowToolBarStyleKey = "mainWindow/toolBarButtonStyle";
+
+Qt::ToolButtonStyle toolButtonStyleFromVariant(const QVariant &value, Qt::ToolButtonStyle fallback)
+{
+    bool ok = false;
+    const int styleValue = value.toInt(&ok);
+
+    if (!ok)
+        return fallback;
+
+    switch (styleValue) {
+    case Qt::ToolButtonIconOnly:
+    case Qt::ToolButtonTextOnly:
+    case Qt::ToolButtonTextBesideIcon:
+    case Qt::ToolButtonTextUnderIcon:
+    case Qt::ToolButtonFollowStyle:
+        return static_cast<Qt::ToolButtonStyle>(styleValue);
+    default:
+        return fallback;
+    }
+}
+
+
+void syncToolBarStyleActionGroup(QActionGroup *group, Qt::ToolButtonStyle style)
+{
+    if (!group)
+        return;
+
+    QAction *matchingAction = nullptr;
+
+    for (QAction *action : group->actions()) {
+        if (toolButtonStyleFromVariant(action->data(), Qt::ToolButtonFollowStyle) == style) {
+            matchingAction = action;
+            break;
+        }
+    }
+
+    const QSignalBlocker blocker(group);
+    const bool wasExclusive = group->isExclusive();
+
+    group->setExclusive(false);
+
+    for (QAction *action : group->actions())
+        action->setChecked(false);
+
+    group->setExclusive(wasExclusive);
+
+    if (matchingAction)
+        matchingAction->setChecked(true);
+}
 
 bool semverAtLeast(const QString &version, int requiredMajor, int requiredMinor, int requiredPatch)
 {
@@ -163,6 +217,175 @@ void MainWindow::clearGeneralTab()
         torrentPeersController->clear();
 }
 
+void MainWindow::setupViewMenu()
+{
+    ui->toolBar->setWindowTitle(tr("Toolbar"));
+
+    viewMenu = new QMenu(tr("View"), this);
+    menuBar()->insertMenu(ui->menuHelp->menuAction(), viewMenu);
+
+    showToolBarAction = new QAction(tr("Toolbar"), this);
+    showToolBarAction->setCheckable(true);
+    showToolBarAction->setToolTip(tr("Show or hide the main toolbar"));
+
+    showStatusBarAction = new QAction(tr("Status Bar"), this);
+    showStatusBarAction->setCheckable(true);
+    showStatusBarAction->setToolTip(tr("Show or hide the status bar"));
+
+    viewMenu->addAction(showToolBarAction);
+    viewMenu->addAction(showStatusBarAction);
+    viewMenu->addSeparator();
+
+    auto *toolBarStyleMenu = viewMenu->addMenu(tr("Toolbar Display"));
+    toolBarStyleActionGroup = new QActionGroup(this);
+    toolBarStyleActionGroup->setExclusive(true);
+
+    auto addStyleAction = [this, toolBarStyleMenu](const QString &text,
+                                                   Qt::ToolButtonStyle style) {
+        QAction *action = toolBarStyleMenu->addAction(text);
+        action->setCheckable(true);
+        action->setData(static_cast<int>(style));
+        toolBarStyleActionGroup->addAction(action);
+        return action;
+    };
+
+    addStyleAction(tr("Icons Only"), Qt::ToolButtonIconOnly);
+    addStyleAction(tr("Icons and Text"), Qt::ToolButtonTextBesideIcon);
+    addStyleAction(tr("Text Only"), Qt::ToolButtonTextOnly);
+
+    connect(showToolBarAction, &QAction::toggled,
+            this, &MainWindow::setToolBarVisibleFromAction);
+    connect(showStatusBarAction, &QAction::toggled,
+            this, &MainWindow::setStatusBarVisibleFromAction);
+    connect(toolBarStyleActionGroup, &QActionGroup::triggered,
+            this, &MainWindow::setToolBarButtonStyleFromAction);
+
+    connect(ui->toolBar, &QToolBar::visibilityChanged,
+            this, [this](bool visible) {
+                if (showToolBarAction && showToolBarAction->isChecked() != visible) {
+                    const QSignalBlocker blocker(showToolBarAction);
+                    showToolBarAction->setChecked(visible);
+                }
+
+                QSettings settings;
+                settings.setValue(QString::fromLatin1(MainWindowToolBarVisibleKey), visible);
+            });
+
+    restoreViewSettings();
+}
+
+void MainWindow::restoreViewSettings()
+{
+    QSettings settings;
+
+    const bool toolBarVisible =
+        settings.value(QString::fromLatin1(MainWindowToolBarVisibleKey), true).toBool();
+    const bool statusBarVisible =
+        settings.value(QString::fromLatin1(MainWindowStatusBarVisibleKey), true).toBool();
+    const Qt::ToolButtonStyle toolBarStyle = toolButtonStyleFromVariant(
+        settings.value(QString::fromLatin1(MainWindowToolBarStyleKey),
+                       static_cast<int>(ui->toolBar->toolButtonStyle())),
+        ui->toolBar->toolButtonStyle());
+
+    {
+        const QSignalBlocker blocker(showToolBarAction);
+        showToolBarAction->setChecked(toolBarVisible);
+    }
+
+    {
+        const QSignalBlocker blocker(showStatusBarAction);
+        showStatusBarAction->setChecked(statusBarVisible);
+    }
+
+    ui->toolBar->setVisible(toolBarVisible);
+    ui->statusbar->setVisible(statusBarVisible);
+    applyToolBarButtonStyle(toolBarStyle);
+}
+
+void MainWindow::saveViewSettings() const
+{
+    QSettings settings;
+    settings.setValue(QString::fromLatin1(MainWindowToolBarVisibleKey), ui->toolBar->isVisible());
+    settings.setValue(QString::fromLatin1(MainWindowStatusBarVisibleKey), ui->statusbar->isVisible());
+    settings.setValue(QString::fromLatin1(MainWindowToolBarStyleKey),
+                      static_cast<int>(ui->toolBar->toolButtonStyle()));
+}
+
+void MainWindow::setToolBarVisibleFromAction(bool visible)
+{
+    ui->toolBar->setVisible(visible);
+
+    QSettings settings;
+    settings.setValue(QString::fromLatin1(MainWindowToolBarVisibleKey), visible);
+}
+
+void MainWindow::setStatusBarVisibleFromAction(bool visible)
+{
+    ui->statusbar->setVisible(visible);
+
+    QSettings settings;
+    settings.setValue(QString::fromLatin1(MainWindowStatusBarVisibleKey), visible);
+}
+
+void MainWindow::setToolBarButtonStyleFromAction(QAction *action)
+{
+    if (!action)
+        return;
+
+    const Qt::ToolButtonStyle style = toolButtonStyleFromVariant(
+        action->data(),
+        ui->toolBar->toolButtonStyle());
+
+    applyToolBarButtonStyle(style);
+
+    QSettings settings;
+    settings.setValue(QString::fromLatin1(MainWindowToolBarStyleKey), static_cast<int>(style));
+}
+
+void MainWindow::applyToolBarButtonStyle(Qt::ToolButtonStyle style)
+{
+    ui->toolBar->setToolButtonStyle(style);
+    syncToolBarStyleActionGroup(toolBarStyleActionGroup, style);
+}
+
+QMenu *MainWindow::createPopupMenu()
+{
+    auto *menu = new QMenu(this);
+
+    QAction *toolBarVisibilityAction = menu->addAction(
+        ui->toolBar->isVisible() ? tr("Hide Toolbar") : tr("Show Toolbar"));
+    connect(toolBarVisibilityAction, &QAction::triggered,
+            this, [this]() {
+                showToolBarAction->setChecked(!ui->toolBar->isVisible());
+            });
+
+    menu->addSeparator();
+
+    auto *toolBarStyleMenu = menu->addMenu(tr("Toolbar Display"));
+    auto *styleGroup = new QActionGroup(toolBarStyleMenu);
+    styleGroup->setExclusive(true);
+
+    auto addStyleAction = [this, toolBarStyleMenu, styleGroup](const QString &text,
+                                                               Qt::ToolButtonStyle style) {
+        QAction *action = toolBarStyleMenu->addAction(text);
+        action->setCheckable(true);
+        action->setChecked(ui->toolBar->toolButtonStyle() == style);
+        action->setData(static_cast<int>(style));
+        styleGroup->addAction(action);
+        return action;
+    };
+
+    addStyleAction(tr("Icons Only"), Qt::ToolButtonIconOnly);
+    addStyleAction(tr("Icons and Text"), Qt::ToolButtonTextBesideIcon);
+    addStyleAction(tr("Text Only"), Qt::ToolButtonTextOnly);
+    syncToolBarStyleActionGroup(styleGroup, ui->toolBar->toolButtonStyle());
+
+    connect(styleGroup, &QActionGroup::triggered,
+            this, &MainWindow::setToolBarButtonStyleFromAction);
+
+    return menu;
+}
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -186,6 +409,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // set up the main UI
     ui->setupUi(this);
+    setupViewMenu();
     applyCustomActionIcons(ui);
     TorrentGeneralController::Widgets generalWidgets;
     generalWidgets.generalTab = ui->general;
@@ -799,6 +1023,7 @@ void MainWindow::restoreTableViewState()
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     saveTableViewState();
+    saveViewSettings();
 
     if (trayController && trayController->handleCloseEvent(event))
         return;

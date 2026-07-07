@@ -11,6 +11,7 @@
 #include <QJsonValue>
 #include <QPoint>
 #include <QEvent>
+#include <Qt>
 #include "foldermapping.h"
 #include "rpc_client.h"
 #include "torrentsortproxymodel.h"
@@ -21,6 +22,7 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
+class QActionGroup;
 class TorrentAddController;
 class WatchFolderManager;
 class WatchFolderController;
@@ -77,6 +79,9 @@ private slots:
     void on_actionQuit_triggered();
     void exportSettings();
     void importSettings();
+    void setToolBarVisibleFromAction(bool visible);
+    void setStatusBarVisibleFromAction(bool visible);
+    void setToolBarButtonStyleFromAction(QAction *action);
 
 private:
     Ui::MainWindow *ui;
@@ -105,6 +110,10 @@ private:
     QList<FolderMapping> currentServerFolderMappings() const;
     void applyAppSettings();
     void updateAlternativeSpeedAction(bool enabled, bool available);
+    void setupViewMenu();
+    void restoreViewSettings();
+    void saveViewSettings() const;
+    void applyToolBarButtonStyle(Qt::ToolButtonStyle style);
     bool openSessionSettingsWhenReceived = false;
     bool openQuickSpeedLimitsWhenReceived = false;
     bool alternativeSpeedSettingsAvailable = false;
@@ -122,11 +131,16 @@ private:
     TrayController *trayController = nullptr;
     StatusBarController *statusBarController = nullptr;
     NotificationController *notificationController = nullptr;
+    QMenu *viewMenu = nullptr;
+    QAction *showToolBarAction = nullptr;
+    QAction *showStatusBarAction = nullptr;
+    QActionGroup *toolBarStyleActionGroup = nullptr;
 
 protected:
     void closeEvent(QCloseEvent *event) override;
     void changeEvent(QEvent *event) override;
     bool event(QEvent *event) override;
     bool eventFilter(QObject *watched, QEvent *event) override;
+    QMenu *createPopupMenu() override;
 };
 #endif // MAINWINDOW_H
