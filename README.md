@@ -13,4 +13,5 @@ From there the future remains to be seen.
 
 ## Screenshots
 
-<img src="images/screen1.png" alt=" Torrent list with peers">
+<img src="images/screen2.png" alt="Torrent list with details">
+<img src="images/screen3.png" alt="Torrent list with peers">
