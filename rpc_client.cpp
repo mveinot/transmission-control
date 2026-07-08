@@ -162,6 +162,11 @@ void rpc_client::replyFinished(QNetworkReply *reply)
             return;
         }
 
+        if (requestType == RpcRequestType::PortTest) {
+            emit portTestFailed(message);
+            return;
+        }
+
         if (requestType == RpcRequestType::Command
             && context.method == QStringLiteral("torrent-add")
             && !context.torrentFilePath.isEmpty()) {
@@ -270,6 +275,24 @@ void rpc_client::replyFinished(QNetworkReply *reply)
             static_cast<qint64>(arguments.value(QStringLiteral("size-bytes")).toDouble());
 
         emit freeSpaceReceived(path, sizeBytes);
+        return;
+    }
+
+    if (requestType == RpcRequestType::PortTest) {
+        const QJsonObject arguments =
+            root.value(QStringLiteral("arguments")).toObject();
+
+        const bool portIsOpen =
+            arguments.value(QStringLiteral("port-is-open")).toBool(
+                arguments.value(QStringLiteral("port_is_open")).toBool(false)
+                );
+
+        const QString ipProtocol =
+            arguments.value(QStringLiteral("ip-protocol")).toString(
+                arguments.value(QStringLiteral("ip_protocol")).toString()
+                );
+
+        emit portTestFinished(portIsOpen, ipProtocol);
         return;
     }
 
@@ -1197,6 +1220,11 @@ void rpc_client::getFreeSpace(const QString &path)
     arguments["path"] = path;
 
     postRpc(QStringLiteral("free-space"), arguments, RpcRequestType::FreeSpace);
+}
+
+void rpc_client::testPortForwarding()
+{
+    postRpc(QStringLiteral("port-test"), QJsonObject(), RpcRequestType::PortTest);
 }
 
 void rpc_client::addTorrentFile(const QString &filePath,

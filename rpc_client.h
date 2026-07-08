@@ -97,6 +97,7 @@ public:
     void getSessionSettings();
     void setSessionSettings(const QJsonObject &settings);
     void getFreeSpace(const QString &path);
+    void testPortForwarding();
 
 signals:
     void updateStarted();
@@ -113,6 +114,8 @@ signals:
     void serverChanged();
     void sessionSettingsReceived(const QJsonObject &settings);
     void freeSpaceReceived(const QString &path, qint64 sizeBytes);
+    void portTestFinished(bool portIsOpen, const QString &ipProtocol);
+    void portTestFailed(const QString &message);
 
 private:
     enum class RpcRequestType {
@@ -122,7 +125,8 @@ private:
         TorrentProperties,
         Command,
         SessionGet,
-        FreeSpace
+        FreeSpace,
+        PortTest
     };
 
     struct RpcRequestContext

@@ -5,6 +5,9 @@
 #include <QJsonObject>
 #include <QString>
 
+class QLabel;
+class QPushButton;
+
 namespace Ui {
 class SessionSettingsDialog;
 }
@@ -20,14 +23,25 @@ public:
     void setSessionSettings(const QJsonObject &settings);
     QJsonObject changedSettings() const;
 
+public slots:
+    void setPortTestRunning();
+    void setPortTestResult(bool portIsOpen, const QString &ipProtocol = QString());
+    void setPortTestFailed(const QString &message);
+
+signals:
+    void portTestRequested();
+
 private:
     Ui::SessionSettingsDialog *ui = nullptr;
 
     QJsonObject originalSettings;
+    QPushButton *testPortButton = nullptr;
+    QLabel *portTestResultLabel = nullptr;
 
     void populateEncryptionCombo(const QString &currentValue);
     void setComboCurrentData(const QString &value);
     void updateEnabledStates();
+    void setupPortTestControls();
 };
 
 #endif // SESSIONSETTINGSDIALOG_H

@@ -1700,6 +1700,15 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     SessionSettingsDialog dialog(this);
     dialog.setSessionSettings(sessionSettings);
 
+    connect(&dialog, &SessionSettingsDialog::portTestRequested,
+            client, &rpc_client::testPortForwarding);
+
+    connect(client, &rpc_client::portTestFinished,
+            &dialog, &SessionSettingsDialog::setPortTestResult);
+
+    connect(client, &rpc_client::portTestFailed,
+            &dialog, &SessionSettingsDialog::setPortTestFailed);
+
     if (dialog.exec() != QDialog::Accepted)
         return;
 

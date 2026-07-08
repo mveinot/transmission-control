@@ -2,8 +2,13 @@
 #include "ui_sessionsettingsdialog.h"
 
 #include <QComboBox>
+#include <QFormLayout>
+#include <QHBoxLayout>
 #include <QJsonValue>
+#include <QLabel>
+#include <QPushButton>
 #include <QVariant>
+#include <QWidget>
 
 namespace {
 
@@ -120,6 +125,7 @@ SessionSettingsDialog::SessionSettingsDialog(QWidget *parent)
     setWindowTitle(tr("Transmission Session Settings"));
 
     populateEncryptionCombo(QStringLiteral("tolerated"));
+    setupPortTestControls();
 
     connect(ui->checkDownloadLimit, &QCheckBox::toggled,
             this, &SessionSettingsDialog::updateEnabledStates);
@@ -154,6 +160,74 @@ SessionSettingsDialog::SessionSettingsDialog(QWidget *parent)
 SessionSettingsDialog::~SessionSettingsDialog()
 {
     delete ui;
+}
+
+void SessionSettingsDialog::setupPortTestControls()
+{
+    auto *container = new QWidget(this);
+    auto *layout = new QHBoxLayout(container);
+    layout->setContentsMargins(0, 0, 0, 0);
+
+    testPortButton = new QPushButton(tr("Test Port"), container);
+    testPortButton->setToolTip(
+        tr("Test whether Transmission's current listening port is reachable from the Internet. Apply any port changes before testing.")
+        );
+
+    portTestResultLabel = new QLabel(tr("Not tested"), container);
+    portTestResultLabel->setWordWrap(true);
+
+    layout->addWidget(testPortButton);
+    layout->addWidget(portTestResultLabel, 1);
+
+    ui->listeningForm->addRow(tr("Port test:"), container);
+
+    connect(testPortButton, &QPushButton::clicked,
+            this, [this]() {
+                setPortTestRunning();
+                emit portTestRequested();
+            });
+}
+
+void SessionSettingsDialog::setPortTestRunning()
+{
+    if (testPortButton)
+        testPortButton->setEnabled(false);
+
+    if (portTestResultLabel)
+        portTestResultLabel->setText(tr("Testing..."));
+}
+
+void SessionSettingsDialog::setPortTestResult(bool portIsOpen, const QString &ipProtocol)
+{
+    if (testPortButton)
+        testPortButton->setEnabled(true);
+
+    if (!portTestResultLabel)
+        return;
+
+    const QString protocolSuffix = ipProtocol.trimmed().isEmpty()
+        ? QString()
+        : tr(" (%1)").arg(ipProtocol.trimmed().toUpper());
+
+    portTestResultLabel->setText(
+        portIsOpen
+            ? tr("Open%1 - incoming connections should work.").arg(protocolSuffix)
+            : tr("Closed%1 - incoming port is not reachable.").arg(protocolSuffix)
+        );
+}
+
+void SessionSettingsDialog::setPortTestFailed(const QString &message)
+{
+    if (testPortButton)
+        testPortButton->setEnabled(true);
+
+    if (portTestResultLabel) {
+        portTestResultLabel->setText(
+            message.trimmed().isEmpty()
+                ? tr("Test failed.")
+                : tr("Test failed: %1").arg(message.trimmed())
+            );
+    }
 }
 
 void SessionSettingsDialog::populateEncryptionCombo(const QString &currentValue)
