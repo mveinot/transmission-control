@@ -196,6 +196,7 @@ void DialogAbout::triggerEasterEgg()
 {
     ui->textAbout->setHtml(QString(
                                "<h2>Diagnostics:</h2>"
+                               "<h3>[Intergalactic. Planetary.]</h3>"
                                "<p>Qt: %1</p>"
                                "<p>Build: %2 %3</p>"
                                "<p>Caffeine level: Unhealthy</p>"
