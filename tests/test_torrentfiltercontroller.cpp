@@ -65,6 +65,19 @@ QListWidgetItem *findItemByText(QListWidget &list, const QString &text)
     return nullptr;
 }
 
+QListWidgetItem *findItemByLabelPrefix(QListWidget &list, const QString &label)
+{
+    const QString prefix = label + QStringLiteral(" (");
+
+    for (int row = 0; row < list.count(); ++row) {
+        QListWidgetItem *item = list.item(row);
+        if (item && item->text().startsWith(prefix))
+            return item;
+    }
+
+    return nullptr;
+}
+
 void makeCheckable(QAction &action)
 {
     action.setCheckable(true);
@@ -111,8 +124,8 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
     TorrentFilterController controller(&list, &searchEdit, &proxy, actions);
     controller.setup();
 
-    QVERIFY(findItemByText(list, QStringLiteral("All")) != nullptr);
-    QVERIFY(!findItemByText(list, QStringLiteral("All"))->icon().isNull());
+    QVERIFY(findItemByText(list, QStringLiteral("All (0)")) != nullptr);
+    QVERIFY(!findItemByText(list, QStringLiteral("All (0)"))->icon().isNull());
     QCOMPARE(proxy.stateFilter(), TorrentSortProxyModel::StateFilter::All);
     QVERIFY(proxy.trackerFilter().isEmpty());
     QVERIFY(proxy.downloadDirFilter().isEmpty());
@@ -129,7 +142,11 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
     sourceModel.applyUpdate(torrents);
     controller.rebuild(torrents);
 
-    QListWidgetItem *trackerItem = findItemByText(list, QStringLiteral("tracker.example.com"));
+    QVERIFY(findItemByText(list, QStringLiteral("All (2)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("Downloading (1)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("Complete (1)")) != nullptr);
+
+    QListWidgetItem *trackerItem = findItemByText(list, QStringLiteral("tracker.example.com (1)"));
     QVERIFY(trackerItem != nullptr);
     QVERIFY(!trackerItem->icon().isNull());
 
@@ -139,7 +156,7 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
     QVERIFY(proxy.downloadDirFilter().isEmpty());
     QCOMPARE(proxy.rowCount(), 1);
 
-    QListWidgetItem *folderItem = findItemByText(list, QStringLiteral("/downloads/archive"));
+    QListWidgetItem *folderItem = findItemByText(list, QStringLiteral("/downloads/archive (1)"));
     QVERIFY(folderItem != nullptr);
     QVERIFY(!folderItem->icon().isNull());
 
@@ -149,7 +166,7 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
     QCOMPARE(proxy.downloadDirFilter(), QStringLiteral("/downloads/archive"));
     QCOMPARE(proxy.rowCount(), 1);
 
-    QListWidgetItem *completeItem = findItemByText(list, QStringLiteral("Complete"));
+    QListWidgetItem *completeItem = findItemByLabelPrefix(list, QStringLiteral("Complete"));
     QVERIFY(completeItem != nullptr);
     QVERIFY(!completeItem->icon().isNull());
 
@@ -158,6 +175,11 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
     QVERIFY(proxy.trackerFilter().isEmpty());
     QVERIFY(proxy.downloadDirFilter().isEmpty());
     QCOMPARE(proxy.rowCount(), 1);
+
+    searchEdit.setText(QStringLiteral("Ubuntu"));
+    QVERIFY(findItemByText(list, QStringLiteral("All (1)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("Downloading (1)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("Complete (0)")) != nullptr);
 }
 
 QTEST_MAIN(TestTorrentFilterController)

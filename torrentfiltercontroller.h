@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QIcon>
 #include <QStringList>
+#include <QVector>
 
 #include "torrent.h"
 #include "torrentsortproxymodel.h"
@@ -61,6 +62,7 @@ private:
     Actions m_actions;
     QStringList m_lastTrackerHosts;
     QStringList m_lastDownloadDirs;
+    QVector<torrent> m_torrents;
     bool m_trackersCollapsed = false;
     bool m_foldersCollapsed = false;
 
@@ -80,12 +82,17 @@ private:
     void selectStatusFilter(TorrentSortProxyModel::StateFilter filter);
     bool selectItem(ItemType type, const QString &value, int fallbackRow);
     void updateCheckedAction(TorrentSortProxyModel::StateFilter filter);
+    void updateFilterItemCounts();
     void updateFilterStatusSignals();
     void applySectionCollapseState();
     void setSectionCollapsed(ItemType type, bool collapsed);
     void copyFilterValueToClipboard(QListWidgetItem *item) const;
     QString filterSummary() const;
     QString statusFilterName(TorrentSortProxyModel::StateFilter filter) const;
+    QString displayLabelWithCount(const QString &label, int count) const;
+    bool torrentMatchesSearch(const torrent &torrentItem) const;
+    static bool torrentMatchesState(const torrent &torrentItem,
+                                    TorrentSortProxyModel::StateFilter filter);
     static QStringList trackerHostsFromTorrents(const QVector<torrent> &torrents);
     static QStringList downloadDirsFromTorrents(const QVector<torrent> &torrents);
     static int typeToInt(ItemType type);

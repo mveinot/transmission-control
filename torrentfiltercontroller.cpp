@@ -16,10 +16,12 @@
 #include <QSize>
 
 #include <algorithm>
+#include <utility>
 
 namespace {
 constexpr int FilterTypeRole = Qt::UserRole;
 constexpr int FilterValueRole = Qt::UserRole + 1;
+constexpr int FilterBaseLabelRole = Qt::UserRole + 2;
 }
 
 TorrentFilterController::TorrentFilterController(QListWidget *filterList,
@@ -51,6 +53,7 @@ void TorrentFilterController::setup()
 
         connect(m_searchEdit, &QLineEdit::textChanged,
                 this, [this]() {
+                    updateFilterItemCounts();
                     updateFilterStatusSignals();
                 });
     }
@@ -121,6 +124,8 @@ void TorrentFilterController::setup()
 
 void TorrentFilterController::rebuild(const QVector<torrent> &torrents)
 {
+    m_torrents = torrents;
+
     const QStringList trackerHosts = trackerHostsFromTorrents(torrents);
     const QStringList downloadDirs = downloadDirsFromTorrents(torrents);
 
@@ -128,6 +133,7 @@ void TorrentFilterController::rebuild(const QVector<torrent> &torrents)
         && downloadDirs == m_lastDownloadDirs
         && m_filterList
         && m_filterList->count() > 0) {
+        updateFilterItemCounts();
         return;
     }
 
@@ -181,6 +187,7 @@ void TorrentFilterController::rebuildWithFilters(const QStringList &trackerHosts
         updateCheckedAction(TorrentSortProxyModel::StateFilter::All);
     }
 
+    updateFilterItemCounts();
     updateFilterStatusSignals();
 }
 
@@ -229,6 +236,7 @@ QListWidgetItem *TorrentFilterController::createHeaderItem(const QString &label)
     item->setFlags(Qt::NoItemFlags);
     item->setData(FilterTypeRole, typeToInt(ItemType::Header));
     item->setData(FilterValueRole, QString());
+    item->setData(FilterBaseLabelRole, label);
 
     QFont headerFont = item->font();
     headerFont.setBold(true);
@@ -278,6 +286,7 @@ QListWidgetItem *TorrentFilterController::createStatusItem(
     auto *item = new QListWidgetItem(icon, label);
     item->setData(FilterTypeRole, typeToInt(ItemType::Status));
     item->setData(FilterValueRole, QString::number(static_cast<int>(filter)));
+    item->setData(FilterBaseLabelRole, label);
     return item;
 }
 
@@ -289,6 +298,7 @@ QListWidgetItem *TorrentFilterController::createTrackerItem(const QString &label
     auto *item = new QListWidgetItem(trackerIcon, label);
     item->setData(FilterTypeRole, typeToInt(ItemType::Tracker));
     item->setData(FilterValueRole, trackerHost);
+    item->setData(FilterBaseLabelRole, label);
     return item;
 }
 
@@ -300,6 +310,7 @@ QListWidgetItem *TorrentFilterController::createFolderItem(const QString &label,
     auto *item = new QListWidgetItem(folderIcon, label);
     item->setData(FilterTypeRole, typeToInt(ItemType::Folder));
     item->setData(FilterValueRole, downloadDir);
+    item->setData(FilterBaseLabelRole, label);
     return item;
 }
 
@@ -409,6 +420,61 @@ void TorrentFilterController::updateCheckedAction(TorrentSortProxyModel::StateFi
 }
 
 
+
+void TorrentFilterController::updateFilterItemCounts()
+{
+    if (!m_filterList)
+        return;
+
+    for (int row = 0; row < m_filterList->count(); ++row) {
+        QListWidgetItem *item = m_filterList->item(row);
+
+        if (!item)
+            continue;
+
+        const ItemType type = intToType(item->data(FilterTypeRole).toInt());
+        if (type == ItemType::Header)
+            continue;
+
+        const QString baseLabel = item->data(FilterBaseLabelRole).toString();
+        if (baseLabel.isEmpty())
+            continue;
+
+        const QString value = item->data(FilterValueRole).toString();
+        int count = 0;
+
+        for (const torrent &torrentItem : std::as_const(m_torrents)) {
+            if (!torrentMatchesSearch(torrentItem))
+                continue;
+
+            if (type == ItemType::Status) {
+                const auto filter = static_cast<TorrentSortProxyModel::StateFilter>(
+                    value.toInt()
+                    );
+
+                if (torrentMatchesState(torrentItem, filter))
+                    ++count;
+
+                continue;
+            }
+
+            if (type == ItemType::Tracker) {
+                if (value.isEmpty() || torrentItem.getTrackerHosts().contains(value, Qt::CaseInsensitive))
+                    ++count;
+
+                continue;
+            }
+
+            if (type == ItemType::Folder) {
+                if (value.isEmpty() || torrentItem.getDownloadDir().compare(value, Qt::CaseSensitive) == 0)
+                    ++count;
+            }
+        }
+
+        item->setText(displayLabelWithCount(baseLabel, count));
+    }
+}
+
 void TorrentFilterController::updateFilterStatusSignals()
 {
     if (!m_proxy)
@@ -467,6 +533,68 @@ QString TorrentFilterController::statusFilterName(TorrentSortProxyModel::StateFi
     }
 
     return QString();
+}
+
+
+QString TorrentFilterController::displayLabelWithCount(const QString &label, int count) const
+{
+    return tr("%1 (%2)").arg(label).arg(count);
+}
+
+bool TorrentFilterController::torrentMatchesSearch(const torrent &torrentItem) const
+{
+    if (!m_proxy || m_proxy->searchText().isEmpty())
+        return true;
+
+    return torrentItem.getName().contains(m_proxy->searchText(), Qt::CaseInsensitive);
+}
+
+bool TorrentFilterController::torrentMatchesState(
+    const torrent &torrentItem,
+    TorrentSortProxyModel::StateFilter filter)
+{
+    if (filter == TorrentSortProxyModel::StateFilter::All)
+        return true;
+
+    if (filter == TorrentSortProxyModel::StateFilter::Error)
+        return torrentItem.hasError();
+
+    const int statusValue = torrentItem.getStatusValue();
+
+    switch (filter) {
+    case TorrentSortProxyModel::StateFilter::All:
+        return true;
+
+    case TorrentSortProxyModel::StateFilter::Downloading:
+        return statusValue == 4 // Downloading
+               || statusValue == 3; // Queued
+
+    case TorrentSortProxyModel::StateFilter::Completed:
+        return torrentItem.getPercentDone() >= 100.0;
+
+    case TorrentSortProxyModel::StateFilter::Active:
+        if (statusValue == 4 // Downloading
+            || statusValue == 6 // Seeding
+            || statusValue == 3) { // Queued
+            return true;
+        }
+
+        return torrentItem.getRateDownloadBytesPerSecond() > 0.0
+               || torrentItem.getRateUploadBytesPerSecond() > 0.0;
+
+    case TorrentSortProxyModel::StateFilter::Inactive:
+        return statusValue == 0 // Paused
+               || statusValue == 1 // Waiting to Verify
+               || statusValue == 5; // Waiting to Seed
+
+    case TorrentSortProxyModel::StateFilter::Stopped:
+        return statusValue == 0; // Paused
+
+    case TorrentSortProxyModel::StateFilter::Error:
+        return false;
+    }
+
+    return true;
 }
 
 void TorrentFilterController::showFilterContextMenu(const QPoint &position)
