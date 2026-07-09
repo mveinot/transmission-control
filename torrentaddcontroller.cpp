@@ -10,8 +10,6 @@
 
 #include <utility>
 
-#include <QDebug>
-
 namespace {
 
 constexpr const char *SettingsDownloadDir =
@@ -213,8 +211,6 @@ void TorrentAddController::addTorrentFileUsingDefaults(const QString &filePath)
     }
 
     const QFileInfo fileInfo(filePath);
-
-    //qDebug() << "Watch folder adding torrent using defaults:" << fileInfo.absoluteFilePath();
 
     if (!fileInfo.exists() || !fileInfo.isFile()) {
         emit addFailed(tr("Torrent file does not exist: %1")

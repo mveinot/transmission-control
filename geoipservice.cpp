@@ -2,7 +2,6 @@
 
 #include <QCoreApplication>
 #include <QDateTime>
-//#include <QDebug>
 #include <QDir>
 #include <QFileInfo>
 #include <QHostAddress>
@@ -249,13 +248,11 @@ bool GeoIpService::loadDatabase(const QString &path)
 
     if (cleanPath.isEmpty()) {
         dbInfo.errorMessage = tr("GeoIP database path is empty.");
-        //qWarning() << "GeoIP database path is empty";
         return false;
     }
 
     if (!QFileInfo::exists(cleanPath)) {
         dbInfo.errorMessage = tr("GeoIP database file was not found.");
-        //qWarning() << "GeoIP database not found:" << cleanPath;
         return false;
     }
 
@@ -268,9 +265,6 @@ bool GeoIpService::loadDatabase(const QString &path)
     if (status != MMDB_SUCCESS) {
         dbInfo.errorMessage = tr("Could not open GeoIP database: %1")
                                   .arg(QString::fromUtf8(MMDB_strerror(status)));
-        //qWarning() << "Could not open GeoIP database:"
-        //           << cleanPath
-        //           << MMDB_strerror(status);
         return false;
     }
 
@@ -314,12 +308,10 @@ bool GeoIpService::loadDatabase(const QString &path)
             dbInfo.description = text;
     }
 
-    //qDebug() << "Loaded GeoIP database:" << cleanPath;
     return true;
 #else
     Q_UNUSED(path);
     dbInfo.errorMessage = tr("Planetary was built without libmaxminddb support.");
-    qWarning() << "Planetary was built without libmaxminddb support";
     return false;
 #endif
 }
@@ -390,16 +382,10 @@ GeoIpResult GeoIpService::lookupInDatabase(const QString &ipAddress) const
             );
 
     if (gaiError != 0) {
-        //qWarning() << "GeoIP getaddrinfo error for"
-        //           << ipAddress
-        //           << gai_strerror(gaiError);
         return result;
     }
 
     if (mmdbError != MMDB_SUCCESS) {
-        //qWarning() << "GeoIP lookup error for"
-        //           << ipAddress
-        //           << MMDB_strerror(mmdbError);
         return result;
     }
 
