@@ -93,3 +93,27 @@ add_planetary_test(test_torrentfiltercontroller
     ${CMAKE_SOURCE_DIR}/torrentfiltercontroller.cpp
     ${CMAKE_SOURCE_DIR}/torrentfiltercontroller.h
 )
+
+add_planetary_test(test_notificationcontroller
+    test_notificationcontroller.cpp
+    ${CMAKE_SOURCE_DIR}/notificationcontroller.cpp
+    ${CMAKE_SOURCE_DIR}/notificationcontroller.h
+    ${CMAKE_SOURCE_DIR}/torrent.cpp
+    ${CMAKE_SOURCE_DIR}/torrent.h
+)
+
+if(APPLE)
+    target_sources(test_notificationcontroller PRIVATE
+        ${CMAKE_SOURCE_DIR}/macnotificationbackend.h
+        ${CMAKE_SOURCE_DIR}/macnotificationbackend.mm
+    )
+
+    set_source_files_properties(
+        ${CMAKE_SOURCE_DIR}/macnotificationbackend.mm
+        PROPERTIES COMPILE_FLAGS "-fobjc-arc"
+    )
+
+    target_link_libraries(test_notificationcontroller PRIVATE
+        ${USER_NOTIFICATIONS_FRAMEWORK}
+    )
+endif()

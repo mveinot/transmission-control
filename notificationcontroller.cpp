@@ -12,8 +12,12 @@
 #include <QSettings>
 #include <QStandardPaths>
 
-NotificationController::NotificationController(QObject *parent)
+#include <utility>
+
+NotificationController::NotificationController(QObject *parent,
+                                                   DeliveryFunction deliveryFunction)
     : QObject(parent)
+    , m_deliveryFunction(std::move(deliveryFunction))
 {
 }
 
@@ -66,9 +70,11 @@ bool NotificationController::showPlatformNotification(const QString &title,
                                                        const QString &message,
                                                        int millisecondsTimeoutHint) const
 {
-    Q_UNUSED(millisecondsTimeoutHint)
+    if (m_deliveryFunction)
+        return m_deliveryFunction(title, message, millisecondsTimeoutHint);
 
 #if defined(Q_OS_MACOS)
+    Q_UNUSED(millisecondsTimeoutHint)
     return showMacUserNotification(
         title.isEmpty() ? QCoreApplication::applicationName() : title,
         message
@@ -98,11 +104,11 @@ bool NotificationController::showPlatformNotification(const QString &title,
 
 bool NotificationController::isTorrentCompleteForNotification(const torrent &torrentItem)
 {
-    const QString status = torrentItem.getStatus();
+    const auto status = static_cast<torrent::Status>(torrentItem.getStatusValue());
 
     return torrentItem.getPercentDone() >= 99.9 ||
-           status == QStringLiteral("Seeding") ||
-           status == QStringLiteral("Waiting to Seed");
+           status == torrent::Status::Seeding ||
+           status == torrent::Status::WaitingToSeed;
 }
 
 NotificationController::TorrentState NotificationController::stateForTorrent(
@@ -125,6 +131,9 @@ void NotificationController::resetBaseline()
 
 void NotificationController::handleTorrentAdded(int torrentId, const QString &name)
 {
+    if (torrentId >= 0)
+        m_directlyNotifiedAddedTorrentIds.insert(torrentId);
+
     if (!eventEnabled(SettingsKeys::NotifyTorrentAdded))
         return;
 
@@ -134,8 +143,6 @@ void NotificationController::handleTorrentAdded(int torrentId, const QString &na
         5000
         );
 
-    if (torrentId >= 0)
-        m_directlyNotifiedAddedTorrentIds.insert(torrentId);
 }
 
 void NotificationController::processTorrentList(const QVector<torrent> &torrents)

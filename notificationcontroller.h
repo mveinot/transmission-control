@@ -7,6 +7,8 @@
 #include <QString>
 #include <QVector>
 
+#include <functional>
+
 class torrent;
 
 class NotificationController : public QObject
@@ -14,7 +16,10 @@ class NotificationController : public QObject
     Q_OBJECT
 
 public:
-    explicit NotificationController(QObject *parent = nullptr);
+    using DeliveryFunction = std::function<bool(const QString &, const QString &, int)>;
+
+    explicit NotificationController(QObject *parent = nullptr,
+                                    DeliveryFunction deliveryFunction = {});
 
     void processTorrentList(const QVector<torrent> &torrents);
     void handleTorrentAdded(int torrentId, const QString &name);
@@ -44,6 +49,7 @@ private:
     static bool isTorrentCompleteForNotification(const torrent &torrentItem);
     static TorrentState stateForTorrent(const torrent &torrentItem);
 
+    DeliveryFunction m_deliveryFunction;
     bool m_baselineLoaded = false;
     QHash<int, TorrentState> m_knownTorrentStates;
     QSet<int> m_directlyNotifiedAddedTorrentIds;
