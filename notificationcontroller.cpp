@@ -3,23 +3,14 @@
 #include "settingskeys.h"
 #include "torrent.h"
 
+#if defined(Q_OS_MACOS)
+#include "macnotificationbackend.h"
+#endif
+
 #include <QCoreApplication>
-#include <QFileInfo>
 #include <QProcess>
 #include <QSettings>
 #include <QStandardPaths>
-
-namespace {
-QString appleScriptQuotedString(QString text)
-{
-    text.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
-    text.replace(QLatin1Char('"'), QStringLiteral("\\\""));
-    text.replace(QLatin1Char('\n'), QStringLiteral("\\n"));
-    text.replace(QLatin1Char('\r'), QString());
-
-    return QStringLiteral("\"") + text + QStringLiteral("\"");
-}
-}
 
 NotificationController::NotificationController(QObject *parent)
     : QObject(parent)
@@ -78,18 +69,10 @@ bool NotificationController::showPlatformNotification(const QString &title,
     Q_UNUSED(millisecondsTimeoutHint)
 
 #if defined(Q_OS_MACOS)
-    const QString osascript = QStringLiteral("/usr/bin/osascript");
-
-    if (!QFileInfo::exists(osascript))
-        return false;
-
-    const QString script = QStringLiteral("display notification %1 with title %2")
-                               .arg(appleScriptQuotedString(message),
-                                    appleScriptQuotedString(title.isEmpty()
-                                                            ? QCoreApplication::applicationName()
-                                                            : title));
-
-    return QProcess::startDetached(osascript, {QStringLiteral("-e"), script});
+    return showMacUserNotification(
+        title.isEmpty() ? QCoreApplication::applicationName() : title,
+        message
+        );
 #elif defined(Q_OS_LINUX)
     const QString notifySend = QStandardPaths::findExecutable(QStringLiteral("notify-send"));
 

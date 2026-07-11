@@ -9,6 +9,10 @@ endif()
 
 project(Planetary VERSION ${PLANETARY_VERSION_BASE} LANGUAGES CXX)
 
+if(APPLE)
+    enable_language(OBJCXX)
+endif()
+
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -234,6 +238,28 @@ else()
 
 endif()
 
+
+if(APPLE)
+    target_sources(Planetary PRIVATE
+        macnotificationbackend.h
+        macnotificationbackend.mm
+    )
+
+    set_source_files_properties(macnotificationbackend.mm PROPERTIES
+        COMPILE_FLAGS "-fobjc-arc"
+    )
+
+    find_library(USER_NOTIFICATIONS_FRAMEWORK UserNotifications)
+
+    if(NOT USER_NOTIFICATIONS_FRAMEWORK)
+        message(FATAL_ERROR "UserNotifications framework not found")
+    endif()
+
+    target_link_libraries(Planetary PRIVATE
+        ${USER_NOTIFICATIONS_FRAMEWORK}
+    )
+endif()
+
 if(PLANETARY_QM_FILES)
     add_custom_target(PlanetaryTranslations
         DEPENDS ${PLANETARY_QM_FILES}
@@ -366,7 +392,7 @@ target_link_libraries(Planetary PRIVATE
 )
 
 set_target_properties(Planetary PROPERTIES
-    MACOSX_BUNDLE_GUI_IDENTIFIER planetary.mvgrafx.net
+    MACOSX_BUNDLE_GUI_IDENTIFIER net.mvgrafx.planetary
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
