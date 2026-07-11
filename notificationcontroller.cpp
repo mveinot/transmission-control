@@ -57,6 +57,20 @@ void NotificationController::showNotification(const QString &title,
         );
 }
 
+void NotificationController::showTestNotification()
+{
+    const QString title = tr("Planetary notification test");
+    const QString message = tr("Notifications are working.");
+
+    if (showPlatformNotification(title, message, 5000))
+        return;
+
+    emit statusMessageRequested(
+        tr("Notification test: no supported desktop notification backend was available."),
+        8000
+        );
+}
+
 bool NotificationController::showPlatformNotification(const QString &title,
                                                        const QString &message,
                                                        int millisecondsTimeoutHint) const

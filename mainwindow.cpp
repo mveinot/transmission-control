@@ -1021,6 +1021,12 @@ void MainWindow::on_actionSettings_triggered()
 {
     AppSettings dialog(this);
 
+    connect(&dialog, &AppSettings::testNotificationRequested,
+            this, [this]() {
+                if (notificationController)
+                    notificationController->showTestNotification();
+            });
+
     connect(&dialog, &AppSettings::clearWatchFolderHistoryRequested,
             this, [this]() {
                 if (!watchFolderManager)

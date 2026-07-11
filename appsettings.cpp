@@ -31,6 +31,9 @@ AppSettings::AppSettings(QWidget *parent)
     connect(ui->enableNotifications, &QCheckBox::toggled,
             this, &AppSettings::updateNotificationOptionAvailability);
 
+    connect(ui->buttonTestNotification, &QPushButton::clicked,
+            this, &AppSettings::testNotificationRequested);
+
     connect(ui->settingsOK, &QPushButton::clicked, this, [this]() {
         saveSettings();
         accept();
@@ -199,7 +202,7 @@ void AppSettings::saveSettings()
 
 void AppSettings::updateNotificationOptionAvailability()
 {
-    ui->notificationEventsGroup->setEnabled(
-        ui->enableNotifications->isChecked()
-        );
+    const bool enabled = ui->enableNotifications->isChecked();
+    ui->notificationEventsGroup->setEnabled(enabled);
+    ui->buttonTestNotification->setEnabled(enabled);
 }

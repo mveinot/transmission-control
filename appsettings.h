@@ -17,6 +17,7 @@ public:
 
 signals:
     void clearWatchFolderHistoryRequested();
+    void testNotificationRequested();
 
 private:
     Ui::AppSettings *ui;

@@ -22,6 +22,7 @@ public:
     void showNotification(const QString &title,
                           const QString &message,
                           int millisecondsTimeoutHint = 5000);
+    void showTestNotification();
 
 signals:
     void statusMessageRequested(const QString &message, int timeoutMs = 3000);
