@@ -125,6 +125,9 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
 
         if (index.column() == StatusColumn)
             return tr("Status: %1").arg(t.getStatus());
+
+        if (index.column() == HealthColumn)
+            return t.getHealthDetails();
     }
 
     if (role == Qt::DecorationRole) {
@@ -165,6 +168,9 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
 
         case StatusColumn:
             return t.getStatus();
+
+        case HealthColumn:
+            return t.getHealth();
 
         case TrackerColumn:
             return t.getPrimaryTrackerHost();
@@ -243,6 +249,9 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
 
         case StatusColumn:
             return t.getStatus();
+
+        case HealthColumn:
+            return t.getHealthScore();
 
         case TrackerColumn:
             return t.getPrimaryTrackerHost();
@@ -334,6 +343,9 @@ QVariant TorrentModel::headerData(int section,
 
         case StatusColumn:
             return "Status";
+
+        case HealthColumn:
+            return "Health";
 
         case TrackerColumn:
             return "Tracker";

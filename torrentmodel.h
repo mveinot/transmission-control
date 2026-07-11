@@ -19,6 +19,7 @@ public:
         SizeColumn,
         PercentDoneColumn,
         StatusColumn,
+        HealthColumn,
         TrackerColumn,
         RateDownloadColumn,
         RateUploadColumn,

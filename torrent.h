@@ -57,6 +57,9 @@ public:
     int getTotalPeers() const;
     qint64 getSeedsSortValue() const;
     qint64 getPeersSortValue() const;
+    QString getHealth() const;
+    int getHealthScore() const;
+    QString getHealthDetails() const;
     int getQueuePosition() const;
     bool sameDisplayData(const torrent &other) const;
     int getId() const;
@@ -91,6 +94,8 @@ private:
     int totalSeeders = -1;
     int totalLeechers = -1;
     int queuePosition = 0;
+    qint64 desiredAvailable = 0;
+    qint64 leftUntilDone = 0;
     QString primaryTrackerHost;
     QStringList trackerHosts;
 

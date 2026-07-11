@@ -36,11 +36,11 @@
 namespace {
 
 constexpr const char *TorrentTableHeaderStateKey =
-    "ui/torrentTable/horizontalHeaderState/v3";
+    "ui/torrentTable/horizontalHeaderState/v4";
 constexpr const char *TorrentTableVerticalHeaderStateKey =
     "ui/torrentTable/verticalHeaderState/v1";
 constexpr const char *TorrentTableVisibleColumnsKey =
-    "ui/torrentTable/visibleColumns/v1";
+    "ui/torrentTable/visibleColumns/v2";
 
 struct TorrentColumnDefinition
 {
@@ -58,6 +58,7 @@ const QVector<TorrentColumnDefinition> &torrentColumnDefinitions()
         { TorrentModel::SizeColumn, "size", true, true },
         { TorrentModel::PercentDoneColumn, "completed", true, true },
         { TorrentModel::StatusColumn, "status", true, true },
+        { TorrentModel::HealthColumn, "health", true, true },
         { TorrentModel::TrackerColumn, "tracker", true, true },
         { TorrentModel::RateDownloadColumn, "down", true, true },
         { TorrentModel::RateUploadColumn, "up", true, true },

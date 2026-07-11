@@ -30,6 +30,8 @@ QJsonValue makeTorrentValue(int id,
     object["downloadedEver"] = 4096.0;
     object["uploadedEver"] = 8192.0;
     object["downloadDir"] = "/downloads/linux";
+    object["leftUntilDone"] = static_cast<double>(sizeWhenDone * (1.0 - percentDone));
+    object["desiredAvailable"] = static_cast<double>(sizeWhenDone * (1.0 - percentDone));
     object["peersConnected"] = 7;
     object["peersSendingToUs"] = 2;
     object["peersGettingFromUs"] = 3;
@@ -99,6 +101,10 @@ void TestTorrentModel::exposesOptionalColumns()
         makeTorrentValue(10, "One", 4, 0.25, 1024, 3),
     }));
 
+    QCOMPARE(model.headerData(TorrentModel::HealthColumn,
+                              Qt::Horizontal,
+                              Qt::DisplayRole).toString(),
+             QStringLiteral("Health"));
     QCOMPARE(model.headerData(TorrentModel::TrackerColumn,
                               Qt::Horizontal,
                               Qt::DisplayRole).toString(),
@@ -128,6 +134,10 @@ void TestTorrentModel::exposesOptionalColumns()
                               Qt::DisplayRole).toString(),
              QStringLiteral("Peers"));
 
+    QCOMPARE(model.data(model.index(0, TorrentModel::HealthColumn), Qt::DisplayRole).toString(),
+             QStringLiteral("Excellent"));
+    QVERIFY(model.data(model.index(0, TorrentModel::HealthColumn), TorrentModel::SortRole).toInt() >= 85);
+    QVERIFY(model.data(model.index(0, TorrentModel::HealthColumn), Qt::ToolTipRole).toString().contains(QStringLiteral("Health score")));
     QCOMPARE(model.data(model.index(0, TorrentModel::TrackerColumn), Qt::DisplayRole).toString(),
              QStringLiteral("tracker.example.com"));
     QCOMPARE(model.data(model.index(0, TorrentModel::AddedColumn), TorrentModel::SortRole).toLongLong(),

@@ -36,6 +36,7 @@ bool TorrentSortProxyModel::lessThan(const QModelIndex &left, const QModelIndex 
     case TorrentModel::UploadedEverColumn:
     case TorrentModel::SeedsColumn:
     case TorrentModel::PeersConnectedColumn:
+    case TorrentModel::HealthColumn:
         return lhs.toLongLong() < rhs.toLongLong();
 
     case TorrentModel::PercentDoneColumn:
