@@ -38,11 +38,13 @@ bool isComplete(qint64 length, qint64 bytesCompleted)
 } // namespace
 
 TorrentFilesController::TorrentFilesController(QTreeWidget *fileTreeWidget,
+                                               QLineEdit *filterEdit,
                                                rpc_client *client,
                                                QWidget *dialogParent,
                                                QObject *parent)
     : QObject(parent)
     , fileTreeWidget(fileTreeWidget)
+    , filterEdit(filterEdit)
     , client(client)
     , dialogParent(dialogParent)
 {
@@ -91,6 +93,14 @@ void TorrentFilesController::setup()
 
     connect(fileTreeWidget, &QTreeWidget::customContextMenuRequested,
             this, &TorrentFilesController::showContextMenu);
+
+    if (filterEdit) {
+        filterEdit->setClearButtonEnabled(true);
+        filterEdit->setPlaceholderText(tr("Search files..."));
+
+        connect(filterEdit, &QLineEdit::textChanged,
+                this, &TorrentFilesController::applyFilter);
+    }
 }
 
 void TorrentFilesController::saveViewState() const
@@ -424,6 +434,45 @@ void TorrentFilesController::populate(const QJsonArray &files,
 
     fileTreeWidget->expandToDepth(0);
     fileTreeWidget->resizeColumnToContents(FileNameColumn);
+
+    applyFilter(filterEdit ? filterEdit->text() : QString());
+}
+
+void TorrentFilesController::applyFilter(const QString &text)
+{
+    if (!fileTreeWidget)
+        return;
+
+    const QString filterText = text.trimmed();
+
+    for (int i = 0; i < fileTreeWidget->topLevelItemCount(); ++i)
+        filterItem(fileTreeWidget->topLevelItem(i), filterText, false);
+}
+
+bool TorrentFilesController::filterItem(QTreeWidgetItem *item,
+                                        const QString &text,
+                                        bool ancestorMatches)
+{
+    if (!item)
+        return false;
+
+    const bool itemMatches = text.isEmpty()
+        || item->text(FileNameColumn).contains(text, Qt::CaseInsensitive);
+    const bool showDescendants = ancestorMatches || itemMatches;
+    bool descendantMatches = false;
+
+    for (int i = 0; i < item->childCount(); ++i) {
+        if (filterItem(item->child(i), text, showDescendants))
+            descendantMatches = true;
+    }
+
+    const bool visible = showDescendants || descendantMatches;
+    item->setHidden(!visible);
+
+    if (!text.isEmpty() && descendantMatches)
+        item->setExpanded(true);
+
+    return itemMatches || descendantMatches;
 }
 
 void TorrentFilesController::updateFolderPriorityStates()

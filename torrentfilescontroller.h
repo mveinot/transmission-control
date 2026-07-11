@@ -12,6 +12,7 @@
 
 #include "foldermapping.h"
 
+class QLineEdit;
 class QTreeWidget;
 class QTreeWidgetItem;
 class QWidget;
@@ -25,6 +26,7 @@ class TorrentFilesController : public QObject
 
 public:
     explicit TorrentFilesController(QTreeWidget *fileTreeWidget,
+                                    QLineEdit *filterEdit,
                                     rpc_client *client,
                                     QWidget *dialogParent,
                                     QObject *parent = nullptr);
@@ -100,8 +102,13 @@ private:
     QString mapRemotePathToLocalPath(const QString &remotePath,
                                      const QList<FolderMapping> &mappings) const;
     void setSelectedFilesPriorityState(int priority, bool wanted);
+    void applyFilter(const QString &text);
+    bool filterItem(QTreeWidgetItem *item,
+                    const QString &text,
+                    bool ancestorMatches);
 
     QTreeWidget *fileTreeWidget = nullptr;
+    QLineEdit *filterEdit = nullptr;
     rpc_client *client = nullptr;
     QWidget *dialogParent = nullptr;
     int torrentId = -1;

@@ -534,6 +534,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     torrentFilesController = new TorrentFilesController(
         ui->fileTreeWidget,
+        ui->editFileFilter,
         client,
         this,
         this
