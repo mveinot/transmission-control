@@ -163,6 +163,9 @@
            <property name="selectionBehavior">
             <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
            </property>
+           <property name="showGrid">
+            <bool>false</bool>
+           </property>
            <property name="gridStyle">
             <enum>Qt::PenStyle::NoPen</enum>
            </property>
