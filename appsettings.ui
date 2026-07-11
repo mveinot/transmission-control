@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <ui version="4.0">
  <class>AppSettings</class>
  <widget class="QDialog" name="AppSettings">
@@ -91,45 +91,99 @@
            </layout>
           </widget>
          </item>
+         <item>
+          <widget class="QGroupBox" name="applicationGroup">
+           <property name="title">
+            <string>Application</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayoutApplication">
+            <item>
+             <widget class="QCheckBox" name="showTrayIcon">
+              <property name="text">
+               <string>Always show tray icon</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
         </layout>
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="advanced">
+     <widget class="QWidget" name="notifications">
       <attribute name="title">
-       <string>Advanced</string>
+       <string>Notifications</string>
       </attribute>
-      <layout class="QHBoxLayout" name="horizontalLayout_5">
+      <layout class="QVBoxLayout" name="verticalLayoutNotifications">
+       <property name="leftMargin">
+        <number>12</number>
+       </property>
+       <property name="topMargin">
+        <number>12</number>
+       </property>
+       <property name="rightMargin">
+        <number>12</number>
+       </property>
+       <property name="bottomMargin">
+        <number>12</number>
+       </property>
        <item>
-        <layout class="QGridLayout" name="gridLayout_3">
-         <item row="1" column="0">
-          <spacer name="verticalSpacer">
-           <property name="orientation">
-            <enum>Qt::Orientation::Vertical</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>20</width>
-             <height>40</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
-         <item row="0" column="0">
-          <widget class="QCheckBox" name="showTrayIcon">
-           <property name="text">
-            <string>Always Show Tray Icon</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="1">
-          <widget class="QCheckBox" name="showNotifications">
-           <property name="text">
-            <string>Show Notifications</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
+        <widget class="QCheckBox" name="enableNotifications">
+         <property name="text">
+          <string>Enable notifications</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="notificationEventsGroup">
+         <property name="title">
+          <string>Notify me when</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayoutNotificationEvents">
+          <item>
+           <widget class="QCheckBox" name="notifyTorrentAdded">
+            <property name="text">
+             <string>A torrent is added</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="notifyTorrentCompleted">
+            <property name="text">
+             <string>A torrent finishes downloading</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="notifyTorrentError">
+            <property name="text">
+             <string>A torrent reports an error</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="notifyTorrentStalled">
+            <property name="text">
+             <string>A torrent becomes stalled</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacerNotifications">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </widget>
@@ -316,6 +370,6 @@
    </item>
   </layout>
  </widget>
- <resources/>
- <connections/>
+ <resources />
+ <connections />
 </ui>

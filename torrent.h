@@ -30,6 +30,7 @@ public:
     QString getStatus() const;
     int getStatusValue() const;
     bool hasError() const;
+    bool isStalled() const;
     int getErrorCode() const;
     QString getErrorString() const;
     QString getRateDownload() const;
@@ -88,6 +89,7 @@ private:
     QString downloadDir;
     int errorCode = 0;
     QString errorString;
+    bool stalled = false;
     int peersConnected = 0;
     int peersSendingToUs = 0;
     int peersGettingFromUs = 0;

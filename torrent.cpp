@@ -48,6 +48,7 @@ torrent::torrent(const QJsonValue &val)
     downloadDir = obj.value("downloadDir").toString().trimmed();
     errorCode = obj.value("error").toInt();
     errorString = obj.value("errorString").toString().trimmed();
+    stalled = obj.value("isStalled").toBool();
     peersConnected = obj.value("peersConnected").toInt();
     peersSendingToUs = obj.value("peersSendingToUs").toInt();
     peersGettingFromUs = obj.value("peersGettingFromUs").toInt();
@@ -185,6 +186,11 @@ int torrent::getStatusValue() const
 bool torrent::hasError() const
 {
     return errorCode != 0 || !errorString.isEmpty();
+}
+
+bool torrent::isStalled() const
+{
+    return stalled;
 }
 
 int torrent::getErrorCode() const
@@ -549,6 +555,7 @@ bool torrent::sameDisplayData(const torrent &other) const
            && downloadDir == other.downloadDir
            && errorCode == other.errorCode
            && errorString == other.errorString
+           && stalled == other.stalled
            && peersConnected == other.peersConnected
            && peersSendingToUs == other.peersSendingToUs
            && peersGettingFromUs == other.peersGettingFromUs

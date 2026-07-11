@@ -543,6 +543,7 @@ void rpc_client::getTorrentList()
         "downloadDir",
         "error",
         "errorString",
+        "isStalled",
         "desiredAvailable",
         "leftUntilDone",
         "peersConnected",

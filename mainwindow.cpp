@@ -1269,6 +1269,9 @@ void MainWindow::saveSelectedServerFromCombo()
         return;
     }
 
+    if (notificationController)
+        notificationController->resetBaseline();
+
     torrentFilesController->setTorrentContext(-1, QString());
     torrentFilesController->clear();
     torrentTrackersController->setTorrentId(-1);

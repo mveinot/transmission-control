@@ -25,10 +25,10 @@ AppSettings::AppSettings(QWidget *parent)
     ui->updateInterval->setSuffix(tr(" seconds"));
 
     loadSettings();
-    updateTrayOptionAvailability();
+    updateNotificationOptionAvailability();
 
-    connect(ui->showTrayIcon, &QCheckBox::toggled,
-            this, &AppSettings::updateTrayOptionAvailability);
+    connect(ui->enableNotifications, &QCheckBox::toggled,
+            this, &AppSettings::updateNotificationOptionAvailability);
 
     connect(ui->settingsOK, &QPushButton::clicked, this, [this]() {
         saveSettings();
@@ -86,11 +86,24 @@ void AppSettings::loadSettings()
         settings.value(SettingsKeys::ShowTrayIcon, true).toBool()
         );
 
-    ui->showNotifications->setChecked(
+    ui->enableNotifications->setChecked(
         settings.value(
             SettingsKeys::ShowNotifications,
             settings.value(SettingsKeys::ShowTrayNotifications, true)
             ).toBool()
+        );
+
+    ui->notifyTorrentAdded->setChecked(
+        settings.value(SettingsKeys::NotifyTorrentAdded, true).toBool()
+        );
+    ui->notifyTorrentCompleted->setChecked(
+        settings.value(SettingsKeys::NotifyTorrentCompleted, true).toBool()
+        );
+    ui->notifyTorrentError->setChecked(
+        settings.value(SettingsKeys::NotifyTorrentError, true).toBool()
+        );
+    ui->notifyTorrentStalled->setChecked(
+        settings.value(SettingsKeys::NotifyTorrentStalled, true).toBool()
         );
 
     ui->checkWatchFolderEnabled->setChecked(
@@ -130,12 +143,21 @@ void AppSettings::saveSettings()
                       trayIconEnabled);
 
     settings.setValue(SettingsKeys::ShowNotifications,
-                      ui->showNotifications->isChecked());
+                      ui->enableNotifications->isChecked());
+
+    settings.setValue(SettingsKeys::NotifyTorrentAdded,
+                      ui->notifyTorrentAdded->isChecked());
+    settings.setValue(SettingsKeys::NotifyTorrentCompleted,
+                      ui->notifyTorrentCompleted->isChecked());
+    settings.setValue(SettingsKeys::NotifyTorrentError,
+                      ui->notifyTorrentError->isChecked());
+    settings.setValue(SettingsKeys::NotifyTorrentStalled,
+                      ui->notifyTorrentStalled->isChecked());
 
     // Keep writing the old key for downgrade/backward compatibility, but do
     // not make notifications depend on the tray icon anymore.
     settings.setValue(SettingsKeys::ShowTrayNotifications,
-                      ui->showNotifications->isChecked());
+                      ui->enableNotifications->isChecked());
 
     settings.setValue(SettingsKeys::HideApplicationIcon,
                       trayIconEnabled && false);
@@ -152,14 +174,9 @@ void AppSettings::saveSettings()
     settings.sync();
 }
 
-void AppSettings::updateTrayOptionAvailability()
+void AppSettings::updateNotificationOptionAvailability()
 {
-    const bool trayIconEnabled = ui->showTrayIcon->isChecked();
-
-    Q_UNUSED(trayIconEnabled);
-
-    // Notifications are no longer coupled to the tray/menu-bar icon. On macOS
-    // Planetary can use basic native notifications even when the menu-bar icon
-    // is disabled, and other platforms fall back gracefully.
-    ui->showNotifications->setEnabled(true);
+    ui->notificationEventsGroup->setEnabled(
+        ui->enableNotifications->isChecked()
+        );
 }

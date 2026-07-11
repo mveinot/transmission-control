@@ -33,10 +33,12 @@ bool NotificationController::notificationsEnabled() const
     if (settings.contains(SettingsKeys::ShowNotifications))
         return settings.value(SettingsKeys::ShowNotifications, true).toBool();
 
-    // Backward-compatible migration from the old tray-coupled setting. Do not
-    // require the tray icon to be enabled: notifications are now their own
-    // feature, with the platform notifier used where available.
     return settings.value(SettingsKeys::ShowTrayNotifications, true).toBool();
+}
+
+bool NotificationController::eventEnabled(const char *settingsKey, bool defaultValue)
+{
+    return QSettings().value(settingsKey, defaultValue).toBool();
 }
 
 void NotificationController::showNotification(const QString &title,
@@ -49,8 +51,6 @@ void NotificationController::showNotification(const QString &title,
     if (showPlatformNotification(title, message, millisecondsTimeoutHint))
         return;
 
-    // Last-resort fallback: keep the user-visible event somewhere, even if the
-    // current platform has no simple notification command available.
     emit statusMessageRequested(
         title.isEmpty() ? message : tr("%1: %2").arg(title, message),
         millisecondsTimeoutHint
@@ -108,36 +108,86 @@ bool NotificationController::isTorrentCompleteForNotification(const torrent &tor
            status == QStringLiteral("Waiting to Seed");
 }
 
+NotificationController::TorrentState NotificationController::stateForTorrent(
+    const torrent &torrentItem)
+{
+    TorrentState state;
+    state.complete = isTorrentCompleteForNotification(torrentItem);
+    state.error = torrentItem.hasError();
+    state.stalled = torrentItem.isStalled();
+    state.errorString = torrentItem.getErrorString();
+    return state;
+}
+
+void NotificationController::resetBaseline()
+{
+    m_baselineLoaded = false;
+    m_knownTorrentStates.clear();
+}
+
 void NotificationController::processTorrentList(const QVector<torrent> &torrents)
 {
-    QSet<int> currentlyCompleted;
+    QHash<int, TorrentState> currentStates;
+    currentStates.reserve(torrents.size());
 
-    for (const torrent &torrentItem : torrents) {
-        if (isTorrentCompleteForNotification(torrentItem))
-            currentlyCompleted.insert(torrentItem.getId());
-    }
+    for (const torrent &torrentItem : torrents)
+        currentStates.insert(torrentItem.getId(), stateForTorrent(torrentItem));
 
-    if (!m_completedTorrentNotificationBaselineLoaded) {
-        m_knownCompletedTorrentIds = currentlyCompleted;
-        m_completedTorrentNotificationBaselineLoaded = true;
+    if (!m_baselineLoaded) {
+        m_knownTorrentStates = currentStates;
+        m_baselineLoaded = true;
         return;
     }
 
     for (const torrent &torrentItem : torrents) {
         const int id = torrentItem.getId();
+        const TorrentState current = currentStates.value(id);
+        const auto previousIt = m_knownTorrentStates.constFind(id);
 
-        if (!currentlyCompleted.contains(id))
+        if (previousIt == m_knownTorrentStates.constEnd()) {
+            if (eventEnabled(SettingsKeys::NotifyTorrentAdded)) {
+                showNotification(
+                    tr("Torrent added"),
+                    torrentItem.getName(),
+                    5000
+                    );
+            }
             continue;
+        }
 
-        if (m_knownCompletedTorrentIds.contains(id))
-            continue;
+        const TorrentState &previous = previousIt.value();
 
-        showNotification(
-            tr("Torrent finished"),
-            torrentItem.getName(),
-            5000
-            );
+        if (!previous.complete && current.complete &&
+            eventEnabled(SettingsKeys::NotifyTorrentCompleted)) {
+            showNotification(
+                tr("Torrent finished"),
+                torrentItem.getName(),
+                5000
+                );
+        }
+
+        if (!previous.error && current.error &&
+            eventEnabled(SettingsKeys::NotifyTorrentError)) {
+            const QString details = current.errorString.isEmpty()
+                                        ? torrentItem.getName()
+                                        : tr("%1\n%2").arg(torrentItem.getName(),
+                                                           current.errorString);
+            showNotification(
+                tr("Torrent error"),
+                details,
+                8000
+                );
+        }
+
+        if (!previous.stalled && current.stalled && !current.complete &&
+            eventEnabled(SettingsKeys::NotifyTorrentStalled)) {
+            showNotification(
+                tr("Torrent stalled"),
+                torrentItem.getName(),
+                8000
+                );
+        }
     }
 
-    m_knownCompletedTorrentIds = currentlyCompleted;
+    m_knownTorrentStates = currentStates;
 }
