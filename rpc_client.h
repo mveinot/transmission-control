@@ -95,6 +95,7 @@ public:
     void queueMoveDown(const QList<int> &ids);
     void queueMoveBottom(const QList<int> &ids);
     void getSessionSettings();
+    void getSessionStatistics();
     void setSessionSettings(const QJsonObject &settings);
     void getFreeSpace(const QString &path);
     void testPortForwarding();
@@ -113,6 +114,8 @@ signals:
     void torrentFileAddFailed(const QString &filePath, const QString &message);
     void serverChanged();
     void sessionSettingsReceived(const QJsonObject &settings);
+    void sessionStatisticsReceived(const QJsonObject &statistics);
+    void sessionStatisticsFailed(const QString &message);
     void freeSpaceReceived(const QString &path, qint64 sizeBytes);
     void portTestFinished(bool portIsOpen, const QString &ipProtocol);
     void portTestFailed(const QString &message);
@@ -125,6 +128,7 @@ private:
         TorrentProperties,
         Command,
         SessionGet,
+        SessionStats,
         FreeSpace,
         PortTest
     };

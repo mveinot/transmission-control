@@ -170,6 +170,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         singleinstanceguard.h singleinstanceguard.cpp
         settingskeys.h
         sessionsettingsdialog.h sessionsettingsdialog.cpp sessionsettingsdialog.ui
+        statisticsdialog.h statisticsdialog.cpp
         torrentadddialog.h torrentadddialog.cpp torrentadddialog.ui
         torrentaddcontroller.h torrentaddcontroller.cpp
         watchfoldermanager.h watchfoldermanager.cpp

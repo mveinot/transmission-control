@@ -71,6 +71,7 @@ private slots:
     void on_actionSettings_triggered();
     void handleTorrentsReceived(const QVector<torrent> &torrents);
     void showSessionSettings();
+    void showStatistics();
     void handleSessionSettingsReceived(const QJsonObject &settings);
     void toggleAlternativeSpeedMode(bool enabled);
     void refreshRemoteFreeSpace();

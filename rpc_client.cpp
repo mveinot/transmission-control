@@ -167,6 +167,11 @@ void rpc_client::replyFinished(QNetworkReply *reply)
             return;
         }
 
+        if (requestType == RpcRequestType::SessionStats) {
+            emit sessionStatisticsFailed(message);
+            return;
+        }
+
         if (requestType == RpcRequestType::Command
             && context.method == QStringLiteral("torrent-add")
             && !context.torrentFilePath.isEmpty()) {
@@ -261,6 +266,12 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         m_sequentialDownloadSupported = sessionSupportsSequentialDownload(arguments);
 
         emit sessionSettingsReceived(arguments);
+        return;
+    }
+
+    if (requestType == RpcRequestType::SessionStats) {
+        emit sessionStatisticsReceived(
+            root.value(QStringLiteral("arguments")).toObject());
         return;
     }
 
@@ -1201,6 +1212,13 @@ void rpc_client::getSessionSettings()
     };
 
     postRpc("session-get", arguments, RpcRequestType::SessionGet);
+}
+
+void rpc_client::getSessionStatistics()
+{
+    postRpc(QStringLiteral("session-stats"),
+            QJsonObject(),
+            RpcRequestType::SessionStats);
 }
 
 void rpc_client::setSessionSettings(const QJsonObject &settings)

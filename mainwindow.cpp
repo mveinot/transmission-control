@@ -11,6 +11,7 @@
 #include "updatecheckcontroller.h"
 #include "traycontroller.h"
 #include "statusbarcontroller.h"
+#include "statisticsdialog.h"
 #include "notificationcontroller.h"
 #include "appicons.h"
 #include <QActionGroup>
@@ -259,6 +260,13 @@ void MainWindow::setupViewMenu()
     addStyleAction(tr("Icons Only"), Qt::ToolButtonIconOnly);
     addStyleAction(tr("Icons and Text"), Qt::ToolButtonTextBesideIcon);
     addStyleAction(tr("Text Only"), Qt::ToolButtonTextOnly);
+
+    viewMenu->addSeparator();
+    QAction *statisticsAction = viewMenu->addAction(tr("Statistics…"));
+    statisticsAction->setToolTip(tr("Show Transmission session statistics"));
+
+    connect(statisticsAction, &QAction::triggered,
+            this, &MainWindow::showStatistics);
 
     connect(showToolBarAction, &QAction::toggled,
             this, &MainWindow::setToolBarVisibleFromAction);
@@ -1637,6 +1645,12 @@ void MainWindow::toggleAlternativeSpeedMode(bool enabled)
             3000
             );
     }
+}
+
+void MainWindow::showStatistics()
+{
+    StatisticsDialog dialog(client, this);
+    dialog.exec();
 }
 
 void MainWindow::showSessionSettings()
