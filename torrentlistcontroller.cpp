@@ -141,6 +141,14 @@ void TorrentListController::setup(const ActionSet &actions)
     m_tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     m_tableView->setIconSize(QSize(16, 16));
 
+    connect(m_tableView,
+            &QTableView::doubleClicked,
+            this,
+            [this](const QModelIndex &index) {
+                if (index.isValid())
+                    showSelectedTorrentProperties();
+            });
+
     if (QHeaderView *header = m_tableView->horizontalHeader()) {
         configureHorizontalHeader();
 
