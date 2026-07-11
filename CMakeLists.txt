@@ -400,6 +400,19 @@ set_target_properties(Planetary PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
+if(APPLE)
+    add_custom_command(TARGET Planetary POST_BUILD
+        COMMAND /usr/bin/codesign
+            --force
+            --deep
+            --sign -
+            --identifier net.mvgrafx.planetary
+            "$<TARGET_BUNDLE_DIR:Planetary>"
+        COMMENT "Ad-hoc signing Planetary.app"
+        VERBATIM
+    )
+endif()
+
 include(GNUInstallDirs)
 
 #install(TARGETS Planetary
