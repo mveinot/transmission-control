@@ -36,6 +36,7 @@ public:
     void getTorrentPieces(int id);
     void getTorrentProperties(int id);
     QString getServer();
+    QString getRpcUrl() const;
     void addTorrentFromFile(const QString &filePath, bool deleteFileOnSuccess);
     void addTorrentFromMagnet(const QString &magnetLink);
     void addTorrentFile(const QString &filePath,

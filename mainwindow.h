@@ -46,6 +46,7 @@ public:
     ~MainWindow();
 
     void showAbout();
+    void showDiagnostics();
     void loadServerCombo();
     void saveSelectedServerFromCombo();
     void showMainWindow();

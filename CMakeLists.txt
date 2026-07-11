@@ -91,6 +91,8 @@ set(PROJECT_SOURCES
         dialogabout.cpp
         dialogabout.h
         dialogabout.ui
+        diagnosticsdialog.h
+        diagnosticsdialog.cpp
         appicons.h
         appicons.cpp
         ${PLANETARY_TS_FILES}

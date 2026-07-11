@@ -59,6 +59,7 @@
 
 #include "rpc_client.h"
 #include "dialogabout.h"
+#include "diagnosticsdialog.h"
 #include "serverconfig.h"
 #include "appsettings.h"
 #include "torrentsortproxymodel.h"
@@ -738,6 +739,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionServer_Setup, &QAction::triggered, this, &MainWindow::onServerSetupTriggered);
 
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTorrentList);
+    QAction *diagnosticsAction = new QAction(tr("Diagnostics..."), this);
+    ui->menuHelp->insertAction(aboutAction, diagnosticsAction);
+    ui->menuHelp->insertSeparator(aboutAction);
+    connect(diagnosticsAction, &QAction::triggered, this, &MainWindow::showDiagnostics);
     connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
 
     connect(client, &rpc_client::torrentDetailsReceived,
@@ -918,9 +923,20 @@ void MainWindow::updateTorrentList()
     client->getTorrentList();
 }
 
+void MainWindow::showDiagnostics()
+{
+    DiagnosticsDialog dialog(cachedSessionSettings,
+                             client ? client->getServer() : QString(),
+                             client ? client->getRpcUrl() : QString(),
+                             geoIpService,
+                             updateIntervalMs(),
+                             this);
+    dialog.exec();
+}
+
 void MainWindow::showAbout()
 {
-    DialogAbout dialog(geoIpService, this);
+    DialogAbout dialog(this);
     dialog.exec();
 }
 

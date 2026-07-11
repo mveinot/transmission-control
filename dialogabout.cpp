@@ -5,7 +5,6 @@
 #include <QTextStream>
 
 #include "dialogabout.h"
-#include "geoipservice.h"
 #include "ui_dialogabout.h"
 
 static QString readTextFile(const QString &path)
@@ -37,10 +36,9 @@ static QString htmlValue(const QString &value)
     return value.toHtmlEscaped();
 }
 
-DialogAbout::DialogAbout(GeoIpService *geoIpService, QWidget *parent)
+DialogAbout::DialogAbout(QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::DialogAbout)
-    , geoIpService(geoIpService)
 {
     ui->setupUi(this);
 
@@ -111,76 +109,6 @@ QString DialogAbout::buildAboutHtml() const
                      QStringLiteral(__DATE__).toHtmlEscaped());
 }
 
-QString DialogAbout::buildGeoIpHtml() const
-{
-    if (!geoIpService) {
-        return QStringLiteral(
-            "<h3>GeoIP</h3>"
-            "<p><strong>Status:</strong> <em>Not initialized</em></p>"
-            );
-    }
-
-    const GeoIpDatabaseInfo info = geoIpService->databaseInfo();
-
-    QStringList rows;
-
-    const QString status = info.loaded
-        ? tr("Loaded real MaxMind DB-compatible database")
-        : tr("Using fallback country lookup");
-
-    rows << QStringLiteral("<tr><th align=\"left\">Status</th><td>%1</td></tr>")
-                .arg(status.toHtmlEscaped());
-
-    rows << QStringLiteral("<tr><th align=\"left\">libmaxminddb support</th><td>%1</td></tr>")
-                .arg(info.maxMindDbSupport ? tr("Available") : tr("Not built in"));
-
-    if (!info.path.isEmpty()) {
-        rows << QStringLiteral("<tr><th align=\"left\">Database path</th><td>%1</td></tr>")
-                    .arg(info.path.toHtmlEscaped());
-    }
-
-    if (!info.errorMessage.isEmpty()) {
-        rows << QStringLiteral("<tr><th align=\"left\">Load message</th><td>%1</td></tr>")
-                    .arg(info.errorMessage.toHtmlEscaped());
-    }
-
-    if (info.loaded) {
-        rows << QStringLiteral("<tr><th align=\"left\">Database type</th><td>%1</td></tr>")
-                    .arg(htmlValue(info.databaseType));
-
-        if (!info.description.isEmpty()) {
-            rows << QStringLiteral("<tr><th align=\"left\">Description</th><td>%1</td></tr>")
-                        .arg(info.description.toHtmlEscaped());
-        }
-
-        rows << QStringLiteral("<tr><th align=\"left\">Build date</th><td>%1</td></tr>")
-                    .arg(htmlValue(info.buildDateUtc));
-
-        rows << QStringLiteral("<tr><th align=\"left\">IP version</th><td>%1</td></tr>")
-                    .arg(info.ipVersion > 0 ? QString::number(info.ipVersion) : tr("Unknown"));
-
-        rows << QStringLiteral("<tr><th align=\"left\">Node count</th><td>%1</td></tr>")
-                    .arg(info.nodeCount > 0 ? QString::number(info.nodeCount) : tr("Unknown"));
-
-        rows << QStringLiteral("<tr><th align=\"left\">Record size</th><td>%1</td></tr>")
-                    .arg(info.recordSize > 0 ? QString::number(info.recordSize) : tr("Unknown"));
-
-        if (info.binaryFormatMajor > 0) {
-            rows << QStringLiteral("<tr><th align=\"left\">Binary format</th><td>%1.%2</td></tr>")
-                        .arg(info.binaryFormatMajor)
-                        .arg(info.binaryFormatMinor);
-        }
-    }
-
-    rows << QStringLiteral("<tr><th align=\"left\">Lookup cache entries</th><td>%1</td></tr>")
-                .arg(info.cacheEntries);
-
-    return QStringLiteral(
-               "<h3>GeoIP</h3>"
-               "<table cellspacing=\"4\" cellpadding=\"2\">%1</table>"
-               ).arg(rows.join(QString()));
-}
-
 bool DialogAbout::eventFilter(QObject *watched, QEvent *event)
 {
     if (watched == ui->image &&
@@ -200,10 +128,8 @@ void DialogAbout::triggerEasterEgg()
                                "<p>Qt: %1</p>"
                                "<p>Build: %2 %3</p>"
                                "<p>Caffeine level: Unhealthy</p>"
-                               "%4"
                                )
                                .arg(QStringLiteral(QT_VERSION_STR),
                                     QStringLiteral(__DATE__),
-                                    QStringLiteral(__TIME__),
-                                    buildGeoIpHtml()));
+                                    QStringLiteral(__TIME__)));
 }

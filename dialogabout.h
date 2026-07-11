@@ -3,8 +3,6 @@
 
 #include <QDialog>
 
-class GeoIpService;
-
 namespace Ui {
 class DialogAbout;
 }
@@ -14,15 +12,12 @@ class DialogAbout : public QDialog
     Q_OBJECT
 
 public:
-    explicit DialogAbout(GeoIpService *geoIpService = nullptr, QWidget *parent = nullptr);
+    explicit DialogAbout(QWidget *parent = nullptr);
     ~DialogAbout();
 
 private:
     Ui::DialogAbout *ui;
-    GeoIpService *geoIpService = nullptr;
-
     QString buildAboutHtml() const;
-    QString buildGeoIpHtml() const;
     void triggerEasterEgg();
 
 protected:

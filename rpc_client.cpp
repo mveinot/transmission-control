@@ -506,6 +506,12 @@ QString rpc_client::getServer()
     return tr("No server configured");
 }
 
+QString rpc_client::getRpcUrl() const
+{
+    return rpcUrl;
+}
+
+
 void rpc_client::getTorrentList()
 {
     if (rpcUrl.trimmed().isEmpty()) {
