@@ -524,6 +524,9 @@ MainWindow::MainWindow(QWidget *parent)
                     statusBarController->showMessage(message, timeoutMs);
             });
 
+    connect(client, &rpc_client::torrentAdded,
+            notificationController, &NotificationController::handleTorrentAdded);
+
     // UI setup
     mainMenu = new QMenu(this);
     this->menuBar()->addMenu(this->mainMenu);
@@ -1017,6 +1020,18 @@ void MainWindow::on_actionDelete_Torrent_triggered()
 void MainWindow::on_actionSettings_triggered()
 {
     AppSettings dialog(this);
+
+    connect(&dialog, &AppSettings::clearWatchFolderHistoryRequested,
+            this, [this]() {
+                if (!watchFolderManager)
+                    return;
+
+                watchFolderManager->clearProcessedHistory();
+                statusBar()->showMessage(
+                    tr("Watch folder import history cleared."),
+                    5000
+                    );
+            });
 
     if (dialog.exec() != QDialog::Accepted) {
         return;

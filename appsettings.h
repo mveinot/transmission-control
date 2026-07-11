@@ -15,6 +15,9 @@ public:
     explicit AppSettings(QWidget *parent = nullptr);
     ~AppSettings();
 
+signals:
+    void clearWatchFolderHistoryRequested();
+
 private:
     Ui::AppSettings *ui;
 

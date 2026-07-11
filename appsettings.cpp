@@ -4,6 +4,7 @@
 
 #include <QPushButton>
 #include <QFileDialog>
+#include <QMessageBox>
 #include <QSettings>
 
 namespace {
@@ -56,6 +57,28 @@ AppSettings::AppSettings(QWidget *parent)
                 ui->editWatchFolderPath->setEnabled(enabled);
                 ui->buttonBrowseWatchFolder->setEnabled(enabled);
                 ui->spinWatchFolderStableChecks->setEnabled(enabled);
+            });
+
+    connect(ui->buttonResetWatchFolderHistory, &QPushButton::clicked,
+            this, [this]() {
+                const QMessageBox::StandardButton choice = QMessageBox::warning(
+                    this,
+                    tr("Reset Imported Torrent History"),
+                    tr("This clears Planetary's record of .torrent files already imported from the watch folder.\n\n"
+                       "Any .torrent files still present may be submitted to Transmission again. Continue?"),
+                    QMessageBox::Yes | QMessageBox::No,
+                    QMessageBox::No
+                    );
+
+                if (choice != QMessageBox::Yes)
+                    return;
+
+                emit clearWatchFolderHistoryRequested();
+                QMessageBox::information(
+                    this,
+                    tr("Imported Torrent History Reset"),
+                    tr("The watch folder import history has been cleared.")
+                    );
             });
 }
 

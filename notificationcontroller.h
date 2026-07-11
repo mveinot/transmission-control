@@ -2,6 +2,7 @@
 #define NOTIFICATIONCONTROLLER_H
 
 #include <QHash>
+#include <QSet>
 #include <QObject>
 #include <QString>
 #include <QVector>
@@ -16,6 +17,7 @@ public:
     explicit NotificationController(QObject *parent = nullptr);
 
     void processTorrentList(const QVector<torrent> &torrents);
+    void handleTorrentAdded(int torrentId, const QString &name);
     void resetBaseline();
     void showNotification(const QString &title,
                           const QString &message,
@@ -43,6 +45,7 @@ private:
 
     bool m_baselineLoaded = false;
     QHash<int, TorrentState> m_knownTorrentStates;
+    QSet<int> m_directlyNotifiedAddedTorrentIds;
 };
 
 #endif // NOTIFICATIONCONTROLLER_H

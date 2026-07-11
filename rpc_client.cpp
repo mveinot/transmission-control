@@ -321,9 +321,21 @@ void rpc_client::replyFinished(QNetworkReply *reply)
             }
         }
 
-        if (context.method == QStringLiteral("torrent-add")
-            && !context.torrentFilePath.isEmpty()) {
-            emit torrentFileAddSucceeded(context.torrentFilePath);
+        if (context.method == QStringLiteral("torrent-add")) {
+            const QJsonObject arguments =
+                root.value(QStringLiteral("arguments")).toObject();
+            const QJsonObject added =
+                arguments.value(QStringLiteral("torrent-added")).toObject();
+
+            if (!added.isEmpty()) {
+                emit torrentAdded(
+                    added.value(QStringLiteral("id")).toInt(-1),
+                    added.value(QStringLiteral("name")).toString()
+                    );
+            }
+
+            if (!context.torrentFilePath.isEmpty())
+                emit torrentFileAddSucceeded(context.torrentFilePath);
         }
 
         emit commandSucceeded(context.method);

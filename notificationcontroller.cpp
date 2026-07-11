@@ -123,6 +123,22 @@ void NotificationController::resetBaseline()
 {
     m_baselineLoaded = false;
     m_knownTorrentStates.clear();
+    m_directlyNotifiedAddedTorrentIds.clear();
+}
+
+void NotificationController::handleTorrentAdded(int torrentId, const QString &name)
+{
+    if (!eventEnabled(SettingsKeys::NotifyTorrentAdded))
+        return;
+
+    showNotification(
+        tr("Torrent added"),
+        name.isEmpty() ? tr("Transmission accepted a new torrent.") : name,
+        5000
+        );
+
+    if (torrentId >= 0)
+        m_directlyNotifiedAddedTorrentIds.insert(torrentId);
 }
 
 void NotificationController::processTorrentList(const QVector<torrent> &torrents)
@@ -145,7 +161,8 @@ void NotificationController::processTorrentList(const QVector<torrent> &torrents
         const auto previousIt = m_knownTorrentStates.constFind(id);
 
         if (previousIt == m_knownTorrentStates.constEnd()) {
-            if (eventEnabled(SettingsKeys::NotifyTorrentAdded)) {
+            if (m_directlyNotifiedAddedTorrentIds.remove(id) == 0
+                && eventEnabled(SettingsKeys::NotifyTorrentAdded)) {
                 showNotification(
                     tr("Torrent added"),
                     torrentItem.getName(),

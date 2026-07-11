@@ -50,7 +50,10 @@ bool WatchFolderManager::isEnabled() const
 
 void WatchFolderManager::setWatchFolder(const QString &folderPath)
 {
-    const QString cleanedPath = QDir::cleanPath(folderPath.trimmed());
+    const QString trimmedPath = folderPath.trimmed();
+    const QString cleanedPath = trimmedPath.isEmpty()
+        ? QString()
+        : QDir::cleanPath(trimmedPath);
 
     if (m_watchFolder == cleanedPath)
         return;
@@ -97,7 +100,12 @@ int WatchFolderManager::requiredStableChecks() const
 void WatchFolderManager::clearProcessedHistory()
 {
     m_processedFingerprints.clear();
+    m_candidates.clear();
+    m_pendingFingerprintsByPath.clear();
     saveProcessedFingerprints();
+
+    if (m_enabled)
+        QTimer::singleShot(0, this, &WatchFolderManager::scanWatchFolder);
 }
 
 bool WatchFolderManager::hasPendingTorrentFile(const QString &filePath) const

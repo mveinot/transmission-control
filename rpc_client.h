@@ -112,6 +112,7 @@ signals:
     void commandSucceeded(const QString &method);
     void commandFailed(const QString &method, const QString &message);
     void torrentFileAddSucceeded(const QString &filePath);
+    void torrentAdded(int torrentId, const QString &name);
     void torrentFileAddFailed(const QString &filePath, const QString &message);
     void serverChanged();
     void sessionSettingsReceived(const QJsonObject &settings);
