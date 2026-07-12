@@ -3,6 +3,7 @@
 #include "settingskeys.h"
 
 #include <QPushButton>
+#include <QFileInfo>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QSettings>
@@ -30,9 +31,27 @@ AppSettings::AppSettings(QWidget *parent)
 
     connect(ui->enableNotifications, &QCheckBox::toggled,
             this, &AppSettings::updateNotificationOptionAvailability);
+    connect(ui->enableDesktopNotifications, &QCheckBox::toggled,
+            this, &AppSettings::updateNotificationOptionAvailability);
 
     connect(ui->buttonTestNotification, &QPushButton::clicked,
             this, &AppSettings::testNotificationRequested);
+    connect(ui->enableExternalCommand, &QCheckBox::toggled,
+            this, &AppSettings::updateNotificationOptionAvailability);
+    connect(ui->externalCommandExecutable, &QLineEdit::textChanged,
+            this, &AppSettings::updateNotificationOptionAvailability);
+    connect(ui->buttonBrowseExternalCommand, &QPushButton::clicked, this, [this]() {
+        const QString current = ui->externalCommandExecutable->text().trimmed();
+        const QString selected = QFileDialog::getOpenFileName(
+            this, tr("Select Notification Command"),
+            current.isEmpty() ? QString() : QFileInfo(current).absolutePath());
+        if (!selected.isEmpty())
+            ui->externalCommandExecutable->setText(selected);
+    });
+    connect(ui->buttonTestExternalCommand, &QPushButton::clicked, this, [this]() {
+        emit testExternalCommandRequested(ui->externalCommandExecutable->text().trimmed(),
+                                          ui->externalCommandArguments->text());
+    });
 
     connect(ui->settingsOK, &QPushButton::clicked, this, [this]() {
         saveSettings();
@@ -132,6 +151,16 @@ void AppSettings::loadSettings()
         settings.value(SettingsKeys::NotifyTorrentStalled, true).toBool()
         );
 
+    ui->enableDesktopNotifications->setChecked(
+        settings.value(SettingsKeys::DesktopNotificationsEnabled, true).toBool());
+    ui->enableExternalCommand->setChecked(
+        settings.value(SettingsKeys::ExternalCommandEnabled, false).toBool());
+    ui->externalCommandExecutable->setText(
+        settings.value(SettingsKeys::ExternalCommandExecutable).toString());
+    ui->externalCommandArguments->setText(
+        settings.value(SettingsKeys::ExternalCommandArguments,
+                       QStringLiteral("--event {event} --name \"{name}\"")).toString());
+
     ui->checkWatchFolderEnabled->setChecked(
         settings.value(QString::fromLatin1(SettingsKeys::WatchFolderEnabled),
                        false).toBool()
@@ -180,6 +209,15 @@ void AppSettings::saveSettings()
     settings.setValue(SettingsKeys::NotifyTorrentStalled,
                       ui->notifyTorrentStalled->isChecked());
 
+    settings.setValue(SettingsKeys::DesktopNotificationsEnabled,
+                      ui->enableDesktopNotifications->isChecked());
+    settings.setValue(SettingsKeys::ExternalCommandEnabled,
+                      ui->enableExternalCommand->isChecked());
+    settings.setValue(SettingsKeys::ExternalCommandExecutable,
+                      ui->externalCommandExecutable->text().trimmed());
+    settings.setValue(SettingsKeys::ExternalCommandArguments,
+                      ui->externalCommandArguments->text());
+
     // Keep writing the old key for downgrade/backward compatibility, but do
     // not make notifications depend on the tray icon anymore.
     settings.setValue(SettingsKeys::ShowTrayNotifications,
@@ -204,5 +242,11 @@ void AppSettings::updateNotificationOptionAvailability()
 {
     const bool enabled = ui->enableNotifications->isChecked();
     ui->notificationEventsGroup->setEnabled(enabled);
-    ui->buttonTestNotification->setEnabled(enabled);
+    ui->notificationDeliveryGroup->setEnabled(enabled);
+    ui->buttonTestNotification->setEnabled(
+        enabled && ui->enableDesktopNotifications->isChecked());
+    const bool externalEnabled = enabled && ui->enableExternalCommand->isChecked();
+    ui->externalCommandOptions->setEnabled(externalEnabled);
+    ui->buttonTestExternalCommand->setEnabled(
+        externalEnabled && !ui->externalCommandExecutable->text().trimmed().isEmpty());
 }

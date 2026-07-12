@@ -541,6 +541,7 @@ void rpc_client::getTorrentList()
     arguments["fields"] = QJsonArray {
         "id",
         "name",
+        "hashString",
         "percentDone",
         "status",
         "rateDownload",

@@ -18,6 +18,7 @@ public:
 signals:
     void clearWatchFolderHistoryRequested();
     void testNotificationRequested();
+    void testExternalCommandRequested(const QString &executable, const QString &arguments);
 
 private:
     Ui::AppSettings *ui;

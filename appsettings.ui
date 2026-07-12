@@ -173,10 +173,26 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="buttonTestNotification">
-         <property name="text">
-          <string>Test Notification</string>
-         </property>
+        <widget class="QGroupBox" name="notificationDeliveryGroup">
+         <property name="title"><string>Delivery methods</string></property>
+         <layout class="QVBoxLayout" name="verticalLayoutNotificationDelivery">
+          <item><layout class="QHBoxLayout" name="horizontalLayoutDesktopNotification">
+           <item><widget class="QCheckBox" name="enableDesktopNotifications"><property name="text"><string>Desktop notification</string></property></widget></item>
+           <item><spacer name="horizontalSpacerDesktopNotification"><property name="orientation"><enum>Qt::Orientation::Horizontal</enum></property><property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property></spacer></item>
+           <item><widget class="QPushButton" name="buttonTestNotification"><property name="text"><string>Test Desktop Notification</string></property></widget></item>
+          </layout></item>
+          <item><widget class="QCheckBox" name="enableExternalCommand"><property name="text"><string>Run external command</string></property></widget></item>
+          <item><widget class="QWidget" name="externalCommandOptions" native="true"><layout class="QGridLayout" name="gridLayoutExternalCommand">
+           <property name="leftMargin"><number>24</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
+           <item row="0" column="0"><widget class="QLabel" name="labelExternalExecutable"><property name="text"><string>Executable:</string></property></widget></item>
+           <item row="0" column="1"><widget class="QLineEdit" name="externalCommandExecutable"><property name="placeholderText"><string>/path/to/script-or-program</string></property></widget></item>
+           <item row="0" column="2"><widget class="QPushButton" name="buttonBrowseExternalCommand"><property name="text"><string>Browse…</string></property></widget></item>
+           <item row="1" column="0"><widget class="QLabel" name="labelExternalArguments"><property name="text"><string>Arguments:</string></property></widget></item>
+           <item row="1" column="1" colspan="2"><widget class="QLineEdit" name="externalCommandArguments"><property name="toolTip"><string>Arguments support quotes. Available placeholders: {event}, {name}, {id}, {hash}, {size}, {size_bytes}, {status}, {progress}, {download_dir}, {server}, {error}, {timestamp}</string></property><property name="placeholderText"><string>--event {event} --name &quot;{name}&quot;</string></property></widget></item>
+           <item row="2" column="1"><widget class="QLabel" name="labelExternalPlaceholders"><property name="text"><string>Placeholders: {event}, {name}, {id}, {hash}, {size}, {size_bytes}, {status}, {progress}, {download_dir}, {server}, {error}, {timestamp}</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+           <item row="2" column="2"><widget class="QPushButton" name="buttonTestExternalCommand"><property name="text"><string>Test Command</string></property></widget></item>
+          </layout></widget></item>
+         </layout>
         </widget>
        </item>
        <item>

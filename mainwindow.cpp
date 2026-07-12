@@ -541,6 +541,7 @@ MainWindow::MainWindow(QWidget *parent)
                                             ui->actionStop_All_Torrents);
 
     notificationController = new NotificationController(this);
+    notificationController->setServerName(ui->comboServers->currentText());
 
     connect(notificationController, &NotificationController::statusMessageRequested,
             this, [this](const QString &message, int timeoutMs) {
@@ -1056,6 +1057,11 @@ void MainWindow::on_actionSettings_triggered()
                 if (notificationController)
                     notificationController->showTestNotification();
             });
+    connect(&dialog, &AppSettings::testExternalCommandRequested,
+            this, [this](const QString &executable, const QString &arguments) {
+                if (notificationController)
+                    notificationController->showTestExternalCommand(executable, arguments);
+            });
 
     connect(&dialog, &AppSettings::clearWatchFolderHistoryRequested,
             this, [this]() {
@@ -1138,6 +1144,10 @@ void MainWindow::onServerSetupTriggered()
 
         if (serverIndex >= 0) {
             client->setServerFromSettingsIndex(serverIndex);
+            if (notificationController) {
+                notificationController->setServerName(ui->comboServers->currentText());
+                notificationController->resetBaseline();
+            }
             if (statusBarController)
                 statusBarController->showMessage(client->getServer());
             if (torrentListController)
@@ -1320,8 +1330,10 @@ void MainWindow::saveSelectedServerFromCombo()
         return;
     }
 
-    if (notificationController)
+    if (notificationController) {
+        notificationController->setServerName(ui->comboServers->currentText());
         notificationController->resetBaseline();
+    }
 
     torrentFilesController->setTorrentContext(-1, QString());
     torrentFilesController->clear();

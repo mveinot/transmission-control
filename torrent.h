@@ -26,6 +26,7 @@ public:
     };
     explicit torrent(const QJsonValue &val);
     QString getName() const;
+    QString getHashString() const;
     double getPercentDone() const;
     QString getStatus() const;
     int getStatusValue() const;
@@ -74,6 +75,7 @@ private:
     static QString statusToString(Status status);
     int id = 0;
     QString name;
+    QString hashString;
     double percentDone = 0.0;
     double rateDownload = 0.0;
     double rateUpload = 0.0;

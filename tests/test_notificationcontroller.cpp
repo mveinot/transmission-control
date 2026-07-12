@@ -16,6 +16,7 @@ private slots:
     void completionTransitionUsesStatusEnum();
     void directAddSuppressesRefreshDuplicate();
     void disabledDirectAddStillSuppressesRefreshDuplicate();
+    void externalArgumentParserPreservesQuotedValues();
 };
 
 namespace {
@@ -108,6 +109,15 @@ void TestNotificationController::disabledDirectAddStillSuppressesRefreshDuplicat
     });
 
     QVERIFY(titles.isEmpty());
+}
+
+void TestNotificationController::externalArgumentParserPreservesQuotedValues()
+{
+    const QStringList arguments = NotificationController::parseExternalArguments(
+        QStringLiteral("--event {event} --name \"{name}\" --flag"));
+    QCOMPARE(arguments, QStringList({QStringLiteral("--event"), QStringLiteral("{event}"),
+                                     QStringLiteral("--name"), QStringLiteral("{name}"),
+                                     QStringLiteral("--flag")}));
 }
 
 QTEST_MAIN(TestNotificationController)

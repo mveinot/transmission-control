@@ -33,6 +33,7 @@ torrent::torrent(const QJsonValue &val)
 
     id = obj.value("id").toInt();
     name = obj.value("name").toString();
+    hashString = obj.value("hashString").toString().trimmed();
     eta = obj.value("eta").toInt();
     percentDone = obj.value("percentDone").toDouble() * 100.0;
     status = statusFromInt(obj.value("status").toInt());
@@ -144,6 +145,7 @@ torrent::Status torrent::statusFromInt(int value)
 
 int torrent::getId() const { return id; }
 QString torrent::getName() const { return name; }
+QString torrent::getHashString() const { return hashString; }
 double torrent::getPercentDone() const { return percentDone; }
 int torrent::getQueuePosition() const { return queuePosition; };
 
@@ -541,6 +543,7 @@ QJsonArray torrent::getPeers() const
 bool torrent::sameDisplayData(const torrent &other) const
 {
     return id == other.id
+           && hashString == other.hashString
            && name == other.name
            && percentDone == other.percentDone
            && rateDownload == other.rateDownload
