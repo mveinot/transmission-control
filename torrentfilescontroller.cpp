@@ -12,6 +12,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QHeaderView>
+#include <QSignalBlocker>
 #include <QInputDialog>
 #include <QJsonObject>
 #include <QJsonValue>
@@ -19,6 +20,7 @@
 #include <QLocale>
 #include <QMenu>
 #include <QMessageBox>
+#include <QMetaType>
 #include <QSet>
 #include <QSize>
 #include <QTreeWidget>
@@ -29,6 +31,38 @@
 #include <utility>
 
 namespace {
+
+class SortableFileTreeItem final : public QTreeWidgetItem
+{
+public:
+    using QTreeWidgetItem::QTreeWidgetItem;
+
+    bool operator<(const QTreeWidgetItem &other) const override
+    {
+        const int column = treeWidget() ? treeWidget()->sortColumn() : 0;
+        const QVariant left = data(column, Qt::UserRole);
+        const QVariant right = other.data(column, Qt::UserRole);
+
+        if (left.isValid() && right.isValid()) {
+            const int leftType = left.metaType().id();
+            const int rightType = right.metaType().id();
+            const bool floatingPoint =
+                leftType == QMetaType::Double || leftType == QMetaType::Float
+                || rightType == QMetaType::Double || rightType == QMetaType::Float;
+            const bool integral =
+                (leftType >= QMetaType::Bool && leftType <= QMetaType::ULongLong)
+                && (rightType >= QMetaType::Bool && rightType <= QMetaType::ULongLong);
+
+            if (floatingPoint)
+                return left.toDouble() < right.toDouble();
+
+            if (integral)
+                return left.toLongLong() < right.toLongLong();
+        }
+
+        return text(column).localeAwareCompare(other.text(column)) < 0;
+    }
+};
 
 bool isComplete(qint64 length, qint64 bytesCompleted)
 {
@@ -63,11 +97,13 @@ void TorrentFilesController::setup()
         tr("Priority"),
         tr("Size"),
         tr("Done"),
+        tr("Remaining"),
         tr("Completed")
     });
     fileTreeWidget->setContextMenuPolicy(Qt::CustomContextMenu);
     fileTreeWidget->setAlternatingRowColors(false);
     fileTreeWidget->setRootIsDecorated(true);
+    fileTreeWidget->setSortingEnabled(true);
     fileTreeWidget->setIconSize(QSize(16, 16));
     fileTreeWidget->setItemDelegateForColumn(
         FilePercentColumn,
@@ -76,13 +112,14 @@ void TorrentFilesController::setup()
 
     columnController = std::make_unique<TableColumnController>(
         fileTreeWidget->header(),
-        QStringLiteral("ui/fileTreeWidget/headerState/v5"),
+        QStringLiteral("ui/fileTreeWidget/headerState/v6"),
         QStringLiteral("ui/fileTreeWidget/visibleColumns/v1"),
         QVector<TableColumnController::ColumnDefinition> {
             { FileNameColumn, QStringLiteral("name"), true, false, true },
             { FilePriorityColumn, QStringLiteral("priority"), true, true, false },
             { FileSizeColumn, QStringLiteral("size"), true, true, false },
             { FileDoneColumn, QStringLiteral("done"), true, true, false },
+            { FileRemainingColumn, QStringLiteral("remaining"), false, true, false },
             { FilePercentColumn, QStringLiteral("completed"), true, true, false },
         },
         this);
@@ -93,6 +130,11 @@ void TorrentFilesController::setup()
 
     connect(fileTreeWidget, &QTreeWidget::customContextMenuRequested,
             this, &TorrentFilesController::showContextMenu);
+
+    connect(fileTreeWidget->header(), &QHeaderView::sortIndicatorChanged,
+            this, &TorrentFilesController::handleSortChanged);
+
+    fileTreeWidget->sortItems(FileNameColumn, Qt::AscendingOrder);
 
     if (filterEdit) {
         filterEdit->setClearButtonEnabled(true);
@@ -113,6 +155,15 @@ void TorrentFilesController::restoreViewState()
 {
     if (columnController)
         columnController->restoreState();
+
+    if (!fileTreeWidget)
+        return;
+
+    sortColumn = fileTreeWidget->header()->sortIndicatorSection();
+    sortOrder = fileTreeWidget->header()->sortIndicatorOrder();
+
+    if (!fileRecords.isEmpty())
+        rebuildView();
 }
 
 void TorrentFilesController::clear()
@@ -121,6 +172,7 @@ void TorrentFilesController::clear()
         fileTreeWidget->clear();
 
     torrentFilePaths.clear();
+    fileRecords.clear();
 
     if (placeholderController)
         placeholderController->setMessage(tr("No torrent selected."));
@@ -132,6 +184,7 @@ void TorrentFilesController::setLoading()
         fileTreeWidget->clear();
 
     torrentFilePaths.clear();
+    fileRecords.clear();
 
     if (placeholderController)
         placeholderController->setMessage(tr("Loading files…"));
@@ -314,7 +367,7 @@ QTreeWidgetItem *TorrentFilesController::findOrCreateTopLevelItem(
             return item;
     }
 
-    auto *item = new QTreeWidgetItem(fileTreeWidget);
+    auto *item = new SortableFileTreeItem(fileTreeWidget);
     item->setText(FileNameColumn, name);
     item->setData(FileNameColumn, FileKindRole, QStringLiteral("folder"));
 
@@ -336,7 +389,7 @@ QTreeWidgetItem *TorrentFilesController::findOrCreateChild(
             return child;
     }
 
-    auto *child = new QTreeWidgetItem(parent);
+    auto *child = new SortableFileTreeItem(parent);
     child->setText(FileNameColumn, name);
     child->setData(FileNameColumn,
                    FileKindRole,
@@ -352,32 +405,97 @@ void TorrentFilesController::populate(const QJsonArray &files,
     if (!fileTreeWidget)
         return;
 
-    clear();
+    fileTreeWidget->clear();
+    torrentFilePaths.clear();
+    fileRecords.clear();
 
     if (placeholderController)
         placeholderController->setMessage(files.isEmpty() ? tr("No files reported for this torrent.") : QString());
 
+    fileRecords.reserve(files.size());
+
     for (int fileIndex = 0; fileIndex < files.size(); ++fileIndex) {
         const QJsonObject file = files.at(fileIndex).toObject();
 
-        const QString path = file.value("name").toString();
-        torrentFilePaths.insert(fileIndex, path);
-
-        const qint64 length = file.value("length").toVariant().toLongLong();
-        const qint64 bytesCompleted =
-            file.value("bytesCompleted").toVariant().toLongLong();
-
-        const bool isWanted =
+        FileRecord record;
+        record.index = fileIndex;
+        record.path = file.value(QStringLiteral("name")).toString();
+        record.length = file.value(QStringLiteral("length")).toVariant().toLongLong();
+        record.bytesCompleted =
+            file.value(QStringLiteral("bytesCompleted")).toVariant().toLongLong();
+        record.wanted =
             fileIndex < wanted.size()
                 ? jsonValueToBool(wanted.at(fileIndex), true)
                 : true;
-
-        const int priority =
+        record.priority =
             fileIndex < priorities.size()
                 ? priorities.at(fileIndex).toInt(0)
                 : 0;
 
-        const QStringList parts = path.split('/', Qt::SkipEmptyParts);
+        torrentFilePaths.insert(fileIndex, record.path);
+        fileRecords.append(record);
+    }
+
+    rebuildView();
+}
+
+void TorrentFilesController::populateFileItem(QTreeWidgetItem *item,
+                                               const FileRecord &record,
+                                               bool showFullPath)
+{
+    if (!item)
+        return;
+
+    const double percentDone =
+        record.length > 0
+            ? (static_cast<double>(record.bytesCompleted)
+               / static_cast<double>(record.length)) * 100.0
+            : 0.0;
+    const qint64 remaining = std::max<qint64>(0, record.length - record.bytesCompleted);
+
+    item->setText(FileNameColumn,
+                  showFullPath ? record.path : QFileInfo(record.path).fileName());
+    item->setData(FileNameColumn, Qt::UserRole, record.path.toCaseFolded());
+    item->setData(FileNameColumn, FileKindRole, QStringLiteral("file"));
+    item->setData(FileNameColumn, FileIndexRole, record.index);
+    item->setData(FileNameColumn, FileWantedRole, record.wanted);
+    item->setData(FileNameColumn, FilePriorityRole, record.priority);
+
+    setItemVisualState(
+        item,
+        !record.wanted
+            ? FileTransferVisualState::Skipped
+            : (isComplete(record.length, record.bytesCompleted)
+                   ? FileTransferVisualState::Complete
+                   : FileTransferVisualState::Transferring));
+
+    item->setText(FilePriorityColumn,
+                  record.wanted ? priorityToString(record.priority) : tr("Skip"));
+    item->setData(FilePriorityColumn, Qt::UserRole,
+                  record.wanted ? record.priority + 1 : -1);
+
+    item->setText(FileSizeColumn,
+                  QLocale().formattedDataSize(
+                      record.length, 1, QLocale::DataSizeIecFormat));
+    item->setText(FileDoneColumn,
+                  QLocale().formattedDataSize(
+                      record.bytesCompleted, 1, QLocale::DataSizeIecFormat));
+    item->setText(FileRemainingColumn,
+                  QLocale().formattedDataSize(
+                      remaining, 1, QLocale::DataSizeIecFormat));
+    item->setText(FilePercentColumn,
+                  QStringLiteral("%1%").arg(percentDone, 0, 'f', 1));
+
+    item->setData(FileSizeColumn, Qt::UserRole, record.length);
+    item->setData(FileDoneColumn, Qt::UserRole, record.bytesCompleted);
+    item->setData(FileRemainingColumn, Qt::UserRole, remaining);
+    item->setData(FilePercentColumn, Qt::UserRole, percentDone);
+}
+
+void TorrentFilesController::populateTreeView()
+{
+    for (const FileRecord &record : std::as_const(fileRecords)) {
+        const QStringList parts = record.path.split('/', Qt::SkipEmptyParts);
 
         if (parts.isEmpty())
             continue;
@@ -389,53 +507,84 @@ void TorrentFilesController::populate(const QJsonArray &files,
             current = findOrCreateChild(current, parts.at(i), !isLast);
         }
 
-        if (!current)
-            continue;
-
-        const double percentDone =
-            length > 0
-                ? (static_cast<double>(bytesCompleted) / static_cast<double>(length)) * 100.0
-                : 0.0;
-
-        current->setData(FileNameColumn, FileKindRole, QStringLiteral("file"));
-        current->setData(FileNameColumn, FileIndexRole, fileIndex);
-        current->setData(FileNameColumn, FileWantedRole, isWanted);
-        current->setData(FileNameColumn, FilePriorityRole, priority);
-
-        setItemVisualState(
-            current,
-            !isWanted
-                ? FileTransferVisualState::Skipped
-                : (isComplete(length, bytesCompleted)
-                       ? FileTransferVisualState::Complete
-                       : FileTransferVisualState::Transferring));
-
-        current->setText(FilePriorityColumn,
-                         isWanted ? priorityToString(priority) : tr("Skip"));
-
-        current->setText(FileSizeColumn,
-                         QLocale().formattedDataSize(
-                             length, 1, QLocale::DataSizeIecFormat));
-
-        current->setText(FileDoneColumn,
-                         QLocale().formattedDataSize(
-                             bytesCompleted, 1, QLocale::DataSizeIecFormat));
-
-        current->setText(FilePercentColumn,
-                         QString("%1%").arg(percentDone, 0, 'f', 1));
-
-        current->setData(FileSizeColumn, Qt::UserRole, length);
-        current->setData(FileDoneColumn, Qt::UserRole, bytesCompleted);
-        current->setData(FilePercentColumn, Qt::UserRole, percentDone);
+        populateFileItem(current, record, false);
     }
 
     updateFolderPriorityStates();
     updateFolderVisualStates();
-
+    fileTreeWidget->setRootIsDecorated(true);
     fileTreeWidget->expandToDepth(0);
-    fileTreeWidget->resizeColumnToContents(FileNameColumn);
+}
 
+void TorrentFilesController::populateFlatView()
+{
+    for (const FileRecord &record : std::as_const(fileRecords)) {
+        auto *item = new SortableFileTreeItem(fileTreeWidget);
+        populateFileItem(item, record, true);
+    }
+
+    fileTreeWidget->setRootIsDecorated(false);
+}
+
+void TorrentFilesController::rebuildView()
+{
+    if (!fileTreeWidget || rebuildingView)
+        return;
+
+    QSet<int> selectedIndices;
+    for (QTreeWidgetItem *selectedItem : fileTreeWidget->selectedItems()) {
+        const QList<int> indices = fileIndicesForItem(selectedItem);
+        for (int index : indices)
+            selectedIndices.insert(index);
+    }
+
+    rebuildingView = true;
+    const QSignalBlocker blocker(fileTreeWidget->header());
+    fileTreeWidget->setSortingEnabled(false);
+    fileTreeWidget->clear();
+
+    if (sortColumn == FileNameColumn)
+        populateTreeView();
+    else
+        populateFlatView();
+
+    fileTreeWidget->setSortingEnabled(true);
+    fileTreeWidget->sortItems(sortColumn, sortOrder);
+
+    std::function<void(QTreeWidgetItem *)> restoreSelection =
+        [&](QTreeWidgetItem *item) {
+            if (!item)
+                return;
+
+            const QVariant indexValue = item->data(FileNameColumn, FileIndexRole);
+            if (indexValue.isValid() && selectedIndices.contains(indexValue.toInt()))
+                item->setSelected(true);
+
+            for (int i = 0; i < item->childCount(); ++i)
+                restoreSelection(item->child(i));
+        };
+
+    for (int i = 0; i < fileTreeWidget->topLevelItemCount(); ++i)
+        restoreSelection(fileTreeWidget->topLevelItem(i));
+
+    fileTreeWidget->resizeColumnToContents(FileNameColumn);
     applyFilter(filterEdit ? filterEdit->text() : QString());
+    rebuildingView = false;
+}
+
+void TorrentFilesController::handleSortChanged(int logicalIndex,
+                                               Qt::SortOrder order)
+{
+    if (rebuildingView || logicalIndex < 0 || logicalIndex >= FileColumnCount)
+        return;
+
+    const bool viewShapeChanged =
+        (sortColumn == FileNameColumn) != (logicalIndex == FileNameColumn);
+    sortColumn = logicalIndex;
+    sortOrder = order;
+
+    if (viewShapeChanged)
+        rebuildView();
 }
 
 void TorrentFilesController::applyFilter(const QString &text)

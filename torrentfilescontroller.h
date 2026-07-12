@@ -7,6 +7,7 @@
 #include <QList>
 #include <QPoint>
 #include <QString>
+#include <QVector>
 #include <functional>
 #include <memory>
 
@@ -54,6 +55,7 @@ private:
         FilePriorityColumn,
         FileSizeColumn,
         FileDoneColumn,
+        FileRemainingColumn,
         FilePercentColumn,
         FileColumnCount
     };
@@ -63,6 +65,15 @@ private:
         FileIndexRole,
         FileWantedRole,
         FilePriorityRole
+    };
+
+    struct FileRecord {
+        int index = -1;
+        QString path;
+        qint64 length = 0;
+        qint64 bytesCompleted = 0;
+        bool wanted = true;
+        int priority = 0;
     };
 
     enum class FileTransferVisualState {
@@ -78,6 +89,11 @@ private:
     static QString priorityToString(int priority);
 
     void setItemVisualState(QTreeWidgetItem *item, FileTransferVisualState state);
+    void rebuildView();
+    void populateTreeView();
+    void populateFlatView();
+    void populateFileItem(QTreeWidgetItem *item, const FileRecord &record, bool showFullPath);
+    void handleSortChanged(int logicalIndex, Qt::SortOrder order);
     void updateFolderVisualStates();
     FileTransferVisualState updateFolderVisualState(QTreeWidgetItem *item);
 
@@ -114,6 +130,10 @@ private:
     int torrentId = -1;
     QString torrentDownloadDir;
     QHash<int, QString> torrentFilePaths;
+    QVector<FileRecord> fileRecords;
+    int sortColumn = FileNameColumn;
+    Qt::SortOrder sortOrder = Qt::AscendingOrder;
+    bool rebuildingView = false;
     std::function<QList<FolderMapping>()> folderMappingsProvider;
     std::unique_ptr<TableColumnController> columnController;
     std::unique_ptr<TablePlaceholderController> placeholderController;
