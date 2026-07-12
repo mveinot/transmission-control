@@ -25,6 +25,9 @@ public:
     bool handleCloseEvent(QCloseEvent *event);
     bool isTrayAvailable() const;
     bool isTrayVisible() const;
+    bool showNotification(const QString &title,
+                          const QString &message,
+                          int millisecondsTimeoutHint = 5000);
 
 signals:
     void statusMessageRequested(const QString &message, int timeoutMs = 3000);

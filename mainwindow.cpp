@@ -640,7 +640,16 @@ MainWindow::MainWindow(QWidget *parent)
     trayController->setTorrentGlobalActions(ui->actionStart_All_Torrents,
                                             ui->actionStop_All_Torrents);
 
+#if defined(Q_OS_WIN)
+    notificationController = new NotificationController(
+        this,
+        [this](const QString &title, const QString &message, int timeoutMs) {
+            return trayController &&
+                   trayController->showNotification(title, message, timeoutMs);
+        });
+#else
     notificationController = new NotificationController(this);
+#endif
     notificationController->setServerName(ui->comboServers->currentText());
 
     connect(notificationController, &NotificationController::statusMessageRequested,
