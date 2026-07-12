@@ -105,6 +105,8 @@ QString DialogAbout::buildAboutHtml() const
                "<p>Version: %1</p>"
                "<p>Build date: %2</p>"
                "<p>Copyright © Mark Veinot</p>"
+               "<p><a href=\"https://planetary.mvgrafx.net/\">"
+               "planetary.mvgrafx.net</a></p>"
                ).arg(QCoreApplication::applicationVersion().toHtmlEscaped(),
                      QStringLiteral(__DATE__).toHtmlEscaped());
 }

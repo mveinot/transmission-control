@@ -23,6 +23,7 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QDesktopServices>
 #include <QDir>
 #include <QEvent>
 #include <QFileDialog>
@@ -38,6 +39,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QKeySequence>
 #include <QLineEdit>
 #include <QLocale>
 #include <QMenu>
@@ -224,6 +226,27 @@ void MainWindow::clearGeneralTab()
 
     if (torrentPeersController)
         torrentPeersController->clear();
+}
+
+void MainWindow::setupPlatformMenus()
+{
+    ui->actionClose_Window->setShortcut(QKeySequence::Close);
+    ui->actionClose_Window->setMenuRole(QAction::NoRole);
+
+#ifdef Q_OS_MACOS
+    // Let Qt merge these actions into the standard macOS application menu.
+    // Keeping the actions in File in the .ui preserves the existing layout on
+    // Windows and Linux, while their menu roles relocate them on macOS.
+    ui->actionAbout->setMenuRole(QAction::AboutRole);
+    ui->actionQuit->setMenuRole(QAction::QuitRole);
+
+    ui->actionSettings->setText(tr("Settings…"));
+    ui->actionSettings->setMenuRole(QAction::PreferencesRole);
+    ui->actionSettings->setShortcut(QKeySequence::Preferences);
+
+    ui->actionServer_Setup->setMenuRole(QAction::ApplicationSpecificRole);
+    ui->actionTransmission_Settings->setMenuRole(QAction::ApplicationSpecificRole);
+#endif
 }
 
 void MainWindow::setupViewMenu()
@@ -437,6 +460,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // set up the main UI
     ui->setupUi(this);
+    setupPlatformMenus();
     setupViewMenu();
     applyCustomActionIcons(ui);
     TorrentGeneralController::Widgets generalWidgets;
@@ -526,14 +550,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(client, &rpc_client::torrentAdded,
             notificationController, &NotificationController::handleTorrentAdded);
-
-    // UI setup
-    mainMenu = new QMenu(this);
-    this->menuBar()->addMenu(this->mainMenu);
-    aboutAction = new QAction(this);
-    this->aboutAction->setMenuRole(QAction::AboutRole);
-    this->mainMenu->addAction(this->aboutAction);
-    this->setMenuBar(this->menuBar());
 
     torrentFilesController = new TorrentFilesController(
         ui->fileTreeWidget,
@@ -740,14 +756,28 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionAlternative_Speed_Mode, &QAction::triggered,
             this, &MainWindow::toggleAlternativeSpeedMode);
 
+    connect(ui->actionClose_Window, &QAction::triggered,
+            this, &QWidget::close);
+
     connect(ui->actionServer_Setup, &QAction::triggered, this, &MainWindow::onServerSetupTriggered);
 
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTorrentList);
+    QAction *projectWebsiteAction = new QAction(tr("Planetary Website..."), this);
+    ui->menuHelp->insertAction(ui->actionCheckForUpdates, projectWebsiteAction);
+    connect(projectWebsiteAction, &QAction::triggered, this, [this]() {
+        const QUrl projectUrl(QStringLiteral("https://planetary.mvgrafx.net/"));
+        if (!QDesktopServices::openUrl(projectUrl) && statusBarController) {
+            statusBarController->showMessage(
+                tr("Could not open the Planetary website."),
+                5000
+                );
+        }
+    });
+
     QAction *diagnosticsAction = new QAction(tr("Diagnostics..."), this);
-    ui->menuHelp->insertAction(aboutAction, diagnosticsAction);
-    ui->menuHelp->insertSeparator(aboutAction);
+    ui->menuHelp->insertAction(ui->actionAbout, diagnosticsAction);
+    ui->menuHelp->insertSeparator(ui->actionAbout);
     connect(diagnosticsAction, &QAction::triggered, this, &MainWindow::showDiagnostics);
-    connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
 
     connect(client, &rpc_client::torrentDetailsReceived,
             this,

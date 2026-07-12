@@ -550,6 +550,9 @@
            <property name="selectionBehavior">
             <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
            </property>
+           <property name="showGrid">
+            <bool>false</bool>
+           </property>
            <property name="sortingEnabled">
             <bool>true</bool>
            </property>
@@ -564,6 +567,9 @@
         <layout class="QHBoxLayout" name="horizontalLayout_2">
          <item>
           <widget class="QTableWidget" name="peerTableWidget">
+           <property name="showGrid">
+            <bool>false</bool>
+           </property>
            <attribute name="verticalHeaderVisible">
             <bool>false</bool>
            </attribute>
@@ -590,16 +596,27 @@
      <string>File</string>
     </property>
     <addaction name="action_Open_Torrent"/>
+   <addaction name="actionAdd_Torrent_from_Magnet_Link"/>
+   <addaction name="separator"/>
     <addaction name="actionServer_Setup"/>
     <addaction name="actionSettings"/>
     <addaction name="actionTransmission_Settings"/>
-    <addaction name="actionAlternative_Speed_Mode"/>
     <addaction name="separator"/>
     <addaction name="actionExport_Settings"/>
     <addaction name="actionImport_Settings"/>
     <addaction name="separator"/>
+   <addaction name="actionClose_Window"/>
     <addaction name="actionQuit"/>
    </widget>
+  <widget class="QMenu" name="menuTransfers">
+   <property name="title">
+    <string>Transfers</string>
+   </property>
+   <addaction name="actionStart_All_Torrents"/>
+   <addaction name="actionStop_All_Torrents"/>
+   <addaction name="separator"/>
+   <addaction name="actionAlternative_Speed_Mode"/>
+  </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
      <string>Help</string>
@@ -608,6 +625,7 @@
     <addaction name="actionCheckForUpdates"/>
    </widget>
    <addaction name="menuFile"/>
+  <addaction name="menuTransfers"/>
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -760,7 +778,7 @@
      <normaloff>:/icons/ui/action-add-magnet.png</normaloff>:/icons/ui/action-add-magnet.png</iconset>
    </property>
    <property name="text">
-    <string>Add Torrent from Magnet Link</string>
+    <string>Open Magnet Link...</string>
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::TextHeuristicRole</enum>
@@ -867,6 +885,11 @@
   <action name="actionQuit">
    <property name="text">
     <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionClose_Window">
+   <property name="text">
+    <string>Close Window</string>
    </property>
   </action>
   <action name="actionForce_Start_Torrent">

@@ -88,8 +88,6 @@ private slots:
 private:
     Ui::MainWindow *ui;
     QTimer *timer;
-    QMenu *mainMenu;
-    QAction *aboutAction;
     TorrentModel *torrentModel = nullptr;
     rpc_client *client = nullptr;
     TorrentSortProxyModel *proxy = nullptr;
@@ -113,6 +111,7 @@ private:
     void applyAppSettings();
     void updateAlternativeSpeedAction(bool enabled, bool available);
     void setupViewMenu();
+    void setupPlatformMenus();
     void restoreViewSettings();
     void saveViewSettings() const;
     void applyToolBarButtonStyle(Qt::ToolButtonStyle style);
