@@ -23,6 +23,9 @@ namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
 class QActionGroup;
+class ActivityLogModel;
+class QDockWidget;
+class QTableView;
 class TorrentAddController;
 class WatchFolderManager;
 class WatchFolderController;
@@ -111,6 +114,8 @@ private:
     void applyAppSettings();
     void updateAlternativeSpeedAction(bool enabled, bool available);
     void setupViewMenu();
+    void setupActivityDock();
+    void recordActivity(const QString &event, const QString &details, const QString &server);
     void setupPlatformMenus();
     void restoreViewSettings();
     void saveViewSettings() const;
@@ -136,6 +141,11 @@ private:
     QAction *showToolBarAction = nullptr;
     QAction *showStatusBarAction = nullptr;
     QActionGroup *toolBarStyleActionGroup = nullptr;
+    QDockWidget *activityDock = nullptr;
+    QTableView *activityTable = nullptr;
+    ActivityLogModel *activityLogModel = nullptr;
+    bool activityConnectionEstablished = false;
+    bool activityConnectionFailed = false;
 
 protected:
     void closeEvent(QCloseEvent *event) override;

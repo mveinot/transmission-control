@@ -227,6 +227,10 @@ void NotificationController::setServerName(const QString &serverName)
 
 void NotificationController::handleTorrentAdded(int torrentId, const QString &name)
 {
+    emit activityEventObserved(tr("Torrent added"),
+                               name.isEmpty() ? tr("Transmission accepted a new torrent.") : name,
+                               m_serverName);
+
     if (torrentId >= 0)
         m_directlyNotifiedAddedTorrentIds.insert(torrentId);
     if (!eventEnabled(SettingsKeys::NotifyTorrentAdded))
@@ -262,36 +266,43 @@ void NotificationController::processTorrentList(const QVector<torrent> &torrents
         const auto previousIt = m_knownTorrentStates.constFind(id);
 
         if (previousIt == m_knownTorrentStates.constEnd()) {
-            if (m_directlyNotifiedAddedTorrentIds.remove(id) == 0 &&
-                eventEnabled(SettingsKeys::NotifyTorrentAdded)) {
-                dispatchEvent(tr("Torrent added"), torrentItem.getName(),
-                              contextForTorrent(QStringLiteral("torrent_added"), torrentItem,
-                                                m_serverName), 5000);
+            if (m_directlyNotifiedAddedTorrentIds.remove(id) == 0) {
+                emit activityEventObserved(tr("Torrent added"), torrentItem.getName(), m_serverName);
+                if (eventEnabled(SettingsKeys::NotifyTorrentAdded)) {
+                    dispatchEvent(tr("Torrent added"), torrentItem.getName(),
+                                  contextForTorrent(QStringLiteral("torrent_added"), torrentItem,
+                                                    m_serverName), 5000);
+                }
             }
             continue;
         }
 
         const TorrentState &previous = previousIt.value();
-        if (!previous.complete && current.complete &&
-            eventEnabled(SettingsKeys::NotifyTorrentCompleted)) {
-            dispatchEvent(tr("Torrent finished"), torrentItem.getName(),
+        if (!previous.complete && current.complete) {
+            emit activityEventObserved(tr("Torrent finished"), torrentItem.getName(), m_serverName);
+            if (eventEnabled(SettingsKeys::NotifyTorrentCompleted)) {
+                dispatchEvent(tr("Torrent finished"), torrentItem.getName(),
                           contextForTorrent(QStringLiteral("torrent_completed"), torrentItem,
                                             m_serverName), 5000);
+            }
         }
 
-        if (!previous.error && current.error && eventEnabled(SettingsKeys::NotifyTorrentError)) {
+        if (!previous.error && current.error) {
             const QString details = current.errorString.isEmpty()
                                         ? torrentItem.getName()
                                         : tr("%1\n%2").arg(torrentItem.getName(), current.errorString);
-            dispatchEvent(tr("Torrent error"), details,
-                          contextForTorrent(QStringLiteral("torrent_error"), torrentItem,
+            emit activityEventObserved(tr("Torrent error"), details, m_serverName);
+            if (eventEnabled(SettingsKeys::NotifyTorrentError))
+                dispatchEvent(tr("Torrent error"), details,
+                              contextForTorrent(QStringLiteral("torrent_error"), torrentItem,
                                             m_serverName), 8000);
         }
 
-        if (!previous.stalled && current.stalled && !current.complete &&
-            eventEnabled(SettingsKeys::NotifyTorrentStalled)) {
-            dispatchEvent(tr("Torrent stalled"), torrentItem.getName(),
-                          contextForTorrent(QStringLiteral("torrent_stalled"), torrentItem,
+        if (!previous.stalled && current.stalled && !current.complete) {
+            emit activityEventObserved(tr("Torrent stalled"), torrentItem.getName(), m_serverName);
+            if (eventEnabled(SettingsKeys::NotifyTorrentStalled))
+                dispatchEvent(tr("Torrent stalled"), torrentItem.getName(),
+                              contextForTorrent(QStringLiteral("torrent_stalled"), torrentItem,
                                             m_serverName), 8000);
         }
     }

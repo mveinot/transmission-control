@@ -203,6 +203,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         torrentgeneralcontroller.h torrentgeneralcontroller.cpp
         traycontroller.h traycontroller.cpp
         notificationcontroller.h notificationcontroller.cpp
+        activitylogmodel.h activitylogmodel.cpp
         statusbarcontroller.h statusbarcontroller.cpp
         torrentpropertiesdialog.h torrentpropertiesdialog.cpp
     )

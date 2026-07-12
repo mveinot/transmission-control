@@ -13,8 +13,10 @@
 #include "statusbarcontroller.h"
 #include "statisticsdialog.h"
 #include "notificationcontroller.h"
+#include "activitylogmodel.h"
 #include "appicons.h"
 #include <QActionGroup>
+#include <QAbstractItemView>
 #include <QApplication>
 #include <QAction>
 #include <QCheckBox>
@@ -24,6 +26,7 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDesktopServices>
+#include <QDockWidget>
 #include <QDir>
 #include <QEvent>
 #include <QFileDialog>
@@ -47,9 +50,12 @@
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QSpinBox>
+#include <QScrollBar>
 #include <QStringList>
 #include <QSizePolicy>
 #include <QTableWidget>
+#include <QTableView>
+#include <QClipboard>
 #include <QTableWidgetItem>
 #include <QToolBar>
 #include <QTimer>
@@ -79,6 +85,7 @@ constexpr int MaximumUpdateIntervalSeconds = 3600;
 constexpr const char *MainWindowToolBarVisibleKey = "mainWindow/toolBarVisible";
 constexpr const char *MainWindowStatusBarVisibleKey = "mainWindow/statusBarVisible";
 constexpr const char *MainWindowToolBarStyleKey = "mainWindow/toolBarButtonStyle";
+constexpr const char *MainWindowStateKey = "mainWindow/stateV2";
 constexpr Qt::ToolButtonStyle DefaultToolBarButtonStyle = Qt::ToolButtonIconOnly;
 
 bool isSupportedToolBarButtonStyle(Qt::ToolButtonStyle style)
@@ -314,6 +321,97 @@ void MainWindow::setupViewMenu()
     restoreViewSettings();
 }
 
+void MainWindow::setupActivityDock()
+{
+    activityDock = new QDockWidget(tr("Activity"), this);
+    activityDock->setObjectName(QStringLiteral("activityDock"));
+    activityDock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    activityDock->setFeatures(QDockWidget::DockWidgetClosable |
+                              QDockWidget::DockWidgetMovable |
+                              QDockWidget::DockWidgetFloatable);
+
+    activityLogModel = new ActivityLogModel(activityDock);
+    activityTable = new QTableView(activityDock);
+    activityTable->setModel(activityLogModel);
+    activityTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    activityTable->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    activityTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    activityTable->setAlternatingRowColors(true);
+    activityTable->setShowGrid(false);
+    activityTable->verticalHeader()->hide();
+    activityTable->horizontalHeader()->setStretchLastSection(false);
+    activityTable->horizontalHeader()->setSectionResizeMode(ActivityLogModel::TimeColumn,
+                                                             QHeaderView::ResizeToContents);
+    activityTable->horizontalHeader()->setSectionResizeMode(ActivityLogModel::EventColumn,
+                                                             QHeaderView::ResizeToContents);
+    activityTable->horizontalHeader()->setSectionResizeMode(ActivityLogModel::DetailsColumn,
+                                                             QHeaderView::Stretch);
+    activityTable->horizontalHeader()->setSectionResizeMode(ActivityLogModel::ServerColumn,
+                                                             QHeaderView::ResizeToContents);
+    activityTable->setContextMenuPolicy(Qt::CustomContextMenu);
+    activityDock->setWidget(activityTable);
+    addDockWidget(Qt::BottomDockWidgetArea, activityDock);
+
+    QAction *toggleAction = activityDock->toggleViewAction();
+    toggleAction->setText(tr("Activity"));
+    toggleAction->setToolTip(tr("Show or hide activity observed while Planetary is connected"));
+    if (viewMenu) {
+        viewMenu->insertAction(viewMenu->actions().value(2), toggleAction);
+    }
+
+    connect(activityTable, &QTableView::customContextMenuRequested,
+            this, [this](const QPoint &position) {
+                QMenu menu(activityTable);
+                QAction *copyAction = menu.addAction(tr("Copy"));
+                copyAction->setEnabled(activityTable->selectionModel()->hasSelection());
+                QAction *clearAction = menu.addAction(tr("Clear Activity"));
+                clearAction->setEnabled(activityLogModel->rowCount() > 0);
+
+                QAction *chosen = menu.exec(activityTable->viewport()->mapToGlobal(position));
+                if (chosen == copyAction) {
+                    QStringList lines;
+                    const QModelIndexList rows =
+                        activityTable->selectionModel()->selectedRows();
+                    for (const QModelIndex &rowIndex : rows) {
+                        QStringList columns;
+                        for (int column = 0; column < ActivityLogModel::ColumnCount; ++column)
+                            columns << activityLogModel->index(rowIndex.row(), column).data().toString();
+                        lines << columns.join(QLatin1Char('\t'));
+                    }
+                    QApplication::clipboard()->setText(lines.join(QLatin1Char('\n')));
+                } else if (chosen == clearAction) {
+                    activityLogModel->clear();
+                }
+            });
+
+    QSettings settings;
+    const QByteArray state = settings.value(QString::fromLatin1(MainWindowStateKey)).toByteArray();
+    if (!state.isEmpty()) {
+        restoreState(state, 2);
+    } else {
+        activityDock->hide();
+    }
+
+    connect(activityDock, &QDockWidget::visibilityChanged, this, [this](bool visible) {
+        if (visible && !activityDock->isFloating())
+            resizeDocks({activityDock}, {150}, Qt::Vertical);
+    });
+}
+
+void MainWindow::recordActivity(const QString &event, const QString &details,
+                                const QString &server)
+{
+    if (!activityLogModel)
+        return;
+
+    const bool wasAtBottom = activityTable &&
+        activityTable->verticalScrollBar()->value() >=
+            activityTable->verticalScrollBar()->maximum();
+    activityLogModel->addEvent(event, details, server);
+    if (wasAtBottom && activityTable)
+        activityTable->scrollToBottom();
+}
+
 void MainWindow::restoreViewSettings()
 {
     QSettings settings;
@@ -353,6 +451,7 @@ void MainWindow::saveViewSettings() const
         DefaultToolBarButtonStyle);
     settings.setValue(QString::fromLatin1(MainWindowToolBarStyleKey),
                       static_cast<int>(toolBarStyle));
+    settings.setValue(QString::fromLatin1(MainWindowStateKey), saveState(2));
     settings.sync();
 }
 
@@ -462,6 +561,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     setupPlatformMenus();
     setupViewMenu();
+    setupActivityDock();
     applyCustomActionIcons(ui);
     TorrentGeneralController::Widgets generalWidgets;
     generalWidgets.generalTab = ui->general;
@@ -548,6 +648,9 @@ MainWindow::MainWindow(QWidget *parent)
                 if (statusBarController)
                     statusBarController->showMessage(message, timeoutMs);
             });
+
+    connect(notificationController, &NotificationController::activityEventObserved,
+            this, &MainWindow::recordActivity);
 
     connect(client, &rpc_client::torrentAdded,
             notificationController, &NotificationController::handleTorrentAdded);
@@ -745,6 +848,31 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(client, &rpc_client::serverChanged,
             torrentModel, &TorrentModel::clear);
+
+    connect(client, &rpc_client::serverChanged, this, [this]() {
+        activityConnectionEstablished = false;
+        activityConnectionFailed = false;
+        recordActivity(tr("Server changed"), tr("Switched active Transmission server."),
+                       ui->comboServers->currentText());
+    });
+
+    connect(client, &rpc_client::updateFailed, this, [this](const QString &message) {
+        if (!activityConnectionFailed) {
+            recordActivity(tr("Connection lost"), message, ui->comboServers->currentText());
+            activityConnectionFailed = true;
+        }
+    });
+
+    connect(client, &rpc_client::updateFinished, this, [this]() {
+        const QString server = ui->comboServers->currentText();
+        if (activityConnectionFailed) {
+            recordActivity(tr("Reconnected"), tr("Connection to Transmission was restored."), server);
+        } else if (!activityConnectionEstablished) {
+            recordActivity(tr("Connected"), tr("Connected to Transmission."), server);
+        }
+        activityConnectionEstablished = true;
+        activityConnectionFailed = false;
+    });
 
     connect(client, &rpc_client::sessionSettingsReceived,
             this, &MainWindow::handleSessionSettingsReceived);

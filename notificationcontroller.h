@@ -36,6 +36,8 @@ public:
     static QStringList parseExternalArguments(const QString &argumentTemplate);
 
 signals:
+    void activityEventObserved(const QString &event, const QString &details,
+                               const QString &server);
     void statusMessageRequested(const QString &message, int timeoutMs = 3000);
 
 private:
