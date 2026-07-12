@@ -114,7 +114,12 @@ private:
     void applyAppSettings();
     void updateAlternativeSpeedAction(bool enabled, bool available);
     void setupViewMenu();
+    void setupEditMenu();
     void setupActivityDock();
+    void copyFromFocusedWidget();
+    void selectAllInFocusedWidget();
+    void focusTorrentSearch();
+    void focusFileSearch();
     void recordActivity(const QString &event, const QString &details, const QString &server);
     void setupPlatformMenus();
     void restoreViewSettings();

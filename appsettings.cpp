@@ -83,14 +83,20 @@ AppSettings::AppSettings(QWidget *parent)
 
     connect(ui->buttonResetWatchFolderHistory, &QPushButton::clicked,
             this, [this]() {
-                const QMessageBox::StandardButton choice = QMessageBox::warning(
-                    this,
+                QMessageBox confirmation(
+                    QMessageBox::Warning,
                     tr("Reset Imported Torrent History"),
                     tr("This clears Planetary's record of .torrent files already imported from the watch folder.\n\n"
                        "Any .torrent files still present may be submitted to Transmission again. Continue?"),
                     QMessageBox::Yes | QMessageBox::No,
-                    QMessageBox::No
-                    );
+                    this);
+                confirmation.setDefaultButton(QMessageBox::No);
+#ifdef Q_OS_MACOS
+                confirmation.setWindowModality(Qt::WindowModal);
+                confirmation.setWindowFlag(Qt::Sheet, true);
+#endif
+                const QMessageBox::StandardButton choice =
+                    static_cast<QMessageBox::StandardButton>(confirmation.exec());
 
                 if (choice != QMessageBox::Yes)
                     return;

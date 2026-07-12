@@ -158,14 +158,20 @@ bool importSettings(QWidget *parent, const QString &filePath)
         return false;
     }
 
+    QMessageBox confirmation(
+        QMessageBox::Question,
+        QObject::tr("Import Settings"),
+        QObject::tr("Importing settings will replace your current Planetary settings.\n\nContinue?"),
+        QMessageBox::Yes | QMessageBox::No,
+        parent);
+    confirmation.setDefaultButton(QMessageBox::No);
+#ifdef Q_OS_MACOS
+    confirmation.setWindowModality(Qt::WindowModal);
+    confirmation.setWindowFlag(Qt::Sheet, true);
+#endif
+
     const QMessageBox::StandardButton choice =
-        QMessageBox::question(
-            parent,
-            QObject::tr("Import Settings"),
-            QObject::tr("Importing settings will replace your current Planetary settings.\n\nContinue?"),
-            QMessageBox::Yes | QMessageBox::No,
-            QMessageBox::No
-            );
+        static_cast<QMessageBox::StandardButton>(confirmation.exec());
 
     if (choice != QMessageBox::Yes)
         return false;

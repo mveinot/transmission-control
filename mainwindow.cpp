@@ -39,6 +39,7 @@
 #include <QHeaderView>
 #include <QInputDialog>
 #include <QIcon>
+#include <QItemSelectionModel>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
@@ -57,11 +58,15 @@
 #include <QTableView>
 #include <QClipboard>
 #include <QTableWidgetItem>
+#include <QTreeView>
+#include <QTextEdit>
+#include <QPlainTextEdit>
 #include <QToolBar>
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <functional>
+#include <algorithm>
 #include <utility>
 #include <initializer_list>
 
@@ -254,6 +259,153 @@ void MainWindow::setupPlatformMenus()
     ui->actionServer_Setup->setMenuRole(QAction::ApplicationSpecificRole);
     ui->actionTransmission_Settings->setMenuRole(QAction::ApplicationSpecificRole);
 #endif
+}
+
+void MainWindow::setupEditMenu()
+{
+    auto *editMenu = new QMenu(tr("Edit"), this);
+    menuBar()->insertMenu(ui->menuTransfers->menuAction(), editMenu);
+
+    QAction *copyAction = editMenu->addAction(tr("Copy"));
+    copyAction->setShortcut(QKeySequence::Copy);
+    copyAction->setShortcutContext(Qt::WindowShortcut);
+    connect(copyAction, &QAction::triggered, this, &MainWindow::copyFromFocusedWidget);
+
+    QAction *selectAllAction = editMenu->addAction(tr("Select All"));
+    selectAllAction->setShortcut(QKeySequence::SelectAll);
+    selectAllAction->setShortcutContext(Qt::WindowShortcut);
+    connect(selectAllAction, &QAction::triggered, this, &MainWindow::selectAllInFocusedWidget);
+
+    editMenu->addSeparator();
+
+    QAction *findAction = editMenu->addAction(tr("Find Torrents"));
+    findAction->setShortcut(QKeySequence::Find);
+    findAction->setShortcutContext(Qt::WindowShortcut);
+    connect(findAction, &QAction::triggered, this, &MainWindow::focusTorrentSearch);
+
+    QAction *findFilesAction = editMenu->addAction(tr("Find Files"));
+#ifdef Q_OS_MACOS
+    findFilesAction->setShortcut(QKeySequence(QStringLiteral("Meta+Alt+F")));
+#else
+    findFilesAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Alt+F")));
+#endif
+    findFilesAction->setShortcutContext(Qt::WindowShortcut);
+    connect(findFilesAction, &QAction::triggered, this, &MainWindow::focusFileSearch);
+
+    ui->action_Open_Torrent->setShortcut(QKeySequence::Open);
+#ifdef Q_OS_MACOS
+    ui->actionAdd_Torrent_from_Magnet_Link->setShortcut(
+        QKeySequence(QStringLiteral("Meta+Shift+O")));
+#else
+    ui->actionAdd_Torrent_from_Magnet_Link->setShortcut(
+        QKeySequence(QStringLiteral("Ctrl+Shift+O")));
+#endif
+}
+
+void MainWindow::copyFromFocusedWidget()
+{
+    QWidget *focused = QApplication::focusWidget();
+    if (!focused)
+        return;
+
+    if (auto *lineEdit = qobject_cast<QLineEdit *>(focused)) {
+        lineEdit->copy();
+        return;
+    }
+
+    if (auto *textEdit = qobject_cast<QTextEdit *>(focused)) {
+        textEdit->copy();
+        return;
+    }
+
+    if (auto *plainTextEdit = qobject_cast<QPlainTextEdit *>(focused)) {
+        plainTextEdit->copy();
+        return;
+    }
+
+    auto *view = qobject_cast<QAbstractItemView *>(focused);
+    if (!view)
+        view = qobject_cast<QAbstractItemView *>(focused->parentWidget());
+    if (!view || !view->selectionModel() || !view->model())
+        return;
+
+    QModelIndexList rows = view->selectionModel()->selectedRows();
+    if (rows.isEmpty()) {
+        const QModelIndexList indexes = view->selectionModel()->selectedIndexes();
+        if (indexes.isEmpty())
+            return;
+        rows = indexes;
+    }
+
+    std::sort(rows.begin(), rows.end(), [](const QModelIndex &left, const QModelIndex &right) {
+        if (left.row() != right.row())
+            return left.row() < right.row();
+        return left.column() < right.column();
+    });
+
+    QStringList output;
+    int previousRow = -1;
+    for (const QModelIndex &rowIndex : std::as_const(rows)) {
+        if (rowIndex.row() == previousRow)
+            continue;
+        previousRow = rowIndex.row();
+
+        QStringList columns;
+        for (int column = 0; column < view->model()->columnCount(rowIndex.parent()); ++column) {
+            const bool hidden =
+                (qobject_cast<QTableView *>(view) &&
+                 qobject_cast<QTableView *>(view)->isColumnHidden(column)) ||
+                (qobject_cast<QTreeView *>(view) &&
+                 qobject_cast<QTreeView *>(view)->isColumnHidden(column));
+            if (hidden)
+                continue;
+            columns << view->model()->index(rowIndex.row(), column, rowIndex.parent())
+                           .data(Qt::DisplayRole).toString();
+        }
+        output << columns.join(QLatin1Char('\t'));
+    }
+
+    if (!output.isEmpty())
+        QApplication::clipboard()->setText(output.join(QLatin1Char('\n')));
+}
+
+void MainWindow::selectAllInFocusedWidget()
+{
+    QWidget *focused = QApplication::focusWidget();
+    if (!focused)
+        return;
+
+    if (auto *lineEdit = qobject_cast<QLineEdit *>(focused)) {
+        lineEdit->selectAll();
+        return;
+    }
+    if (auto *textEdit = qobject_cast<QTextEdit *>(focused)) {
+        textEdit->selectAll();
+        return;
+    }
+    if (auto *plainTextEdit = qobject_cast<QPlainTextEdit *>(focused)) {
+        plainTextEdit->selectAll();
+        return;
+    }
+
+    auto *view = qobject_cast<QAbstractItemView *>(focused);
+    if (!view)
+        view = qobject_cast<QAbstractItemView *>(focused->parentWidget());
+    if (view)
+        view->selectAll();
+}
+
+void MainWindow::focusTorrentSearch()
+{
+    ui->editTorrentFilter->setFocus(Qt::ShortcutFocusReason);
+    ui->editTorrentFilter->selectAll();
+}
+
+void MainWindow::focusFileSearch()
+{
+    ui->tabWidget->setCurrentWidget(ui->fileTreeWidget);
+    ui->editFileFilter->setFocus(Qt::ShortcutFocusReason);
+    ui->editFileFilter->selectAll();
 }
 
 void MainWindow::setupViewMenu()
@@ -560,6 +712,7 @@ MainWindow::MainWindow(QWidget *parent)
     // set up the main UI
     ui->setupUi(this);
     setupPlatformMenus();
+    setupEditMenu();
     setupViewMenu();
     setupActivityDock();
     applyCustomActionIcons(ui);

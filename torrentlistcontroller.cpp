@@ -798,6 +798,10 @@ void TorrentListController::deleteSelectedTorrents()
     noButton = msgBox.addButton(tr("Cancel"), QMessageBox::RejectRole);
 
     msgBox.setDefaultButton(noButton);
+#ifdef Q_OS_MACOS
+    msgBox.setWindowModality(Qt::WindowModal);
+    msgBox.setWindowFlag(Qt::Sheet, true);
+#endif
     msgBox.exec();
 
     if (msgBox.clickedButton() == noButton)
