@@ -1,6 +1,8 @@
 # <img src="Resources/icons/planetary-512px.png" alt="Planetary icon" width="32"> Planetary
 (Previously "transmission-control")
 
+[Official Web Site](https://planetary.mvgrafx.net)
+
 This project aims to re-implement Transmission Remote GUI (https://github.com/transmission-remote-gui/transgui) - a remote GUI for the Transmission torrent daemon
 
 The original project was written in Pascal and appears to no longer be maintained. It will soon no longer be compatible with macOS on Apple Silicon.
