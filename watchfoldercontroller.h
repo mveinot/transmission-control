@@ -8,6 +8,8 @@ class rpc_client;
 class TorrentAddController;
 class WatchFolderManager;
 
+// Bridges stable-file detection to torrent addition and closes the retry loop
+// using path-correlated RPC success/failure signals.
 class WatchFolderController : public QObject
 {
     Q_OBJECT

@@ -205,6 +205,7 @@ void TableColumnController::setColumnVisible(int column, bool visible)
 
 void TableColumnController::restoreDefaultColumnOrder()
 {
+    // Visual indices shift after each move; logical column IDs remain stable.
     if (!m_header)
         return;
 

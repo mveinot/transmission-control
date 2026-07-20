@@ -254,6 +254,8 @@ void NotificationController::processTorrentList(const QVector<torrent> &torrents
     for (const torrent &torrentItem : torrents)
         currentStates.insert(torrentItem.getId(), stateForTorrent(torrentItem));
 
+    // The first snapshot establishes state only. Treating it as a transition
+    // would report every pre-existing torrent as newly added or completed.
     if (!m_baselineLoaded) {
         m_knownTorrentStates = currentStates;
         m_baselineLoaded = true;

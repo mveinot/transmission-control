@@ -531,6 +531,7 @@ void TorrentFilesController::rebuildView()
     if (!fileTreeWidget || rebuildingView)
         return;
 
+    // Projection changes replace items; preserve selection by stable file ID.
     QSet<int> selectedIndices;
     for (QTreeWidgetItem *selectedItem : fileTreeWidget->selectedItems()) {
         const QList<int> indices = fileIndicesForItem(selectedItem);

@@ -383,6 +383,7 @@ void SessionSettingsDialog::setSessionSettings(const QJsonObject &settings)
 
 QJsonObject SessionSettingsDialog::changedSettings() const
 {
+    // Emit a sparse patch rather than overwriting concurrently changed values.
     QJsonObject changes;
 
     addIfChanged(changes, originalSettings,

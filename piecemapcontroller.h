@@ -9,6 +9,8 @@ class QVBoxLayout;
 class QWidget;
 class PieceMapWidget;
 
+// Owns the lazily constructed piece-map tab widgets and translates torrent RPC
+// payloads into PieceMapWidget state.
 class PieceMapController : public QObject
 {
     Q_OBJECT

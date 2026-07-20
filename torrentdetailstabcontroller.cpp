@@ -95,6 +95,8 @@ void TorrentDetailsTabController::clear()
 
 void TorrentDetailsTabController::update(const QJsonObject &details)
 {
+    // Rebuild from a snapshot to keep section ordering deterministic when RPC
+    // versions add or omit fields.
     if (!m_table)
         return;
 

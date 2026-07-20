@@ -304,6 +304,8 @@ void TorrentPeersController::startHostnameLookupIfNeeded(const QString &address)
     if (hostnameCache.contains(address) || pendingHostnameLookups.contains(address))
         return;
 
+    // QHostInfo does not coalesce identical requests. Pending addresses are
+    // tracked separately from cached results, including negative results.
     pendingHostnameLookups.insert(address);
 
     const int lookupId = QHostInfo::lookupHost(

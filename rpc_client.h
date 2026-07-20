@@ -8,6 +8,8 @@
 #include <QNetworkReply>
 #include "torrent.h"
 
+// Asynchronous Transmission RPC transport. Request contexts preserve semantic
+// routing across authentication retries; QObject ownership governs all replies.
 class rpc_client: public QObject
 {
     Q_OBJECT

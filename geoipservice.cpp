@@ -357,6 +357,8 @@ GeoIpResult GeoIpService::lookup(const QString &ipAddress)
         result = dummyLookup(key);
     }
 
+    // Cache misses and private-address classifications too; peer snapshots
+    // repeatedly contain the same endpoints.
     cache.insert(key, result);
     updateCacheEntryCount();
     return result;

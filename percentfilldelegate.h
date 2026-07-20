@@ -5,6 +5,8 @@
 #include <QColor>
 #include <QPalette>
 
+// Paints a palette-aware progress fill while preserving the platform style's
+// normal item background, focus, and selection rendering.
 class PercentFillDelegate : public QStyledItemDelegate
 {
     Q_OBJECT

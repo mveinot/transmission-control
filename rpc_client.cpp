@@ -112,6 +112,8 @@ void rpc_client::postRpc(const RpcRequestContext &context)
         makeRpcPayload(context.method, context.arguments)
         );
 
+    // Reply identity is the correlation key; the context also preserves retry
+    // metadata that is not encoded in QNetworkRequest attributes.
     pendingRequests.insert(reply, context);
 }
 
@@ -190,6 +192,8 @@ void rpc_client::replyFinished(QNetworkReply *reply)
     };
 
     if (reply->error() == QNetworkReply::ContentConflictError) {
+        // Transmission uses HTTP 409 as a session-token challenge. Replay the
+        // original semantic request once after installing the supplied token.
         const QByteArray token =
             reply->rawHeader("X-Transmission-Session-Id");
 
@@ -555,6 +559,8 @@ void rpc_client::getTorrentList()
         return;
     }
 
+    // Timer ticks and command-triggered refreshes may overlap. A single list
+    // request is sufficient because its response is a complete snapshot.
     if (updateInProgress)
         return;
 

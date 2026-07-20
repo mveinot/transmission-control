@@ -322,6 +322,7 @@ bool WatchFolderManager::candidateIsStable(const QString &filePath,
     if (currentSize <= 0)
         return false;
 
+    // Consecutive identical samples avoid submitting partially copied files.
     const bool unchanged =
         candidate.size == currentSize
         && candidate.lastModified == currentModified;

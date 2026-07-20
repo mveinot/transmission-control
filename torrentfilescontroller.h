@@ -21,6 +21,8 @@ class rpc_client;
 class TableColumnController;
 class TablePlaceholderController;
 
+// Maintains the selected torrent's file records and projects them as either a
+// hierarchy or a sortable flat view. File indices remain RPC-authoritative.
 class TorrentFilesController : public QObject
 {
     Q_OBJECT

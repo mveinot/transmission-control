@@ -27,6 +27,8 @@ void UpdateChecker::setRepository(const QString &owner, const QString &repo)
 
 void UpdateChecker::checkForUpdates(bool userInitiated)
 {
+    // The initiating mode travels with the reply so completion can suppress
+    // routine automatic-check UI without changing the transport API.
     QNetworkRequest request(latestReleaseUrl());
     request.setRawHeader("Accept", "application/vnd.github+json");
     request.setRawHeader("User-Agent", "Planetary");

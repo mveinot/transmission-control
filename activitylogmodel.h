@@ -5,6 +5,8 @@
 #include <QDateTime>
 #include <QVector>
 
+// Bounded, append-only event model used by the activity dock. Entries are
+// presentation snapshots and deliberately independent of the RPC log stream.
 class ActivityLogModel : public QAbstractTableModel
 {
     Q_OBJECT

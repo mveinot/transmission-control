@@ -7,6 +7,8 @@
 
 #include "torrent.h"
 
+// Canonical torrent-list model keyed by Transmission torrent ID. applyUpdate()
+// preserves rows where possible so selection and proxy state remain stable.
 class TorrentModel : public QAbstractTableModel
 {
     Q_OBJECT

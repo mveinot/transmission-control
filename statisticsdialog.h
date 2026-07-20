@@ -8,6 +8,8 @@ class QLabel;
 class QPushButton;
 class rpc_client;
 
+// Short-lived view over Transmission session statistics. RPC responses are
+// scoped to the dialog through QObject connection contexts.
 class StatisticsDialog : public QDialog
 {
     Q_OBJECT

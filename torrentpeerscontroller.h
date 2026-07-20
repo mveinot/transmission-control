@@ -13,6 +13,8 @@ class QTableWidget;
 class TableColumnController;
 class TablePlaceholderController;
 
+// Rebuilds the peer snapshot table and enriches addresses with cached local
+// GeoIP results and asynchronous reverse-DNS names.
 class TorrentPeersController : public QObject
 {
     Q_OBJECT

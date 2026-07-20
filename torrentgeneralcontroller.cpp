@@ -116,6 +116,7 @@ void TorrentGeneralController::updatePieces(int torrentId, const QJsonObject &de
     if (torrentId != m_currentTorrentId)
         return;
 
+    // Piece updates are partial; merge before refreshing combined detail views.
     for (auto it = details.constBegin(); it != details.constEnd(); ++it)
         m_currentDetailsCache.insert(it.key(), it.value());
 

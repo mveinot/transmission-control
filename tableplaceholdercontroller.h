@@ -8,6 +8,8 @@ class QLabel;
 class QAbstractScrollArea;
 class QEvent;
 
+// Overlays an empty/loading/error message on an item-view viewport without
+// affecting the view's model, selection, or input handling.
 class TablePlaceholderController : public QObject
 {
     Q_OBJECT

@@ -417,6 +417,8 @@ void TorrentModel::clear()
 
 void TorrentModel::rebuildIndex()
 {
+    // Row numbers can shift after removals and inserts; deriving the map from
+    // the vector is less error-prone than incrementally repairing it.
     m_rowById.clear();
     m_rowById.reserve(torrentVector.size());
 

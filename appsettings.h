@@ -7,6 +7,8 @@ namespace Ui {
 class AppSettings;
 }
 
+// Edits application-local behavior. Transmission session settings are handled
+// separately because they belong to the currently selected remote server.
 class AppSettings : public QDialog
 {
     Q_OBJECT

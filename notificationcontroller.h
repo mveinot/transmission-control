@@ -12,6 +12,8 @@
 
 class torrent;
 
+// Derives edge-triggered user notifications from successive torrent snapshots.
+// resetBaseline() must be called when changing servers to prevent false events.
 class NotificationController : public QObject
 {
     Q_OBJECT

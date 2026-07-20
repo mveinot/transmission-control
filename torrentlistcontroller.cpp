@@ -461,6 +461,7 @@ void TorrentListController::handleTableClicked(const QModelIndex &proxyIndex)
 
 void TorrentListController::updateCurrentTorrentSelection()
 {
+    // Downstream controllers receive stable IDs, never volatile proxy rows.
     const int torrentId = currentTorrentId();
 
     if (torrentId == m_lastEmittedTorrentId)

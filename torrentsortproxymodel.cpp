@@ -59,6 +59,8 @@ bool TorrentSortProxyModel::lessThan(const QModelIndex &left, const QModelIndex 
 bool TorrentSortProxyModel::filterAcceptsRow(int sourceRow,
                                              const QModelIndex &sourceParent) const
 {
+    // Predicates remain orthogonal so choosing a tracker or folder preserves
+    // the active state and free-text constraints.
     return matchesStateFilter(sourceRow, sourceParent)
         && matchesSearchFilter(sourceRow, sourceParent)
         && matchesTrackerFilter(sourceRow, sourceParent)

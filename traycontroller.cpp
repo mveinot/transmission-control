@@ -97,6 +97,8 @@ void TrayController::quitApplication()
 
 bool TrayController::handleCloseEvent(QCloseEvent *event)
 {
+    // Consuming close hides rather than destroys the composition root, keeping
+    // polling and notification services alive.
     if (!event || !m_window)
         return false;
 

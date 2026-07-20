@@ -9,6 +9,8 @@
 #include <QSet>
 #include <QUrl>
 
+// Immutable-by-convention snapshot of the fields used by the torrent list and
+// filters. Construct a replacement from each RPC snapshot rather than patching.
 class torrent
 {
 

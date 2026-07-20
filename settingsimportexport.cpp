@@ -176,6 +176,8 @@ bool importSettings(QWidget *parent, const QString &filePath)
     if (choice != QMessageBox::Yes)
         return false;
 
+    // Parsing and structural validation complete before clear(), preventing a
+    // malformed document from partially replacing the current configuration.
     QSettings settings;
 
     settings.clear();

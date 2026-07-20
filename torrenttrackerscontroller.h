@@ -15,6 +15,8 @@ class rpc_client;
 class TableColumnController;
 class TablePlaceholderController;
 
+// Displays tracker statistics for the selected torrent and maps context-menu
+// edits to tracker IDs required by Transmission's RPC protocol.
 class TorrentTrackersController : public QObject
 {
     Q_OBJECT

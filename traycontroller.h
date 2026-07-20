@@ -10,6 +10,8 @@ class QMainWindow;
 class QMenu;
 class QCloseEvent;
 
+// Encapsulates tray lifetime and close-to-tray policy so MainWindow can remain
+// agnostic about platform availability and user tray preferences.
 class TrayController : public QObject
 {
     Q_OBJECT

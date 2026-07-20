@@ -3,6 +3,8 @@
 
 namespace SettingsKeys {
 
+// Persistent keys are compatibility identifiers and must not be renamed as
+// part of ordinary C++ symbol refactoring.
 inline constexpr const char *UpdateInterval =               "app/updateIntervalSeconds";
 inline constexpr const char *DeleteTorrentOnAdd =           "app/deleteTorrentFileOnSuccessfulAdd";
 inline constexpr const char *TorrentOpenDirectory =         "app/torrentOpenDirectory";

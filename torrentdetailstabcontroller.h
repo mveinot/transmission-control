@@ -8,6 +8,8 @@ class QTableWidget;
 class QTabWidget;
 class QWidget;
 
+// Formats a torrent detail snapshot into a stable diagnostic table. It owns no
+// RPC state and may be refreshed from merged general/piece responses.
 class TorrentDetailsTabController : public QObject
 {
     Q_OBJECT

@@ -54,6 +54,8 @@ BencodeParser::BencodeParser(const QByteArray &data)
 
 bool BencodeParser::parseValue(BencodeValue *result)
 {
+    // Container parsing is recursive, so reject hostile nesting before adding
+    // another stack frame.
     if (m_depth >= MaximumNestingDepth) {
         setError(QStringLiteral("Maximum nesting depth exceeded at offset %1")
                      .arg(m_offset));
@@ -156,6 +158,8 @@ bool BencodeParser::parseByteString(BencodeValue *result)
 
     ++m_offset; // :
 
+    // Avoid adding an untrusted length to m_offset; subtraction keeps the
+    // bounds check valid at the signed integer limit.
     const qsizetype remaining = m_data.size() - m_offset;
 
     if (length > remaining) {

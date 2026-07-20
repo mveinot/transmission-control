@@ -139,6 +139,8 @@ int ServerConfig::currentServerIndex() const
 
 void ServerConfig::loadServers()
 {
+    // Work on an in-memory copy so canceling leaves persistent definitions
+    // unchanged.
     servers.clear();
 
     QSettings settings;

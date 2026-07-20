@@ -115,5 +115,6 @@ void WatchFolderController::handleTorrentFileAddFailed(const QString &filePath,
 
 bool WatchFolderController::shouldTreatFailureAsProcessed(const QString &message) const
 {
+    // Duplicate is terminal: the server already owns the torrent.
     return message.contains(QStringLiteral("duplicate"), Qt::CaseInsensitive);
 }

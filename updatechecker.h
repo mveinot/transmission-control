@@ -7,6 +7,8 @@
 class QNetworkAccessManager;
 class QNetworkReply;
 
+// Performs one asynchronous release-manifest request at a time and reports a
+// normalized semantic-version comparison to its controller.
 class UpdateChecker : public QObject
 {
     Q_OBJECT

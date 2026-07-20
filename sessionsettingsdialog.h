@@ -12,6 +12,8 @@ namespace Ui {
 class SessionSettingsDialog;
 }
 
+// Edits a server-provided session snapshot and emits only fields whose values
+// differ from that baseline.
 class SessionSettingsDialog : public QDialog
 {
     Q_OBJECT

@@ -139,6 +139,8 @@ void TorrentTrackersController::setTorrentId(int torrentId)
 
 void TorrentTrackersController::populate(const QJsonObject &details)
 {
+    // RPC versions differ in which tracker array carries IDs and status; keep
+    // both inputs rather than assuming positional equivalence.
     if (!trackerTableWidget)
         return;
 
