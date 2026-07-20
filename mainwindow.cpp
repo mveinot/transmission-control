@@ -696,11 +696,12 @@ MainWindow::MainWindow(QWidget *parent)
     client = new rpc_client(this);
     torrentModel = new TorrentModel(this);
 
-    // used as a intermediate model for sorting/filtering/etc
+    // Keep the canonical torrent collection independent of view ordering and
+    // filtering; controllers translate proxy selections back to torrent IDs.
     proxy = new TorrentSortProxyModel(this);
     proxy->setSourceModel(torrentModel);
 
-    // geo ip lookup
+    // GeoIP failure is non-fatal: GeoIpService retains its compiled fallback.
     geoIpService = new GeoIpService(this);
 
     if (!geoIpService->loadDefaultDatabase()) {
@@ -709,7 +710,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     torrentAddController = new TorrentAddController(client, this, this);
 
-    // set up the main UI
+    // setupUi() must precede controller construction because controllers retain
+    // pointers to widgets owned by the generated UI tree.
     ui->setupUi(this);
     setupPlatformMenus();
     setupEditMenu();
@@ -756,7 +758,8 @@ MainWindow::MainWindow(QWidget *parent)
     MainWindow::setWindowTitle(QCoreApplication::applicationName());
     setWindowIcon(QIcon(":/icons/planetary-512px.png"));
 
-    // Initialization methods
+    // Platform chrome and passive services can be initialized before the RPC
+    // client starts producing responses.
     loadServerCombo();
     setupConnectionStatusIndicator();
     updateCheckController = new UpdateCheckController(this, this);
@@ -1073,6 +1076,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(client, &rpc_client::torrentDetailsReceived,
             this,
             [this](int torrentId, const QJsonObject &details) {
+                // Detail requests can overlap selection changes. Never apply a
+                // late response to widgets representing another torrent.
                 if (torrentId != currentTorrentId())
                     return;
 
@@ -1122,11 +1127,13 @@ MainWindow::MainWindow(QWidget *parent)
                 torrentGeneralController->updatePieces(torrentId, details);
             });
 
-    // Data path: required for the table to show anything
+    // Primary data path: the source model must update before observers rebuild
+    // filters, counts, notifications, and status summaries.
     connect(client, &rpc_client::torrentsReceived,
                 torrentModel, &TorrentModel::applyUpdate);
 
-    // Side effects: notifications/status only
+    // Secondary consumers do not own torrent data and may safely derive state
+    // from each completed snapshot.
     connect(client, &rpc_client::torrentsReceived,
             this, &MainWindow::handleTorrentsReceived);
 
@@ -1151,6 +1158,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(client, &rpc_client::commandSucceeded,
             this, [this](const QString &method) {
+                // Mutating RPC responses contain little or no updated torrent
+                // state, so refresh the affected projections explicitly.
                 if (method == QStringLiteral("session-set")) {
                     client->getSessionSettings();
                     return;
@@ -1265,7 +1274,6 @@ void MainWindow::showAbout()
     dialog.exec();
 }
 
-// torent(s) selected
 void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
 {
     if (torrentListController)
@@ -1379,7 +1387,6 @@ int MainWindow::currentTorrentId() const
     return torrentListController ? torrentListController->currentTorrentId() : -1;
 }
 
-// save header dimensions of all tables
 void MainWindow::saveTableViewState()
 {
     if (torrentListController)
@@ -1395,7 +1402,6 @@ void MainWindow::saveTableViewState()
         torrentTrackersController->saveViewState();
 }
 
-// restore header dimensions
 void MainWindow::restoreTableViewState()
 {
     if (torrentListController)
@@ -1413,6 +1419,8 @@ void MainWindow::restoreTableViewState()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+    // Persist layout before the tray controller potentially consumes the close
+    // and converts it into a hide operation.
     saveTableViewState();
     saveViewSettings();
 
@@ -1620,6 +1628,8 @@ void MainWindow::saveSelectedServerFromCombo()
         return;
     }
 
+    // A server switch defines a new notification baseline; otherwise torrents
+    // on the new server would be reported as newly added or completed.
     if (notificationController) {
         notificationController->setServerName(ui->comboServers->currentText());
         notificationController->resetBaseline();
@@ -1644,6 +1654,8 @@ void MainWindow::saveSelectedServerFromCombo()
         torrentListController->beginTorrentListRefresh();
     client->getTorrentList();
 
+    // Session-derived state is server-specific and remains unknown until the
+    // new session-get response arrives.
     remoteDownloadDir.clear();
 
     if (torrentListController) {
@@ -1705,6 +1717,8 @@ int MainWindow::updateIntervalMs() const
 
 void MainWindow::applyUpdateInterval()
 {
+    // Restart is unnecessary when changing an active QTimer interval; Qt
+    // reschedules it using the new value.
     timer->setInterval(updateIntervalMs());
 
     if (!timer->isActive())
@@ -1803,6 +1817,8 @@ void MainWindow::applyAppSettings()
 
 void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
 {
+    // The source model is updated by an earlier connection to the same signal.
+    // This handler fans the immutable snapshot out to secondary UI services.
     if (torrentListController)
         torrentListController->markTorrentListLoaded();
 
@@ -1867,6 +1883,7 @@ void MainWindow::updateAlternativeSpeedAction(bool enabled, bool available)
     if (!ui || !ui->actionAlternative_Speed_Mode)
         return;
 
+    // Programmatic reconciliation must not issue another session-set request.
     const QSignalBlocker blocker(ui->actionAlternative_Speed_Mode);
     ui->actionAlternative_Speed_Mode->setEnabled(available);
     ui->actionAlternative_Speed_Mode->setChecked(enabled);
@@ -2003,6 +2020,8 @@ void MainWindow::toggleAlternativeSpeedMode(bool enabled)
         return;
     }
 
+    // Reflect the requested state optimistically. commandFailed restores the
+    // last value confirmed by session-get.
     updateAlternativeSpeedAction(enabled, true);
 
     QJsonObject changes;
@@ -2028,6 +2047,8 @@ void MainWindow::showStatistics()
 
 void MainWindow::showSessionSettings()
 {
+    // Always populate the dialog from a fresh session snapshot; cached values
+    // may predate external changes made through another client.
     openSessionSettingsWhenReceived = true;
 
     if (statusBarController) {
@@ -2042,6 +2063,8 @@ void MainWindow::showSessionSettings()
 
 void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSettings)
 {
+    // One session-get response updates shared state first, then services any
+    // pending UI flows that requested the snapshot.
     cachedSessionSettings = sessionSettings;
 
     remoteDownloadDir =

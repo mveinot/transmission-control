@@ -40,6 +40,11 @@ class TorrentFilterController;
 class StatusBarController;
 class NotificationController;
 
+/*
+ * Application composition root for the desktop UI. MainWindow owns the RPC
+ * client, shared models, and feature controllers; domain-specific widget logic
+ * should remain in those controllers rather than accumulating here.
+ */
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -89,6 +94,7 @@ private slots:
     void setToolBarButtonStyleFromAction(QAction *action);
 
 private:
+    // Designer-owned widget tree and the shared polling/data pipeline.
     Ui::MainWindow *ui;
     QTimer *timer;
     TorrentModel *torrentModel = nullptr;
@@ -98,6 +104,8 @@ private:
     WatchFolderManager *watchFolderManager = nullptr;
     WatchFolderController *watchFolderController = nullptr;
 
+    // Selection and detail refresh helpers operate in source torrent-id space,
+    // never proxy row space.
     int currentTorrentId() const;
     bool currentTabWantsLiveTorrentDetails() const;
     void refreshCurrentTorrentLiveDetailsIfNeeded();
@@ -125,13 +133,21 @@ private:
     void restoreViewSettings();
     void saveViewSettings() const;
     void applyToolBarButtonStyle(Qt::ToolButtonStyle style);
+
+    // Session settings are fetched asynchronously. These flags identify which
+    // user interaction, if any, should consume the next settings response.
     bool openSessionSettingsWhenReceived = false;
     bool openQuickSpeedLimitsWhenReceived = false;
+
+    // Last server-confirmed session state. Optimistic UI changes are rolled
+    // back to these values if the corresponding RPC command fails.
     bool alternativeSpeedSettingsAvailable = false;
     bool confirmedAlternativeSpeedEnabled = false;
     QString remoteDownloadDir;
     QJsonObject cachedSessionSettings;
 
+    // Feature controllers are QObject children of MainWindow unless their
+    // constructors document a different owner.
     UpdateCheckController *updateCheckController = nullptr;
     TorrentGeneralController *torrentGeneralController = nullptr;
     TorrentFilesController *torrentFilesController = nullptr;
@@ -149,6 +165,9 @@ private:
     QDockWidget *activityDock = nullptr;
     QTableView *activityTable = nullptr;
     ActivityLogModel *activityLogModel = nullptr;
+
+    // Edge-triggered connection events avoid logging every successful or
+    // failed poll while the connection remains in the same state.
     bool activityConnectionEstablished = false;
     bool activityConnectionFailed = false;
 
