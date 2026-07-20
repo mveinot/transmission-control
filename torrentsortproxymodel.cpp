@@ -152,7 +152,7 @@ bool TorrentSortProxyModel::matchesStateFilter(int sourceRow,
     case StateFilter::Active: {
         if (statusValue == 4 // Downloading
             || statusValue == 6 // Seeding
-            || statusValue == 3) { // Queued
+            || statusValue == 2) { // Verifying
             return true;
         }
 
@@ -174,6 +174,7 @@ bool TorrentSortProxyModel::matchesStateFilter(int sourceRow,
     case StateFilter::Inactive:
         return statusValue == 0 // Paused
                || statusValue == 1 // Waiting to Verify
+               || statusValue == 3 // Queued
                || statusValue == 5; // Waiting to Seed
 
     case StateFilter::Stopped:

@@ -169,9 +169,9 @@ void WatchFolderManager::restartWatcher()
 
     if (!m_watcher.addPath(m_watchFolder)) {
         emit warningMessage(
-           tr("Could not watch folder: %1").arg(m_watchFolder)
+           tr("Could not monitor folder changes; using periodic scans: %1")
+               .arg(m_watchFolder)
             );
-        return;
     }
 
     emit statusMessage(

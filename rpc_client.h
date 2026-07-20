@@ -151,7 +151,7 @@ private:
     bool updateInProgress = false;
     bool m_sequentialDownloadSupported = false;
     QByteArray _session_token;
-    QNetworkAccessManager *na_manager;
+    QNetworkAccessManager *na_manager = nullptr;
     QString serverName;
     QString rpcUrl;
 

@@ -67,16 +67,14 @@ static bool sessionSupportsSequentialDownload(const QJsonObject &settings)
 
 rpc_client::rpc_client(QObject *parent)
     : QObject(parent)
+    , na_manager(new QNetworkAccessManager(this))
 {
+    connect(na_manager, &QNetworkAccessManager::finished,
+            this, &rpc_client::replyFinished);
 }
 
 void rpc_client::init()
 {
-    na_manager = new QNetworkAccessManager(this);
-
-    connect(na_manager, &QNetworkAccessManager::finished,
-            this, &rpc_client::replyFinished);
-
     if (!loadCurrentServerFromSettings()) {
         qWarning() << "No valid Transmission server configured.";
         emit updateFailed(tr("No valid Transmission server configured."));
@@ -142,6 +140,16 @@ void rpc_client::postSingleTorrentSet(int torrentId, const QJsonObject &argument
 
 void rpc_client::replyFinished(QNetworkReply *reply)
 {
+    /*
+     * A server change removes its outstanding replies from pendingRequests
+     * before aborting them.  Their finished signals can still be delivered,
+     * but they no longer belong to the active server and must be ignored.
+     */
+    if (!pendingRequests.contains(reply)) {
+        reply->deleteLater();
+        return;
+    }
+
     RpcRequestContext context =
         pendingRequests.take(reply);
 
@@ -495,6 +503,22 @@ bool rpc_client::setServerFromSettingsIndex(int index)
 
 void rpc_client::setServer(const TransmissionServer &server)
 {
+    /*
+     * Do not allow responses from the previous server to update the new
+     * server's session token, torrent data, or command state.  Clear the
+     * bookkeeping first because abort() may synchronously emit finished().
+     */
+    const QList<QNetworkReply *> staleReplies = pendingRequests.keys();
+    pendingRequests.clear();
+
+    for (QNetworkReply *reply : staleReplies) {
+        if (!reply)
+            continue;
+
+        reply->abort();
+        reply->deleteLater();
+    }
+
     serverName = server.name;
     rpcUrl = server.rpcUrl;
     username = server.username;

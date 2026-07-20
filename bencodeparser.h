@@ -27,5 +27,6 @@ private:
 
     const QByteArray &m_data;
     qsizetype m_offset = 0;
+    int m_depth = 0;
     QString m_errorString;
 };
