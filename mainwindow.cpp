@@ -51,6 +51,7 @@
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QSpinBox>
+#include <QStandardPaths>
 #include <QScrollBar>
 #include <QStringList>
 #include <QSizePolicy>
@@ -1506,15 +1507,35 @@ void MainWindow::handleLaunchArguments(const QStringList &arguments)
 
 void MainWindow::addTorrentFromFile()
 {
+    QSettings settings;
+    QString initialDirectory =
+        settings.value(SettingsKeys::TorrentOpenDirectory).toString();
+
+    if (!QFileInfo(initialDirectory).isDir()) {
+        initialDirectory = QStandardPaths::writableLocation(
+            QStandardPaths::DownloadLocation
+            );
+    }
+
+    if (!QFileInfo(initialDirectory).isDir())
+        initialDirectory = QDir::homePath();
+
     const QStringList fileNames = QFileDialog::getOpenFileNames(
         this,
         tr("Add Torrent Files"),
-        QString(),
+        initialDirectory,
         tr("Torrent Files (*.torrent);;All Files (*)")
         );
 
     if (fileNames.isEmpty())
         return;
+
+    // Native multi-file dialogs normally constrain selection to one directory;
+    // the first selected file remains a deterministic fallback if they do not.
+    settings.setValue(
+        SettingsKeys::TorrentOpenDirectory,
+        QFileInfo(fileNames.constFirst()).absolutePath()
+        );
 
     torrentAddController->addTorrentFiles(fileNames);
 }
