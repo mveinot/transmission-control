@@ -5,6 +5,8 @@
 #include <QByteArray>
 #include <QString>
 
+// Single-pass parser for untrusted torrent metadata. The parser owns no input;
+// m_data must outlive the parser, which is confined to parse().
 class BencodeParser
 {
 public:
@@ -27,5 +29,6 @@ private:
 
     const QByteArray &m_data;
     qsizetype m_offset = 0;
+    int m_depth = 0;
     QString m_errorString;
 };

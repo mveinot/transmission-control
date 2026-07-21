@@ -7,6 +7,8 @@
 
 class QLocalServer;
 
+// Owns the local IPC endpoint used to elect a primary process and forward
+// activation/open requests from later launches.
 class SingleInstanceGuard : public QObject
 {
     Q_OBJECT

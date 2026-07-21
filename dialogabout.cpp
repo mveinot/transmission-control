@@ -105,6 +105,8 @@ QString DialogAbout::buildAboutHtml() const
                "<p>Version: %1</p>"
                "<p>Build date: %2</p>"
                "<p>Copyright © Mark Veinot</p>"
+               "<p><a href=\"https://planetary.mvgrafx.net/\">"
+               "planetary.mvgrafx.net</a></p>"
                ).arg(QCoreApplication::applicationVersion().toHtmlEscaped(),
                      QStringLiteral(__DATE__).toHtmlEscaped());
 }
@@ -123,13 +125,9 @@ bool DialogAbout::eventFilter(QObject *watched, QEvent *event)
 void DialogAbout::triggerEasterEgg()
 {
     ui->textAbout->setHtml(QString(
-                               "<h2>Diagnostics:</h2>"
-                               "<h3>[Intergalactic. Planetary.]</h3>"
-                               "<p>Qt: %1</p>"
-                               "<p>Build: %2 %3</p>"
+                               "<h2>Intergalactic. Planetary.</h2>"
+                               "<p>Congrats on finding the not very well hidden easter egg!</p>"
+                               "<hr />"
                                "<p>Caffeine level: Unhealthy</p>"
-                               )
-                               .arg(QStringLiteral(QT_VERSION_STR),
-                                    QStringLiteral(__DATE__),
-                                    QStringLiteral(__TIME__)));
+                               ));
 }

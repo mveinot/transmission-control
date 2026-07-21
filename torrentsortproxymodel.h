@@ -3,6 +3,8 @@
 
 #include <QSortFilterProxyModel>
 
+// Combines orthogonal state, text, tracker, and download-directory predicates
+// while providing type-aware ordering for TorrentModel columns.
 class TorrentSortProxyModel : public QSortFilterProxyModel
 {
     Q_OBJECT

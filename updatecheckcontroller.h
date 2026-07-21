@@ -6,6 +6,8 @@
 class QWidget;
 class UpdateChecker;
 
+// Converts UpdateChecker results into user-facing dialogs and status messages,
+// including automatic-check scheduling policy.
 class UpdateCheckController : public QObject
 {
     Q_OBJECT

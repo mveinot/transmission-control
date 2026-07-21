@@ -9,6 +9,10 @@ endif()
 
 project(Planetary VERSION ${PLANETARY_VERSION_BASE} LANGUAGES CXX)
 
+if(APPLE)
+    enable_language(OBJCXX)
+endif()
+
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -199,6 +203,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         torrentgeneralcontroller.h torrentgeneralcontroller.cpp
         traycontroller.h traycontroller.cpp
         notificationcontroller.h notificationcontroller.cpp
+        activitylogmodel.h activitylogmodel.cpp
         statusbarcontroller.h statusbarcontroller.cpp
         torrentpropertiesdialog.h torrentpropertiesdialog.cpp
     )
@@ -232,6 +237,28 @@ else()
         )
     endif()
 
+endif()
+
+
+if(APPLE)
+    target_sources(Planetary PRIVATE
+        macnotificationbackend.h
+        macnotificationbackend.mm
+    )
+
+    set_source_files_properties(macnotificationbackend.mm PROPERTIES
+        COMPILE_FLAGS "-fobjc-arc"
+    )
+
+    find_library(USER_NOTIFICATIONS_FRAMEWORK UserNotifications)
+
+    if(NOT USER_NOTIFICATIONS_FRAMEWORK)
+        message(FATAL_ERROR "UserNotifications framework not found")
+    endif()
+
+    target_link_libraries(Planetary PRIVATE
+        ${USER_NOTIFICATIONS_FRAMEWORK}
+    )
 endif()
 
 if(PLANETARY_QM_FILES)
@@ -366,13 +393,26 @@ target_link_libraries(Planetary PRIVATE
 )
 
 set_target_properties(Planetary PROPERTIES
-    MACOSX_BUNDLE_GUI_IDENTIFIER planetary.mvgrafx.net
+    MACOSX_BUNDLE_GUI_IDENTIFIER net.mvgrafx.planetary
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
     WIN32_EXECUTABLE TRUE
 )
+
+if(APPLE)
+    add_custom_command(TARGET Planetary POST_BUILD
+        COMMAND /usr/bin/codesign
+            --force
+            --deep
+            --sign -
+            --identifier net.mvgrafx.planetary
+            "$<TARGET_BUNDLE_DIR:Planetary>"
+        COMMENT "Ad-hoc signing Planetary.app"
+        VERBATIM
+    )
+endif()
 
 include(GNUInstallDirs)
 

@@ -298,6 +298,7 @@ void TorrentPropertiesDialog::setControlsEnabled(bool enabled)
 void TorrentPropertiesDialog::handlePropertiesReceived(int torrentId,
                                                        const QJsonObject &properties)
 {
+    // Property requests share a signal; accept only this dialog's torrent.
     if (torrentId != m_torrentId)
         return;
 

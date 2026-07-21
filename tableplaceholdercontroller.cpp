@@ -59,6 +59,7 @@ QString TablePlaceholderController::message() const
 
 bool TablePlaceholderController::eventFilter(QObject *watched, QEvent *event)
 {
+    // The overlay is parented to the viewport, not the outer scroll area.
     if (m_view && watched == m_view->viewport()) {
         switch (event->type()) {
         case QEvent::Resize:

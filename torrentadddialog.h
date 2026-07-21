@@ -14,6 +14,8 @@ class TorrentAddDialog;
 class QComboBox;
 class QTreeWidgetItem;
 
+// Presents add-time destination, wanted-file, and priority choices. Tree items
+// retain original file indices so hierarchical UI changes map to RPC arrays.
 class TorrentAddDialog : public QDialog
 {
     Q_OBJECT

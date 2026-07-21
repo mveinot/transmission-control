@@ -13,6 +13,8 @@ private slots:
     void parsesList();
     void parsesDictionary();
     void rejectsTrailingData();
+    void rejectsOverflowingByteStringLength();
+    void rejectsExcessiveNesting();
     void parsesSingleFileTorrentMetadata();
     void parsesMultiFileTorrentMetadata();
 };
@@ -68,6 +70,25 @@ void TestBencodeParser::rejectsTrailingData()
 
     QVERIFY(!BencodeParser::parse("i42ejunk", &value, &error));
     QVERIFY(!error.isEmpty());
+}
+
+void TestBencodeParser::rejectsOverflowingByteStringLength()
+{
+    BencodeValue value;
+    QString error;
+
+    QVERIFY(!BencodeParser::parse("9223372036854775807:x", &value, &error));
+    QVERIFY(error.contains(QStringLiteral("extends past end")));
+}
+
+void TestBencodeParser::rejectsExcessiveNesting()
+{
+    const QByteArray data = QByteArray(300, 'l') + QByteArray(300, 'e');
+    BencodeValue value;
+    QString error;
+
+    QVERIFY(!BencodeParser::parse(data, &value, &error));
+    QVERIFY(error.contains(QStringLiteral("Maximum nesting depth")));
 }
 
 void TestBencodeParser::parsesSingleFileTorrentMetadata()

@@ -12,6 +12,8 @@ class QEvent;
 class QStatusBar;
 class rpc_client;
 
+// Coordinates status-bar presentation for connection activity, aggregate
+// transfer rates, free space, and application-level shortcuts.
 class StatusBarController : public QObject
 {
     Q_OBJECT

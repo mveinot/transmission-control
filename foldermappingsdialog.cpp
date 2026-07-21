@@ -226,6 +226,7 @@ void FolderMappingsDialog::updateButtonStates()
 
 bool FolderMappingsDialog::validateMappings()
 {
+    // Ambiguous remote mappings would make resolution depend on row order.
     const QList<FolderMapping> currentMappings = mappings();
 
     for (int i = 0; i < currentMappings.size(); ++i) {

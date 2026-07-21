@@ -5,6 +5,8 @@
 
 namespace {
 
+constexpr int MaximumNestingDepth = 256;
+
 bool isAsciiDigit(char ch)
 {
     return ch >= '0' && ch <= '9';
@@ -52,29 +54,39 @@ BencodeParser::BencodeParser(const QByteArray &data)
 
 bool BencodeParser::parseValue(BencodeValue *result)
 {
+    // Container parsing is recursive, so reject hostile nesting before adding
+    // another stack frame.
+    if (m_depth >= MaximumNestingDepth) {
+        setError(QStringLiteral("Maximum nesting depth exceeded at offset %1")
+                     .arg(m_offset));
+        return false;
+    }
+
     if (atEnd()) {
         setError(QStringLiteral("Unexpected end of data"));
         return false;
     }
 
     const char ch = currentChar();
+    ++m_depth;
+
+    bool parsed = false;
 
     if (ch == 'i')
-        return parseInteger(result);
+        parsed = parseInteger(result);
+    else if (ch == 'l')
+        parsed = parseList(result);
+    else if (ch == 'd')
+        parsed = parseDictionary(result);
+    else if (isAsciiDigit(ch))
+        parsed = parseByteString(result);
+    else
+        setError(QStringLiteral("Unexpected token '%1' at offset %2")
+                     .arg(QChar::fromLatin1(ch))
+                     .arg(m_offset));
 
-    if (ch == 'l')
-        return parseList(result);
-
-    if (ch == 'd')
-        return parseDictionary(result);
-
-    if (isAsciiDigit(ch))
-        return parseByteString(result);
-
-    setError(QStringLiteral("Unexpected token '%1' at offset %2")
-                 .arg(QChar::fromLatin1(ch))
-                 .arg(m_offset));
-    return false;
+    --m_depth;
+    return parsed;
 }
 
 bool BencodeParser::parseInteger(BencodeValue *result)
@@ -146,7 +158,11 @@ bool BencodeParser::parseByteString(BencodeValue *result)
 
     ++m_offset; // :
 
-    if (m_offset + length > m_data.size()) {
+    // Avoid adding an untrusted length to m_offset; subtraction keeps the
+    // bounds check valid at the signed integer limit.
+    const qsizetype remaining = m_data.size() - m_offset;
+
+    if (length > remaining) {
         setError(QStringLiteral("Byte string at offset %1 extends past end of data")
                      .arg(lengthStart));
         return false;

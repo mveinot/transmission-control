@@ -17,6 +17,8 @@ class QTreeWidget;
 class QTreeWidgetItem;
 class rpc_client;
 
+// Transactional editor for per-torrent limits and organization fields, with a
+// raw RPC view for diagnostics. Apply refreshes the server-confirmed baseline.
 class TorrentPropertiesDialog : public QDialog
 {
     Q_OBJECT

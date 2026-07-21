@@ -5,6 +5,8 @@
 
 namespace AppIcons {
 
+// Semantic icon identifiers isolate controllers from resource paths and keep
+// action/status artwork consistent across menus, toolbars, and item views.
 enum class Icon {
     ActionAddTorrent,
     ActionAddMagnet,

@@ -5,6 +5,8 @@
 #include <QMap>
 #include <QString>
 
+// Value-semantic representation of the four bencode types. Accessors return
+// neutral defaults on type mismatch so metadata extraction can remain concise.
 class BencodeValue
 {
 public:

@@ -9,6 +9,8 @@
 #include <QSet>
 #include <QUrl>
 
+// Immutable-by-convention snapshot of the fields used by the torrent list and
+// filters. Construct a replacement from each RPC snapshot rather than patching.
 class torrent
 {
 
@@ -26,10 +28,12 @@ public:
     };
     explicit torrent(const QJsonValue &val);
     QString getName() const;
+    QString getHashString() const;
     double getPercentDone() const;
     QString getStatus() const;
     int getStatusValue() const;
     bool hasError() const;
+    bool isStalled() const;
     int getErrorCode() const;
     QString getErrorString() const;
     QString getRateDownload() const;
@@ -57,6 +61,9 @@ public:
     int getTotalPeers() const;
     qint64 getSeedsSortValue() const;
     qint64 getPeersSortValue() const;
+    QString getHealth() const;
+    int getHealthScore() const;
+    QString getHealthDetails() const;
     int getQueuePosition() const;
     bool sameDisplayData(const torrent &other) const;
     int getId() const;
@@ -70,6 +77,7 @@ private:
     static QString statusToString(Status status);
     int id = 0;
     QString name;
+    QString hashString;
     double percentDone = 0.0;
     double rateDownload = 0.0;
     double rateUpload = 0.0;
@@ -85,12 +93,15 @@ private:
     QString downloadDir;
     int errorCode = 0;
     QString errorString;
+    bool stalled = false;
     int peersConnected = 0;
     int peersSendingToUs = 0;
     int peersGettingFromUs = 0;
     int totalSeeders = -1;
     int totalLeechers = -1;
     int queuePosition = 0;
+    qint64 desiredAvailable = 0;
+    qint64 leftUntilDone = 0;
     QString primaryTrackerHost;
     QStringList trackerHosts;
 

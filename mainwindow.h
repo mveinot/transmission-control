@@ -23,6 +23,9 @@ namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
 class QActionGroup;
+class ActivityLogModel;
+class QDockWidget;
+class QTableView;
 class TorrentAddController;
 class WatchFolderManager;
 class WatchFolderController;
@@ -37,6 +40,11 @@ class TorrentFilterController;
 class StatusBarController;
 class NotificationController;
 
+/*
+ * Application composition root for the desktop UI. MainWindow owns the RPC
+ * client, shared models, and feature controllers; domain-specific widget logic
+ * should remain in those controllers rather than accumulating here.
+ */
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -86,10 +94,10 @@ private slots:
     void setToolBarButtonStyleFromAction(QAction *action);
 
 private:
+    // Designer-owned widget tree and the shared polling/data pipeline.
     Ui::MainWindow *ui;
     QTimer *timer;
-    QMenu *mainMenu;
-    QAction *aboutAction;
+    QTimer *commandRefreshTimer = nullptr;
     TorrentModel *torrentModel = nullptr;
     rpc_client *client = nullptr;
     TorrentSortProxyModel *proxy = nullptr;
@@ -97,9 +105,14 @@ private:
     WatchFolderManager *watchFolderManager = nullptr;
     WatchFolderController *watchFolderController = nullptr;
 
+    // Selection and detail refresh helpers operate in source torrent-id space,
+    // never proxy row space.
     int currentTorrentId() const;
     bool currentTabWantsLiveTorrentDetails() const;
     void refreshCurrentTorrentLiveDetailsIfNeeded();
+    void refreshCurrentTorrentTabData();
+    void scheduleTorrentRefresh(bool refreshDetails);
+    void refreshSlowRpcData(bool force = false);
     TorrentAddController *torrentAddController = nullptr;
     void addTorrentFromFile();
     void addTorrentFromMagnet();
@@ -113,16 +126,35 @@ private:
     void applyAppSettings();
     void updateAlternativeSpeedAction(bool enabled, bool available);
     void setupViewMenu();
+    void setupEditMenu();
+    void setupActivityDock();
+    void copyFromFocusedWidget();
+    void selectAllInFocusedWidget();
+    void focusTorrentSearch();
+    void focusFileSearch();
+    void recordActivity(const QString &event, const QString &details, const QString &server);
+    void setupPlatformMenus();
     void restoreViewSettings();
     void saveViewSettings() const;
     void applyToolBarButtonStyle(Qt::ToolButtonStyle style);
+
+    // Session settings are fetched asynchronously. These flags identify which
+    // user interaction, if any, should consume the next settings response.
     bool openSessionSettingsWhenReceived = false;
     bool openQuickSpeedLimitsWhenReceived = false;
+
+    // Last server-confirmed session state. Optimistic UI changes are rolled
+    // back to these values if the corresponding RPC command fails.
     bool alternativeSpeedSettingsAvailable = false;
     bool confirmedAlternativeSpeedEnabled = false;
     QString remoteDownloadDir;
     QJsonObject cachedSessionSettings;
+    qint64 lastFreeSpaceRefreshMs = 0;
+    qint64 lastTrackerMetadataRefreshMs = 0;
+    bool pendingCommandDetailsRefresh = false;
 
+    // Feature controllers are QObject children of MainWindow unless their
+    // constructors document a different owner.
     UpdateCheckController *updateCheckController = nullptr;
     TorrentGeneralController *torrentGeneralController = nullptr;
     TorrentFilesController *torrentFilesController = nullptr;
@@ -137,6 +169,14 @@ private:
     QAction *showToolBarAction = nullptr;
     QAction *showStatusBarAction = nullptr;
     QActionGroup *toolBarStyleActionGroup = nullptr;
+    QDockWidget *activityDock = nullptr;
+    QTableView *activityTable = nullptr;
+    ActivityLogModel *activityLogModel = nullptr;
+
+    // Edge-triggered connection events avoid logging every successful or
+    // failed poll while the connection remains in the same state.
+    bool activityConnectionEstablished = false;
+    bool activityConnectionFailed = false;
 
 protected:
     void closeEvent(QCloseEvent *event) override;

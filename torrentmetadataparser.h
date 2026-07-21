@@ -20,6 +20,8 @@ struct TorrentMetadata
     bool isValid() const;
 };
 
+// Extracts only add-dialog metadata from a decoded torrent; it does not verify
+// piece hashes or otherwise validate payload integrity.
 class TorrentMetadataParser
 {
 public:

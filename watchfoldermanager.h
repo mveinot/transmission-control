@@ -10,6 +10,8 @@
 #include <QTimer>
 #include <QtCore/qfileinfo.h>
 
+// Detects stable .torrent files using native change notifications plus periodic
+// reconciliation. Fingerprints prevent reprocessing files retained in place.
 class WatchFolderManager : public QObject
 {
     Q_OBJECT
@@ -61,6 +63,7 @@ private:
 
     int m_scanIntervalMs = 1000;
     int m_requiredStableChecks = 2;
+    bool m_nativeWatcherActive = false;
 
     QHash<QString, CandidateFile> m_candidates;
     QSet<QString> m_processedFingerprints;

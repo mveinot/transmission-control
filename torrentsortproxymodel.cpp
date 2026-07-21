@@ -36,6 +36,7 @@ bool TorrentSortProxyModel::lessThan(const QModelIndex &left, const QModelIndex 
     case TorrentModel::UploadedEverColumn:
     case TorrentModel::SeedsColumn:
     case TorrentModel::PeersConnectedColumn:
+    case TorrentModel::HealthColumn:
         return lhs.toLongLong() < rhs.toLongLong();
 
     case TorrentModel::PercentDoneColumn:
@@ -58,6 +59,8 @@ bool TorrentSortProxyModel::lessThan(const QModelIndex &left, const QModelIndex 
 bool TorrentSortProxyModel::filterAcceptsRow(int sourceRow,
                                              const QModelIndex &sourceParent) const
 {
+    // Predicates remain orthogonal so choosing a tracker or folder preserves
+    // the active state and free-text constraints.
     return matchesStateFilter(sourceRow, sourceParent)
         && matchesSearchFilter(sourceRow, sourceParent)
         && matchesTrackerFilter(sourceRow, sourceParent)
@@ -151,7 +154,7 @@ bool TorrentSortProxyModel::matchesStateFilter(int sourceRow,
     case StateFilter::Active: {
         if (statusValue == 4 // Downloading
             || statusValue == 6 // Seeding
-            || statusValue == 3) { // Queued
+            || statusValue == 2) { // Verifying
             return true;
         }
 
@@ -173,6 +176,7 @@ bool TorrentSortProxyModel::matchesStateFilter(int sourceRow,
     case StateFilter::Inactive:
         return statusValue == 0 // Paused
                || statusValue == 1 // Waiting to Verify
+               || statusValue == 3 // Queued
                || statusValue == 5; // Waiting to Seed
 
     case StateFilter::Stopped:

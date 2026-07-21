@@ -13,8 +13,10 @@
 #include "statusbarcontroller.h"
 #include "statisticsdialog.h"
 #include "notificationcontroller.h"
+#include "activitylogmodel.h"
 #include "appicons.h"
 #include <QActionGroup>
+#include <QAbstractItemView>
 #include <QApplication>
 #include <QAction>
 #include <QCheckBox>
@@ -23,6 +25,9 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QDesktopServices>
+#include <QDateTime>
+#include <QDockWidget>
 #include <QDir>
 #include <QEvent>
 #include <QFileDialog>
@@ -35,9 +40,11 @@
 #include <QHeaderView>
 #include <QInputDialog>
 #include <QIcon>
+#include <QItemSelectionModel>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QKeySequence>
 #include <QLineEdit>
 #include <QLocale>
 #include <QMenu>
@@ -45,15 +52,23 @@
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QSpinBox>
+#include <QStandardPaths>
+#include <QScrollBar>
 #include <QStringList>
 #include <QSizePolicy>
 #include <QTableWidget>
+#include <QTableView>
+#include <QClipboard>
 #include <QTableWidgetItem>
+#include <QTreeView>
+#include <QTextEdit>
+#include <QPlainTextEdit>
 #include <QToolBar>
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <functional>
+#include <algorithm>
 #include <utility>
 #include <initializer_list>
 
@@ -74,9 +89,12 @@ namespace {
 constexpr int DefaultUpdateIntervalSeconds = 10;
 constexpr int MinimumUpdateIntervalSeconds = 1;
 constexpr int MaximumUpdateIntervalSeconds = 3600;
+constexpr qint64 SlowRpcRefreshIntervalMs = 60 * 1000;
+constexpr int CommandRefreshDebounceMs = 200;
 constexpr const char *MainWindowToolBarVisibleKey = "mainWindow/toolBarVisible";
 constexpr const char *MainWindowStatusBarVisibleKey = "mainWindow/statusBarVisible";
 constexpr const char *MainWindowToolBarStyleKey = "mainWindow/toolBarButtonStyle";
+constexpr const char *MainWindowStateKey = "mainWindow/stateV2";
 constexpr Qt::ToolButtonStyle DefaultToolBarButtonStyle = Qt::ToolButtonIconOnly;
 
 bool isSupportedToolBarButtonStyle(Qt::ToolButtonStyle style)
@@ -226,6 +244,174 @@ void MainWindow::clearGeneralTab()
         torrentPeersController->clear();
 }
 
+void MainWindow::setupPlatformMenus()
+{
+    ui->actionClose_Window->setShortcut(QKeySequence::Close);
+    ui->actionClose_Window->setMenuRole(QAction::NoRole);
+
+#ifdef Q_OS_MACOS
+    // Let Qt merge these actions into the standard macOS application menu.
+    // Keeping the actions in File in the .ui preserves the existing layout on
+    // Windows and Linux, while their menu roles relocate them on macOS.
+    ui->actionAbout->setMenuRole(QAction::AboutRole);
+    ui->actionQuit->setMenuRole(QAction::QuitRole);
+
+    ui->actionSettings->setText(tr("Settings…"));
+    ui->actionSettings->setMenuRole(QAction::PreferencesRole);
+    ui->actionSettings->setShortcut(QKeySequence::Preferences);
+
+    ui->actionServer_Setup->setMenuRole(QAction::ApplicationSpecificRole);
+    ui->actionTransmission_Settings->setMenuRole(QAction::ApplicationSpecificRole);
+#endif
+}
+
+void MainWindow::setupEditMenu()
+{
+    auto *editMenu = new QMenu(tr("Edit"), this);
+    menuBar()->insertMenu(ui->menuTransfers->menuAction(), editMenu);
+
+    QAction *copyAction = editMenu->addAction(tr("Copy"));
+    copyAction->setShortcut(QKeySequence::Copy);
+    copyAction->setShortcutContext(Qt::WindowShortcut);
+    connect(copyAction, &QAction::triggered, this, &MainWindow::copyFromFocusedWidget);
+
+    QAction *selectAllAction = editMenu->addAction(tr("Select All"));
+    selectAllAction->setShortcut(QKeySequence::SelectAll);
+    selectAllAction->setShortcutContext(Qt::WindowShortcut);
+    connect(selectAllAction, &QAction::triggered, this, &MainWindow::selectAllInFocusedWidget);
+
+    editMenu->addSeparator();
+
+    QAction *findAction = editMenu->addAction(tr("Find Torrents"));
+    findAction->setShortcut(QKeySequence::Find);
+    findAction->setShortcutContext(Qt::WindowShortcut);
+    connect(findAction, &QAction::triggered, this, &MainWindow::focusTorrentSearch);
+
+    QAction *findFilesAction = editMenu->addAction(tr("Find Files"));
+#ifdef Q_OS_MACOS
+    findFilesAction->setShortcut(QKeySequence(QStringLiteral("Meta+Alt+F")));
+#else
+    findFilesAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Alt+F")));
+#endif
+    findFilesAction->setShortcutContext(Qt::WindowShortcut);
+    connect(findFilesAction, &QAction::triggered, this, &MainWindow::focusFileSearch);
+
+    ui->action_Open_Torrent->setShortcut(QKeySequence::Open);
+#ifdef Q_OS_MACOS
+    ui->actionAdd_Torrent_from_Magnet_Link->setShortcut(
+        QKeySequence(QStringLiteral("Meta+Shift+O")));
+#else
+    ui->actionAdd_Torrent_from_Magnet_Link->setShortcut(
+        QKeySequence(QStringLiteral("Ctrl+Shift+O")));
+#endif
+}
+
+void MainWindow::copyFromFocusedWidget()
+{
+    QWidget *focused = QApplication::focusWidget();
+    if (!focused)
+        return;
+
+    if (auto *lineEdit = qobject_cast<QLineEdit *>(focused)) {
+        lineEdit->copy();
+        return;
+    }
+
+    if (auto *textEdit = qobject_cast<QTextEdit *>(focused)) {
+        textEdit->copy();
+        return;
+    }
+
+    if (auto *plainTextEdit = qobject_cast<QPlainTextEdit *>(focused)) {
+        plainTextEdit->copy();
+        return;
+    }
+
+    auto *view = qobject_cast<QAbstractItemView *>(focused);
+    if (!view)
+        view = qobject_cast<QAbstractItemView *>(focused->parentWidget());
+    if (!view || !view->selectionModel() || !view->model())
+        return;
+
+    QModelIndexList rows = view->selectionModel()->selectedRows();
+    if (rows.isEmpty()) {
+        const QModelIndexList indexes = view->selectionModel()->selectedIndexes();
+        if (indexes.isEmpty())
+            return;
+        rows = indexes;
+    }
+
+    std::sort(rows.begin(), rows.end(), [](const QModelIndex &left, const QModelIndex &right) {
+        if (left.row() != right.row())
+            return left.row() < right.row();
+        return left.column() < right.column();
+    });
+
+    QStringList output;
+    int previousRow = -1;
+    for (const QModelIndex &rowIndex : std::as_const(rows)) {
+        if (rowIndex.row() == previousRow)
+            continue;
+        previousRow = rowIndex.row();
+
+        QStringList columns;
+        for (int column = 0; column < view->model()->columnCount(rowIndex.parent()); ++column) {
+            const bool hidden =
+                (qobject_cast<QTableView *>(view) &&
+                 qobject_cast<QTableView *>(view)->isColumnHidden(column)) ||
+                (qobject_cast<QTreeView *>(view) &&
+                 qobject_cast<QTreeView *>(view)->isColumnHidden(column));
+            if (hidden)
+                continue;
+            columns << view->model()->index(rowIndex.row(), column, rowIndex.parent())
+                           .data(Qt::DisplayRole).toString();
+        }
+        output << columns.join(QLatin1Char('\t'));
+    }
+
+    if (!output.isEmpty())
+        QApplication::clipboard()->setText(output.join(QLatin1Char('\n')));
+}
+
+void MainWindow::selectAllInFocusedWidget()
+{
+    QWidget *focused = QApplication::focusWidget();
+    if (!focused)
+        return;
+
+    if (auto *lineEdit = qobject_cast<QLineEdit *>(focused)) {
+        lineEdit->selectAll();
+        return;
+    }
+    if (auto *textEdit = qobject_cast<QTextEdit *>(focused)) {
+        textEdit->selectAll();
+        return;
+    }
+    if (auto *plainTextEdit = qobject_cast<QPlainTextEdit *>(focused)) {
+        plainTextEdit->selectAll();
+        return;
+    }
+
+    auto *view = qobject_cast<QAbstractItemView *>(focused);
+    if (!view)
+        view = qobject_cast<QAbstractItemView *>(focused->parentWidget());
+    if (view)
+        view->selectAll();
+}
+
+void MainWindow::focusTorrentSearch()
+{
+    ui->editTorrentFilter->setFocus(Qt::ShortcutFocusReason);
+    ui->editTorrentFilter->selectAll();
+}
+
+void MainWindow::focusFileSearch()
+{
+    ui->tabWidget->setCurrentWidget(ui->fileTreeWidget);
+    ui->editFileFilter->setFocus(Qt::ShortcutFocusReason);
+    ui->editFileFilter->selectAll();
+}
+
 void MainWindow::setupViewMenu()
 {
     ui->toolBar->setWindowTitle(tr("Toolbar"));
@@ -291,6 +477,97 @@ void MainWindow::setupViewMenu()
     restoreViewSettings();
 }
 
+void MainWindow::setupActivityDock()
+{
+    activityDock = new QDockWidget(tr("Activity"), this);
+    activityDock->setObjectName(QStringLiteral("activityDock"));
+    activityDock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    activityDock->setFeatures(QDockWidget::DockWidgetClosable |
+                              QDockWidget::DockWidgetMovable |
+                              QDockWidget::DockWidgetFloatable);
+
+    activityLogModel = new ActivityLogModel(activityDock);
+    activityTable = new QTableView(activityDock);
+    activityTable->setModel(activityLogModel);
+    activityTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    activityTable->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    activityTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    activityTable->setAlternatingRowColors(true);
+    activityTable->setShowGrid(false);
+    activityTable->verticalHeader()->hide();
+    activityTable->horizontalHeader()->setStretchLastSection(false);
+    activityTable->horizontalHeader()->setSectionResizeMode(ActivityLogModel::TimeColumn,
+                                                             QHeaderView::ResizeToContents);
+    activityTable->horizontalHeader()->setSectionResizeMode(ActivityLogModel::EventColumn,
+                                                             QHeaderView::ResizeToContents);
+    activityTable->horizontalHeader()->setSectionResizeMode(ActivityLogModel::DetailsColumn,
+                                                             QHeaderView::Stretch);
+    activityTable->horizontalHeader()->setSectionResizeMode(ActivityLogModel::ServerColumn,
+                                                             QHeaderView::ResizeToContents);
+    activityTable->setContextMenuPolicy(Qt::CustomContextMenu);
+    activityDock->setWidget(activityTable);
+    addDockWidget(Qt::BottomDockWidgetArea, activityDock);
+
+    QAction *toggleAction = activityDock->toggleViewAction();
+    toggleAction->setText(tr("Activity"));
+    toggleAction->setToolTip(tr("Show or hide activity observed while Planetary is connected"));
+    if (viewMenu) {
+        viewMenu->insertAction(viewMenu->actions().value(2), toggleAction);
+    }
+
+    connect(activityTable, &QTableView::customContextMenuRequested,
+            this, [this](const QPoint &position) {
+                QMenu menu(activityTable);
+                QAction *copyAction = menu.addAction(tr("Copy"));
+                copyAction->setEnabled(activityTable->selectionModel()->hasSelection());
+                QAction *clearAction = menu.addAction(tr("Clear Activity"));
+                clearAction->setEnabled(activityLogModel->rowCount() > 0);
+
+                QAction *chosen = menu.exec(activityTable->viewport()->mapToGlobal(position));
+                if (chosen == copyAction) {
+                    QStringList lines;
+                    const QModelIndexList rows =
+                        activityTable->selectionModel()->selectedRows();
+                    for (const QModelIndex &rowIndex : rows) {
+                        QStringList columns;
+                        for (int column = 0; column < ActivityLogModel::ColumnCount; ++column)
+                            columns << activityLogModel->index(rowIndex.row(), column).data().toString();
+                        lines << columns.join(QLatin1Char('\t'));
+                    }
+                    QApplication::clipboard()->setText(lines.join(QLatin1Char('\n')));
+                } else if (chosen == clearAction) {
+                    activityLogModel->clear();
+                }
+            });
+
+    QSettings settings;
+    const QByteArray state = settings.value(QString::fromLatin1(MainWindowStateKey)).toByteArray();
+    if (!state.isEmpty()) {
+        restoreState(state, 2);
+    } else {
+        activityDock->hide();
+    }
+
+    connect(activityDock, &QDockWidget::visibilityChanged, this, [this](bool visible) {
+        if (visible && !activityDock->isFloating())
+            resizeDocks({activityDock}, {150}, Qt::Vertical);
+    });
+}
+
+void MainWindow::recordActivity(const QString &event, const QString &details,
+                                const QString &server)
+{
+    if (!activityLogModel)
+        return;
+
+    const bool wasAtBottom = activityTable &&
+        activityTable->verticalScrollBar()->value() >=
+            activityTable->verticalScrollBar()->maximum();
+    activityLogModel->addEvent(event, details, server);
+    if (wasAtBottom && activityTable)
+        activityTable->scrollToBottom();
+}
+
 void MainWindow::restoreViewSettings()
 {
     QSettings settings;
@@ -330,6 +607,7 @@ void MainWindow::saveViewSettings() const
         DefaultToolBarButtonStyle);
     settings.setValue(QString::fromLatin1(MainWindowToolBarStyleKey),
                       static_cast<int>(toolBarStyle));
+    settings.setValue(QString::fromLatin1(MainWindowStateKey), saveState(2));
     settings.sync();
 }
 
@@ -419,14 +697,30 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     timer = new QTimer(this);
+    commandRefreshTimer = new QTimer(this);
+    commandRefreshTimer->setSingleShot(true);
+    commandRefreshTimer->setInterval(CommandRefreshDebounceMs);
     client = new rpc_client(this);
     torrentModel = new TorrentModel(this);
 
-    // used as a intermediate model for sorting/filtering/etc
+    connect(commandRefreshTimer, &QTimer::timeout, this, [this]() {
+        client->getTorrentList();
+
+        if (pendingCommandDetailsRefresh) {
+            const int torrentId = currentTorrentId();
+            if (torrentId >= 0)
+                client->getTorrentDetails(torrentId);
+        }
+
+        pendingCommandDetailsRefresh = false;
+    });
+
+    // Keep the canonical torrent collection independent of view ordering and
+    // filtering; controllers translate proxy selections back to torrent IDs.
     proxy = new TorrentSortProxyModel(this);
     proxy->setSourceModel(torrentModel);
 
-    // geo ip lookup
+    // GeoIP failure is non-fatal: GeoIpService retains its compiled fallback.
     geoIpService = new GeoIpService(this);
 
     if (!geoIpService->loadDefaultDatabase()) {
@@ -435,9 +729,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     torrentAddController = new TorrentAddController(client, this, this);
 
-    // set up the main UI
+    // setupUi() must precede controller construction because controllers retain
+    // pointers to widgets owned by the generated UI tree.
     ui->setupUi(this);
+    setupPlatformMenus();
+    setupEditMenu();
     setupViewMenu();
+    setupActivityDock();
     applyCustomActionIcons(ui);
     TorrentGeneralController::Widgets generalWidgets;
     generalWidgets.generalTab = ui->general;
@@ -479,7 +777,8 @@ MainWindow::MainWindow(QWidget *parent)
     MainWindow::setWindowTitle(QCoreApplication::applicationName());
     setWindowIcon(QIcon(":/icons/planetary-512px.png"));
 
-    // Initialization methods
+    // Platform chrome and passive services can be initialized before the RPC
+    // client starts producing responses.
     loadServerCombo();
     setupConnectionStatusIndicator();
     updateCheckController = new UpdateCheckController(this, this);
@@ -516,7 +815,17 @@ MainWindow::MainWindow(QWidget *parent)
     trayController->setTorrentGlobalActions(ui->actionStart_All_Torrents,
                                             ui->actionStop_All_Torrents);
 
+#if defined(Q_OS_WIN)
+    notificationController = new NotificationController(
+        this,
+        [this](const QString &title, const QString &message, int timeoutMs) {
+            return trayController &&
+                   trayController->showNotification(title, message, timeoutMs);
+        });
+#else
     notificationController = new NotificationController(this);
+#endif
+    notificationController->setServerName(ui->comboServers->currentText());
 
     connect(notificationController, &NotificationController::statusMessageRequested,
             this, [this](const QString &message, int timeoutMs) {
@@ -524,16 +833,15 @@ MainWindow::MainWindow(QWidget *parent)
                     statusBarController->showMessage(message, timeoutMs);
             });
 
-    // UI setup
-    mainMenu = new QMenu(this);
-    this->menuBar()->addMenu(this->mainMenu);
-    aboutAction = new QAction(this);
-    this->aboutAction->setMenuRole(QAction::AboutRole);
-    this->mainMenu->addAction(this->aboutAction);
-    this->setMenuBar(this->menuBar());
+    connect(notificationController, &NotificationController::activityEventObserved,
+            this, &MainWindow::recordActivity);
+
+    connect(client, &rpc_client::torrentAdded,
+            notificationController, &NotificationController::handleTorrentAdded);
 
     torrentFilesController = new TorrentFilesController(
         ui->fileTreeWidget,
+        ui->editFileFilter,
         client,
         this,
         this
@@ -552,7 +860,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(torrentFilesController,
             &TorrentFilesController::torrentDetailsRefreshRequested,
             client,
-            &rpc_client::getTorrentDetails);
+            &rpc_client::getTorrentFiles);
 
     torrentTrackersController = new TorrentTrackersController(
         ui->trackerTableWidget,
@@ -667,6 +975,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(torrentListController, &TorrentListController::torrentSelected,
             this, [this](int torrentId) {
+                // Selection defines a new detail generation. Cancel every
+                // category still associated with the previous torrent.
+                client->cancelTorrentDetailRequests();
                 clearGeneralTab();
                 torrentPeersController->clear();
                 torrentTrackersController->clear();
@@ -677,10 +988,14 @@ MainWindow::MainWindow(QWidget *parent)
                 torrentTrackersController->setLoading();
                 torrentFilesController->setLoading();
                 client->getTorrentDetails(torrentId);
+                refreshCurrentTorrentTabData();
             });
 
     connect(torrentListController, &TorrentListController::torrentSelectionCleared,
-            this, [this]() { clearGeneralTab(); });
+            this, [this]() {
+                client->cancelTorrentDetailRequests();
+                clearGeneralTab();
+            });
 
     connect(torrentListController, &TorrentListController::torrentListRefreshRequested,
             client, &rpc_client::getTorrentList);
@@ -719,11 +1034,38 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->tabWidget, &QTabWidget::currentChanged,
             this, [this](int) {
-                refreshCurrentTorrentLiveDetailsIfNeeded();
+                refreshCurrentTorrentTabData();
             });
 
     connect(client, &rpc_client::serverChanged,
             torrentModel, &TorrentModel::clear);
+
+    connect(client, &rpc_client::serverChanged, this, [this]() {
+        lastFreeSpaceRefreshMs = 0;
+        lastTrackerMetadataRefreshMs = 0;
+        activityConnectionEstablished = false;
+        activityConnectionFailed = false;
+        recordActivity(tr("Server changed"), tr("Switched active Transmission server."),
+                       ui->comboServers->currentText());
+    });
+
+    connect(client, &rpc_client::updateFailed, this, [this](const QString &message) {
+        if (!activityConnectionFailed) {
+            recordActivity(tr("Connection lost"), message, ui->comboServers->currentText());
+            activityConnectionFailed = true;
+        }
+    });
+
+    connect(client, &rpc_client::updateFinished, this, [this]() {
+        const QString server = ui->comboServers->currentText();
+        if (activityConnectionFailed) {
+            recordActivity(tr("Reconnected"), tr("Connection to Transmission was restored."), server);
+        } else if (!activityConnectionEstablished) {
+            recordActivity(tr("Connected"), tr("Connected to Transmission."), server);
+        }
+        activityConnectionEstablished = true;
+        activityConnectionFailed = false;
+    });
 
     connect(client, &rpc_client::sessionSettingsReceived,
             this, &MainWindow::handleSessionSettingsReceived);
@@ -736,22 +1078,41 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionAlternative_Speed_Mode, &QAction::triggered,
             this, &MainWindow::toggleAlternativeSpeedMode);
 
+    connect(ui->actionClose_Window, &QAction::triggered,
+            this, &QWidget::close);
+
     connect(ui->actionServer_Setup, &QAction::triggered, this, &MainWindow::onServerSetupTriggered);
 
     connect(timer, &QTimer::timeout, this, &MainWindow::updateTorrentList);
+    QAction *projectWebsiteAction = new QAction(tr("Planetary Website..."), this);
+    ui->menuHelp->insertAction(ui->actionCheckForUpdates, projectWebsiteAction);
+    connect(projectWebsiteAction, &QAction::triggered, this, [this]() {
+        const QUrl projectUrl(QStringLiteral("https://planetary.mvgrafx.net/"));
+        if (!QDesktopServices::openUrl(projectUrl) && statusBarController) {
+            statusBarController->showMessage(
+                tr("Could not open the Planetary website."),
+                5000
+                );
+        }
+    });
+
     QAction *diagnosticsAction = new QAction(tr("Diagnostics..."), this);
-    ui->menuHelp->insertAction(aboutAction, diagnosticsAction);
-    ui->menuHelp->insertSeparator(aboutAction);
+    ui->menuHelp->insertAction(ui->actionAbout, diagnosticsAction);
+    ui->menuHelp->insertSeparator(ui->actionAbout);
     connect(diagnosticsAction, &QAction::triggered, this, &MainWindow::showDiagnostics);
-    connect(aboutAction, &QAction::triggered, this, &MainWindow::showAbout);
 
     connect(client, &rpc_client::torrentDetailsReceived,
             this,
             [this](int torrentId, const QJsonObject &details) {
+                // Detail requests can overlap selection changes. Never apply a
+                // late response to widgets representing another torrent.
                 if (torrentId != currentTorrentId())
                     return;
 
                 torrentGeneralController->update(details);
+                // Piece/live data merges into the summary cache, so start that
+                // category only after the summary establishes its torrent ID.
+                refreshCurrentTorrentTabData();
 
                 if (torrentListController) {
                     bool hasSequentialDownload = false;
@@ -777,18 +1138,36 @@ MainWindow::MainWindow(QWidget *parent)
                         );
                 }
 
-                torrentTrackersController->setTorrentId(torrentId);
-                torrentTrackersController->populate(details);
+            });
+
+    connect(client, &rpc_client::torrentFilesReceived,
+            this, [this](int torrentId, const QJsonObject &details) {
+                if (torrentId != currentTorrentId())
+                    return;
+
                 torrentFilesController->setTorrentContext(
                     torrentId,
-                    details.value("downloadDir").toString()
-                    );
+                    details.value(QStringLiteral("downloadDir")).toString());
                 torrentFilesController->populate(
-                    details.value("files").toArray(),
-                    details.value("wanted").toArray(),
-                    details.value("priorities").toArray()
-                    );
-                torrentPeersController->populate(details.value("peers").toArray());
+                    details.value(QStringLiteral("files")).toArray(),
+                    details.value(QStringLiteral("wanted")).toArray(),
+                    details.value(QStringLiteral("priorities")).toArray());
+            });
+
+    connect(client, &rpc_client::torrentPeersReceived,
+            this, [this](int torrentId, const QJsonObject &details) {
+                if (torrentId == currentTorrentId())
+                    torrentPeersController->populate(
+                        details.value(QStringLiteral("peers")).toArray());
+            });
+
+    connect(client, &rpc_client::torrentTrackersReceived,
+            this, [this](int torrentId, const QJsonObject &details) {
+                if (torrentId != currentTorrentId())
+                    return;
+
+                torrentTrackersController->setTorrentId(torrentId);
+                torrentTrackersController->populate(details);
             });
 
     connect(client, &rpc_client::torrentPiecesReceived,
@@ -797,11 +1176,13 @@ MainWindow::MainWindow(QWidget *parent)
                 torrentGeneralController->updatePieces(torrentId, details);
             });
 
-    // Data path: required for the table to show anything
+    // Primary data path: the source model must update before observers rebuild
+    // filters, counts, notifications, and status summaries.
     connect(client, &rpc_client::torrentsReceived,
                 torrentModel, &TorrentModel::applyUpdate);
 
-    // Side effects: notifications/status only
+    // Secondary consumers do not own torrent data and may safely derive state
+    // from each completed snapshot.
     connect(client, &rpc_client::torrentsReceived,
             this, &MainWindow::handleTorrentsReceived);
 
@@ -824,23 +1205,20 @@ MainWindow::MainWindow(QWidget *parent)
                     statusBarController->setFreeSpace(sizeBytes);
             });
 
+    connect(client, &rpc_client::torrentTrackerMetadataUpdated,
+            client, &rpc_client::getTorrentList);
+
     connect(client, &rpc_client::commandSucceeded,
             this, [this](const QString &method) {
+                // Mutating RPC responses contain little or no updated torrent
+                // state, so refresh the affected projections explicitly.
                 if (method == QStringLiteral("session-set")) {
                     client->getSessionSettings();
                     return;
                 }
 
                 const auto refreshTorrentState = [this](bool refreshDetails) {
-                    client->getTorrentList();
-
-                    if (!refreshDetails)
-                        return;
-
-                    const int torrentId = currentTorrentId();
-
-                    if (torrentId >= 0)
-                        client->getTorrentDetails(torrentId);
+                    scheduleTorrentRefresh(refreshDetails);
                 };
 
                 if (method == QStringLiteral("torrent-set-location")) {
@@ -940,7 +1318,6 @@ void MainWindow::showAbout()
     dialog.exec();
 }
 
-// torent(s) selected
 void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
 {
     if (torrentListController)
@@ -1017,6 +1394,29 @@ void MainWindow::on_actionSettings_triggered()
 {
     AppSettings dialog(this);
 
+    connect(&dialog, &AppSettings::testNotificationRequested,
+            this, [this]() {
+                if (notificationController)
+                    notificationController->showTestNotification();
+            });
+    connect(&dialog, &AppSettings::testExternalCommandRequested,
+            this, [this](const QString &executable, const QString &arguments) {
+                if (notificationController)
+                    notificationController->showTestExternalCommand(executable, arguments);
+            });
+
+    connect(&dialog, &AppSettings::clearWatchFolderHistoryRequested,
+            this, [this]() {
+                if (!watchFolderManager)
+                    return;
+
+                watchFolderManager->clearProcessedHistory();
+                statusBar()->showMessage(
+                    tr("Watch folder import history cleared."),
+                    5000
+                    );
+            });
+
     if (dialog.exec() != QDialog::Accepted) {
         return;
     }
@@ -1031,7 +1431,6 @@ int MainWindow::currentTorrentId() const
     return torrentListController ? torrentListController->currentTorrentId() : -1;
 }
 
-// save header dimensions of all tables
 void MainWindow::saveTableViewState()
 {
     if (torrentListController)
@@ -1047,7 +1446,6 @@ void MainWindow::saveTableViewState()
         torrentTrackersController->saveViewState();
 }
 
-// restore header dimensions
 void MainWindow::restoreTableViewState()
 {
     if (torrentListController)
@@ -1065,6 +1463,8 @@ void MainWindow::restoreTableViewState()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+    // Persist layout before the tray controller potentially consumes the close
+    // and converts it into a hide operation.
     saveTableViewState();
     saveViewSettings();
 
@@ -1086,6 +1486,10 @@ void MainWindow::onServerSetupTriggered()
 
         if (serverIndex >= 0) {
             client->setServerFromSettingsIndex(serverIndex);
+            if (notificationController) {
+                notificationController->setServerName(ui->comboServers->currentText());
+                notificationController->resetBaseline();
+            }
             if (statusBarController)
                 statusBarController->showMessage(client->getServer());
             if (torrentListController)
@@ -1146,15 +1550,35 @@ void MainWindow::handleLaunchArguments(const QStringList &arguments)
 
 void MainWindow::addTorrentFromFile()
 {
+    QSettings settings;
+    QString initialDirectory =
+        settings.value(SettingsKeys::TorrentOpenDirectory).toString();
+
+    if (!QFileInfo(initialDirectory).isDir()) {
+        initialDirectory = QStandardPaths::writableLocation(
+            QStandardPaths::DownloadLocation
+            );
+    }
+
+    if (!QFileInfo(initialDirectory).isDir())
+        initialDirectory = QDir::homePath();
+
     const QStringList fileNames = QFileDialog::getOpenFileNames(
         this,
         tr("Add Torrent Files"),
-        QString(),
+        initialDirectory,
         tr("Torrent Files (*.torrent);;All Files (*)")
         );
 
     if (fileNames.isEmpty())
         return;
+
+    // Native multi-file dialogs normally constrain selection to one directory;
+    // the first selected file remains a deterministic fallback if they do not.
+    settings.setValue(
+        SettingsKeys::TorrentOpenDirectory,
+        QFileInfo(fileNames.constFirst()).absolutePath()
+        );
 
     torrentAddController->addTorrentFiles(fileNames);
 }
@@ -1268,6 +1692,13 @@ void MainWindow::saveSelectedServerFromCombo()
         return;
     }
 
+    // A server switch defines a new notification baseline; otherwise torrents
+    // on the new server would be reported as newly added or completed.
+    if (notificationController) {
+        notificationController->setServerName(ui->comboServers->currentText());
+        notificationController->resetBaseline();
+    }
+
     torrentFilesController->setTorrentContext(-1, QString());
     torrentFilesController->clear();
     torrentTrackersController->setTorrentId(-1);
@@ -1287,6 +1718,8 @@ void MainWindow::saveSelectedServerFromCombo()
         torrentListController->beginTorrentListRefresh();
     client->getTorrentList();
 
+    // Session-derived state is server-specific and remains unknown until the
+    // new session-get response arrives.
     remoteDownloadDir.clear();
 
     if (torrentListController) {
@@ -1348,6 +1781,8 @@ int MainWindow::updateIntervalMs() const
 
 void MainWindow::applyUpdateInterval()
 {
+    // Restart is unnecessary when changing an active QTimer interval; Qt
+    // reschedules it using the new value.
     timer->setInterval(updateIntervalMs());
 
     if (!timer->isActive())
@@ -1379,6 +1814,51 @@ void MainWindow::refreshCurrentTorrentLiveDetailsIfNeeded()
         return;
 
     client->getTorrentPieces(torrentId);
+}
+
+void MainWindow::refreshCurrentTorrentTabData()
+{
+    const int torrentId = currentTorrentId();
+
+    if (torrentId < 0)
+        return;
+
+    // Large collection fields are requested only for the visible consumer.
+    // The summary request is independent and remains available to all tabs.
+    QWidget *currentTab = ui->tabWidget->currentWidget();
+
+    if (currentTab == ui->fileList)
+        client->getTorrentFiles(torrentId);
+    else if (currentTab == ui->trackers)
+        client->getTorrentTrackers(torrentId);
+    else if (currentTab == ui->peers)
+        client->getTorrentPeers(torrentId);
+    else if (torrentGeneralController->currentTorrentId() == torrentId)
+        refreshCurrentTorrentLiveDetailsIfNeeded();
+}
+
+void MainWindow::scheduleTorrentRefresh(bool refreshDetails)
+{
+    // Multiple command completions often arrive in a burst (for example file
+    // wanted/priority changes). Collapse them into one list/detail generation.
+    pendingCommandDetailsRefresh |= refreshDetails;
+    commandRefreshTimer->start();
+}
+
+void MainWindow::refreshSlowRpcData(bool force)
+{
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+
+    if (force || now - lastTrackerMetadataRefreshMs >= SlowRpcRefreshIntervalMs) {
+        lastTrackerMetadataRefreshMs = now;
+        client->getTorrentTrackerMetadata();
+    }
+
+    if (!remoteDownloadDir.isEmpty()
+        && (force || now - lastFreeSpaceRefreshMs >= SlowRpcRefreshIntervalMs)) {
+        lastFreeSpaceRefreshMs = now;
+        client->getFreeSpace(remoteDownloadDir);
+    }
 }
 
 void MainWindow::setupConnectionStatusIndicator()
@@ -1446,6 +1926,8 @@ void MainWindow::applyAppSettings()
 
 void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
 {
+    // The source model is updated by an earlier connection to the same signal.
+    // This handler fans the immutable snapshot out to secondary UI services.
     if (torrentListController)
         torrentListController->markTorrentListLoaded();
 
@@ -1458,10 +1940,9 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
     if (statusBarController)
         statusBarController->updateTorrents(torrents);
 
-    if (!remoteDownloadDir.isEmpty())
-        client->getFreeSpace(remoteDownloadDir);
+    refreshSlowRpcData();
 
-    refreshCurrentTorrentLiveDetailsIfNeeded();
+    refreshCurrentTorrentTabData();
 }
 
 QList<FolderMapping> MainWindow::currentServerFolderMappings() const
@@ -1510,6 +1991,7 @@ void MainWindow::updateAlternativeSpeedAction(bool enabled, bool available)
     if (!ui || !ui->actionAlternative_Speed_Mode)
         return;
 
+    // Programmatic reconciliation must not issue another session-set request.
     const QSignalBlocker blocker(ui->actionAlternative_Speed_Mode);
     ui->actionAlternative_Speed_Mode->setEnabled(available);
     ui->actionAlternative_Speed_Mode->setChecked(enabled);
@@ -1537,6 +2019,7 @@ void MainWindow::refreshRemoteFreeSpace()
             );
     }
 
+    lastFreeSpaceRefreshMs = QDateTime::currentMSecsSinceEpoch();
     client->getFreeSpace(remoteDownloadDir);
 }
 
@@ -1646,6 +2129,8 @@ void MainWindow::toggleAlternativeSpeedMode(bool enabled)
         return;
     }
 
+    // Reflect the requested state optimistically. commandFailed restores the
+    // last value confirmed by session-get.
     updateAlternativeSpeedAction(enabled, true);
 
     QJsonObject changes;
@@ -1671,6 +2156,8 @@ void MainWindow::showStatistics()
 
 void MainWindow::showSessionSettings()
 {
+    // Always populate the dialog from a fresh session snapshot; cached values
+    // may predate external changes made through another client.
     openSessionSettingsWhenReceived = true;
 
     if (statusBarController) {
@@ -1685,6 +2172,8 @@ void MainWindow::showSessionSettings()
 
 void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSettings)
 {
+    // One session-get response updates shared state first, then services any
+    // pending UI flows that requested the snapshot.
     cachedSessionSettings = sessionSettings;
 
     remoteDownloadDir =
@@ -1712,6 +2201,7 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
         statusBarController->setSessionSettings(sessionSettings);
 
     if (!remoteDownloadDir.isEmpty()) {
+        lastFreeSpaceRefreshMs = QDateTime::currentMSecsSinceEpoch();
         client->getFreeSpace(remoteDownloadDir);
     } else if (statusBarController) {
         statusBarController->clearFreeSpace();
@@ -1766,8 +2256,10 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
         if (torrentListController)
             torrentListController->setDefaultDownloadDir(remoteDownloadDir);
 
-        if (!remoteDownloadDir.isEmpty())
+        if (!remoteDownloadDir.isEmpty()) {
+            lastFreeSpaceRefreshMs = QDateTime::currentMSecsSinceEpoch();
             client->getFreeSpace(remoteDownloadDir);
+        }
     }
 
     if (statusBarController) {

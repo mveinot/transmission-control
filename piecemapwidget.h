@@ -5,6 +5,8 @@
 #include <QSize>
 #include <QWidget>
 
+// Compact bitfield renderer. Piece zero maps to the high bit of byte zero,
+// matching Transmission's wire representation.
 class PieceMapWidget : public QWidget
 {
     Q_OBJECT

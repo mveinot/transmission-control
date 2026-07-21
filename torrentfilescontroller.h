@@ -7,11 +7,13 @@
 #include <QList>
 #include <QPoint>
 #include <QString>
+#include <QVector>
 #include <functional>
 #include <memory>
 
 #include "foldermapping.h"
 
+class QLineEdit;
 class QTreeWidget;
 class QTreeWidgetItem;
 class QWidget;
@@ -19,12 +21,15 @@ class rpc_client;
 class TableColumnController;
 class TablePlaceholderController;
 
+// Maintains the selected torrent's file records and projects them as either a
+// hierarchy or a sortable flat view. File indices remain RPC-authoritative.
 class TorrentFilesController : public QObject
 {
     Q_OBJECT
 
 public:
     explicit TorrentFilesController(QTreeWidget *fileTreeWidget,
+                                    QLineEdit *filterEdit,
                                     rpc_client *client,
                                     QWidget *dialogParent,
                                     QObject *parent = nullptr);
@@ -52,6 +57,7 @@ private:
         FilePriorityColumn,
         FileSizeColumn,
         FileDoneColumn,
+        FileRemainingColumn,
         FilePercentColumn,
         FileColumnCount
     };
@@ -61,6 +67,15 @@ private:
         FileIndexRole,
         FileWantedRole,
         FilePriorityRole
+    };
+
+    struct FileRecord {
+        int index = -1;
+        QString path;
+        qint64 length = 0;
+        qint64 bytesCompleted = 0;
+        bool wanted = true;
+        int priority = 0;
     };
 
     enum class FileTransferVisualState {
@@ -76,6 +91,11 @@ private:
     static QString priorityToString(int priority);
 
     void setItemVisualState(QTreeWidgetItem *item, FileTransferVisualState state);
+    void rebuildView();
+    void populateTreeView();
+    void populateFlatView();
+    void populateFileItem(QTreeWidgetItem *item, const FileRecord &record, bool showFullPath);
+    void handleSortChanged(int logicalIndex, Qt::SortOrder order);
     void updateFolderVisualStates();
     FileTransferVisualState updateFolderVisualState(QTreeWidgetItem *item);
 
@@ -100,13 +120,22 @@ private:
     QString mapRemotePathToLocalPath(const QString &remotePath,
                                      const QList<FolderMapping> &mappings) const;
     void setSelectedFilesPriorityState(int priority, bool wanted);
+    void applyFilter(const QString &text);
+    bool filterItem(QTreeWidgetItem *item,
+                    const QString &text,
+                    bool ancestorMatches);
 
     QTreeWidget *fileTreeWidget = nullptr;
+    QLineEdit *filterEdit = nullptr;
     rpc_client *client = nullptr;
     QWidget *dialogParent = nullptr;
     int torrentId = -1;
     QString torrentDownloadDir;
     QHash<int, QString> torrentFilePaths;
+    QVector<FileRecord> fileRecords;
+    int sortColumn = FileNameColumn;
+    Qt::SortOrder sortOrder = Qt::AscendingOrder;
+    bool rebuildingView = false;
     std::function<QList<FolderMapping>()> folderMappingsProvider;
     std::unique_ptr<TableColumnController> columnController;
     std::unique_ptr<TablePlaceholderController> placeholderController;

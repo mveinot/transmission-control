@@ -13,6 +13,7 @@ QString processedFingerprintsSettingsKey()
 }
 
 constexpr qsizetype MaxStoredFingerprints = 1000;
+constexpr int NativeWatcherReconciliationIntervalMs = 30000;
 
 } // namespace
 
@@ -50,7 +51,10 @@ bool WatchFolderManager::isEnabled() const
 
 void WatchFolderManager::setWatchFolder(const QString &folderPath)
 {
-    const QString cleanedPath = QDir::cleanPath(folderPath.trimmed());
+    const QString trimmedPath = folderPath.trimmed();
+    const QString cleanedPath = trimmedPath.isEmpty()
+        ? QString()
+        : QDir::cleanPath(trimmedPath);
 
     if (m_watchFolder == cleanedPath)
         return;
@@ -76,7 +80,10 @@ void WatchFolderManager::setScanIntervalMs(int intervalMs)
         return;
 
     m_scanIntervalMs = normalizedInterval;
-    m_scanTimer.setInterval(m_scanIntervalMs);
+    m_scanTimer.setInterval(
+        m_nativeWatcherActive
+            ? qMax(m_scanIntervalMs, NativeWatcherReconciliationIntervalMs)
+            : m_scanIntervalMs);
 }
 
 int WatchFolderManager::scanIntervalMs() const
@@ -97,7 +104,12 @@ int WatchFolderManager::requiredStableChecks() const
 void WatchFolderManager::clearProcessedHistory()
 {
     m_processedFingerprints.clear();
+    m_candidates.clear();
+    m_pendingFingerprintsByPath.clear();
     saveProcessedFingerprints();
+
+    if (m_enabled)
+        QTimer::singleShot(0, this, &WatchFolderManager::scanWatchFolder);
 }
 
 bool WatchFolderManager::hasPendingTorrentFile(const QString &filePath) const
@@ -159,17 +171,25 @@ void WatchFolderManager::restartWatcher()
         return;
     }
 
-    if (!m_watcher.addPath(m_watchFolder)) {
+    m_nativeWatcherActive = m_watcher.addPath(m_watchFolder);
+
+    if (!m_nativeWatcherActive) {
         emit warningMessage(
-           tr("Could not watch folder: %1").arg(m_watchFolder)
+           tr("Could not monitor folder changes; using periodic scans: %1")
+               .arg(m_watchFolder)
             );
-        return;
     }
 
     emit statusMessage(
         tr("Watching folder for torrents: %1").arg(m_watchFolder)
         );
 
+    // Native events provide low-latency discovery. The timer becomes a slower
+    // reconciliation safety net unless native registration failed.
+    m_scanTimer.setInterval(
+        m_nativeWatcherActive
+            ? qMax(m_scanIntervalMs, NativeWatcherReconciliationIntervalMs)
+            : m_scanIntervalMs);
     m_scanTimer.start();
 
     /*
@@ -186,6 +206,7 @@ void WatchFolderManager::stopWatcher()
         m_watcher.removePaths(m_watcher.directories());
 
     m_scanTimer.stop();
+    m_nativeWatcherActive = false;
     m_candidates.clear();
     m_pendingFingerprintsByPath.clear();
 }
@@ -201,6 +222,10 @@ void WatchFolderManager::handleDirectoryChanged(const QString &path)
      * to behave.
      */
     scanWatchFolder();
+
+    // A copy may still be in progress at the event edge. Schedule the next
+    // configured stability sample without restoring high-frequency polling.
+    QTimer::singleShot(m_scanIntervalMs, this, &WatchFolderManager::scanWatchFolder);
 }
 
 QStringList WatchFolderManager::torrentFilesInWatchFolder() const
@@ -314,6 +339,7 @@ bool WatchFolderManager::candidateIsStable(const QString &filePath,
     if (currentSize <= 0)
         return false;
 
+    // Consecutive identical samples avoid submitting partially copied files.
     const bool unchanged =
         candidate.size == currentSize
         && candidate.lastModified == currentModified;

@@ -16,6 +16,8 @@ class QListWidgetItem;
 class QPoint;
 
 
+// Synchronizes toolbar actions, sidebar items, and TorrentSortProxyModel state.
+// Dynamic tracker/folder sections are derived from each list snapshot.
 class TorrentFilterController : public QObject
 {
     Q_OBJECT

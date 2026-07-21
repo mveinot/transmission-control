@@ -7,6 +7,8 @@ namespace Ui {
 class DialogAbout;
 }
 
+// Presents build identity, credits, and bundled license material without
+// depending on network availability.
 class DialogAbout : public QDialog
 {
     Q_OBJECT

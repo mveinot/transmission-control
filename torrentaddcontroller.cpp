@@ -140,6 +140,7 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
                          ? displaySourceForFile(source)
                          : source);
 
+    // Local parsing is preview-only; Transmission remains authoritative.
     if (sourceType == TorrentAddDialog::SourceType::TorrentFile)
         dialog.setTorrentMetadata(TorrentMetadataParser::parseTorrentFile(source));
 

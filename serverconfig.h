@@ -13,6 +13,8 @@ namespace Ui {
 class ServerConfig;
 }
 
+// Transactional editor for the persisted server array. Changes remain local to
+// the dialog until acceptance, including imported definitions and mappings.
 class ServerConfig : public QDialog
 {
     Q_OBJECT

@@ -10,6 +10,8 @@
 class QWidget;
 class rpc_client;
 
+// Orchestrates validation, metadata preview, remembered add options, and the
+// final RPC call for file and magnet sources.
 class TorrentAddController : public QObject
 {
     Q_OBJECT

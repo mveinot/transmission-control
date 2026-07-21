@@ -53,6 +53,8 @@ struct GeoIpResult
     }
 };
 
+// Synchronous local GeoIP resolver backed by a memory-mapped MMDB. Results,
+// including misses and private addresses, are cached for the process lifetime.
 class GeoIpService : public QObject
 {
     Q_OBJECT

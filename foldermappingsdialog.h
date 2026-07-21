@@ -10,6 +10,8 @@ namespace Ui {
 class FolderMappingsDialog;
 }
 
+// Edits an ordered mapping list for one server. Validation occurs before the
+// accepted mappings are returned to ServerConfig.
 class FolderMappingsDialog : public QDialog
 {
     Q_OBJECT

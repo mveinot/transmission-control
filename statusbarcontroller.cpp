@@ -92,6 +92,7 @@ void StatusBarController::showMessage(const QString &message, int timeoutMs)
 
 void StatusBarController::updateTorrents(const QVector<torrent> &torrents)
 {
+    // Aggregate one immutable snapshot so counts and rates share a generation.
     m_torrentCount = torrents.size();
     m_downloadRateBytesPerSecond = 0.0;
     m_uploadRateBytesPerSecond = 0.0;

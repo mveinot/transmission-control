@@ -174,6 +174,7 @@ void TorrentAddDialog::setRememberOptions(bool remember)
 
 void TorrentAddDialog::setTorrentMetadata(const TorrentMetadata &metadata)
 {
+    // Preserve metainfo indices so hierarchical choices map to flat RPC arrays.
     m_updatingPriorities = true;
 
     ui->treeTorrentContents->clear();

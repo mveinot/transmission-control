@@ -5,6 +5,7 @@
 #include <QJsonArray>
 #include <QObject>
 #include <QSet>
+#include <QStringList>
 #include <memory>
 
 class GeoIpService;
@@ -13,6 +14,8 @@ class QTableWidget;
 class TableColumnController;
 class TablePlaceholderController;
 
+// Rebuilds the peer snapshot table and enriches addresses with cached local
+// GeoIP results and asynchronous reverse-DNS names.
 class TorrentPeersController : public QObject
 {
     Q_OBJECT
@@ -50,6 +53,8 @@ private:
 
     void updateHostnameItem(int row, const QString &address);
     void startHostnameLookupIfNeeded(const QString &address);
+    void startQueuedHostnameLookups();
+    void cacheHostnameResult(const QString &address, const QString &hostname);
     void applyHostnameLookupResult(const QString &address, const QString &hostname);
     QString hostnameDisplayText(const QString &address) const;
     QString hostnameToolTip(const QString &address) const;
@@ -59,6 +64,8 @@ private:
     QHash<QString, QString> hostnameCache;
     QSet<QString> pendingHostnameLookups;
     QHash<int, QString> hostnameLookupIds;
+    QStringList hostnameLookupQueue;
+    QStringList hostnameCacheOrder;
     std::unique_ptr<TableColumnController> columnController;
     std::unique_ptr<TablePlaceholderController> placeholderController;
 };

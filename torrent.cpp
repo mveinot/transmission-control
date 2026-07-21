@@ -33,6 +33,7 @@ torrent::torrent(const QJsonValue &val)
 
     id = obj.value("id").toInt();
     name = obj.value("name").toString();
+    hashString = obj.value("hashString").toString().trimmed();
     eta = obj.value("eta").toInt();
     percentDone = obj.value("percentDone").toDouble() * 100.0;
     status = statusFromInt(obj.value("status").toInt());
@@ -48,10 +49,13 @@ torrent::torrent(const QJsonValue &val)
     downloadDir = obj.value("downloadDir").toString().trimmed();
     errorCode = obj.value("error").toInt();
     errorString = obj.value("errorString").toString().trimmed();
+    stalled = obj.value("isStalled").toBool();
     peersConnected = obj.value("peersConnected").toInt();
     peersSendingToUs = obj.value("peersSendingToUs").toInt();
     peersGettingFromUs = obj.value("peersGettingFromUs").toInt();
     queuePosition = obj.value("queuePosition").toInt();
+    desiredAvailable = static_cast<qint64>(obj.value("desiredAvailable").toDouble());
+    leftUntilDone = static_cast<qint64>(obj.value("leftUntilDone").toDouble());
 
     trackerHosts.clear();
     primaryTrackerHost.clear();
@@ -141,6 +145,7 @@ torrent::Status torrent::statusFromInt(int value)
 
 int torrent::getId() const { return id; }
 QString torrent::getName() const { return name; }
+QString torrent::getHashString() const { return hashString; }
 double torrent::getPercentDone() const { return percentDone; }
 int torrent::getQueuePosition() const { return queuePosition; };
 
@@ -183,6 +188,11 @@ int torrent::getStatusValue() const
 bool torrent::hasError() const
 {
     return errorCode != 0 || !errorString.isEmpty();
+}
+
+bool torrent::isStalled() const
+{
+    return stalled;
 }
 
 int torrent::getErrorCode() const
@@ -398,6 +408,128 @@ QString torrent::getEta() const
     return QString::number(seconds)+"s";
 }
 
+
+namespace {
+
+QString healthLabelForScore(int score)
+{
+    if (score < 0)
+        return QStringLiteral("Unknown");
+    if (score >= 85)
+        return QStringLiteral("Excellent");
+    if (score >= 65)
+        return QStringLiteral("Good");
+    if (score >= 40)
+        return QStringLiteral("Fair");
+    if (score > 0)
+        return QStringLiteral("Poor");
+    return QStringLiteral("Unavailable");
+}
+
+} // namespace
+
+int torrent::getHealthScore() const
+{
+    if (hasError())
+        return 0;
+
+    if (status == Status::WaitingToVerify || status == Status::Verifying
+        || status == Status::Unknown) {
+        return -1;
+    }
+
+    const bool complete = percentDone >= 99.999;
+
+    if (complete) {
+        // A complete local copy is intrinsically usable. Swarm activity then
+        // distinguishes merely healthy torrents from lively ones.
+        int score = 65;
+
+        if (totalSeeders > 0)
+            score += qMin(totalSeeders, 10) * 2;
+        if (totalLeechers > 0)
+            score += 5;
+        if (peersGettingFromUs > 0)
+            score += 5;
+        if (rateUpload > 0.0)
+            score += 5;
+
+        return qMin(score, 100);
+    }
+
+    const qint64 remaining = qMax<qint64>(leftUntilDone, 1);
+    const double coverage = qBound(0.0,
+                                   static_cast<double>(desiredAvailable)
+                                       / static_cast<double>(remaining),
+                                   1.0);
+
+    int score = qRound(coverage * 50.0);
+
+    if (totalSeeders >= 5)
+        score += 40;
+    else if (totalSeeders >= 2)
+        score += 30;
+    else if (totalSeeders == 1)
+        score += 20;
+
+    if (peersSendingToUs > 0)
+        score += 5;
+    if (rateDownload > 0.0)
+        score += 5;
+
+    return qMin(score, 100);
+}
+
+QString torrent::getHealth() const
+{
+    if (hasError())
+        return QStringLiteral("Error");
+
+    return healthLabelForScore(getHealthScore());
+}
+
+QString torrent::getHealthDetails() const
+{
+    if (hasError()) {
+        return errorString.isEmpty()
+            ? QStringLiteral("Transmission reports an error for this torrent.")
+            : errorString;
+    }
+
+    const int score = getHealthScore();
+
+    if (score < 0)
+        return QStringLiteral("Health cannot be estimated while the torrent is being checked.");
+
+    const bool complete = percentDone >= 99.999;
+
+    if (complete) {
+        return QStringLiteral("Health score: %1/100\nLocal data: complete\n"
+                              "Known seeders: %2\nKnown leechers: %3\n"
+                              "Connected upload peers: %4")
+            .arg(score)
+            .arg(totalSeeders >= 0 ? QString::number(totalSeeders) : QStringLiteral("unknown"))
+            .arg(totalLeechers >= 0 ? QString::number(totalLeechers) : QStringLiteral("unknown"))
+            .arg(peersGettingFromUs);
+    }
+
+    const double coverage = leftUntilDone > 0
+        ? qBound(0.0,
+                 static_cast<double>(desiredAvailable)
+                     / static_cast<double>(leftUntilDone),
+                 1.0)
+        : 0.0;
+
+    return QStringLiteral("Health score: %1/100\nRemaining data available: %2%\n"
+                          "Known seeders: %3\nConnected seeders: %4\n"
+                          "Download rate: %5")
+        .arg(score)
+        .arg(coverage * 100.0, 0, 'f', 0)
+        .arg(totalSeeders >= 0 ? QString::number(totalSeeders) : QStringLiteral("unknown"))
+        .arg(peersSendingToUs)
+        .arg(getRateDownload().isEmpty() ? QStringLiteral("idle") : getRateDownload());
+}
+
 QJsonArray torrent::getFiles() const
 {
     return files.toArray();
@@ -411,6 +543,7 @@ QJsonArray torrent::getPeers() const
 bool torrent::sameDisplayData(const torrent &other) const
 {
     return id == other.id
+           && hashString == other.hashString
            && name == other.name
            && percentDone == other.percentDone
            && rateDownload == other.rateDownload
@@ -425,12 +558,15 @@ bool torrent::sameDisplayData(const torrent &other) const
            && downloadDir == other.downloadDir
            && errorCode == other.errorCode
            && errorString == other.errorString
+           && stalled == other.stalled
            && peersConnected == other.peersConnected
            && peersSendingToUs == other.peersSendingToUs
            && peersGettingFromUs == other.peersGettingFromUs
            && totalSeeders == other.totalSeeders
            && totalLeechers == other.totalLeechers
            && queuePosition == other.queuePosition
+           && desiredAvailable == other.desiredAvailable
+           && leftUntilDone == other.leftUntilDone
            && primaryTrackerHost == other.primaryTrackerHost
            && trackerHosts == other.trackerHosts;
 }

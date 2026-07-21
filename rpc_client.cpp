@@ -3,6 +3,7 @@
 #include <QJsonDocument>
 #include <QJsonParseError>
 #include <QSettings>
+#include <QSet>
 #include <QFile>
 #include <QFileInfo>
 #include "rpc_client.h"
@@ -67,16 +68,14 @@ static bool sessionSupportsSequentialDownload(const QJsonObject &settings)
 
 rpc_client::rpc_client(QObject *parent)
     : QObject(parent)
+    , na_manager(new QNetworkAccessManager(this))
 {
+    connect(na_manager, &QNetworkAccessManager::finished,
+            this, &rpc_client::replyFinished);
 }
 
 void rpc_client::init()
 {
-    na_manager = new QNetworkAccessManager(this);
-
-    connect(na_manager, &QNetworkAccessManager::finished,
-            this, &rpc_client::replyFinished);
-
     if (!loadCurrentServerFromSettings()) {
         qWarning() << "No valid Transmission server configured.";
         emit updateFailed(tr("No valid Transmission server configured."));
@@ -114,6 +113,8 @@ void rpc_client::postRpc(const RpcRequestContext &context)
         makeRpcPayload(context.method, context.arguments)
         );
 
+    // Reply identity is the correlation key; the context also preserves retry
+    // metadata that is not encoded in QNetworkRequest attributes.
     pendingRequests.insert(reply, context);
 }
 
@@ -140,8 +141,69 @@ void rpc_client::postSingleTorrentSet(int torrentId, const QJsonObject &argument
     postRpc(QStringLiteral("torrent-set"), payload, RpcRequestType::Command);
 }
 
+bool rpc_client::isTorrentDetailRequest(RpcRequestType type)
+{
+    return type == RpcRequestType::TorrentDetails
+        || type == RpcRequestType::TorrentFiles
+        || type == RpcRequestType::TorrentPeers
+        || type == RpcRequestType::TorrentTrackers
+        || type == RpcRequestType::TorrentPieces;
+}
+
+bool rpc_client::prepareTorrentDetailRequest(RpcRequestType type, int torrentId)
+{
+    QList<QNetworkReply *> obsoleteReplies;
+
+    for (auto it = pendingRequests.cbegin(); it != pendingRequests.cend(); ++it) {
+        if (it.value().type != type)
+            continue;
+
+        const QJsonArray ids = it.value().arguments.value(QStringLiteral("ids")).toArray();
+        if (ids.size() == 1 && ids.first().toInt(-1) == torrentId)
+            return false;
+
+        obsoleteReplies.append(it.key());
+    }
+
+    // Remove correlation state before aborting because abort() may synchronously
+    // deliver finished(). replyFinished() treats removed replies as obsolete.
+    for (QNetworkReply *reply : std::as_const(obsoleteReplies)) {
+        pendingRequests.remove(reply);
+        reply->abort();
+        reply->deleteLater();
+    }
+
+    return true;
+}
+
+void rpc_client::cancelTorrentDetailRequests()
+{
+    QList<QNetworkReply *> obsoleteReplies;
+
+    for (auto it = pendingRequests.cbegin(); it != pendingRequests.cend(); ++it) {
+        if (isTorrentDetailRequest(it.value().type))
+            obsoleteReplies.append(it.key());
+    }
+
+    for (QNetworkReply *reply : std::as_const(obsoleteReplies)) {
+        pendingRequests.remove(reply);
+        reply->abort();
+        reply->deleteLater();
+    }
+}
+
 void rpc_client::replyFinished(QNetworkReply *reply)
 {
+    /*
+     * A server change removes its outstanding replies from pendingRequests
+     * before aborting them.  Their finished signals can still be delivered,
+     * but they no longer belong to the active server and must be ignored.
+     */
+    if (!pendingRequests.contains(reply)) {
+        reply->deleteLater();
+        return;
+    }
+
     RpcRequestContext context =
         pendingRequests.take(reply);
 
@@ -153,6 +215,11 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         if (isTorrentGet) {
             updateInProgress = false;
             emit updateFinished();
+
+            if (updateRequestedWhileInProgress) {
+                updateRequestedWhileInProgress = false;
+                getTorrentList();
+            }
         }
     };
 
@@ -182,6 +249,8 @@ void rpc_client::replyFinished(QNetworkReply *reply)
     };
 
     if (reply->error() == QNetworkReply::ContentConflictError) {
+        // Transmission uses HTTP 409 as a session-token challenge. Replay the
+        // original semantic request once after installing the supplied token.
         const QByteArray token =
             reply->rawHeader("X-Transmission-Session-Id");
 
@@ -321,9 +390,34 @@ void rpc_client::replyFinished(QNetworkReply *reply)
             }
         }
 
-        if (context.method == QStringLiteral("torrent-add")
-            && !context.torrentFilePath.isEmpty()) {
-            emit torrentFileAddSucceeded(context.torrentFilePath);
+        if (context.method == QStringLiteral("torrent-add")) {
+            const QJsonObject arguments =
+                root.value(QStringLiteral("arguments")).toObject();
+            const QJsonObject added =
+                arguments.value(QStringLiteral("torrent-added")).toObject();
+
+            if (!added.isEmpty()) {
+                emit torrentAdded(
+                    added.value(QStringLiteral("id")).toInt(-1),
+                    added.value(QStringLiteral("name")).toString()
+                    );
+            }
+
+            if (!context.torrentFilePath.isEmpty())
+                emit torrentFileAddSucceeded(context.torrentFilePath);
+        }
+
+        const bool trackerMetadataChanged =
+            context.method == QStringLiteral("torrent-add")
+            || context.method == QStringLiteral("torrent-remove")
+            || context.arguments.contains(QStringLiteral("trackerAdd"))
+            || context.arguments.contains(QStringLiteral("trackerReplace"))
+            || context.arguments.contains(QStringLiteral("trackerRemove"));
+
+        if (trackerMetadataChanged) {
+            // The fast list poll intentionally omits tracker arrays. Refresh the
+            // slow cache immediately after operations that can change its keys.
+            getTorrentTrackerMetadata();
         }
 
         emit commandSucceeded(context.method);
@@ -347,6 +441,30 @@ void rpc_client::replyFinished(QNetworkReply *reply)
     const QJsonArray newTorrentList =
         torrentsValue.toArray();
 
+    if (requestType == RpcRequestType::TorrentListTrackers) {
+        QSet<int> receivedIds;
+
+        for (const QJsonValue &value : newTorrentList) {
+            const QJsonObject object = value.toObject();
+            const int torrentId = object.value(QStringLiteral("id")).toInt(-1);
+            if (torrentId < 0)
+                continue;
+
+            receivedIds.insert(torrentId);
+            torrentTrackerMetadata.insert(torrentId, object);
+        }
+
+        // Drop metadata for torrents removed since the previous slow poll.
+        const QList<int> cachedIds = torrentTrackerMetadata.keys();
+        for (int torrentId : cachedIds) {
+            if (!receivedIds.contains(torrentId))
+                torrentTrackerMetadata.remove(torrentId);
+        }
+
+        emit torrentTrackerMetadataUpdated();
+        return;
+    }
+
     if (requestType == RpcRequestType::TorrentDetails) {
         if (!newTorrentList.isEmpty()) {
             const QJsonObject detail = newTorrentList.first().toObject();
@@ -354,6 +472,26 @@ void rpc_client::replyFinished(QNetworkReply *reply)
 
             if (torrentId >= 0) {
                 emit torrentDetailsReceived(torrentId, detail);
+            }
+        }
+
+        return;
+    }
+
+    if (requestType == RpcRequestType::TorrentFiles
+        || requestType == RpcRequestType::TorrentPeers
+        || requestType == RpcRequestType::TorrentTrackers) {
+        if (!newTorrentList.isEmpty()) {
+            const QJsonObject detail = newTorrentList.first().toObject();
+            const int torrentId = detail.value(QStringLiteral("id")).toInt(-1);
+
+            if (torrentId >= 0) {
+                if (requestType == RpcRequestType::TorrentFiles)
+                    emit torrentFilesReceived(torrentId, detail);
+                else if (requestType == RpcRequestType::TorrentPeers)
+                    emit torrentPeersReceived(torrentId, detail);
+                else
+                    emit torrentTrackersReceived(torrentId, detail);
             }
         }
 
@@ -388,8 +526,19 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         QVector<torrent> incoming;
         incoming.reserve(newTorrentList.size());
 
-        for (const QJsonValue &obj : newTorrentList) {
-            incoming.append(torrent(obj));
+        for (const QJsonValue &value : newTorrentList) {
+            QJsonObject object = value.toObject();
+            const int torrentId = object.value(QStringLiteral("id")).toInt(-1);
+            const QJsonObject metadata = torrentTrackerMetadata.value(torrentId);
+
+            if (!metadata.isEmpty()) {
+                object.insert(QStringLiteral("trackers"),
+                              metadata.value(QStringLiteral("trackers")));
+                object.insert(QStringLiteral("trackerStats"),
+                              metadata.value(QStringLiteral("trackerStats")));
+            }
+
+            incoming.append(torrent(object));
         }
 
         emit torrentsReceived(incoming);
@@ -483,6 +632,23 @@ bool rpc_client::setServerFromSettingsIndex(int index)
 
 void rpc_client::setServer(const TransmissionServer &server)
 {
+    /*
+     * Do not allow responses from the previous server to update the new
+     * server's session token, torrent data, or command state.  Clear the
+     * bookkeeping first because abort() may synchronously emit finished().
+     */
+    const QList<QNetworkReply *> staleReplies = pendingRequests.keys();
+    pendingRequests.clear();
+    torrentTrackerMetadata.clear();
+
+    for (QNetworkReply *reply : staleReplies) {
+        if (!reply)
+            continue;
+
+        reply->abort();
+        reply->deleteLater();
+    }
+
     serverName = server.name;
     rpcUrl = server.rpcUrl;
     username = server.username;
@@ -491,6 +657,7 @@ void rpc_client::setServer(const TransmissionServer &server)
     _session_token.clear();
     _clientReady = false;
     updateInProgress = false;
+    updateRequestedWhileInProgress = false;
 
     emit serverChanged();
 }
@@ -519,8 +686,12 @@ void rpc_client::getTorrentList()
         return;
     }
 
-    if (updateInProgress)
+    // Timer ticks and command-triggered refreshes may overlap. A single list
+    // request is sufficient because its response is a complete snapshot.
+    if (updateInProgress) {
+        updateRequestedWhileInProgress = true;
         return;
+    }
 
     updateInProgress = true;
     emit updateStarted();
@@ -529,6 +700,7 @@ void rpc_client::getTorrentList()
     arguments["fields"] = QJsonArray {
         "id",
         "name",
+        "hashString",
         "percentDone",
         "status",
         "rateDownload",
@@ -543,14 +715,31 @@ void rpc_client::getTorrentList()
         "downloadDir",
         "error",
         "errorString",
+        "isStalled",
+        "desiredAvailable",
+        "leftUntilDone",
         "peersConnected",
         "peersSendingToUs",
-        "peersGettingFromUs",
-        "trackers",
-        "trackerStats"
+        "peersGettingFromUs"
     };
 
     postRpc("torrent-get", arguments, RpcRequestType::TorrentGet);
+}
+
+void rpc_client::getTorrentTrackerMetadata()
+{
+    for (auto it = pendingRequests.cbegin(); it != pendingRequests.cend(); ++it) {
+        if (it.value().type == RpcRequestType::TorrentListTrackers)
+            return;
+    }
+
+    QJsonObject arguments;
+    arguments[QStringLiteral("fields")] = QJsonArray {
+        QStringLiteral("id"), QStringLiteral("trackers"),
+        QStringLiteral("trackerStats")
+    };
+    postRpc(QStringLiteral("torrent-get"), arguments,
+            RpcRequestType::TorrentListTrackers);
 }
 
 QByteArray rpc_client::makeRpcPayload(const QString &method,
@@ -713,7 +902,7 @@ void rpc_client::setTorrentLocation(const QList<int> &ids,
 
 void rpc_client::getTorrentDetails(int id)
 {
-    if (id < 0)
+    if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentDetails, id))
         return;
 
     QJsonObject arguments;
@@ -763,7 +952,6 @@ void rpc_client::getTorrentDetails(int id)
         QStringLiteral("peersSendingToUs"),
         QStringLiteral("percentDone"),
         QStringLiteral("pieceCount"),
-        QStringLiteral("pieces"),
         QStringLiteral("pieceSize"),
         QStringLiteral("queuePosition"),
         QStringLiteral("rateDownload"),
@@ -782,14 +970,7 @@ void rpc_client::getTorrentDetails(int id)
         QStringLiteral("uploadLimit"),
         QStringLiteral("uploadLimited"),
         QStringLiteral("uploadRatio"),
-        QStringLiteral("webseeds"),
-        QStringLiteral("webseedsSendingToUs"),
-        QStringLiteral("trackers"),
-        QStringLiteral("trackerStats"),
-        QStringLiteral("files"),
-        QStringLiteral("peers"),
-        QStringLiteral("priorities"),
-        QStringLiteral("wanted")
+        QStringLiteral("webseedsSendingToUs")
     };
 
     if (m_sequentialDownloadSupported) {
@@ -802,10 +983,52 @@ void rpc_client::getTorrentDetails(int id)
     postRpc("torrent-get", arguments, RpcRequestType::TorrentDetails);
 }
 
+void rpc_client::getTorrentFiles(int id)
+{
+    if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentFiles, id))
+        return;
+
+    QJsonObject arguments;
+    arguments[QStringLiteral("ids")] = QJsonArray { id };
+    arguments[QStringLiteral("fields")] = QJsonArray {
+        QStringLiteral("id"), QStringLiteral("downloadDir"),
+        QStringLiteral("files"), QStringLiteral("wanted"),
+        QStringLiteral("priorities")
+    };
+    postRpc(QStringLiteral("torrent-get"), arguments, RpcRequestType::TorrentFiles);
+}
+
+void rpc_client::getTorrentPeers(int id)
+{
+    if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentPeers, id))
+        return;
+
+    QJsonObject arguments;
+    arguments[QStringLiteral("ids")] = QJsonArray { id };
+    arguments[QStringLiteral("fields")] = QJsonArray {
+        QStringLiteral("id"), QStringLiteral("peers")
+    };
+    postRpc(QStringLiteral("torrent-get"), arguments, RpcRequestType::TorrentPeers);
+}
+
+void rpc_client::getTorrentTrackers(int id)
+{
+    if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentTrackers, id))
+        return;
+
+    QJsonObject arguments;
+    arguments[QStringLiteral("ids")] = QJsonArray { id };
+    arguments[QStringLiteral("fields")] = QJsonArray {
+        QStringLiteral("id"), QStringLiteral("trackers"),
+        QStringLiteral("trackerStats")
+    };
+    postRpc(QStringLiteral("torrent-get"), arguments, RpcRequestType::TorrentTrackers);
+}
+
 
 void rpc_client::getTorrentPieces(int id)
 {
-    if (id < 0)
+    if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentPieces, id))
         return;
 
     QJsonObject arguments;
@@ -868,7 +1091,7 @@ void rpc_client::getTorrentPieces(int id)
 
 void rpc_client::getTorrentProperties(int id)
 {
-    if (id < 0)
+    if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentProperties, id))
         return;
 
     QJsonObject arguments;

@@ -3,7 +3,9 @@
 #include "settingskeys.h"
 
 #include <QPushButton>
+#include <QFileInfo>
 #include <QFileDialog>
+#include <QMessageBox>
 #include <QSettings>
 
 namespace {
@@ -25,10 +27,31 @@ AppSettings::AppSettings(QWidget *parent)
     ui->updateInterval->setSuffix(tr(" seconds"));
 
     loadSettings();
-    updateTrayOptionAvailability();
+    updateNotificationOptionAvailability();
 
-    connect(ui->showTrayIcon, &QCheckBox::toggled,
-            this, &AppSettings::updateTrayOptionAvailability);
+    connect(ui->enableNotifications, &QCheckBox::toggled,
+            this, &AppSettings::updateNotificationOptionAvailability);
+    connect(ui->enableDesktopNotifications, &QCheckBox::toggled,
+            this, &AppSettings::updateNotificationOptionAvailability);
+
+    connect(ui->buttonTestNotification, &QPushButton::clicked,
+            this, &AppSettings::testNotificationRequested);
+    connect(ui->enableExternalCommand, &QCheckBox::toggled,
+            this, &AppSettings::updateNotificationOptionAvailability);
+    connect(ui->externalCommandExecutable, &QLineEdit::textChanged,
+            this, &AppSettings::updateNotificationOptionAvailability);
+    connect(ui->buttonBrowseExternalCommand, &QPushButton::clicked, this, [this]() {
+        const QString current = ui->externalCommandExecutable->text().trimmed();
+        const QString selected = QFileDialog::getOpenFileName(
+            this, tr("Select Notification Command"),
+            current.isEmpty() ? QString() : QFileInfo(current).absolutePath());
+        if (!selected.isEmpty())
+            ui->externalCommandExecutable->setText(selected);
+    });
+    connect(ui->buttonTestExternalCommand, &QPushButton::clicked, this, [this]() {
+        emit testExternalCommandRequested(ui->externalCommandExecutable->text().trimmed(),
+                                          ui->externalCommandArguments->text());
+    });
 
     connect(ui->settingsOK, &QPushButton::clicked, this, [this]() {
         saveSettings();
@@ -56,6 +79,34 @@ AppSettings::AppSettings(QWidget *parent)
                 ui->editWatchFolderPath->setEnabled(enabled);
                 ui->buttonBrowseWatchFolder->setEnabled(enabled);
                 ui->spinWatchFolderStableChecks->setEnabled(enabled);
+            });
+
+    connect(ui->buttonResetWatchFolderHistory, &QPushButton::clicked,
+            this, [this]() {
+                QMessageBox confirmation(
+                    QMessageBox::Warning,
+                    tr("Reset Imported Torrent History"),
+                    tr("This clears Planetary's record of .torrent files already imported from the watch folder.\n\n"
+                       "Any .torrent files still present may be submitted to Transmission again. Continue?"),
+                    QMessageBox::Yes | QMessageBox::No,
+                    this);
+                confirmation.setDefaultButton(QMessageBox::No);
+#ifdef Q_OS_MACOS
+                confirmation.setWindowModality(Qt::WindowModal);
+                confirmation.setWindowFlag(Qt::Sheet, true);
+#endif
+                const QMessageBox::StandardButton choice =
+                    static_cast<QMessageBox::StandardButton>(confirmation.exec());
+
+                if (choice != QMessageBox::Yes)
+                    return;
+
+                emit clearWatchFolderHistoryRequested();
+                QMessageBox::information(
+                    this,
+                    tr("Imported Torrent History Reset"),
+                    tr("The watch folder import history has been cleared.")
+                    );
             });
 }
 
@@ -86,12 +137,35 @@ void AppSettings::loadSettings()
         settings.value(SettingsKeys::ShowTrayIcon, true).toBool()
         );
 
-    ui->showNotifications->setChecked(
+    ui->enableNotifications->setChecked(
         settings.value(
             SettingsKeys::ShowNotifications,
             settings.value(SettingsKeys::ShowTrayNotifications, true)
             ).toBool()
         );
+
+    ui->notifyTorrentAdded->setChecked(
+        settings.value(SettingsKeys::NotifyTorrentAdded, true).toBool()
+        );
+    ui->notifyTorrentCompleted->setChecked(
+        settings.value(SettingsKeys::NotifyTorrentCompleted, true).toBool()
+        );
+    ui->notifyTorrentError->setChecked(
+        settings.value(SettingsKeys::NotifyTorrentError, true).toBool()
+        );
+    ui->notifyTorrentStalled->setChecked(
+        settings.value(SettingsKeys::NotifyTorrentStalled, true).toBool()
+        );
+
+    ui->enableDesktopNotifications->setChecked(
+        settings.value(SettingsKeys::DesktopNotificationsEnabled, true).toBool());
+    ui->enableExternalCommand->setChecked(
+        settings.value(SettingsKeys::ExternalCommandEnabled, false).toBool());
+    ui->externalCommandExecutable->setText(
+        settings.value(SettingsKeys::ExternalCommandExecutable).toString());
+    ui->externalCommandArguments->setText(
+        settings.value(SettingsKeys::ExternalCommandArguments,
+                       QStringLiteral("--event {event} --name \"{name}\"")).toString());
 
     ui->checkWatchFolderEnabled->setChecked(
         settings.value(QString::fromLatin1(SettingsKeys::WatchFolderEnabled),
@@ -130,12 +204,30 @@ void AppSettings::saveSettings()
                       trayIconEnabled);
 
     settings.setValue(SettingsKeys::ShowNotifications,
-                      ui->showNotifications->isChecked());
+                      ui->enableNotifications->isChecked());
+
+    settings.setValue(SettingsKeys::NotifyTorrentAdded,
+                      ui->notifyTorrentAdded->isChecked());
+    settings.setValue(SettingsKeys::NotifyTorrentCompleted,
+                      ui->notifyTorrentCompleted->isChecked());
+    settings.setValue(SettingsKeys::NotifyTorrentError,
+                      ui->notifyTorrentError->isChecked());
+    settings.setValue(SettingsKeys::NotifyTorrentStalled,
+                      ui->notifyTorrentStalled->isChecked());
+
+    settings.setValue(SettingsKeys::DesktopNotificationsEnabled,
+                      ui->enableDesktopNotifications->isChecked());
+    settings.setValue(SettingsKeys::ExternalCommandEnabled,
+                      ui->enableExternalCommand->isChecked());
+    settings.setValue(SettingsKeys::ExternalCommandExecutable,
+                      ui->externalCommandExecutable->text().trimmed());
+    settings.setValue(SettingsKeys::ExternalCommandArguments,
+                      ui->externalCommandArguments->text());
 
     // Keep writing the old key for downgrade/backward compatibility, but do
     // not make notifications depend on the tray icon anymore.
     settings.setValue(SettingsKeys::ShowTrayNotifications,
-                      ui->showNotifications->isChecked());
+                      ui->enableNotifications->isChecked());
 
     settings.setValue(SettingsKeys::HideApplicationIcon,
                       trayIconEnabled && false);
@@ -152,14 +244,15 @@ void AppSettings::saveSettings()
     settings.sync();
 }
 
-void AppSettings::updateTrayOptionAvailability()
+void AppSettings::updateNotificationOptionAvailability()
 {
-    const bool trayIconEnabled = ui->showTrayIcon->isChecked();
-
-    Q_UNUSED(trayIconEnabled);
-
-    // Notifications are no longer coupled to the tray/menu-bar icon. On macOS
-    // Planetary can use basic native notifications even when the menu-bar icon
-    // is disabled, and other platforms fall back gracefully.
-    ui->showNotifications->setEnabled(true);
+    const bool enabled = ui->enableNotifications->isChecked();
+    ui->notificationEventsGroup->setEnabled(enabled);
+    ui->notificationDeliveryGroup->setEnabled(enabled);
+    ui->buttonTestNotification->setEnabled(
+        enabled && ui->enableDesktopNotifications->isChecked());
+    const bool externalEnabled = enabled && ui->enableExternalCommand->isChecked();
+    ui->externalCommandOptions->setEnabled(externalEnabled);
+    ui->buttonTestExternalCommand->setEnabled(
+        externalEnabled && !ui->externalCommandExecutable->text().trimmed().isEmpty());
 }

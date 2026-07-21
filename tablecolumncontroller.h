@@ -8,6 +8,8 @@
 class QHeaderView;
 class QPoint;
 
+// Centralizes stable column IDs, visibility menus, and persisted header state
+// for views whose translated labels are not suitable settings keys.
 class TableColumnController : public QObject
 {
     Q_OBJECT

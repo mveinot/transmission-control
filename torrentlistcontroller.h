@@ -17,6 +17,8 @@ class rpc_client;
 class TorrentSortProxyModel;
 class TablePlaceholderController;
 
+// Owns torrent-table interaction state: selection mapping, action enablement,
+// context menus, queue operations, and persisted columns.
 class TorrentListController : public QObject
 {
     Q_OBJECT

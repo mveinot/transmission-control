@@ -14,6 +14,8 @@ class QWidget;
 class PieceMapController;
 class TorrentDetailsTabController;
 
+// Owns the selected torrent's merged detail cache and distributes it to the
+// general, piece-map, and raw-details presentations.
 class TorrentGeneralController : public QObject
 {
     Q_OBJECT

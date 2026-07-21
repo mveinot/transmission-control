@@ -129,6 +129,7 @@ void TorrentFilterController::rebuild(const QVector<torrent> &torrents)
     const QStringList trackerHosts = trackerHostsFromTorrents(torrents);
     const QStringList downloadDirs = downloadDirsFromTorrents(torrents);
 
+    // Rebuild dynamic sections only when their distinct domains change.
     if (trackerHosts == m_lastTrackerHosts
         && downloadDirs == m_lastDownloadDirs
         && m_filterList

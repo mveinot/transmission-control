@@ -8,6 +8,7 @@
 #include <QMainWindow>
 #include <QMenu>
 #include <QSettings>
+#include <QTimer>
 
 TrayController::TrayController(QMainWindow *window, QObject *parent)
     : QObject(parent)
@@ -96,6 +97,8 @@ void TrayController::quitApplication()
 
 bool TrayController::handleCloseEvent(QCloseEvent *event)
 {
+    // Consuming close hides rather than destroys the composition root, keeping
+    // polling and notification services alive.
     if (!event || !m_window)
         return false;
 
@@ -127,6 +130,40 @@ bool TrayController::isTrayAvailable() const
 bool TrayController::isTrayVisible() const
 {
     return m_trayIcon && m_trayIcon->isVisible();
+}
+
+bool TrayController::showNotification(const QString &title,
+                                      const QString &message,
+                                      int millisecondsTimeoutHint)
+{
+#if defined(Q_OS_WIN)
+    if (!m_trayIcon || !QSystemTrayIcon::supportsMessages())
+        return false;
+
+    const bool wasVisible = m_trayIcon->isVisible();
+    if (!wasVisible)
+        m_trayIcon->show();
+
+    m_trayIcon->showMessage(title,
+                            message,
+                            QSystemTrayIcon::Information,
+                            millisecondsTimeoutHint);
+
+    if (!wasVisible) {
+        const int hideDelay = qMax(millisecondsTimeoutHint, 1000) + 500;
+        QTimer::singleShot(hideDelay, this, [this]() {
+            if (m_trayIcon && !trayIconEnabled())
+                m_trayIcon->hide();
+        });
+    }
+
+    return true;
+#else
+    Q_UNUSED(title)
+    Q_UNUSED(message)
+    Q_UNUSED(millisecondsTimeoutHint)
+    return false;
+#endif
 }
 
 bool TrayController::trayIconEnabled() const
