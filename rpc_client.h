@@ -34,9 +34,14 @@ public:
     rpc_client(QObject *parent);
     void init();
     void getTorrentList();
+    void getTorrentTrackerMetadata();
     void getTorrentDetails(int id);
+    void getTorrentFiles(int id);
+    void getTorrentPeers(int id);
+    void getTorrentTrackers(int id);
     void getTorrentPieces(int id);
     void getTorrentProperties(int id);
+    void cancelTorrentDetailRequests();
     QString getServer();
     QString getRpcUrl() const;
     void addTorrentFromFile(const QString &filePath, bool deleteFileOnSuccess);
@@ -108,7 +113,11 @@ signals:
     void updateFinished();
     void updateFailed(const QString &message);
     void torrentsReceived(const QVector<torrent> &torrents);
+    void torrentTrackerMetadataUpdated();
     void torrentDetailsReceived(int torrentId, const QJsonObject &torrentDetails);
+    void torrentFilesReceived(int torrentId, const QJsonObject &torrentDetails);
+    void torrentPeersReceived(int torrentId, const QJsonObject &torrentDetails);
+    void torrentTrackersReceived(int torrentId, const QJsonObject &torrentDetails);
     void torrentPiecesReceived(int torrentId, const QJsonObject &pieceDetails);
     void torrentPropertiesReceived(int torrentId, const QJsonObject &properties);
     void commandSucceeded(const QString &method);
@@ -127,7 +136,11 @@ signals:
 private:
     enum class RpcRequestType {
         TorrentGet,
+        TorrentListTrackers,
         TorrentDetails,
+        TorrentFiles,
+        TorrentPeers,
+        TorrentTrackers,
         TorrentPieces,
         TorrentProperties,
         Command,
@@ -151,6 +164,7 @@ private:
     QString password;
     bool _clientReady = false;
     bool updateInProgress = false;
+    bool updateRequestedWhileInProgress = false;
     bool m_sequentialDownloadSupported = false;
     QByteArray _session_token;
     QNetworkAccessManager *na_manager = nullptr;
@@ -165,12 +179,17 @@ private:
                               const QJsonObject &arguments = {}) const;
     QNetworkRequest makeRequest() const;
     QHash<QNetworkReply *, RpcRequestContext> pendingRequests;
+    // Tracker arrays change much less frequently than rates/status. Cache them
+    // separately and merge them into fast list snapshots client-side.
+    QHash<int, QJsonObject> torrentTrackerMetadata;
     void postRpc(const RpcRequestContext &context);
     void postRpc(const QString &method,
                  const QJsonObject &arguments,
                  RpcRequestType type);
     void postIdsCommand(const QString &method, const QList<int> &ids);
     void postSingleTorrentSet(int torrentId, const QJsonObject &arguments);
+    bool prepareTorrentDetailRequest(RpcRequestType type, int torrentId);
+    static bool isTorrentDetailRequest(RpcRequestType type);
 
 
 public slots:

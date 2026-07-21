@@ -17,6 +17,9 @@
 #include <QHeaderView>
 
 namespace {
+
+constexpr int MaximumConcurrentHostnameLookups = 8;
+constexpr int MaximumHostnameCacheEntries = 256;
 QString normalizedAddress(const QString &address)
 {
     return address.trimmed();
@@ -275,6 +278,7 @@ void TorrentPeersController::handleHostLookup(const QHostInfo &hostInfo)
     }
 
     applyHostnameLookupResult(address, hostname);
+    startQueuedHostnameLookups();
 }
 
 void TorrentPeersController::updateHostnameItem(int row, const QString &address)
@@ -307,20 +311,45 @@ void TorrentPeersController::startHostnameLookupIfNeeded(const QString &address)
     // QHostInfo does not coalesce identical requests. Pending addresses are
     // tracked separately from cached results, including negative results.
     pendingHostnameLookups.insert(address);
+    hostnameLookupQueue.append(address);
+    startQueuedHostnameLookups();
+}
 
-    const int lookupId = QHostInfo::lookupHost(
-        address,
-        this,
-        SLOT(handleHostLookup(QHostInfo))
-        );
+void TorrentPeersController::startQueuedHostnameLookups()
+{
+    while (hostnameLookupIds.size() < MaximumConcurrentHostnameLookups
+           && !hostnameLookupQueue.isEmpty()) {
+        const QString address = hostnameLookupQueue.takeFirst();
 
-    hostnameLookupIds.insert(lookupId, address);
+        const int lookupId = QHostInfo::lookupHost(
+            address,
+            this,
+            SLOT(handleHostLookup(QHostInfo))
+            );
+
+        hostnameLookupIds.insert(lookupId, address);
+    }
+}
+
+void TorrentPeersController::cacheHostnameResult(const QString &address,
+                                                 const QString &hostname)
+{
+    hostnameCache.insert(address, hostname);
+    hostnameCacheOrder.removeAll(address);
+    hostnameCacheOrder.append(address);
+
+    while (hostnameCacheOrder.size() > MaximumHostnameCacheEntries) {
+        const QString evictedAddress = hostnameCacheOrder.takeFirst();
+        hostnameCache.remove(evictedAddress);
+    }
 }
 
 void TorrentPeersController::applyHostnameLookupResult(const QString &address,
                                                        const QString &hostname)
 {
-    hostnameCache.insert(address, hostname);
+    // Successful and negative answers share the same bounded cache so dead
+    // addresses cannot cause unbounded retries or memory growth.
+    cacheHostnameResult(address, hostname);
 
     if (!peerTableWidget)
         return;

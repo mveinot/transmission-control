@@ -97,6 +97,7 @@ private:
     // Designer-owned widget tree and the shared polling/data pipeline.
     Ui::MainWindow *ui;
     QTimer *timer;
+    QTimer *commandRefreshTimer = nullptr;
     TorrentModel *torrentModel = nullptr;
     rpc_client *client = nullptr;
     TorrentSortProxyModel *proxy = nullptr;
@@ -109,6 +110,9 @@ private:
     int currentTorrentId() const;
     bool currentTabWantsLiveTorrentDetails() const;
     void refreshCurrentTorrentLiveDetailsIfNeeded();
+    void refreshCurrentTorrentTabData();
+    void scheduleTorrentRefresh(bool refreshDetails);
+    void refreshSlowRpcData(bool force = false);
     TorrentAddController *torrentAddController = nullptr;
     void addTorrentFromFile();
     void addTorrentFromMagnet();
@@ -145,6 +149,9 @@ private:
     bool confirmedAlternativeSpeedEnabled = false;
     QString remoteDownloadDir;
     QJsonObject cachedSessionSettings;
+    qint64 lastFreeSpaceRefreshMs = 0;
+    qint64 lastTrackerMetadataRefreshMs = 0;
+    bool pendingCommandDetailsRefresh = false;
 
     // Feature controllers are QObject children of MainWindow unless their
     // constructors document a different owner.
