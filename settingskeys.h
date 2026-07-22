@@ -8,6 +8,7 @@ namespace SettingsKeys {
 inline constexpr const char *UpdateInterval =               "app/updateIntervalSeconds";
 inline constexpr const char *DeleteTorrentOnAdd =           "app/deleteTorrentFileOnSuccessfulAdd";
 inline constexpr const char *TorrentOpenDirectory =         "app/torrentOpenDirectory";
+inline constexpr const char *StartTorrentPaused =           "torrentAdd/startPaused";
 inline constexpr const char *ShowTrayIcon =                 "app/tray/showIcon";
 inline constexpr const char *ShowNotifications =            "app/notifications/showNotifications";
 inline constexpr const char *NotifyTorrentAdded =             "app/notifications/torrentAdded";

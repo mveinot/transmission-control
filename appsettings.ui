@@ -86,6 +86,16 @@
                 </property>
                </widget>
               </item>
+              <item row="1" column="0">
+               <widget class="QCheckBox" name="startTorrentPaused">
+                <property name="toolTip">
+                 <string>Use paused as the default state in the Add Torrent dialog</string>
+                </property>
+                <property name="text">
+                 <string>Start torrents paused by default</string>
+                </property>
+               </widget>
+              </item>
              </layout>
             </item>
            </layout>

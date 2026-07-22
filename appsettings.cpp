@@ -133,6 +133,10 @@ void AppSettings::loadSettings()
         settings.value(SettingsKeys::DeleteTorrentOnAdd, false).toBool()
         );
 
+    ui->startTorrentPaused->setChecked(
+        settings.value(SettingsKeys::StartTorrentPaused, false).toBool()
+        );
+
     ui->showTrayIcon->setChecked(
         settings.value(SettingsKeys::ShowTrayIcon, true).toBool()
         );
@@ -199,6 +203,11 @@ void AppSettings::saveSettings()
 
     settings.setValue(SettingsKeys::DeleteTorrentOnAdd,
                       ui->deleteTorrentOnAdd->isChecked());
+
+    // This is the same persisted default consumed and optionally updated by
+    // TorrentAddDialog, keeping both configuration surfaces synchronized.
+    settings.setValue(SettingsKeys::StartTorrentPaused,
+                      ui->startTorrentPaused->isChecked());
 
     settings.setValue(SettingsKeys::ShowTrayIcon,
                       trayIconEnabled);
