@@ -1096,6 +1096,19 @@ MainWindow::MainWindow(QWidget *parent)
         }
     });
 
+    QAction *contactSupportAction = new QAction(tr("Contact Support..."), this);
+    ui->menuHelp->insertAction(ui->actionAbout, contactSupportAction);
+    connect(contactSupportAction, &QAction::triggered, this, [this]() {
+        const QUrl supportUrl(QStringLiteral("mailto:planetary@mvgrafx.net"));
+        if (!QDesktopServices::openUrl(supportUrl) && statusBarController) {
+            statusBarController->showMessage(
+                tr("Could not open the default email application. "
+                   "Contact planetary@mvgrafx.net directly."),
+                8000
+                );
+        }
+    });
+
     QAction *diagnosticsAction = new QAction(tr("Diagnostics..."), this);
     ui->menuHelp->insertAction(ui->actionAbout, diagnosticsAction);
     ui->menuHelp->insertSeparator(ui->actionAbout);

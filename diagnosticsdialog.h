@@ -8,7 +8,7 @@ class GeoIpService;
 class QTextEdit;
 
 // Read-only snapshot of client, server, build, and GeoIP state intended for
-// troubleshooting and copy/paste into support reports.
+// troubleshooting, clipboard export, or attachment to a composed support email.
 class DiagnosticsDialog : public QDialog
 {
     Q_OBJECT

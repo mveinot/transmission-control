@@ -4,6 +4,7 @@
 #include <QClipboard>
 #include <QCoreApplication>
 #include <QDialogButtonBox>
+#include <QDesktopServices>
 #include <QDir>
 #include <QFormLayout>
 #include <QGuiApplication>
@@ -15,6 +16,8 @@
 #include <QSettings>
 #include <QSysInfo>
 #include <QTextEdit>
+#include <QUrl>
+#include <QUrlQuery>
 #include <QVBoxLayout>
 #include <QFontDatabase>
 
@@ -61,8 +64,27 @@ DiagnosticsDialog::DiagnosticsDialog(const QJsonObject &sessionSettings,
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
     auto *copyButton = buttons->addButton(tr("Copy to Clipboard"), QDialogButtonBox::ActionRole);
+    auto *supportButton = buttons->addButton(tr("Contact Support..."),
+                                             QDialogButtonBox::ActionRole);
     connect(copyButton, &QPushButton::clicked, this, [this]() {
         QGuiApplication::clipboard()->setText(reportEdit->toPlainText());
+    });
+    connect(supportButton, &QPushButton::clicked, this, [this, intro]() {
+        // QUrlQuery performs the escaping required to preserve the report's
+        // line breaks and punctuation in a mailto query string.
+        QUrl supportUrl(QStringLiteral("mailto:planetary@mvgrafx.net"));
+        QUrlQuery query;
+        query.addQueryItem(QStringLiteral("subject"),
+                           tr("Planetary %1 support request")
+                               .arg(QCoreApplication::applicationVersion()));
+        query.addQueryItem(QStringLiteral("body"),
+                           tr("Please describe the issue above the diagnostic report below.\n\n%1")
+                               .arg(reportEdit->toPlainText()));
+        supportUrl.setQuery(query);
+
+        if (!QDesktopServices::openUrl(supportUrl))
+            intro->setText(tr("Could not open the default email application. "
+                              "Contact planetary@mvgrafx.net directly."));
     });
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     layout->addWidget(buttons);
