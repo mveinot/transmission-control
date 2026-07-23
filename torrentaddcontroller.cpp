@@ -11,10 +11,6 @@
 #include <utility>
 
 namespace {
-
-constexpr const char *SettingsDownloadDir =
-    "torrentAdd/downloadDir";
-
 QString displaySourceForFile(const QString &filePath)
 {
     const QFileInfo info(filePath);
@@ -185,7 +181,7 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
 QString TorrentAddController::savedDownloadDir() const
 {
     QSettings settings;
-    return settings.value(QString::fromLatin1(SettingsDownloadDir)).toString();
+    return settings.value(SettingsKeys::TorrentAddDownloadDir).toString();
 }
 
 bool TorrentAddController::savedStartPaused() const
@@ -197,7 +193,7 @@ bool TorrentAddController::savedStartPaused() const
 void TorrentAddController::saveOptions(const QString &downloadDir, bool startPaused)
 {
     QSettings settings;
-    settings.setValue(QString::fromLatin1(SettingsDownloadDir), downloadDir);
+    settings.setValue(SettingsKeys::TorrentAddDownloadDir, downloadDir);
     // Preferences and the add dialog intentionally share this default; the
     // dialog may override it for subsequent additions when options are saved.
     settings.setValue(SettingsKeys::StartTorrentPaused, startPaused);

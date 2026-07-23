@@ -13,6 +13,7 @@ public:
     enum class StateFilter {
         All,
         Downloading,
+        Waiting,
         Completed,
         Active,
         Inactive,
@@ -24,6 +25,15 @@ public:
 
     void setStateFilter(StateFilter filter);
     StateFilter stateFilter() const;
+
+    // Shared by proxy row filtering and sidebar counts so both surfaces apply
+    // exactly the same interpretation of Transmission's status values.
+    static bool matchesState(StateFilter filter,
+                             int statusValue,
+                             double percentDone,
+                             bool hasError,
+                             double downloadRate,
+                             double uploadRate);
 
     void setSearchText(const QString &searchText);
     QString searchText() const;

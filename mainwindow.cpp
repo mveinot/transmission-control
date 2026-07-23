@@ -91,10 +91,6 @@ constexpr int MinimumUpdateIntervalSeconds = 1;
 constexpr int MaximumUpdateIntervalSeconds = 3600;
 constexpr qint64 SlowRpcRefreshIntervalMs = 60 * 1000;
 constexpr int CommandRefreshDebounceMs = 200;
-constexpr const char *MainWindowToolBarVisibleKey = "mainWindow/toolBarVisible";
-constexpr const char *MainWindowStatusBarVisibleKey = "mainWindow/statusBarVisible";
-constexpr const char *MainWindowToolBarStyleKey = "mainWindow/toolBarButtonStyle";
-constexpr const char *MainWindowStateKey = "mainWindow/stateV2";
 constexpr Qt::ToolButtonStyle DefaultToolBarButtonStyle = Qt::ToolButtonIconOnly;
 
 bool isSupportedToolBarButtonStyle(Qt::ToolButtonStyle style)
@@ -470,7 +466,7 @@ void MainWindow::setupViewMenu()
                 }
 
                 QSettings settings;
-                settings.setValue(QString::fromLatin1(MainWindowToolBarVisibleKey), visible);
+                settings.setValue(SettingsKeys::MainWindowToolBarVisible, visible);
                 settings.sync();
             });
 
@@ -541,7 +537,7 @@ void MainWindow::setupActivityDock()
             });
 
     QSettings settings;
-    const QByteArray state = settings.value(QString::fromLatin1(MainWindowStateKey)).toByteArray();
+    const QByteArray state = settings.value(SettingsKeys::MainWindowState).toByteArray();
     if (!state.isEmpty()) {
         restoreState(state, 2);
     } else {
@@ -573,11 +569,11 @@ void MainWindow::restoreViewSettings()
     QSettings settings;
 
     const bool toolBarVisible =
-        settings.value(QString::fromLatin1(MainWindowToolBarVisibleKey), true).toBool();
+        settings.value(SettingsKeys::MainWindowToolBarVisible, true).toBool();
     const bool statusBarVisible =
-        settings.value(QString::fromLatin1(MainWindowStatusBarVisibleKey), true).toBool();
+        settings.value(SettingsKeys::MainWindowStatusBarVisible, true).toBool();
     const Qt::ToolButtonStyle toolBarStyle = toolButtonStyleFromVariant(
-        settings.value(QString::fromLatin1(MainWindowToolBarStyleKey),
+        settings.value(SettingsKeys::MainWindowToolBarStyle,
                        static_cast<int>(DefaultToolBarButtonStyle)),
         DefaultToolBarButtonStyle);
 
@@ -599,15 +595,15 @@ void MainWindow::restoreViewSettings()
 void MainWindow::saveViewSettings() const
 {
     QSettings settings;
-    settings.setValue(QString::fromLatin1(MainWindowToolBarVisibleKey), ui->toolBar->isVisible());
-    settings.setValue(QString::fromLatin1(MainWindowStatusBarVisibleKey), ui->statusbar->isVisible());
+    settings.setValue(SettingsKeys::MainWindowToolBarVisible, ui->toolBar->isVisible());
+    settings.setValue(SettingsKeys::MainWindowStatusBarVisible, ui->statusbar->isVisible());
 
     const Qt::ToolButtonStyle toolBarStyle = toolButtonStyleFromVariant(
         static_cast<int>(ui->toolBar->toolButtonStyle()),
         DefaultToolBarButtonStyle);
-    settings.setValue(QString::fromLatin1(MainWindowToolBarStyleKey),
+    settings.setValue(SettingsKeys::MainWindowToolBarStyle,
                       static_cast<int>(toolBarStyle));
-    settings.setValue(QString::fromLatin1(MainWindowStateKey), saveState(2));
+    settings.setValue(SettingsKeys::MainWindowState, saveState(2));
     settings.sync();
 }
 
@@ -616,7 +612,7 @@ void MainWindow::setToolBarVisibleFromAction(bool visible)
     ui->toolBar->setVisible(visible);
 
     QSettings settings;
-    settings.setValue(QString::fromLatin1(MainWindowToolBarVisibleKey), visible);
+    settings.setValue(SettingsKeys::MainWindowToolBarVisible, visible);
     settings.sync();
 }
 
@@ -625,7 +621,7 @@ void MainWindow::setStatusBarVisibleFromAction(bool visible)
     ui->statusbar->setVisible(visible);
 
     QSettings settings;
-    settings.setValue(QString::fromLatin1(MainWindowStatusBarVisibleKey), visible);
+    settings.setValue(SettingsKeys::MainWindowStatusBarVisible, visible);
     settings.sync();
 }
 
@@ -641,7 +637,7 @@ void MainWindow::setToolBarButtonStyleFromAction(QAction *action)
     applyToolBarButtonStyle(style);
 
     QSettings settings;
-    settings.setValue(QString::fromLatin1(MainWindowToolBarStyleKey), static_cast<int>(style));
+    settings.setValue(SettingsKeys::MainWindowToolBarStyle, static_cast<int>(style));
     settings.sync();
 }
 
@@ -886,6 +882,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->actionAll->setCheckable(true);
     ui->actionDownloading->setCheckable(true);
+    ui->actionWaiting->setCheckable(true);
     ui->actionCompleted->setCheckable(true);
     ui->actionActive->setCheckable(true);
     ui->actionInactive->setCheckable(true);
@@ -896,6 +893,7 @@ MainWindow::MainWindow(QWidget *parent)
     stateGroup->setExclusive(true);
     stateGroup->addAction(ui->actionAll);
     stateGroup->addAction(ui->actionDownloading);
+    stateGroup->addAction(ui->actionWaiting);
     stateGroup->addAction(ui->actionCompleted);
     stateGroup->addAction(ui->actionActive);
     stateGroup->addAction(ui->actionInactive);
@@ -906,6 +904,7 @@ MainWindow::MainWindow(QWidget *parent)
     TorrentFilterController::Actions filterActions;
     filterActions.all = ui->actionAll;
     filterActions.downloading = ui->actionDownloading;
+    filterActions.waiting = ui->actionWaiting;
     filterActions.completed = ui->actionCompleted;
     filterActions.active = ui->actionActive;
     filterActions.inactive = ui->actionInactive;
@@ -1627,22 +1626,22 @@ void MainWindow::loadServerCombo()
         previouslySelectedServerIndex >= 0;
 
     const int defaultIndex =
-        settings.value("servers/defaultIndex", -1).toInt();
+        settings.value(SettingsKeys::ServersDefaultIndex, -1).toInt();
 
     const int savedCurrentIndex =
-        settings.value("servers/currentIndex", defaultIndex).toInt();
+        settings.value(SettingsKeys::ServersCurrentIndex, defaultIndex).toInt();
 
     QSignalBlocker blocker(ui->comboServers);
 
     ui->comboServers->clear();
 
-    const int count = settings.beginReadArray("servers");
+    const int count = settings.beginReadArray(SettingsKeys::ServersArray);
 
     for (int i = 0; i < count; ++i) {
         settings.setArrayIndex(i);
 
-        QString name = settings.value("name").toString().trimmed();
-        const QString rpcUrl = settings.value("rpcUrl").toString().trimmed();
+        QString name = settings.value(SettingsKeys::ServerName).toString().trimmed();
+        const QString rpcUrl = settings.value(SettingsKeys::ServerRpcUrl).toString().trimmed();
 
         if (name.isEmpty()) {
             name = rpcUrl.isEmpty()
@@ -1696,7 +1695,7 @@ void MainWindow::saveSelectedServerFromCombo()
         return;
 
     QSettings settings;
-    settings.setValue("servers/currentIndex", serverIndex);
+    settings.setValue(SettingsKeys::ServersCurrentIndex, serverIndex);
     settings.sync();
 
     if (!client->setServerFromSettingsIndex(serverIndex)) {
@@ -1968,7 +1967,7 @@ QList<FolderMapping> MainWindow::currentServerFolderMappings() const
         return mappings;
 
     QSettings settings;
-    const int serverCount = settings.beginReadArray(QStringLiteral("servers"));
+    const int serverCount = settings.beginReadArray(SettingsKeys::ServersArray);
 
     if (serverIndex >= serverCount) {
         settings.endArray();
@@ -1978,16 +1977,16 @@ QList<FolderMapping> MainWindow::currentServerFolderMappings() const
     settings.setArrayIndex(serverIndex);
 
     const int mappingCount =
-        settings.beginReadArray(QStringLiteral("folderMappings"));
+        settings.beginReadArray(SettingsKeys::ServerFolderMappingsArray);
 
     for (int i = 0; i < mappingCount; ++i) {
         settings.setArrayIndex(i);
 
         FolderMapping mapping;
         mapping.remotePath =
-            settings.value(QStringLiteral("remotePath")).toString().trimmed();
+            settings.value(SettingsKeys::FolderMappingRemotePath).toString().trimmed();
         mapping.localPath =
-            settings.value(QStringLiteral("localPath")).toString().trimmed();
+            settings.value(SettingsKeys::FolderMappingLocalPath).toString().trimmed();
 
         if (!mapping.remotePath.isEmpty() && !mapping.localPath.isEmpty())
             mappings.append(mapping);

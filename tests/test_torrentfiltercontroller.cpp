@@ -103,18 +103,21 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
 
     QAction all;
     QAction downloading;
+    QAction waiting;
     QAction completed;
     QAction active;
     QAction inactive;
     QAction stopped;
     QAction error;
 
-    for (QAction *action : { &all, &downloading, &completed, &active, &inactive, &stopped, &error })
+    for (QAction *action : { &all, &downloading, &waiting, &completed,
+                             &active, &inactive, &stopped, &error })
         makeCheckable(*action);
 
     TorrentFilterController::Actions actions;
     actions.all = &all;
     actions.downloading = &downloading;
+    actions.waiting = &waiting;
     actions.completed = &completed;
     actions.active = &active;
     actions.inactive = &inactive;
@@ -137,13 +140,18 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
         makeTorrentValue(2, QStringLiteral("Debian"), 6, 1.0,
                          { QStringLiteral("other.example.com") },
                          QStringLiteral("/downloads/archive")),
+        makeTorrentValue(3, QStringLiteral("Queued download"), 3, 0.1,
+                         { QStringLiteral("queue.example.com") },
+                         QStringLiteral("/downloads/linux")),
     });
 
     sourceModel.applyUpdate(torrents);
     controller.rebuild(torrents);
 
-    QVERIFY(findItemByText(list, QStringLiteral("All (2)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("All (3)")) != nullptr);
     QVERIFY(findItemByText(list, QStringLiteral("Downloading (1)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("Waiting (1)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("Inactive (1)")) != nullptr);
     QVERIFY(findItemByText(list, QStringLiteral("Complete (1)")) != nullptr);
 
     QListWidgetItem *trackerItem = findItemByText(list, QStringLiteral("tracker.example.com (1)"));

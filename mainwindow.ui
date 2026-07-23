@@ -688,6 +688,11 @@
     <string>Downloading</string>
    </property>
   </action>
+  <action name="actionWaiting">
+   <property name="text">
+    <string>Waiting</string>
+   </property>
+  </action>
   <action name="actionCompleted">
    <property name="text">
     <string>Completed</string>

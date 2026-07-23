@@ -1,6 +1,7 @@
 #include "torrentlistcontroller.h"
 
 #include "rpc_client.h"
+#include "settingskeys.h"
 #include "torrentmodel.h"
 #include "torrentpropertiesdialog.h"
 #include "torrentsortproxymodel.h"
@@ -34,13 +35,6 @@
 
 
 namespace {
-
-constexpr const char *TorrentTableHeaderStateKey =
-    "ui/torrentTable/horizontalHeaderState/v4";
-constexpr const char *TorrentTableVerticalHeaderStateKey =
-    "ui/torrentTable/verticalHeaderState/v1";
-constexpr const char *TorrentTableVisibleColumnsKey =
-    "ui/torrentTable/visibleColumns/v2";
 
 struct TorrentColumnDefinition
 {
@@ -261,7 +255,7 @@ void TorrentListController::restoreViewState()
     QSettings settings;
 
     const QByteArray horizontalState =
-        settings.value(QString::fromLatin1(TorrentTableHeaderStateKey)).toByteArray();
+        settings.value(SettingsKeys::TorrentTableHeaderState).toByteArray();
 
     if (!horizontalState.isEmpty() && m_tableView->horizontalHeader())
         m_tableView->horizontalHeader()->restoreState(horizontalState);
@@ -269,7 +263,7 @@ void TorrentListController::restoreViewState()
     configureHorizontalHeader();
 
     const QByteArray verticalState =
-        settings.value(QString::fromLatin1(TorrentTableVerticalHeaderStateKey)).toByteArray();
+        settings.value(SettingsKeys::TorrentTableVerticalHeaderState).toByteArray();
 
     if (!verticalState.isEmpty() && m_tableView->verticalHeader())
         m_tableView->verticalHeader()->restoreState(verticalState);
@@ -285,12 +279,12 @@ void TorrentListController::saveViewState() const
     QSettings settings;
 
     if (m_tableView->horizontalHeader()) {
-        settings.setValue(QString::fromLatin1(TorrentTableHeaderStateKey),
+        settings.setValue(SettingsKeys::TorrentTableHeaderState,
                           m_tableView->horizontalHeader()->saveState());
     }
 
     if (m_tableView->verticalHeader()) {
-        settings.setValue(QString::fromLatin1(TorrentTableVerticalHeaderStateKey),
+        settings.setValue(SettingsKeys::TorrentTableVerticalHeaderState,
                           m_tableView->verticalHeader()->saveState());
     }
 
@@ -304,7 +298,7 @@ void TorrentListController::saveViewState() const
             visibleColumnIds.append(QString::fromLatin1(definition.id));
     }
 
-    settings.setValue(QString::fromLatin1(TorrentTableVisibleColumnsKey), visibleColumnIds);
+    settings.setValue(SettingsKeys::TorrentTableVisibleColumns, visibleColumnIds);
 }
 
 int TorrentListController::currentTorrentId() const
@@ -1106,7 +1100,7 @@ void TorrentListController::applySavedColumnVisibility()
 
     QSettings settings;
     const QVariant storedValue =
-        settings.value(QString::fromLatin1(TorrentTableVisibleColumnsKey));
+        settings.value(SettingsKeys::TorrentTableVisibleColumns);
 
     if (!storedValue.isValid()) {
         applyDefaultColumnVisibility();
@@ -1186,9 +1180,9 @@ void TorrentListController::resetColumns()
         return;
 
     QSettings settings;
-    settings.remove(QString::fromLatin1(TorrentTableHeaderStateKey));
-    settings.remove(QString::fromLatin1(TorrentTableVerticalHeaderStateKey));
-    settings.remove(QString::fromLatin1(TorrentTableVisibleColumnsKey));
+    settings.remove(SettingsKeys::TorrentTableHeaderState);
+    settings.remove(SettingsKeys::TorrentTableVerticalHeaderState);
+    settings.remove(SettingsKeys::TorrentTableVisibleColumns);
 
     if (m_tableView->horizontalHeader())
         m_tableView->horizontalHeader()->reset();

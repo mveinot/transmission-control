@@ -1,5 +1,6 @@
 #include "updatecheckcontroller.h"
 
+#include "settingskeys.h"
 #include "updatechecker.h"
 #include "version.h"
 
@@ -125,13 +126,13 @@ void UpdateCheckController::maybeCheckAutomatically()
     QSettings settings;
 
     const bool enabled =
-        settings.value(QStringLiteral("updates/checkAutomatically"), true).toBool();
+        settings.value(SettingsKeys::UpdateCheckAutomatically, true).toBool();
 
     if (!enabled)
         return;
 
     const QDateTime lastCheck =
-        settings.value(QStringLiteral("updates/lastCheck")).toDateTime();
+        settings.value(SettingsKeys::UpdateLastCheck).toDateTime();
 
     const QDateTime now = QDateTime::currentDateTimeUtc();
 
@@ -145,7 +146,7 @@ void UpdateCheckController::maybeCheckAutomatically()
      * This avoids updating the timestamp when auto-checking is disabled or
      * when setup has not produced a checker instance.
      */
-    settings.setValue(QStringLiteral("updates/lastCheck"), now);
+    settings.setValue(SettingsKeys::UpdateLastCheck, now);
 
     if (m_updateChecker)
         m_updateChecker->checkForUpdates(false);

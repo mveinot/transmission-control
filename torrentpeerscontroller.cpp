@@ -1,6 +1,7 @@
 #include "torrentpeerscontroller.h"
 
 #include "geoipservice.h"
+#include "settingskeys.h"
 #include "tablecolumncontroller.h"
 #include "tableplaceholdercontroller.h"
 
@@ -88,8 +89,8 @@ void TorrentPeersController::setup()
 
     columnController = std::make_unique<TableColumnController>(
         peerTableWidget->horizontalHeader(),
-        QStringLiteral("ui/peerTableWidget/horizontalHeaderState/v4"),
-        QStringLiteral("ui/peerTableWidget/visibleColumns/v1"),
+        QString::fromLatin1(SettingsKeys::PeerTableHeaderState),
+        QString::fromLatin1(SettingsKeys::PeerTableVisibleColumns),
         QVector<TableColumnController::ColumnDefinition> {
             { CountryColumn, QStringLiteral("country"), true, true, false },
             { AddressColumn, QStringLiteral("address"), true, false, true },

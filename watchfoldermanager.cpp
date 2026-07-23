@@ -1,16 +1,13 @@
 #include "watchfoldermanager.h"
 
+#include "settingskeys.h"
+
 #include <QDir>
 #include <QFileInfo>
 #include <QSettings>
 #include <QStringList>
 
 namespace {
-
-QString processedFingerprintsSettingsKey()
-{
-    return QStringLiteral("watchFolder/processedFingerprints");
-}
 
 constexpr qsizetype MaxStoredFingerprints = 1000;
 constexpr int NativeWatcherReconciliationIntervalMs = 30000;
@@ -441,7 +438,7 @@ void WatchFolderManager::loadProcessedFingerprints()
     QSettings settings;
 
     const QStringList values =
-        settings.value(processedFingerprintsSettingsKey()).toStringList();
+        settings.value(SettingsKeys::WatchFolderProcessedFingerprints).toStringList();
 
     m_processedFingerprints =
         QSet<QString>(values.begin(), values.end());
@@ -455,5 +452,5 @@ void WatchFolderManager::saveProcessedFingerprints() const
         QStringList(m_processedFingerprints.begin(),
                     m_processedFingerprints.end());
 
-    settings.setValue(processedFingerprintsSettingsKey(), values);
+    settings.setValue(SettingsKeys::WatchFolderProcessedFingerprints, values);
 }

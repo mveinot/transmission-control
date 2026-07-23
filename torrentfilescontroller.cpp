@@ -3,6 +3,7 @@
 #include "appicons.h"
 #include "percentfilldelegate.h"
 #include "rpc_client.h"
+#include "settingskeys.h"
 #include "tablecolumncontroller.h"
 #include "tableplaceholdercontroller.h"
 
@@ -112,8 +113,8 @@ void TorrentFilesController::setup()
 
     columnController = std::make_unique<TableColumnController>(
         fileTreeWidget->header(),
-        QStringLiteral("ui/fileTreeWidget/headerState/v6"),
-        QStringLiteral("ui/fileTreeWidget/visibleColumns/v1"),
+        QString::fromLatin1(SettingsKeys::FileTreeHeaderState),
+        QString::fromLatin1(SettingsKeys::FileTreeVisibleColumns),
         QVector<TableColumnController::ColumnDefinition> {
             { FileNameColumn, QStringLiteral("name"), true, false, true },
             { FilePriorityColumn, QStringLiteral("priority"), true, true, false },

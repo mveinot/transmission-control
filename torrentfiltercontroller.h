@@ -26,6 +26,7 @@ public:
     struct Actions {
         QAction *all = nullptr;
         QAction *downloading = nullptr;
+        QAction *waiting = nullptr;
         QAction *completed = nullptr;
         QAction *active = nullptr;
         QAction *inactive = nullptr;

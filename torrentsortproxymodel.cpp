@@ -127,52 +127,50 @@ bool TorrentSortProxyModel::matchesStateFilter(int sourceRow,
     const QModelIndex nameIndex =
         model->index(sourceRow, TorrentModel::NameColumn, sourceParent);
 
-    if (m_stateFilter == StateFilter::Error)
-        return model->data(nameIndex, TorrentModel::HasErrorRole).toBool();
-
     const int statusValue =
         model->data(nameIndex, TorrentModel::StatusValueRole).toInt();
+    const bool hasError =
+        model->data(nameIndex, TorrentModel::HasErrorRole).toBool();
+    const QModelIndex percentIndex =
+        model->index(sourceRow, TorrentModel::PercentDoneColumn, sourceParent);
+    const QModelIndex downIndex =
+        model->index(sourceRow, TorrentModel::RateDownloadColumn, sourceParent);
+    const QModelIndex upIndex =
+        model->index(sourceRow, TorrentModel::RateUploadColumn, sourceParent);
 
-    switch (m_stateFilter) {
+    return matchesState(
+        m_stateFilter,
+        statusValue,
+        model->data(percentIndex, Qt::UserRole + 1).toDouble(),
+        hasError,
+        model->data(downIndex, TorrentModel::SortRole).toDouble(),
+        model->data(upIndex, TorrentModel::SortRole).toDouble());
+}
+
+bool TorrentSortProxyModel::matchesState(StateFilter filter,
+                                         int statusValue,
+                                         double percentDone,
+                                         bool hasError,
+                                         double downloadRate,
+                                         double uploadRate)
+{
+    switch (filter) {
     case StateFilter::All:
         return true;
 
     case StateFilter::Downloading:
-        return statusValue == 4 // Downloading
-               || statusValue == 3; // Queued
-
-    case StateFilter::Completed: {
-        const QModelIndex percentIndex =
-            model->index(sourceRow, TorrentModel::PercentDoneColumn, sourceParent);
-
-        const double percentDone =
-            model->data(percentIndex, Qt::UserRole + 1).toDouble();
-
+        return statusValue == 4; // Downloading
+    case StateFilter::Waiting:
+        return statusValue == 3; // Queued to download
+    case StateFilter::Completed:
         return percentDone >= 100.0;
-    }
-
-    case StateFilter::Active: {
+    case StateFilter::Active:
         if (statusValue == 4 // Downloading
             || statusValue == 6 // Seeding
             || statusValue == 2) { // Verifying
             return true;
         }
-
-        const QModelIndex downIndex =
-            model->index(sourceRow, TorrentModel::RateDownloadColumn, sourceParent);
-
-        const QModelIndex upIndex =
-            model->index(sourceRow, TorrentModel::RateUploadColumn, sourceParent);
-
-        const double downRate =
-            model->data(downIndex, TorrentModel::SortRole).toDouble();
-
-        const double upRate =
-            model->data(upIndex, TorrentModel::SortRole).toDouble();
-
-        return downRate > 0.0 || upRate > 0.0;
-    }
-
+        return downloadRate > 0.0 || uploadRate > 0.0;
     case StateFilter::Inactive:
         return statusValue == 0 // Paused
                || statusValue == 1 // Waiting to Verify
@@ -183,7 +181,7 @@ bool TorrentSortProxyModel::matchesStateFilter(int sourceRow,
         return statusValue == 0; // Paused
 
     case StateFilter::Error:
-        return false;
+        return hasError;
     }
 
     return true;

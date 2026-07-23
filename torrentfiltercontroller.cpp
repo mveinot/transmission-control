@@ -68,6 +68,11 @@ void TorrentFilterController::setup()
             setStateFilter(TorrentSortProxyModel::StateFilter::Downloading);
         });
 
+    if (m_actions.waiting)
+        connect(m_actions.waiting, &QAction::triggered, this, [this]() {
+            setStateFilter(TorrentSortProxyModel::StateFilter::Waiting);
+        });
+
     if (m_actions.completed)
         connect(m_actions.completed, &QAction::triggered, this, [this]() {
             setStateFilter(TorrentSortProxyModel::StateFilter::Completed);
@@ -200,6 +205,7 @@ void TorrentFilterController::addStatusFilterItems()
     m_filterList->addItem(createHeaderItem(tr("Status")));
     m_filterList->addItem(createStatusItem(tr("All"), TorrentSortProxyModel::StateFilter::All));
     m_filterList->addItem(createStatusItem(tr("Downloading"), TorrentSortProxyModel::StateFilter::Downloading));
+    m_filterList->addItem(createStatusItem(tr("Waiting"), TorrentSortProxyModel::StateFilter::Waiting));
     m_filterList->addItem(createStatusItem(tr("Complete"), TorrentSortProxyModel::StateFilter::Completed));
     m_filterList->addItem(createStatusItem(tr("Active"), TorrentSortProxyModel::StateFilter::Active));
     m_filterList->addItem(createStatusItem(tr("Inactive"), TorrentSortProxyModel::StateFilter::Inactive));
@@ -252,6 +258,7 @@ QListWidgetItem *TorrentFilterController::createStatusItem(
 {
     static const QIcon allIcon = AppIcons::icon(AppIcons::Icon::FilterAll);
     static const QIcon downloadingIcon = AppIcons::icon(AppIcons::Icon::StatusDownloading);
+    static const QIcon waitingIcon = AppIcons::icon(AppIcons::Icon::StatusQueued);
     static const QIcon completeIcon = AppIcons::icon(AppIcons::Icon::StatusComplete);
     static const QIcon activeIcon = AppIcons::icon(AppIcons::Icon::StatusActive);
     static const QIcon inactiveIcon = AppIcons::icon(AppIcons::Icon::StatusInactive);
@@ -266,6 +273,9 @@ QListWidgetItem *TorrentFilterController::createStatusItem(
         break;
     case TorrentSortProxyModel::StateFilter::Downloading:
         icon = downloadingIcon;
+        break;
+    case TorrentSortProxyModel::StateFilter::Waiting:
+        icon = waitingIcon;
         break;
     case TorrentSortProxyModel::StateFilter::Completed:
         icon = completeIcon;
@@ -399,6 +409,9 @@ void TorrentFilterController::updateCheckedAction(TorrentSortProxyModel::StateFi
     case TorrentSortProxyModel::StateFilter::Downloading:
         action = m_actions.downloading;
         break;
+    case TorrentSortProxyModel::StateFilter::Waiting:
+        action = m_actions.waiting;
+        break;
     case TorrentSortProxyModel::StateFilter::Completed:
         action = m_actions.completed;
         break;
@@ -521,6 +534,8 @@ QString TorrentFilterController::statusFilterName(TorrentSortProxyModel::StateFi
         return tr("All");
     case TorrentSortProxyModel::StateFilter::Downloading:
         return tr("Downloading");
+    case TorrentSortProxyModel::StateFilter::Waiting:
+        return tr("Waiting");
     case TorrentSortProxyModel::StateFilter::Completed:
         return tr("Complete");
     case TorrentSortProxyModel::StateFilter::Active:
@@ -554,48 +569,13 @@ bool TorrentFilterController::torrentMatchesState(
     const torrent &torrentItem,
     TorrentSortProxyModel::StateFilter filter)
 {
-    if (filter == TorrentSortProxyModel::StateFilter::All)
-        return true;
-
-    if (filter == TorrentSortProxyModel::StateFilter::Error)
-        return torrentItem.hasError();
-
-    const int statusValue = torrentItem.getStatusValue();
-
-    switch (filter) {
-    case TorrentSortProxyModel::StateFilter::All:
-        return true;
-
-    case TorrentSortProxyModel::StateFilter::Downloading:
-        return statusValue == 4 // Downloading
-               || statusValue == 3; // Queued
-
-    case TorrentSortProxyModel::StateFilter::Completed:
-        return torrentItem.getPercentDone() >= 100.0;
-
-    case TorrentSortProxyModel::StateFilter::Active:
-        if (statusValue == 4 // Downloading
-            || statusValue == 6 // Seeding
-            || statusValue == 3) { // Queued
-            return true;
-        }
-
-        return torrentItem.getRateDownloadBytesPerSecond() > 0.0
-               || torrentItem.getRateUploadBytesPerSecond() > 0.0;
-
-    case TorrentSortProxyModel::StateFilter::Inactive:
-        return statusValue == 0 // Paused
-               || statusValue == 1 // Waiting to Verify
-               || statusValue == 5; // Waiting to Seed
-
-    case TorrentSortProxyModel::StateFilter::Stopped:
-        return statusValue == 0; // Paused
-
-    case TorrentSortProxyModel::StateFilter::Error:
-        return false;
-    }
-
-    return true;
+    return TorrentSortProxyModel::matchesState(
+        filter,
+        torrentItem.getStatusValue(),
+        torrentItem.getPercentDone(),
+        torrentItem.hasError(),
+        torrentItem.getRateDownloadBytesPerSecond(),
+        torrentItem.getRateUploadBytesPerSecond());
 }
 
 void TorrentFilterController::showFilterContextMenu(const QPoint &position)

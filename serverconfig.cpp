@@ -2,6 +2,7 @@
 #include "ui_serverconfig.h"
 
 #include "foldermappingsdialog.h"
+#include "settingskeys.h"
 
 #include <QFile>
 #include <QFileDialog>
@@ -145,25 +146,28 @@ void ServerConfig::loadServers()
 
     QSettings settings;
 
-    const int count = settings.beginReadArray("servers");
+    const int count = settings.beginReadArray(SettingsKeys::ServersArray);
 
     for (int i = 0; i < count; ++i) {
         settings.setArrayIndex(i);
 
         TransmissionServer server;
-        server.name = settings.value("name").toString();
-        server.rpcUrl = settings.value("rpcUrl").toString();
-        server.username = settings.value("username").toString();
-        server.password = settings.value("password").toString();
+        server.name = settings.value(SettingsKeys::ServerName).toString();
+        server.rpcUrl = settings.value(SettingsKeys::ServerRpcUrl).toString();
+        server.username = settings.value(SettingsKeys::ServerUsername).toString();
+        server.password = settings.value(SettingsKeys::ServerPassword).toString();
 
-        const int mappingCount = settings.beginReadArray("folderMappings");
+        const int mappingCount =
+            settings.beginReadArray(SettingsKeys::ServerFolderMappingsArray);
 
         for (int mappingIndex = 0; mappingIndex < mappingCount; ++mappingIndex) {
             settings.setArrayIndex(mappingIndex);
 
             FolderMapping mapping;
-            mapping.remotePath = settings.value("remotePath").toString().trimmed();
-            mapping.localPath = settings.value("localPath").toString().trimmed();
+            mapping.remotePath =
+                settings.value(SettingsKeys::FolderMappingRemotePath).toString().trimmed();
+            mapping.localPath =
+                settings.value(SettingsKeys::FolderMappingLocalPath).toString().trimmed();
 
             if (!mapping.remotePath.isEmpty() || !mapping.localPath.isEmpty())
                 server.folderMappings.append(mapping);
@@ -179,7 +183,7 @@ void ServerConfig::loadServers()
 
     settings.endArray();
 
-    defaultServerIndex = settings.value("servers/defaultIndex", -1).toInt();
+    defaultServerIndex = settings.value(SettingsKeys::ServersDefaultIndex, -1).toInt();
 
     if (defaultServerIndex >= servers.size())
         defaultServerIndex = servers.isEmpty() ? -1 : 0;
@@ -189,24 +193,26 @@ void ServerConfig::saveServers()
 {
     QSettings settings;
 
-    settings.beginWriteArray("servers");
+    settings.beginWriteArray(SettingsKeys::ServersArray);
 
     for (int i = 0; i < servers.size(); ++i) {
         settings.setArrayIndex(i);
 
-        settings.setValue("name", servers.at(i).name);
-        settings.setValue("rpcUrl", servers.at(i).rpcUrl);
-        settings.setValue("username", servers.at(i).username);
-        settings.setValue("password", servers.at(i).password);
+        settings.setValue(SettingsKeys::ServerName, servers.at(i).name);
+        settings.setValue(SettingsKeys::ServerRpcUrl, servers.at(i).rpcUrl);
+        settings.setValue(SettingsKeys::ServerUsername, servers.at(i).username);
+        settings.setValue(SettingsKeys::ServerPassword, servers.at(i).password);
 
-        settings.beginWriteArray("folderMappings");
+        settings.beginWriteArray(SettingsKeys::ServerFolderMappingsArray);
 
         const QList<FolderMapping> mappings = servers.at(i).folderMappings;
 
         for (int mappingIndex = 0; mappingIndex < mappings.size(); ++mappingIndex) {
             settings.setArrayIndex(mappingIndex);
-            settings.setValue("remotePath", mappings.at(mappingIndex).remotePath);
-            settings.setValue("localPath", mappings.at(mappingIndex).localPath);
+            settings.setValue(SettingsKeys::FolderMappingRemotePath,
+                              mappings.at(mappingIndex).remotePath);
+            settings.setValue(SettingsKeys::FolderMappingLocalPath,
+                              mappings.at(mappingIndex).localPath);
         }
 
         settings.endArray();
@@ -217,10 +223,10 @@ void ServerConfig::saveServers()
     /*
     const int current = currentServerIndex();
     if (current >= 0)
-        settings.setValue("servers/currentIndex", current);
+        settings.setValue(SettingsKeys::ServersCurrentIndex, current);
 */
 
-    settings.setValue("servers/defaultIndex", defaultServerIndex);
+    settings.setValue(SettingsKeys::ServersDefaultIndex, defaultServerIndex);
 
     settings.sync();
 }

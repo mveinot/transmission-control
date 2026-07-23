@@ -1,6 +1,7 @@
 #include "torrenttrackerscontroller.h"
 
 #include "rpc_client.h"
+#include "settingskeys.h"
 #include "tablecolumncontroller.h"
 #include "tableplaceholdercontroller.h"
 
@@ -66,8 +67,8 @@ void TorrentTrackersController::setup()
 
     columnController = std::make_unique<TableColumnController>(
         trackerTableWidget->horizontalHeader(),
-        QStringLiteral("ui/trackerTableWidget/headerState/v4"),
-        QStringLiteral("ui/trackerTableWidget/visibleColumns/v2"),
+        QString::fromLatin1(SettingsKeys::TrackerTableHeaderState),
+        QString::fromLatin1(SettingsKeys::TrackerTableVisibleColumns),
         QVector<TableColumnController::ColumnDefinition> {
             { TierColumn, QStringLiteral("tier"), true, true, false },
             { HostColumn, QStringLiteral("host"), true, false, true },

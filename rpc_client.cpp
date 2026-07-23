@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include "rpc_client.h"
+#include "settingskeys.h"
 
 namespace {
 constexpr QNetworkRequest::Attribute RpcRequestTypeAttribute =
@@ -566,7 +567,7 @@ rpc_client::TransmissionServer rpc_client::readServerFromSettings(int index, boo
 
     QSettings settings;
 
-    const int count = settings.beginReadArray("servers");
+    const int count = settings.beginReadArray(SettingsKeys::ServersArray);
 
     if (index < 0 || index >= count) {
         settings.endArray();
@@ -576,10 +577,10 @@ rpc_client::TransmissionServer rpc_client::readServerFromSettings(int index, boo
     settings.setArrayIndex(index);
 
     TransmissionServer server;
-    server.name = settings.value("name").toString().trimmed();
-    server.rpcUrl = settings.value("rpcUrl").toString().trimmed();
-    server.username = settings.value("username").toString();
-    server.password = settings.value("password").toString();
+    server.name = settings.value(SettingsKeys::ServerName).toString().trimmed();
+    server.rpcUrl = settings.value(SettingsKeys::ServerRpcUrl).toString().trimmed();
+    server.username = settings.value(SettingsKeys::ServerUsername).toString();
+    server.password = settings.value(SettingsKeys::ServerPassword).toString();
 
     settings.endArray();
 
@@ -594,7 +595,7 @@ bool rpc_client::loadCurrentServerFromSettings()
     QSettings settings;
 
     const int defaultIndex =
-        settings.value("servers/defaultIndex", -1).toInt();
+        settings.value(SettingsKeys::ServersDefaultIndex, -1).toInt();
 
     if (setServerFromSettingsIndex(defaultIndex))
         return true;
@@ -605,7 +606,7 @@ bool rpc_client::loadCurrentServerFromSettings()
      * This is only for older preferences, not normal startup behavior.
      */
     const int legacyCurrentIndex =
-        settings.value("servers/currentIndex", -1).toInt();
+        settings.value(SettingsKeys::ServersCurrentIndex, -1).toInt();
 
     if (legacyCurrentIndex != defaultIndex &&
         setServerFromSettingsIndex(legacyCurrentIndex)) {

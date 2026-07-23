@@ -80,6 +80,7 @@ class TestTorrentSortProxyModel : public QObject
 
 private slots:
     void sortsByQueuePosition();
+    void separatesDownloadingAndWaitingTorrents();
     void filtersCompletedTorrents();
     void filtersActiveTorrents();
     void filtersInactiveTorrents();
@@ -88,6 +89,27 @@ private slots:
     void filtersByDownloadDir();
     void combinesStateAndTrackerFilters();
 };
+
+void TestTorrentSortProxyModel::separatesDownloadingAndWaitingTorrents()
+{
+    TorrentModel sourceModel;
+    sourceModel.applyUpdate(makeTorrentList({
+        makeTorrentValue(1, "Downloading", 4, 0.25, 0.0, 1024, 0),
+        makeTorrentValue(2, "Queued", 3, 0.25, 0.0, 1024, 1),
+    }));
+
+    TorrentSortProxyModel proxy;
+    proxy.setSourceModel(&sourceModel);
+    proxy.setStateFilter(TorrentSortProxyModel::StateFilter::Downloading);
+
+    QCOMPARE(proxy.rowCount(), 1);
+    QCOMPARE(torrentIdAtProxyRow(proxy, 0), 1);
+
+    proxy.setStateFilter(TorrentSortProxyModel::StateFilter::Waiting);
+
+    QCOMPARE(proxy.rowCount(), 1);
+    QCOMPARE(torrentIdAtProxyRow(proxy, 0), 2);
+}
 
 void TestTorrentSortProxyModel::sortsByQueuePosition()
 {
