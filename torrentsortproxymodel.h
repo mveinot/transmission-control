@@ -3,8 +3,10 @@
 
 #include <QSortFilterProxyModel>
 
-// Combines orthogonal state, text, tracker, and download-directory predicates
-// while providing type-aware ordering for TorrentModel columns.
+#include <optional>
+
+// Combines orthogonal state, text, and metadata predicates while providing
+// type-aware ordering for TorrentModel columns.
 class TorrentSortProxyModel : public QSortFilterProxyModel
 {
     Q_OBJECT
@@ -44,6 +46,18 @@ public:
     void setDownloadDirFilter(const QString &downloadDir);
     QString downloadDirFilter() const;
 
+    // An engaged empty value represents the explicit unassigned filter;
+    // std::nullopt means this metadata dimension is not filtering.
+    void setLabelFilter(const QString &label);
+    void clearLabelFilter();
+    bool labelFilterActive() const;
+    QString labelFilter() const;
+
+    void setGroupFilter(const QString &group);
+    void clearGroupFilter();
+    bool groupFilterActive() const;
+    QString groupFilter() const;
+
 protected:
     bool lessThan(const QModelIndex &left, const QModelIndex &right) const override;
     bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override;
@@ -53,12 +67,18 @@ private:
     QString m_searchText;
     QString m_trackerFilter;
     QString m_downloadDirFilter;
+    std::optional<QString> m_labelFilter;
+    std::optional<QString> m_groupFilter;
 
     bool matchesTrackerFilter(int sourceRow,
                               const QModelIndex &sourceParent) const;
 
     bool matchesDownloadDirFilter(int sourceRow,
                                   const QModelIndex &sourceParent) const;
+    bool matchesLabelFilter(int sourceRow,
+                            const QModelIndex &sourceParent) const;
+    bool matchesGroupFilter(int sourceRow,
+                            const QModelIndex &sourceParent) const;
 
     bool matchesSearchFilter(int sourceRow,
                              const QModelIndex &sourceParent) const;

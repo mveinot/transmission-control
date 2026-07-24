@@ -101,6 +101,12 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
     if (role == DownloadDirRole)
         return t.getDownloadDir();
 
+    if (role == LabelsRole)
+        return t.getLabels();
+
+    if (role == GroupRole)
+        return t.getGroup();
+
     if (role == StatusValueRole)
         return t.getStatusValue();
 

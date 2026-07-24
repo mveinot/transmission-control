@@ -17,7 +17,8 @@ class QPoint;
 
 
 // Synchronizes toolbar actions, sidebar items, and TorrentSortProxyModel state.
-// Dynamic tracker/folder sections are derived from each list snapshot.
+// Dynamic tracker, folder, label, and group sections are derived from each
+// list snapshot; unsupported metadata sections remain absent.
 class TorrentFilterController : public QObject
 {
     Q_OBJECT
@@ -56,7 +57,9 @@ private:
         Header,
         Status,
         Tracker,
-        Folder
+        Folder,
+        Label,
+        Group
     };
 
     QListWidget *m_filterList = nullptr;
@@ -65,15 +68,27 @@ private:
     Actions m_actions;
     QStringList m_lastTrackerHosts;
     QStringList m_lastDownloadDirs;
+    QStringList m_lastLabels;
+    QStringList m_lastGroups;
+    bool m_labelsAvailable = false;
+    bool m_groupsAvailable = false;
     QVector<torrent> m_torrents;
     bool m_trackersCollapsed = false;
     bool m_foldersCollapsed = false;
+    bool m_labelsCollapsed = false;
+    bool m_groupsCollapsed = false;
 
     void rebuildWithFilters(const QStringList &trackerHosts,
-                            const QStringList &downloadDirs);
+                            const QStringList &downloadDirs,
+                            const QStringList &labels,
+                            const QStringList &groups,
+                            bool labelsAvailable,
+                            bool groupsAvailable);
     void addStatusFilterItems();
     void addTrackerFilterItems(const QStringList &trackerHosts);
     void addFolderFilterItems(const QStringList &downloadDirs);
+    void addLabelFilterItems(const QStringList &labels);
+    void addGroupFilterItems(const QStringList &groups);
     QListWidgetItem *createHeaderItem(const QString &label) const;
     QListWidgetItem *createStatusItem(const QString &label,
                                       TorrentSortProxyModel::StateFilter filter) const;
@@ -81,6 +96,11 @@ private:
                                        const QString &trackerHost) const;
     QListWidgetItem *createFolderItem(const QString &label,
                                       const QString &downloadDir) const;
+    QListWidgetItem *createMetadataItem(ItemType type,
+                                        const QString &label,
+                                        const QString &value,
+                                        const QIcon &icon) const;
+    void clearCategoricalFilters();
     void applyCurrentListSelection(QListWidgetItem *current);
     void selectStatusFilter(TorrentSortProxyModel::StateFilter filter);
     bool selectItem(ItemType type, const QString &value, int fallbackRow);
@@ -98,6 +118,8 @@ private:
                                     TorrentSortProxyModel::StateFilter filter);
     static QStringList trackerHostsFromTorrents(const QVector<torrent> &torrents);
     static QStringList downloadDirsFromTorrents(const QVector<torrent> &torrents);
+    static QStringList labelsFromTorrents(const QVector<torrent> &torrents);
+    static QStringList groupsFromTorrents(const QVector<torrent> &torrents);
     static int typeToInt(ItemType type);
     static ItemType intToType(int value);
 };

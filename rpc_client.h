@@ -166,6 +166,8 @@ private:
     bool updateInProgress = false;
     bool updateRequestedWhileInProgress = false;
     bool m_sequentialDownloadSupported = false;
+    bool m_torrentLabelsSupported = false;
+    bool m_torrentGroupsSupported = false;
     QByteArray _session_token;
     QNetworkAccessManager *na_manager = nullptr;
     QString serverName;

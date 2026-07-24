@@ -17,7 +17,9 @@ QJsonValue makeTorrentValue(int id,
                             int status,
                             double percentDone,
                             const QStringList &trackerHosts,
-                            const QString &downloadDir = QString())
+                            const QString &downloadDir = QString(),
+                            const QStringList &labels = {},
+                            const QString &group = QString())
 {
     QJsonObject object;
     object["id"] = id;
@@ -31,6 +33,8 @@ QJsonValue makeTorrentValue(int id,
     object["sizeWhenDone"] = 1024.0;
     object["queuePosition"] = id;
     object["downloadDir"] = downloadDir;
+    object["labels"] = QJsonArray::fromStringList(labels);
+    object["group"] = group;
 
     QJsonArray trackerStats;
     for (const QString &host : trackerHosts) {
@@ -136,13 +140,18 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
     const QVector<torrent> torrents = makeTorrentList({
         makeTorrentValue(1, QStringLiteral("Ubuntu"), 4, 0.25,
                          { QStringLiteral("tracker.example.com") },
-                         QStringLiteral("/downloads/linux")),
+                         QStringLiteral("/downloads/linux"),
+                         { QStringLiteral("ISO"), QStringLiteral("Linux") },
+                         QStringLiteral("Desktop")),
         makeTorrentValue(2, QStringLiteral("Debian"), 6, 1.0,
                          { QStringLiteral("other.example.com") },
-                         QStringLiteral("/downloads/archive")),
+                         QStringLiteral("/downloads/archive"),
+                         { QStringLiteral("Linux") }),
         makeTorrentValue(3, QStringLiteral("Queued download"), 3, 0.1,
                          { QStringLiteral("queue.example.com") },
-                         QStringLiteral("/downloads/linux")),
+                         QStringLiteral("/downloads/linux"),
+                         {},
+                         QStringLiteral("Desktop")),
     });
 
     sourceModel.applyUpdate(torrents);
@@ -152,6 +161,25 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
     QVERIFY(findItemByText(list, QStringLiteral("Downloading (1)")) != nullptr);
     QVERIFY(findItemByText(list, QStringLiteral("Waiting (1)")) != nullptr);
     QVERIFY(findItemByText(list, QStringLiteral("Inactive (1)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("Linux (2)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("Unlabelled (1)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("Desktop (2)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("No Group (1)")) != nullptr);
+
+    QListWidgetItem *labelItem = findItemByText(list, QStringLiteral("Linux (2)"));
+    QVERIFY(labelItem != nullptr);
+    list.setCurrentItem(labelItem);
+    QVERIFY(proxy.labelFilterActive());
+    QCOMPARE(proxy.labelFilter(), QStringLiteral("Linux"));
+    QCOMPARE(proxy.rowCount(), 2);
+
+    QListWidgetItem *noGroupItem = findItemByText(list, QStringLiteral("No Group (1)"));
+    QVERIFY(noGroupItem != nullptr);
+    list.setCurrentItem(noGroupItem);
+    QVERIFY(!proxy.labelFilterActive());
+    QVERIFY(proxy.groupFilterActive());
+    QVERIFY(proxy.groupFilter().isEmpty());
+    QCOMPARE(proxy.rowCount(), 1);
     QVERIFY(findItemByText(list, QStringLiteral("Complete (1)")) != nullptr);
 
     QListWidgetItem *trackerItem = findItemByText(list, QStringLiteral("tracker.example.com (1)"));

@@ -334,8 +334,23 @@ void rpc_client::replyFinished(QNetworkReply *reply)
             root.value("arguments").toObject();
 
         m_sequentialDownloadSupported = sessionSupportsSequentialDownload(arguments);
+        const int rpcVersion = arguments.value(QStringLiteral("rpc-version")).toInt(
+            arguments.value(QStringLiteral("rpc_version")).toInt());
+        const bool labelsWereSupported = m_torrentLabelsSupported;
+        const bool groupsWereSupported = m_torrentGroupsSupported;
+
+        // Labels entered the RPC protocol in version 16 and bandwidth groups
+        // in version 17. Gate list fields so older servers retain a working
+        // core torrent refresh instead of rejecting an unknown field.
+        m_torrentLabelsSupported = rpcVersion >= 16;
+        m_torrentGroupsSupported = rpcVersion >= 17;
 
         emit sessionSettingsReceived(arguments);
+
+        if (labelsWereSupported != m_torrentLabelsSupported
+            || groupsWereSupported != m_torrentGroupsSupported) {
+            getTorrentList();
+        }
         return;
     }
 
@@ -659,6 +674,9 @@ void rpc_client::setServer(const TransmissionServer &server)
     _clientReady = false;
     updateInProgress = false;
     updateRequestedWhileInProgress = false;
+    m_sequentialDownloadSupported = false;
+    m_torrentLabelsSupported = false;
+    m_torrentGroupsSupported = false;
 
     emit serverChanged();
 }
@@ -698,7 +716,7 @@ void rpc_client::getTorrentList()
     emit updateStarted();
 
     QJsonObject arguments;
-    arguments["fields"] = QJsonArray {
+    QJsonArray fields {
         "id",
         "name",
         "hashString",
@@ -723,6 +741,11 @@ void rpc_client::getTorrentList()
         "peersSendingToUs",
         "peersGettingFromUs"
     };
+    if (m_torrentLabelsSupported)
+        fields.append(QStringLiteral("labels"));
+    if (m_torrentGroupsSupported)
+        fields.append(QStringLiteral("group"));
+    arguments[QStringLiteral("fields")] = fields;
 
     postRpc("torrent-get", arguments, RpcRequestType::TorrentGet);
 }

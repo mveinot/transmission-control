@@ -71,6 +71,10 @@ public:
     QJsonArray getPeers() const;
     QString getPrimaryTrackerHost() const;
     QStringList getTrackerHosts() const;
+    QStringList getLabels() const;
+    QString getGroup() const;
+    bool labelsAvailable() const;
+    bool groupAvailable() const;
 
 private:
     static Status statusFromInt(int value);
@@ -104,6 +108,10 @@ private:
     qint64 leftUntilDone = 0;
     QString primaryTrackerHost;
     QStringList trackerHosts;
+    QStringList labels;
+    QString group;
+    bool labelsKnown = false;
+    bool groupKnown = false;
 
 signals:
 

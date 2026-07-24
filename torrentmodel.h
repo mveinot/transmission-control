@@ -42,6 +42,8 @@ public:
         TrackerHostsRole,
         PrimaryTrackerHostRole,
         DownloadDirRole,
+        LabelsRole,
+        GroupRole,
         StatusValueRole,
         HasErrorRole,
         ErrorStringRole

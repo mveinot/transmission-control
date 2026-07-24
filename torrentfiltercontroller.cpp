@@ -6,6 +6,7 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QFont>
+#include <QHash>
 #include <QIcon>
 #include <QLineEdit>
 #include <QListWidget>
@@ -122,7 +123,8 @@ void TorrentFilterController::setup()
                 this, &TorrentFilterController::updateFilterStatusSignals);
     }
 
-    rebuildWithFilters(QStringList(), QStringList());
+    rebuildWithFilters(QStringList(), QStringList(), QStringList(), QStringList(),
+                       false, false);
     setStateFilter(TorrentSortProxyModel::StateFilter::All);
     updateFilterStatusSignals();
 }
@@ -133,17 +135,30 @@ void TorrentFilterController::rebuild(const QVector<torrent> &torrents)
 
     const QStringList trackerHosts = trackerHostsFromTorrents(torrents);
     const QStringList downloadDirs = downloadDirsFromTorrents(torrents);
+    const QStringList labels = labelsFromTorrents(torrents);
+    const QStringList groups = groupsFromTorrents(torrents);
+    const bool labelsAvailable = std::any_of(
+        torrents.cbegin(), torrents.cend(),
+        [](const torrent &item) { return item.labelsAvailable(); });
+    const bool groupsAvailable = std::any_of(
+        torrents.cbegin(), torrents.cend(),
+        [](const torrent &item) { return item.groupAvailable(); });
 
     // Rebuild dynamic sections only when their distinct domains change.
     if (trackerHosts == m_lastTrackerHosts
         && downloadDirs == m_lastDownloadDirs
+        && labels == m_lastLabels
+        && groups == m_lastGroups
+        && labelsAvailable == m_labelsAvailable
+        && groupsAvailable == m_groupsAvailable
         && m_filterList
         && m_filterList->count() > 0) {
         updateFilterItemCounts();
         return;
     }
 
-    rebuildWithFilters(trackerHosts, downloadDirs);
+    rebuildWithFilters(trackerHosts, downloadDirs, labels, groups,
+                       labelsAvailable, groupsAvailable);
 }
 
 void TorrentFilterController::setStateFilter(TorrentSortProxyModel::StateFilter filter)
@@ -152,15 +167,18 @@ void TorrentFilterController::setStateFilter(TorrentSortProxyModel::StateFilter 
         return;
 
     m_proxy->setStateFilter(filter);
-    m_proxy->setTrackerFilter(QString());
-    m_proxy->setDownloadDirFilter(QString());
+    clearCategoricalFilters();
     updateCheckedAction(filter);
     selectStatusFilter(filter);
     updateFilterStatusSignals();
 }
 
 void TorrentFilterController::rebuildWithFilters(const QStringList &trackerHosts,
-                                                 const QStringList &downloadDirs)
+                                                 const QStringList &downloadDirs,
+                                                 const QStringList &labels,
+                                                 const QStringList &groups,
+                                                 bool labelsAvailable,
+                                                 bool groupsAvailable)
 {
     if (!m_filterList)
         return;
@@ -175,6 +193,10 @@ void TorrentFilterController::rebuildWithFilters(const QStringList &trackerHosts
 
     m_lastTrackerHosts = trackerHosts;
     m_lastDownloadDirs = downloadDirs;
+    m_lastLabels = labels;
+    m_lastGroups = groups;
+    m_labelsAvailable = labelsAvailable;
+    m_groupsAvailable = groupsAvailable;
 
     QSignalBlocker blocker(m_filterList);
     m_filterList->clear();
@@ -182,14 +204,17 @@ void TorrentFilterController::rebuildWithFilters(const QStringList &trackerHosts
     addStatusFilterItems();
     addTrackerFilterItems(trackerHosts);
     addFolderFilterItems(downloadDirs);
+    if (labelsAvailable)
+        addLabelFilterItems(labels);
+    if (groupsAvailable)
+        addGroupFilterItems(groups);
     applySectionCollapseState();
 
     const bool restoredSelection = selectItem(currentType, currentValue, 1);
 
     if (!restoredSelection && m_proxy) {
         m_proxy->setStateFilter(TorrentSortProxyModel::StateFilter::All);
-        m_proxy->setTrackerFilter(QString());
-        m_proxy->setDownloadDirFilter(QString());
+        clearCategoricalFilters();
         updateCheckedAction(TorrentSortProxyModel::StateFilter::All);
     }
 
@@ -235,6 +260,34 @@ void TorrentFilterController::addFolderFilterItems(const QStringList &downloadDi
 
     for (const QString &downloadDir : downloadDirs)
         m_filterList->addItem(createFolderItem(downloadDir, downloadDir));
+}
+
+void TorrentFilterController::addLabelFilterItems(const QStringList &labels)
+{
+    if (!m_filterList)
+        return;
+
+    static const QIcon labelIcon = AppIcons::icon(AppIcons::Icon::FilterAll);
+    m_filterList->addItem(createHeaderItem(tr("Labels")));
+    m_filterList->addItem(
+        createMetadataItem(ItemType::Label, tr("Unlabelled"), QString(), labelIcon));
+
+    for (const QString &label : labels)
+        m_filterList->addItem(createMetadataItem(ItemType::Label, label, label, labelIcon));
+}
+
+void TorrentFilterController::addGroupFilterItems(const QStringList &groups)
+{
+    if (!m_filterList)
+        return;
+
+    static const QIcon groupIcon = AppIcons::icon(AppIcons::Icon::FilterFolder);
+    m_filterList->addItem(createHeaderItem(tr("Groups")));
+    m_filterList->addItem(
+        createMetadataItem(ItemType::Group, tr("No Group"), QString(), groupIcon));
+
+    for (const QString &group : groups)
+        m_filterList->addItem(createMetadataItem(ItemType::Group, group, group, groupIcon));
 }
 
 QListWidgetItem *TorrentFilterController::createHeaderItem(const QString &label) const
@@ -325,6 +378,27 @@ QListWidgetItem *TorrentFilterController::createFolderItem(const QString &label,
     return item;
 }
 
+QListWidgetItem *TorrentFilterController::createMetadataItem(
+    ItemType type, const QString &label, const QString &value, const QIcon &icon) const
+{
+    auto *item = new QListWidgetItem(icon, label);
+    item->setData(FilterTypeRole, typeToInt(type));
+    item->setData(FilterValueRole, value);
+    item->setData(FilterBaseLabelRole, label);
+    return item;
+}
+
+void TorrentFilterController::clearCategoricalFilters()
+{
+    if (!m_proxy)
+        return;
+
+    m_proxy->setTrackerFilter(QString());
+    m_proxy->setDownloadDirFilter(QString());
+    m_proxy->clearLabelFilter();
+    m_proxy->clearGroupFilter();
+}
+
 void TorrentFilterController::applyCurrentListSelection(QListWidgetItem *current)
 {
     if (!current || !m_proxy)
@@ -338,8 +412,7 @@ void TorrentFilterController::applyCurrentListSelection(QListWidgetItem *current
             );
 
         m_proxy->setStateFilter(stateFilter);
-        m_proxy->setTrackerFilter(QString());
-        m_proxy->setDownloadDirFilter(QString());
+        clearCategoricalFilters();
         updateCheckedAction(stateFilter);
         updateFilterStatusSignals();
         return;
@@ -347,8 +420,8 @@ void TorrentFilterController::applyCurrentListSelection(QListWidgetItem *current
 
     if (type == ItemType::Tracker) {
         m_proxy->setStateFilter(TorrentSortProxyModel::StateFilter::All);
+        clearCategoricalFilters();
         m_proxy->setTrackerFilter(current->data(FilterValueRole).toString());
-        m_proxy->setDownloadDirFilter(QString());
         updateCheckedAction(TorrentSortProxyModel::StateFilter::All);
         updateFilterStatusSignals();
         return;
@@ -356,8 +429,26 @@ void TorrentFilterController::applyCurrentListSelection(QListWidgetItem *current
 
     if (type == ItemType::Folder) {
         m_proxy->setStateFilter(TorrentSortProxyModel::StateFilter::All);
-        m_proxy->setTrackerFilter(QString());
+        clearCategoricalFilters();
         m_proxy->setDownloadDirFilter(current->data(FilterValueRole).toString());
+        updateCheckedAction(TorrentSortProxyModel::StateFilter::All);
+        updateFilterStatusSignals();
+        return;
+    }
+
+    if (type == ItemType::Label) {
+        m_proxy->setStateFilter(TorrentSortProxyModel::StateFilter::All);
+        clearCategoricalFilters();
+        m_proxy->setLabelFilter(current->data(FilterValueRole).toString());
+        updateCheckedAction(TorrentSortProxyModel::StateFilter::All);
+        updateFilterStatusSignals();
+        return;
+    }
+
+    if (type == ItemType::Group) {
+        m_proxy->setStateFilter(TorrentSortProxyModel::StateFilter::All);
+        clearCategoricalFilters();
+        m_proxy->setGroupFilter(current->data(FilterValueRole).toString());
         updateCheckedAction(TorrentSortProxyModel::StateFilter::All);
         updateFilterStatusSignals();
     }
@@ -482,6 +573,25 @@ void TorrentFilterController::updateFilterItemCounts()
             if (type == ItemType::Folder) {
                 if (value.isEmpty() || torrentItem.getDownloadDir().compare(value, Qt::CaseSensitive) == 0)
                     ++count;
+                continue;
+            }
+
+            if (type == ItemType::Label) {
+                const QStringList labels = torrentItem.getLabels();
+                if ((value.isEmpty() && labels.isEmpty())
+                    || (!value.isEmpty() && labels.contains(value, Qt::CaseInsensitive))) {
+                    ++count;
+                }
+                continue;
+            }
+
+            if (type == ItemType::Group) {
+                const QString group = torrentItem.getGroup();
+                if ((value.isEmpty() && group.isEmpty())
+                    || (!value.isEmpty()
+                        && group.compare(value, Qt::CaseInsensitive) == 0)) {
+                    ++count;
+                }
             }
         }
 
@@ -512,7 +622,17 @@ QString TorrentFilterController::filterSummary() const
     const QString tracker = m_proxy->trackerFilter();
     const QString folder = m_proxy->downloadDirFilter();
 
-    if (!tracker.isEmpty()) {
+    if (m_proxy->labelFilterActive()) {
+        const QString label = m_proxy->labelFilter();
+        parts << (label.isEmpty()
+                      ? tr("Filtered by label: Unlabelled")
+                      : tr("Filtered by label: %1").arg(label));
+    } else if (m_proxy->groupFilterActive()) {
+        const QString group = m_proxy->groupFilter();
+        parts << (group.isEmpty()
+                      ? tr("Filtered by group: No Group")
+                      : tr("Filtered by group: %1").arg(group));
+    } else if (!tracker.isEmpty()) {
         parts << tr("Filtered by tracker: %1").arg(tracker);
     } else if (!folder.isEmpty()) {
         parts << tr("Filtered by folder: %1").arg(folder);
@@ -588,8 +708,11 @@ void TorrentFilterController::showFilterContextMenu(const QPoint &position)
         return;
 
     const ItemType type = intToType(item->data(FilterTypeRole).toInt());
-    if (type != ItemType::Tracker && type != ItemType::Folder && type != ItemType::Header)
+    if (type != ItemType::Tracker && type != ItemType::Folder
+        && type != ItemType::Label && type != ItemType::Group
+        && type != ItemType::Header) {
         return;
+    }
 
     ItemType sectionType = type;
     if (type == ItemType::Header) {
@@ -598,6 +721,10 @@ void TorrentFilterController::showFilterContextMenu(const QPoint &position)
             sectionType = ItemType::Tracker;
         } else if (label == tr("Folders")) {
             sectionType = ItemType::Folder;
+        } else if (label == tr("Labels")) {
+            sectionType = ItemType::Label;
+        } else if (label == tr("Groups")) {
+            sectionType = ItemType::Group;
         } else {
             return;
         }
@@ -606,7 +733,7 @@ void TorrentFilterController::showFilterContextMenu(const QPoint &position)
     QMenu menu(m_filterList);
 
     QAction *copyAction = nullptr;
-    if (type == ItemType::Tracker || type == ItemType::Folder) {
+    if (type != ItemType::Header) {
         const QString value = item->data(FilterValueRole).toString();
         if (!value.isEmpty())
             copyAction = menu.addAction(tr("Copy"));
@@ -615,16 +742,32 @@ void TorrentFilterController::showFilterContextMenu(const QPoint &position)
     if (copyAction)
         menu.addSeparator();
 
-    QAction *collapseAction = menu.addAction(sectionType == ItemType::Tracker
-                                                 ? tr("Collapse Trackers")
-                                                 : tr("Collapse Folders"));
-    QAction *expandAction = menu.addAction(sectionType == ItemType::Tracker
-                                               ? tr("Expand Trackers")
-                                               : tr("Expand Folders"));
+    QString sectionName;
+    bool collapsed = false;
+    switch (sectionType) {
+    case ItemType::Tracker:
+        sectionName = tr("Trackers");
+        collapsed = m_trackersCollapsed;
+        break;
+    case ItemType::Folder:
+        sectionName = tr("Folders");
+        collapsed = m_foldersCollapsed;
+        break;
+    case ItemType::Label:
+        sectionName = tr("Labels");
+        collapsed = m_labelsCollapsed;
+        break;
+    case ItemType::Group:
+        sectionName = tr("Groups");
+        collapsed = m_groupsCollapsed;
+        break;
+    case ItemType::Header:
+    case ItemType::Status:
+        return;
+    }
 
-    const bool collapsed = sectionType == ItemType::Tracker
-                               ? m_trackersCollapsed
-                               : m_foldersCollapsed;
+    QAction *collapseAction = menu.addAction(tr("Collapse %1").arg(sectionName));
+    QAction *expandAction = menu.addAction(tr("Expand %1").arg(sectionName));
     collapseAction->setEnabled(!collapsed);
     expandAction->setEnabled(collapsed);
 
@@ -667,6 +810,10 @@ void TorrentFilterController::setSectionCollapsed(ItemType type, bool collapsed)
         m_trackersCollapsed = collapsed;
     } else if (type == ItemType::Folder) {
         m_foldersCollapsed = collapsed;
+    } else if (type == ItemType::Label) {
+        m_labelsCollapsed = collapsed;
+    } else if (type == ItemType::Group) {
+        m_groupsCollapsed = collapsed;
     } else {
         return;
     }
@@ -689,6 +836,10 @@ void TorrentFilterController::applySectionCollapseState()
             item->setHidden(m_trackersCollapsed);
         } else if (type == ItemType::Folder) {
             item->setHidden(m_foldersCollapsed);
+        } else if (type == ItemType::Label) {
+            item->setHidden(m_labelsCollapsed);
+        } else if (type == ItemType::Group) {
+            item->setHidden(m_groupsCollapsed);
         }
     }
 }
@@ -729,6 +880,42 @@ QStringList TorrentFilterController::downloadDirsFromTorrents(const QVector<torr
     return downloadDirs;
 }
 
+QStringList TorrentFilterController::labelsFromTorrents(const QVector<torrent> &torrents)
+{
+    QHash<QString, QString> labelsByFoldedValue;
+    for (const torrent &torrentItem : torrents) {
+        for (const QString &label : torrentItem.getLabels()) {
+            const QString trimmed = label.trimmed();
+            const QString folded = trimmed.toCaseFolded();
+            if (!trimmed.isEmpty() && !labelsByFoldedValue.contains(folded))
+                labelsByFoldedValue.insert(folded, trimmed);
+        }
+    }
+
+    QStringList labels = labelsByFoldedValue.values();
+    std::sort(labels.begin(), labels.end(), [](const QString &lhs, const QString &rhs) {
+        return QString::localeAwareCompare(lhs, rhs) < 0;
+    });
+    return labels;
+}
+
+QStringList TorrentFilterController::groupsFromTorrents(const QVector<torrent> &torrents)
+{
+    QHash<QString, QString> groupsByFoldedValue;
+    for (const torrent &torrentItem : torrents) {
+        const QString group = torrentItem.getGroup().trimmed();
+        const QString folded = group.toCaseFolded();
+        if (!group.isEmpty() && !groupsByFoldedValue.contains(folded))
+            groupsByFoldedValue.insert(folded, group);
+    }
+
+    QStringList groups = groupsByFoldedValue.values();
+    std::sort(groups.begin(), groups.end(), [](const QString &lhs, const QString &rhs) {
+        return QString::localeAwareCompare(lhs, rhs) < 0;
+    });
+    return groups;
+}
+
 int TorrentFilterController::typeToInt(ItemType type)
 {
     return static_cast<int>(type);
@@ -743,6 +930,10 @@ TorrentFilterController::ItemType TorrentFilterController::intToType(int value)
         return ItemType::Tracker;
     case ItemType::Folder:
         return ItemType::Folder;
+    case ItemType::Label:
+        return ItemType::Label;
+    case ItemType::Group:
+        return ItemType::Group;
     case ItemType::Header:
     default:
         return ItemType::Header;

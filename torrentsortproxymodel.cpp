@@ -64,7 +64,9 @@ bool TorrentSortProxyModel::filterAcceptsRow(int sourceRow,
     return matchesStateFilter(sourceRow, sourceParent)
         && matchesSearchFilter(sourceRow, sourceParent)
         && matchesTrackerFilter(sourceRow, sourceParent)
-        && matchesDownloadDirFilter(sourceRow, sourceParent);
+        && matchesDownloadDirFilter(sourceRow, sourceParent)
+        && matchesLabelFilter(sourceRow, sourceParent)
+        && matchesGroupFilter(sourceRow, sourceParent);
 }
 
 void TorrentSortProxyModel::refreshFilter()
@@ -261,4 +263,103 @@ bool TorrentSortProxyModel::matchesDownloadDirFilter(int sourceRow,
         model->data(nameIndex, TorrentModel::DownloadDirRole).toString();
 
     return downloadDir.compare(m_downloadDirFilter, Qt::CaseSensitive) == 0;
+}
+
+void TorrentSortProxyModel::setLabelFilter(const QString &label)
+{
+    const QString normalized = label.trimmed();
+    if (m_labelFilter && *m_labelFilter == normalized)
+        return;
+    m_labelFilter = normalized;
+    refreshFilter();
+}
+
+void TorrentSortProxyModel::clearLabelFilter()
+{
+    if (!m_labelFilter)
+        return;
+    m_labelFilter.reset();
+    refreshFilter();
+}
+
+bool TorrentSortProxyModel::labelFilterActive() const
+{
+    return m_labelFilter.has_value();
+}
+
+QString TorrentSortProxyModel::labelFilter() const
+{
+    return m_labelFilter.value_or(QString());
+}
+
+bool TorrentSortProxyModel::matchesLabelFilter(int sourceRow,
+                                               const QModelIndex &sourceParent) const
+{
+    if (!m_labelFilter)
+        return true;
+
+    const QAbstractItemModel *model = sourceModel();
+    if (!model)
+        return true;
+
+    const QModelIndex nameIndex =
+        model->index(sourceRow, TorrentModel::NameColumn, sourceParent);
+    const QStringList labels =
+        model->data(nameIndex, TorrentModel::LabelsRole).toStringList();
+
+    if (m_labelFilter->isEmpty())
+        return labels.isEmpty();
+
+    for (const QString &label : labels) {
+        if (label.compare(*m_labelFilter, Qt::CaseInsensitive) == 0)
+            return true;
+    }
+    return false;
+}
+
+void TorrentSortProxyModel::setGroupFilter(const QString &group)
+{
+    const QString normalized = group.trimmed();
+    if (m_groupFilter && *m_groupFilter == normalized)
+        return;
+    m_groupFilter = normalized;
+    refreshFilter();
+}
+
+void TorrentSortProxyModel::clearGroupFilter()
+{
+    if (!m_groupFilter)
+        return;
+    m_groupFilter.reset();
+    refreshFilter();
+}
+
+bool TorrentSortProxyModel::groupFilterActive() const
+{
+    return m_groupFilter.has_value();
+}
+
+QString TorrentSortProxyModel::groupFilter() const
+{
+    return m_groupFilter.value_or(QString());
+}
+
+bool TorrentSortProxyModel::matchesGroupFilter(int sourceRow,
+                                               const QModelIndex &sourceParent) const
+{
+    if (!m_groupFilter)
+        return true;
+
+    const QAbstractItemModel *model = sourceModel();
+    if (!model)
+        return true;
+
+    const QModelIndex nameIndex =
+        model->index(sourceRow, TorrentModel::NameColumn, sourceParent);
+    const QString group =
+        model->data(nameIndex, TorrentModel::GroupRole).toString().trimmed();
+
+    if (m_groupFilter->isEmpty())
+        return group.isEmpty();
+    return group.compare(*m_groupFilter, Qt::CaseInsensitive) == 0;
 }

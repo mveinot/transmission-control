@@ -87,6 +87,7 @@ private slots:
     void filtersErroredTorrents();
     void filtersByTrackerHost();
     void filtersByDownloadDir();
+    void filtersByLabelAndGroup();
     void combinesStateAndTrackerFilters();
 };
 
@@ -247,6 +248,42 @@ void TestTorrentSortProxyModel::filtersByDownloadDir()
     QCOMPARE(proxy.rowCount(), 2);
     QCOMPARE(torrentIdAtProxyRow(proxy, 0), 1);
     QCOMPARE(torrentIdAtProxyRow(proxy, 1), 3);
+}
+
+void TestTorrentSortProxyModel::filtersByLabelAndGroup()
+{
+    TorrentModel sourceModel;
+
+    QJsonObject linux = makeTorrentValue(1, "Linux", 4, 0.25, 0.0, 1024, 0).toObject();
+    linux[QStringLiteral("labels")] =
+        QJsonArray { QStringLiteral("ISO"), QStringLiteral("Linux") };
+    linux[QStringLiteral("group")] = QStringLiteral("Desktop");
+
+    QJsonObject unassigned =
+        makeTorrentValue(2, "Unassigned", 0, 0.25, 0.0, 1024, 1).toObject();
+    unassigned[QStringLiteral("labels")] = QJsonArray();
+    unassigned[QStringLiteral("group")] = QString();
+
+    sourceModel.applyUpdate(makeTorrentList({ linux, unassigned }));
+
+    TorrentSortProxyModel proxy;
+    proxy.setSourceModel(&sourceModel);
+    proxy.setLabelFilter(QStringLiteral("linux"));
+    QCOMPARE(proxy.rowCount(), 1);
+    QCOMPARE(torrentIdAtProxyRow(proxy, 0), 1);
+
+    proxy.setLabelFilter(QString());
+    QCOMPARE(proxy.rowCount(), 1);
+    QCOMPARE(torrentIdAtProxyRow(proxy, 0), 2);
+
+    proxy.clearLabelFilter();
+    proxy.setGroupFilter(QStringLiteral("desktop"));
+    QCOMPARE(proxy.rowCount(), 1);
+    QCOMPARE(torrentIdAtProxyRow(proxy, 0), 1);
+
+    proxy.setGroupFilter(QString());
+    QCOMPARE(proxy.rowCount(), 1);
+    QCOMPARE(torrentIdAtProxyRow(proxy, 0), 2);
 }
 
 void TestTorrentSortProxyModel::combinesStateAndTrackerFilters()

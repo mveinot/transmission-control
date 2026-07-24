@@ -56,6 +56,23 @@ torrent::torrent(const QJsonValue &val)
     queuePosition = obj.value("queuePosition").toInt();
     desiredAvailable = static_cast<qint64>(obj.value("desiredAvailable").toDouble());
     leftUntilDone = static_cast<qint64>(obj.value("leftUntilDone").toDouble());
+    labelsKnown = obj.contains(QStringLiteral("labels"));
+    groupKnown = obj.contains(QStringLiteral("group"));
+    group = obj.value(QStringLiteral("group")).toString().trimmed();
+
+    QSet<QString> normalizedLabels;
+    for (const QJsonValue &labelValue : obj.value(QStringLiteral("labels")).toArray()) {
+        const QString label = labelValue.toString().trimmed();
+        const QString normalized = label.toCaseFolded();
+
+        if (!label.isEmpty() && !normalizedLabels.contains(normalized)) {
+            normalizedLabels.insert(normalized);
+            labels.append(label);
+        }
+    }
+    std::sort(labels.begin(), labels.end(), [](const QString &lhs, const QString &rhs) {
+        return QString::localeAwareCompare(lhs, rhs) < 0;
+    });
 
     trackerHosts.clear();
     primaryTrackerHost.clear();
@@ -568,7 +585,11 @@ bool torrent::sameDisplayData(const torrent &other) const
            && desiredAvailable == other.desiredAvailable
            && leftUntilDone == other.leftUntilDone
            && primaryTrackerHost == other.primaryTrackerHost
-           && trackerHosts == other.trackerHosts;
+           && trackerHosts == other.trackerHosts
+           && labels == other.labels
+           && group == other.group
+           && labelsKnown == other.labelsKnown
+           && groupKnown == other.groupKnown;
 }
 
 QString torrent::getPrimaryTrackerHost() const
@@ -579,4 +600,24 @@ QString torrent::getPrimaryTrackerHost() const
 QStringList torrent::getTrackerHosts() const
 {
     return trackerHosts;
+}
+
+QStringList torrent::getLabels() const
+{
+    return labels;
+}
+
+QString torrent::getGroup() const
+{
+    return group;
+}
+
+bool torrent::labelsAvailable() const
+{
+    return labelsKnown;
+}
+
+bool torrent::groupAvailable() const
+{
+    return groupKnown;
 }
