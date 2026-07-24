@@ -91,6 +91,7 @@ private slots:
     void importSettings();
     void setToolBarVisibleFromAction(bool visible);
     void setStatusBarVisibleFromAction(bool visible);
+    void setDetailsPaneVisibleFromAction(bool visible);
     void setToolBarButtonStyleFromAction(QAction *action);
 
 private:
@@ -168,6 +169,7 @@ private:
     QMenu *viewMenu = nullptr;
     QAction *showToolBarAction = nullptr;
     QAction *showStatusBarAction = nullptr;
+    QAction *showDetailsPaneAction = nullptr;
     QActionGroup *toolBarStyleActionGroup = nullptr;
     QDockWidget *activityDock = nullptr;
     QTableView *activityTable = nullptr;
@@ -177,6 +179,7 @@ private:
     // failed poll while the connection remains in the same state.
     bool activityConnectionEstablished = false;
     bool activityConnectionFailed = false;
+    int detailsPaneHeight = 300;
 
 protected:
     void closeEvent(QCloseEvent *event) override;
