@@ -7,6 +7,10 @@
 
 namespace {
 
+const QColor PieceBackgroundColor(QStringLiteral("#ffffff"));
+const QColor PieceForegroundColor(QStringLiteral("#403878"));
+const QColor PieceFrameColor(QStringLiteral("#77728f"));
+
 QColor blendedColor(const QColor &background,
                     const QColor &foreground,
                     double foregroundFraction)
@@ -138,8 +142,10 @@ void PieceProgressBarWidget::paintEvent(QPaintEvent *event)
     if (frame.width() <= 0 || frame.height() <= 0)
         return;
 
-    const QColor background = palette().base().color();
-    const QColor foreground = palette().highlight().color();
+    // This compact data visualization intentionally uses a fixed high-contrast
+    // scheme; palette highlight colors were too subdued in some dark themes.
+    const QColor background = PieceBackgroundColor;
+    const QColor foreground = PieceForegroundColor;
     painter.fillRect(frame, background);
 
     const QRect content = frame.adjusted(1, 1, -1, -1);
@@ -175,7 +181,7 @@ void PieceProgressBarWidget::paintEvent(QPaintEvent *event)
         }
     }
 
-    painter.setPen(palette().mid().color());
+    painter.setPen(PieceFrameColor);
     painter.drawLine(content.left(), piecesRect.top() - 1,
                      content.right(), piecesRect.top() - 1);
     painter.drawRect(frame);

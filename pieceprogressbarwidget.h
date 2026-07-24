@@ -4,9 +4,9 @@
 #include <QByteArray>
 #include <QWidget>
 
-// Full-width two-band torrent progress visualization. The upper band shows
-// byte progress; the lower band compresses the piece bitfield into horizontal
-// buckets sized to consume every available pixel.
+// Full-width two-band torrent progress visualization with a fixed,
+// high-contrast white/indigo scheme. The upper band shows byte progress; the
+// lower band compresses the piece bitfield into width-filling buckets.
 class PieceProgressBarWidget : public QWidget
 {
     Q_OBJECT
