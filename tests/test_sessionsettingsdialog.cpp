@@ -22,6 +22,8 @@ QJsonObject fullSessionSettings(const QString &encryption = QStringLiteral("tole
         {"lpd-enabled", false},
         {"peer-limit-global", 200},
         {"peer-limit-per-torrent", 50},
+        {"blocklist-enabled", false},
+        {"blocklist-url", "https://example.com/blocklist"},
         {"speed-limit-down-enabled", false},
         {"speed-limit-down", 100},
         {"speed-limit-up-enabled", false},
@@ -85,14 +87,20 @@ void TestSessionSettingsDialog::changedSettingsContainOnlyChangedReturnedFields(
     requiredChild<QCheckBox>(dialog, "checkDht")->setChecked(false);
     requiredChild<QLineEdit>(dialog, "editDownloadDir")->setText(QStringLiteral("/data/torrents"));
     requiredChild<QDoubleSpinBox>(dialog, "spinSeedRatioLimit")->setValue(1.75);
+    requiredChild<QCheckBox>(dialog, "checkBlocklistEnabled")->setChecked(true);
+    requiredChild<QLineEdit>(dialog, "editBlocklistUrl")
+        ->setText(QStringLiteral("https://example.net/level1.gz"));
 
     const QJsonObject changes = dialog.changedSettings();
 
-    QCOMPARE(changes.size(), 4);
+    QCOMPARE(changes.size(), 6);
     QCOMPARE(changes.value("peer-port").toInt(), 50000);
     QCOMPARE(changes.value("dht-enabled").toBool(), false);
     QCOMPARE(changes.value("download-dir").toString(), QStringLiteral("/data/torrents"));
     QCOMPARE(changes.value("seedRatioLimit").toDouble(), 1.75);
+    QCOMPARE(changes.value("blocklist-enabled").toBool(), true);
+    QCOMPARE(changes.value("blocklist-url").toString(),
+             QStringLiteral("https://example.net/level1.gz"));
     QVERIFY(!changes.contains("speed-limit-down"));
 }
 
@@ -122,6 +130,9 @@ void TestSessionSettingsDialog::togglesEnableDependentControls()
     auto *editIncompleteDir = requiredChild<QLineEdit>(dialog, "editIncompleteDir");
     auto *checkSeedRatioLimit = requiredChild<QCheckBox>(dialog, "checkSeedRatioLimit");
     auto *spinSeedRatioLimit = requiredChild<QDoubleSpinBox>(dialog, "spinSeedRatioLimit");
+    auto *checkBlocklistEnabled =
+        requiredChild<QCheckBox>(dialog, "checkBlocklistEnabled");
+    auto *editBlocklistUrl = requiredChild<QLineEdit>(dialog, "editBlocklistUrl");
 
     QVERIFY(!checkAltSpeed->isChecked());
     QVERIFY(!spinAltDownloadLimit->isEnabled());
@@ -137,6 +148,11 @@ void TestSessionSettingsDialog::togglesEnableDependentControls()
     QVERIFY(!spinSeedRatioLimit->isEnabled());
     checkSeedRatioLimit->setChecked(true);
     QVERIFY(spinSeedRatioLimit->isEnabled());
+
+    QVERIFY(!checkBlocklistEnabled->isChecked());
+    QVERIFY(!editBlocklistUrl->isEnabled());
+    checkBlocklistEnabled->setChecked(true);
+    QVERIFY(editBlocklistUrl->isEnabled());
 }
 
 QTEST_MAIN(TestSessionSettingsDialog)

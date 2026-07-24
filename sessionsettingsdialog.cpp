@@ -130,6 +130,9 @@ SessionSettingsDialog::SessionSettingsDialog(QWidget *parent)
     connect(ui->checkIncompleteDir, &QCheckBox::toggled,
             this, &SessionSettingsDialog::updateEnabledStates);
 
+    connect(ui->checkBlocklistEnabled, &QCheckBox::toggled,
+            this, &SessionSettingsDialog::updateEnabledStates);
+
     connect(ui->checkSeedRatioLimit, &QCheckBox::toggled,
             this, &SessionSettingsDialog::updateEnabledStates);
 
@@ -290,6 +293,14 @@ void SessionSettingsDialog::setSessionSettings(const QJsonObject &settings)
         jsonInt(settings, QStringLiteral("peer-limit-per-torrent"), 50)
         );
 
+    ui->checkBlocklistEnabled->setChecked(
+        jsonBool(settings, QStringLiteral("blocklist-enabled"), false)
+        );
+
+    ui->editBlocklistUrl->setText(
+        jsonString(settings, QStringLiteral("blocklist-url"))
+        );
+
     ui->checkDownloadLimit->setChecked(
         jsonBool(settings, QStringLiteral("speed-limit-down-enabled"), false)
         );
@@ -423,6 +434,14 @@ QJsonObject SessionSettingsDialog::changedSettings() const
                  ui->spinPeerLimitPerTorrent->value());
 
     addIfChanged(changes, originalSettings,
+                 QStringLiteral("blocklist-enabled"),
+                 ui->checkBlocklistEnabled->isChecked());
+
+    addIfChanged(changes, originalSettings,
+                 QStringLiteral("blocklist-url"),
+                 ui->editBlocklistUrl->text().trimmed());
+
+    addIfChanged(changes, originalSettings,
                  QStringLiteral("speed-limit-down-enabled"),
                  ui->checkDownloadLimit->isChecked());
 
@@ -545,6 +564,10 @@ void SessionSettingsDialog::updateEnabledStates()
 
     ui->editIncompleteDir->setEnabled(
         ui->checkIncompleteDir->isChecked()
+        );
+
+    ui->editBlocklistUrl->setEnabled(
+        ui->checkBlocklistEnabled->isChecked()
         );
 
     ui->spinSeedRatioLimit->setEnabled(

@@ -1431,6 +1431,8 @@ void rpc_client::getSessionSettings()
         "lpd-enabled",
         "peer-limit-global",
         "peer-limit-per-torrent",
+        "blocklist-enabled",
+        "blocklist-url",
 
         "version",
         "rpc-version",
