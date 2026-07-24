@@ -32,6 +32,10 @@ inline constexpr const char *MainWindowToolBarVisible =     "mainWindow/toolBarV
 inline constexpr const char *MainWindowStatusBarVisible =   "mainWindow/statusBarVisible";
 inline constexpr const char *MainWindowDetailsPaneVisible = "mainWindow/detailsPaneVisible";
 inline constexpr const char *MainWindowDetailsPaneHeight =  "mainWindow/detailsPaneHeight";
+inline constexpr const char *MainWindowFilterSidebarVisible =
+    "mainWindow/filterSidebarVisible";
+inline constexpr const char *MainWindowFilterSidebarWidth =
+    "mainWindow/filterSidebarWidth";
 inline constexpr const char *MainWindowToolBarStyle =       "mainWindow/toolBarButtonStyle";
 inline constexpr const char *MainWindowState =              "mainWindow/stateV2";
 inline constexpr const char *TorrentTableHeaderState =

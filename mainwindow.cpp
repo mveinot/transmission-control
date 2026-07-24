@@ -93,6 +93,7 @@ constexpr int MaximumUpdateIntervalSeconds = 3600;
 constexpr qint64 SlowRpcRefreshIntervalMs = 60 * 1000;
 constexpr int CommandRefreshDebounceMs = 200;
 constexpr int DefaultDetailsPaneHeight = 300;
+constexpr int DefaultFilterSidebarWidth = 220;
 constexpr Qt::ToolButtonStyle DefaultToolBarButtonStyle = Qt::ToolButtonIconOnly;
 
 bool isSupportedToolBarButtonStyle(Qt::ToolButtonStyle style)
@@ -430,9 +431,15 @@ void MainWindow::setupViewMenu()
     showDetailsPaneAction->setToolTip(
         tr("Show or hide the selected torrent details pane"));
 
+    showFilterSidebarAction = new QAction(tr("Filter Sidebar"), this);
+    showFilterSidebarAction->setCheckable(true);
+    showFilterSidebarAction->setToolTip(
+        tr("Show or hide torrent status, tracker, folder, label, and group filters"));
+
     viewMenu->addAction(showToolBarAction);
     viewMenu->addAction(showStatusBarAction);
     viewMenu->addAction(showDetailsPaneAction);
+    viewMenu->addAction(showFilterSidebarAction);
     viewMenu->addSeparator();
 
     auto *toolBarStyleMenu = viewMenu->addMenu(tr("Toolbar Display"));
@@ -465,6 +472,8 @@ void MainWindow::setupViewMenu()
             this, &MainWindow::setStatusBarVisibleFromAction);
     connect(showDetailsPaneAction, &QAction::toggled,
             this, &MainWindow::setDetailsPaneVisibleFromAction);
+    connect(showFilterSidebarAction, &QAction::toggled,
+            this, &MainWindow::setFilterSidebarVisibleFromAction);
     connect(toolBarStyleActionGroup, &QActionGroup::triggered,
             this, &MainWindow::setToolBarButtonStyleFromAction);
 
@@ -485,6 +494,26 @@ void MainWindow::setupViewMenu()
                 // the View action and must also suspend hidden detail work.
                 if (showDetailsPaneAction && showDetailsPaneAction->isChecked())
                     showDetailsPaneAction->setChecked(false);
+            });
+
+    connect(ui->splitter, &QSplitter::splitterMoved,
+            this, [this](int, int index) {
+                if (index != 1)
+                    return;
+
+                const int sidebarSize = ui->splitter->sizes().value(0);
+
+                if (sidebarSize > 0) {
+                    filterSidebarWidth = sidebarSize;
+                    return;
+                }
+
+                // Collapsing the horizontal handle is another route to the
+                // same state as the View action; keep persistence in sync.
+                if (showFilterSidebarAction
+                    && showFilterSidebarAction->isChecked()) {
+                    showFilterSidebarAction->setChecked(false);
+                }
             });
 
     connect(ui->toolBar, &QToolBar::visibilityChanged,
@@ -603,9 +632,14 @@ void MainWindow::restoreViewSettings()
         settings.value(SettingsKeys::MainWindowStatusBarVisible, true).toBool();
     const bool detailsPaneVisible =
         settings.value(SettingsKeys::MainWindowDetailsPaneVisible, true).toBool();
+    const bool filterSidebarVisible =
+        settings.value(SettingsKeys::MainWindowFilterSidebarVisible, true).toBool();
     detailsPaneHeight =
         qMax(1, settings.value(SettingsKeys::MainWindowDetailsPaneHeight,
                                DefaultDetailsPaneHeight).toInt());
+    filterSidebarWidth =
+        qMax(1, settings.value(SettingsKeys::MainWindowFilterSidebarWidth,
+                               DefaultFilterSidebarWidth).toInt());
     const Qt::ToolButtonStyle toolBarStyle = toolButtonStyleFromVariant(
         settings.value(SettingsKeys::MainWindowToolBarStyle,
                        static_cast<int>(DefaultToolBarButtonStyle)),
@@ -626,9 +660,15 @@ void MainWindow::restoreViewSettings()
         showDetailsPaneAction->setChecked(detailsPaneVisible);
     }
 
+    {
+        const QSignalBlocker blocker(showFilterSidebarAction);
+        showFilterSidebarAction->setChecked(filterSidebarVisible);
+    }
+
     ui->toolBar->setVisible(toolBarVisible);
     ui->statusbar->setVisible(statusBarVisible);
     ui->tabWidget->setVisible(detailsPaneVisible);
+    ui->filterPanel->setVisible(filterSidebarVisible);
 
     if (detailsPaneVisible) {
         // Defer sizing until the event loop has applied the restored main
@@ -638,6 +678,14 @@ void MainWindow::restoreViewSettings()
             const int totalHeight = ui->splitter_2->height();
             ui->splitter_2->setSizes(
                 { qMax(1, totalHeight - detailsPaneHeight), detailsPaneHeight });
+        });
+    }
+
+    if (filterSidebarVisible) {
+        QTimer::singleShot(0, this, [this]() {
+            const int totalWidth = ui->splitter->width();
+            ui->splitter->setSizes(
+                { filterSidebarWidth, qMax(1, totalWidth - filterSidebarWidth) });
         });
     }
 
@@ -655,6 +703,9 @@ void MainWindow::saveViewSettings() const
     settings.setValue(SettingsKeys::MainWindowDetailsPaneVisible,
                       showDetailsPaneAction && showDetailsPaneAction->isChecked());
     settings.setValue(SettingsKeys::MainWindowDetailsPaneHeight, detailsPaneHeight);
+    settings.setValue(SettingsKeys::MainWindowFilterSidebarVisible,
+                      showFilterSidebarAction && showFilterSidebarAction->isChecked());
+    settings.setValue(SettingsKeys::MainWindowFilterSidebarWidth, filterSidebarWidth);
 
     const Qt::ToolButtonStyle toolBarStyle = toolButtonStyleFromVariant(
         static_cast<int>(ui->toolBar->toolButtonStyle()),
@@ -711,6 +762,30 @@ void MainWindow::setDetailsPaneVisibleFromAction(bool visible)
     QSettings settings;
     settings.setValue(SettingsKeys::MainWindowDetailsPaneVisible, visible);
     settings.setValue(SettingsKeys::MainWindowDetailsPaneHeight, detailsPaneHeight);
+    settings.sync();
+}
+
+void MainWindow::setFilterSidebarVisibleFromAction(bool visible)
+{
+    if (!visible) {
+        const int currentWidth = ui->splitter->sizes().value(0);
+        if (currentWidth > 0)
+            filterSidebarWidth = currentWidth;
+
+        // Filtering state belongs to the controller and intentionally remains
+        // active while its presentation sidebar is hidden.
+        ui->filterPanel->hide();
+    } else {
+        ui->filterPanel->show();
+
+        const int totalWidth = ui->splitter->width();
+        ui->splitter->setSizes(
+            { filterSidebarWidth, qMax(1, totalWidth - filterSidebarWidth) });
+    }
+
+    QSettings settings;
+    settings.setValue(SettingsKeys::MainWindowFilterSidebarVisible, visible);
+    settings.setValue(SettingsKeys::MainWindowFilterSidebarWidth, filterSidebarWidth);
     settings.sync();
 }
 

@@ -92,6 +92,7 @@ private slots:
     void setToolBarVisibleFromAction(bool visible);
     void setStatusBarVisibleFromAction(bool visible);
     void setDetailsPaneVisibleFromAction(bool visible);
+    void setFilterSidebarVisibleFromAction(bool visible);
     void setToolBarButtonStyleFromAction(QAction *action);
 
 private:
@@ -170,6 +171,7 @@ private:
     QAction *showToolBarAction = nullptr;
     QAction *showStatusBarAction = nullptr;
     QAction *showDetailsPaneAction = nullptr;
+    QAction *showFilterSidebarAction = nullptr;
     QActionGroup *toolBarStyleActionGroup = nullptr;
     QDockWidget *activityDock = nullptr;
     QTableView *activityTable = nullptr;
@@ -180,6 +182,7 @@ private:
     bool activityConnectionEstablished = false;
     bool activityConnectionFailed = false;
     int detailsPaneHeight = 300;
+    int filterSidebarWidth = 220;
 
 protected:
     void closeEvent(QCloseEvent *event) override;
