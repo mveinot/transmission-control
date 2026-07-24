@@ -6,16 +6,15 @@
 #include <QString>
 
 class QLabel;
-class QGroupBox;
 class QLineEdit;
 class QTabWidget;
 class QVBoxLayout;
 class QWidget;
-class PieceMapController;
+class PieceProgressController;
 class TorrentDetailsTabController;
 
 // Owns the selected torrent's merged detail cache and distributes it to the
-// general, piece-map, and raw-details presentations.
+// general, linear piece-progress, and raw-details presentations.
 class TorrentGeneralController : public QObject
 {
     Q_OBJECT
@@ -25,7 +24,6 @@ public:
     {
         QWidget *generalTab = nullptr;
         QVBoxLayout *generalLayout = nullptr;
-        QGroupBox *generalInfoGroup = nullptr;
         QTabWidget *tabWidget = nullptr;
         QLabel *nameLabel = nullptr;
         QLabel *totalSizeLabel = nullptr;
@@ -63,7 +61,7 @@ private:
     void updateGeneralFields(const QJsonObject &details);
 
     Widgets m_widgets;
-    PieceMapController *m_pieceMapController = nullptr;
+    PieceProgressController *m_pieceProgressController = nullptr;
     TorrentDetailsTabController *m_detailsTabController = nullptr;
     QJsonObject m_currentDetailsCache;
     int m_currentTorrentId = -1;

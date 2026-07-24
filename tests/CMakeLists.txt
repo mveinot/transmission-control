@@ -102,6 +102,12 @@ add_planetary_test(test_notificationcontroller
     ${CMAKE_SOURCE_DIR}/torrent.h
 )
 
+add_planetary_test(test_pieceprogressbarwidget
+    test_pieceprogressbarwidget.cpp
+    ${CMAKE_SOURCE_DIR}/pieceprogressbarwidget.cpp
+    ${CMAKE_SOURCE_DIR}/pieceprogressbarwidget.h
+)
+
 if(APPLE)
     target_sources(test_notificationcontroller PRIVATE
         ${CMAKE_SOURCE_DIR}/macnotificationbackend.h

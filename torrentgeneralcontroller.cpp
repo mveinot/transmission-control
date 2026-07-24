@@ -1,10 +1,9 @@
 #include "torrentgeneralcontroller.h"
 
-#include "piecemapcontroller.h"
+#include "pieceprogresscontroller.h"
 #include "torrentdetailstabcontroller.h"
 
 #include <QDateTime>
-#include <QGroupBox>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QLabel>
@@ -27,13 +26,10 @@ void TorrentGeneralController::setup()
 {
     configureMagnetLineEdit();
 
-    if (m_widgets.generalTab
-        && m_widgets.generalLayout
-        && m_widgets.generalInfoGroup) {
-        m_pieceMapController = new PieceMapController(
+    if (m_widgets.generalTab && m_widgets.generalLayout) {
+        m_pieceProgressController = new PieceProgressController(
             m_widgets.generalTab,
             m_widgets.generalLayout,
-            m_widgets.generalInfoGroup,
             this
             );
     }
@@ -75,8 +71,8 @@ void TorrentGeneralController::clear()
     if (m_widgets.magnetLineEdit)
         m_widgets.magnetLineEdit->clear();
 
-    if (m_pieceMapController)
-        m_pieceMapController->clear();
+    if (m_pieceProgressController)
+        m_pieceProgressController->clear();
 
     if (m_detailsTabController)
         m_detailsTabController->clear();
@@ -98,8 +94,8 @@ void TorrentGeneralController::update(const QJsonObject &details)
 
     updateGeneralFields(details);
 
-    if (m_pieceMapController)
-        m_pieceMapController->update(m_currentDetailsCache);
+    if (m_pieceProgressController)
+        m_pieceProgressController->update(m_currentDetailsCache);
 
     if (m_detailsTabController)
         m_detailsTabController->update(m_currentDetailsCache);
@@ -120,8 +116,8 @@ void TorrentGeneralController::updatePieces(int torrentId, const QJsonObject &de
     for (auto it = details.constBegin(); it != details.constEnd(); ++it)
         m_currentDetailsCache.insert(it.key(), it.value());
 
-    if (m_pieceMapController)
-        m_pieceMapController->update(m_currentDetailsCache);
+    if (m_pieceProgressController)
+        m_pieceProgressController->update(m_currentDetailsCache);
 
     if (m_detailsTabController)
         m_detailsTabController->update(m_currentDetailsCache);

@@ -190,8 +190,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         bencodevalue.h bencodevalue.cpp
         bencodeparser.h bencodeparser.cpp
         torrentmetadataparser.h torrentmetadataparser.cpp
-        piecemapwidget.h piecemapwidget.cpp
-        piecemapcontroller.h piecemapcontroller.cpp
+        pieceprogressbarwidget.h pieceprogressbarwidget.cpp
+        pieceprogresscontroller.h pieceprogresscontroller.cpp
         torrentdetailstabcontroller.h torrentdetailstabcontroller.cpp
         torrentfilescontroller.h torrentfilescontroller.cpp
         torrentpeerscontroller.h torrentpeerscontroller.cpp

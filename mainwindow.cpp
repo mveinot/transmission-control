@@ -736,7 +736,6 @@ MainWindow::MainWindow(QWidget *parent)
     TorrentGeneralController::Widgets generalWidgets;
     generalWidgets.generalTab = ui->general;
     generalWidgets.generalLayout = ui->verticalLayoutGeneral;
-    generalWidgets.generalInfoGroup = ui->groupGeneralInfo;
     generalWidgets.tabWidget = ui->tabWidget;
     generalWidgets.nameLabel = ui->labelGeneralName;
     generalWidgets.totalSizeLabel = ui->labelGeneralTotalSize;
