@@ -892,6 +892,16 @@ MainWindow::MainWindow(QWidget *parent)
     // setupUi() must precede controller construction because controllers retain
     // pointers to widgets owned by the generated UI tree.
     ui->setupUi(this);
+
+    // Native controls can exceed their nominal 28 px minimum (notably the
+    // macOS combo box). Match the filter header to the actual control-row
+    // height so the filter list and torrent table begin on the same baseline.
+    const int torrentControlsHeight = qMax(
+        28,
+        qMax(ui->comboServers->sizeHint().height(),
+             ui->editTorrentFilter->sizeHint().height()));
+    ui->labelTorrentStatus->setFixedHeight(torrentControlsHeight);
+
     setupPlatformMenus();
     setupEditMenu();
     setupViewMenu();
