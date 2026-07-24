@@ -79,6 +79,7 @@
 #include "appsettings.h"
 #include "torrentsortproxymodel.h"
 #include "percentfilldelegate.h"
+#include "elidedtexttooltipdelegate.h"
 #include "sessionsettingsdialog.h"
 #include "settingskeys.h"
 #include "torrentaddcontroller.h"
@@ -966,6 +967,11 @@ MainWindow::MainWindow(QWidget *parent)
             Qt::UserRole + 1,
             ui->tableView
             )
+        );
+
+    ui->tableView->setItemDelegateForColumn(
+        TorrentModel::NameColumn,
+        new ElidedTextTooltipDelegate(ui->tableView)
         );
 
     connect(torrentListController, &TorrentListController::statusMessageRequested,

@@ -168,6 +168,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         torrentsortproxymodel.h torrentsortproxymodel.cpp
         serverconfig.h serverconfig.cpp serverconfig.ui
         percentfilldelegate.h percentfilldelegate.cpp
+        elidedtexttooltipdelegate.h elidedtexttooltipdelegate.cpp
         torrentmodel.h torrentmodel.cpp
         appicons.h appicons.cpp
         Resources/icons/planetary_menu.png
