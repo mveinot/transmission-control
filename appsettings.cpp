@@ -196,8 +196,6 @@ void AppSettings::saveSettings()
 {
     QSettings settings;
 
-    const bool trayIconEnabled = ui->showTrayIcon->isChecked();
-
     settings.setValue(SettingsKeys::UpdateInterval,
                       ui->updateInterval->value());
 
@@ -210,7 +208,7 @@ void AppSettings::saveSettings()
                       ui->startTorrentPaused->isChecked());
 
     settings.setValue(SettingsKeys::ShowTrayIcon,
-                      trayIconEnabled);
+                      ui->showTrayIcon->isChecked());
 
     settings.setValue(SettingsKeys::ShowNotifications,
                       ui->enableNotifications->isChecked());
@@ -237,9 +235,6 @@ void AppSettings::saveSettings()
     // not make notifications depend on the tray icon anymore.
     settings.setValue(SettingsKeys::ShowTrayNotifications,
                       ui->enableNotifications->isChecked());
-
-    settings.setValue(SettingsKeys::HideApplicationIcon,
-                      trayIconEnabled && false);
 
     settings.setValue(QString::fromLatin1(SettingsKeys::WatchFolderEnabled),
                       ui->checkWatchFolderEnabled->isChecked());

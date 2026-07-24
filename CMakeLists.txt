@@ -242,21 +242,32 @@ endif()
 
 if(APPLE)
     target_sources(Planetary PRIVATE
+        macapplicationbackend.h
+        macapplicationbackend.mm
         macnotificationbackend.h
         macnotificationbackend.mm
     )
 
-    set_source_files_properties(macnotificationbackend.mm PROPERTIES
+    set_source_files_properties(
+        macapplicationbackend.mm
+        macnotificationbackend.mm
+        PROPERTIES
         COMPILE_FLAGS "-fobjc-arc"
     )
 
+    find_library(APPKIT_FRAMEWORK AppKit)
     find_library(USER_NOTIFICATIONS_FRAMEWORK UserNotifications)
+
+    if(NOT APPKIT_FRAMEWORK)
+        message(FATAL_ERROR "AppKit framework not found")
+    endif()
 
     if(NOT USER_NOTIFICATIONS_FRAMEWORK)
         message(FATAL_ERROR "UserNotifications framework not found")
     endif()
 
     target_link_libraries(Planetary PRIVATE
+        ${APPKIT_FRAMEWORK}
         ${USER_NOTIFICATIONS_FRAMEWORK}
     )
 endif()

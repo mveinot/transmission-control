@@ -10,6 +10,10 @@
 #include <QSettings>
 #include <QTimer>
 
+#if defined(Q_OS_MACOS)
+#include "macapplicationbackend.h"
+#endif
+
 TrayController::TrayController(QMainWindow *window, QObject *parent)
     : QObject(parent)
     , m_window(window)
@@ -76,6 +80,12 @@ void TrayController::showMainWindow()
     if (!m_window)
         return;
 
+#if defined(Q_OS_MACOS)
+    // Restore regular application mode before creating a visible window so
+    // macOS reinstates both the Dock icon and application menu.
+    setMacApplicationDockIconVisible(true);
+#endif
+
     m_window->show();
     m_window->setWindowState(m_window->windowState() & ~Qt::WindowMinimized);
     m_window->raise();
@@ -108,6 +118,11 @@ bool TrayController::handleCloseEvent(QCloseEvent *event)
     if (shouldCloseToTray()) {
         event->ignore();
         m_window->hide();
+#if defined(Q_OS_MACOS)
+        // The status item remains available in accessory mode, allowing the
+        // application to run without occupying the Dock while its window is hidden.
+        setMacApplicationDockIconVisible(false);
+#endif
         return true;
     }
 

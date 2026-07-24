@@ -1901,9 +1901,9 @@ void MainWindow::setupConnectionStatusIndicator()
 
 void MainWindow::bringToFront()
 {
-    showNormal();
-    raise();
-    activateWindow();
+    // Route external activation through the tray controller so platform state
+    // such as the macOS Dock activation policy is restored before the window.
+    showMainWindow();
 }
 
 bool MainWindow::event(QEvent *event)
