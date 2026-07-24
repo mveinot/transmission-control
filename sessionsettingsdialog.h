@@ -29,9 +29,12 @@ public slots:
     void setPortTestRunning();
     void setPortTestResult(bool portIsOpen, const QString &ipProtocol = QString());
     void setPortTestFailed(const QString &message);
+    void setBlocklistUpdateResult(int ruleCount);
+    void setBlocklistUpdateFailed(const QString &message);
 
 signals:
     void portTestRequested();
+    void blocklistUpdateRequested(const QJsonObject &changedSettings);
 
 private:
     Ui::SessionSettingsDialog *ui = nullptr;
@@ -44,6 +47,7 @@ private:
     void setComboCurrentData(const QString &value);
     void updateEnabledStates();
     void setupPortTestControls();
+    bool blocklistUpdateRunning = false;
 };
 
 #endif // SESSIONSETTINGSDIALOG_H

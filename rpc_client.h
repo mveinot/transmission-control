@@ -107,6 +107,7 @@ public:
     void setSessionSettings(const QJsonObject &settings);
     void getFreeSpace(const QString &path);
     void testPortForwarding();
+    void updateBlocklist(const QJsonObject &changedSettings);
 
 signals:
     void updateStarted();
@@ -132,6 +133,8 @@ signals:
     void freeSpaceReceived(const QString &path, qint64 sizeBytes);
     void portTestFinished(bool portIsOpen, const QString &ipProtocol);
     void portTestFailed(const QString &message);
+    void blocklistUpdateFinished(int ruleCount);
+    void blocklistUpdateFailed(const QString &message);
 
 private:
     enum class RpcRequestType {
@@ -158,6 +161,7 @@ private:
         QString torrentFilePath;
         bool deleteTorrentFileOnSuccess = false;
         bool retriedAfterAuth = false;
+        bool updateBlocklistAfterSuccess = false;
     };
 
     QString username;

@@ -2241,6 +2241,15 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     connect(client, &rpc_client::portTestFailed,
             &dialog, &SessionSettingsDialog::setPortTestFailed);
 
+    connect(&dialog, &SessionSettingsDialog::blocklistUpdateRequested,
+            client, &rpc_client::updateBlocklist);
+
+    connect(client, &rpc_client::blocklistUpdateFinished,
+            &dialog, &SessionSettingsDialog::setBlocklistUpdateResult);
+
+    connect(client, &rpc_client::blocklistUpdateFailed,
+            &dialog, &SessionSettingsDialog::setBlocklistUpdateFailed);
+
     if (dialog.exec() != QDialog::Accepted)
         return;
 

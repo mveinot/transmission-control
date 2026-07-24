@@ -4,6 +4,8 @@
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QLineEdit>
+#include <QLabel>
+#include <QPushButton>
 #include <QSpinBox>
 
 #include "sessionsettingsdialog.h"
@@ -68,6 +70,8 @@ private slots:
     void changedSettingsContainOnlyChangedReturnedFields();
     void preservesAllowedEncryptionSpelling();
     void togglesEnableDependentControls();
+    void blocklistUpdateUsesDisplayedSettings();
+    void unchangedBlocklistUpdatesWithoutSaving();
 };
 
 void TestSessionSettingsDialog::unchangedSettingsProduceNoChanges()
@@ -153,6 +157,55 @@ void TestSessionSettingsDialog::togglesEnableDependentControls()
     QVERIFY(!editBlocklistUrl->isEnabled());
     checkBlocklistEnabled->setChecked(true);
     QVERIFY(editBlocklistUrl->isEnabled());
+}
+
+void TestSessionSettingsDialog::blocklistUpdateUsesDisplayedSettings()
+{
+    SessionSettingsDialog dialog;
+    dialog.setSessionSettings(fullSessionSettings());
+
+    auto *enabled = requiredChild<QCheckBox>(dialog, "checkBlocklistEnabled");
+    auto *url = requiredChild<QLineEdit>(dialog, "editBlocklistUrl");
+    auto *button = requiredChild<QPushButton>(dialog, "buttonUpdateBlocklist");
+    auto *result = requiredChild<QLabel>(dialog, "labelBlocklistUpdateResult");
+    QSignalSpy updateSpy(&dialog, &SessionSettingsDialog::blocklistUpdateRequested);
+
+    enabled->setChecked(true);
+    url->setText(QStringLiteral("  https://example.net/current.gz  "));
+    button->click();
+
+    QCOMPARE(updateSpy.count(), 1);
+    const QList<QVariant> arguments = updateSpy.takeFirst();
+    const QJsonObject changes = arguments.at(0).toJsonObject();
+    QCOMPARE(changes.value(QStringLiteral("blocklist-enabled")).toBool(), true);
+    QCOMPARE(changes.value(QStringLiteral("blocklist-url")).toString(),
+             QStringLiteral("https://example.net/current.gz"));
+    QVERIFY(!button->isEnabled());
+    QCOMPARE(result->text(), QStringLiteral("Saving settings..."));
+
+    dialog.setBlocklistUpdateResult(12345);
+    QVERIFY(button->isEnabled());
+    QVERIFY(result->text().contains(QStringLiteral("12345")));
+}
+
+void TestSessionSettingsDialog::unchangedBlocklistUpdatesWithoutSaving()
+{
+    QJsonObject settings = fullSessionSettings();
+    settings.insert(QStringLiteral("blocklist-enabled"), true);
+
+    SessionSettingsDialog dialog;
+    dialog.setSessionSettings(settings);
+
+    auto *button = requiredChild<QPushButton>(dialog, "buttonUpdateBlocklist");
+    auto *result = requiredChild<QLabel>(dialog, "labelBlocklistUpdateResult");
+    QSignalSpy updateSpy(&dialog, &SessionSettingsDialog::blocklistUpdateRequested);
+
+    button->click();
+
+    QCOMPARE(updateSpy.count(), 1);
+    const QJsonObject changes = updateSpy.takeFirst().at(0).toJsonObject();
+    QVERIFY(changes.isEmpty());
+    QCOMPARE(result->text(), QStringLiteral("Updating..."));
 }
 
 QTEST_MAIN(TestSessionSettingsDialog)

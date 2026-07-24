@@ -133,6 +133,23 @@ SessionSettingsDialog::SessionSettingsDialog(QWidget *parent)
     connect(ui->checkBlocklistEnabled, &QCheckBox::toggled,
             this, &SessionSettingsDialog::updateEnabledStates);
 
+    connect(ui->buttonUpdateBlocklist, &QPushButton::clicked,
+            this, [this]() {
+                QJsonObject changes;
+                addIfChanged(changes, originalSettings,
+                             QStringLiteral("blocklist-enabled"),
+                             ui->checkBlocklistEnabled->isChecked());
+                addIfChanged(changes, originalSettings,
+                             QStringLiteral("blocklist-url"),
+                             ui->editBlocklistUrl->text().trimmed());
+
+                blocklistUpdateRunning = true;
+                ui->labelBlocklistUpdateResult->setText(
+                    changes.isEmpty() ? tr("Updating...") : tr("Saving settings..."));
+                updateEnabledStates();
+                emit blocklistUpdateRequested(changes);
+            });
+
     connect(ui->checkSeedRatioLimit, &QCheckBox::toggled,
             this, &SessionSettingsDialog::updateEnabledStates);
 
@@ -299,6 +316,10 @@ void SessionSettingsDialog::setSessionSettings(const QJsonObject &settings)
 
     ui->editBlocklistUrl->setText(
         jsonString(settings, QStringLiteral("blocklist-url"))
+        );
+    ui->groupBlocklist->setEnabled(
+        settings.contains(QStringLiteral("blocklist-enabled"))
+        && settings.contains(QStringLiteral("blocklist-url"))
         );
 
     ui->checkDownloadLimit->setChecked(
@@ -569,6 +590,11 @@ void SessionSettingsDialog::updateEnabledStates()
     ui->editBlocklistUrl->setEnabled(
         ui->checkBlocklistEnabled->isChecked()
         );
+    ui->buttonUpdateBlocklist->setEnabled(
+        ui->groupBlocklist->isEnabled()
+        && ui->checkBlocklistEnabled->isChecked()
+        && !blocklistUpdateRunning
+        );
 
     ui->spinSeedRatioLimit->setEnabled(
         ui->checkSeedRatioLimit->isChecked()
@@ -577,4 +603,30 @@ void SessionSettingsDialog::updateEnabledStates()
     ui->spinIdleSeedingLimit->setEnabled(
         ui->checkIdleSeedingLimit->isChecked()
         );
+}
+
+void SessionSettingsDialog::setBlocklistUpdateResult(int ruleCount)
+{
+    blocklistUpdateRunning = false;
+    // A completed update proves the preceding sparse session-set (if any)
+    // succeeded, so subsequent updates can compare against the new baseline.
+    originalSettings.insert(QStringLiteral("blocklist-enabled"),
+                            ui->checkBlocklistEnabled->isChecked());
+    originalSettings.insert(QStringLiteral("blocklist-url"),
+                            ui->editBlocklistUrl->text().trimmed());
+    ui->labelBlocklistUpdateResult->setText(
+        ruleCount >= 0
+            ? tr("Updated successfully: %1 rules.").arg(ruleCount)
+            : tr("Updated successfully."));
+    updateEnabledStates();
+}
+
+void SessionSettingsDialog::setBlocklistUpdateFailed(const QString &message)
+{
+    blocklistUpdateRunning = false;
+    ui->labelBlocklistUpdateResult->setText(
+        message.trimmed().isEmpty()
+            ? tr("Blocklist update failed.")
+            : tr("Blocklist update failed: %1").arg(message.trimmed()));
+    updateEnabledStates();
 }

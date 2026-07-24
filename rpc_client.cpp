@@ -246,6 +246,11 @@ void rpc_client::replyFinished(QNetworkReply *reply)
             emit torrentFileAddFailed(context.torrentFilePath, message);
         }
 
+        if (context.updateBlocklistAfterSuccess
+            || context.method == QStringLiteral("blocklist-update")) {
+            emit blocklistUpdateFailed(message);
+        }
+
         emit commandFailed(context.method, message);
     };
 
@@ -393,6 +398,22 @@ void rpc_client::replyFinished(QNetworkReply *reply)
     }
 
     if (requestType == RpcRequestType::Command) {
+        if (context.updateBlocklistAfterSuccess) {
+            // The update must observe the URL currently displayed in the
+            // dialog, so start it only after session-set has succeeded.
+            postRpc(QStringLiteral("blocklist-update"), QJsonObject(),
+                    RpcRequestType::Command);
+        }
+
+        if (context.method == QStringLiteral("blocklist-update")) {
+            const QJsonObject arguments =
+                root.value(QStringLiteral("arguments")).toObject();
+            const int ruleCount =
+                arguments.value(QStringLiteral("blocklist-size")).toInt(
+                    arguments.value(QStringLiteral("blocklist_size")).toInt(-1));
+            emit blocklistUpdateFinished(ruleCount);
+        }
+
         if (context.method == "torrent-add" &&
             context.deleteTorrentFileOnSuccess &&
             !context.torrentFilePath.isEmpty()) {
@@ -1482,6 +1503,22 @@ void rpc_client::setSessionSettings(const QJsonObject &settings)
         return;
 
     postRpc("session-set", settings, RpcRequestType::Command);
+}
+
+void rpc_client::updateBlocklist(const QJsonObject &changedSettings)
+{
+    if (changedSettings.isEmpty()) {
+        postRpc(QStringLiteral("blocklist-update"), QJsonObject(),
+                RpcRequestType::Command);
+        return;
+    }
+
+    RpcRequestContext context;
+    context.method = QStringLiteral("session-set");
+    context.type = RpcRequestType::Command;
+    context.arguments = changedSettings;
+    context.updateBlocklistAfterSuccess = true;
+    postRpc(context);
 }
 
 void rpc_client::getFreeSpace(const QString &path)
