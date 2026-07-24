@@ -595,8 +595,11 @@ void MainWindow::restoreViewSettings()
 void MainWindow::saveViewSettings() const
 {
     QSettings settings;
-    settings.setValue(SettingsKeys::MainWindowToolBarVisible, ui->toolBar->isVisible());
-    settings.setValue(SettingsKeys::MainWindowStatusBarVisible, ui->statusbar->isVisible());
+    // isVisible() also becomes false when the main window is hidden to the
+    // tray. Persist the child's explicit state so an application-level hide
+    // cannot silently disable these widgets for the next launch.
+    settings.setValue(SettingsKeys::MainWindowToolBarVisible, !ui->toolBar->isHidden());
+    settings.setValue(SettingsKeys::MainWindowStatusBarVisible, !ui->statusbar->isHidden());
 
     const Qt::ToolButtonStyle toolBarStyle = toolButtonStyleFromVariant(
         static_cast<int>(ui->toolBar->toolButtonStyle()),
