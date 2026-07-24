@@ -51,6 +51,14 @@ inline constexpr const char *TrackerTableHeaderState =
     "ui/trackerTableWidget/headerState/v4";
 inline constexpr const char *TrackerTableVisibleColumns =
     "ui/trackerTableWidget/visibleColumns/v2";
+inline constexpr const char *FilterTrackersCollapsed =
+    "ui/filterSections/trackersCollapsed";
+inline constexpr const char *FilterFoldersCollapsed =
+    "ui/filterSections/foldersCollapsed";
+inline constexpr const char *FilterLabelsCollapsed =
+    "ui/filterSections/labelsCollapsed";
+inline constexpr const char *FilterGroupsCollapsed =
+    "ui/filterSections/groupsCollapsed";
 inline constexpr const char *TorrentAddDownloadDir =        "torrentAdd/downloadDir";
 
 // Server entries and folder mappings are QSettings arrays. The short field

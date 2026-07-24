@@ -1,5 +1,6 @@
 #include "torrentfiltercontroller.h"
 #include "appicons.h"
+#include "settingskeys.h"
 
 #include <QAbstractItemModel>
 #include <QAction>
@@ -13,6 +14,7 @@
 #include <QMenu>
 #include <QListWidgetItem>
 #include <QSet>
+#include <QSettings>
 #include <QSignalBlocker>
 #include <QSize>
 
@@ -23,6 +25,7 @@ namespace {
 constexpr int FilterTypeRole = Qt::UserRole;
 constexpr int FilterValueRole = Qt::UserRole + 1;
 constexpr int FilterBaseLabelRole = Qt::UserRole + 2;
+constexpr int FilterSectionRole = Qt::UserRole + 3;
 }
 
 TorrentFilterController::TorrentFilterController(QListWidget *filterList,
@@ -42,6 +45,16 @@ void TorrentFilterController::setup()
 {
     if (!m_filterList || !m_proxy)
         return;
+
+    QSettings settings;
+    m_trackersCollapsed =
+        settings.value(SettingsKeys::FilterTrackersCollapsed, false).toBool();
+    m_foldersCollapsed =
+        settings.value(SettingsKeys::FilterFoldersCollapsed, false).toBool();
+    m_labelsCollapsed =
+        settings.value(SettingsKeys::FilterLabelsCollapsed, false).toBool();
+    m_groupsCollapsed =
+        settings.value(SettingsKeys::FilterGroupsCollapsed, false).toBool();
 
     m_filterList->setIconSize(QSize(20, 20));
 
@@ -102,6 +115,33 @@ void TorrentFilterController::setup()
     connect(m_filterList, &QListWidget::currentItemChanged,
             this, [this](QListWidgetItem *current, QListWidgetItem *) {
                 applyCurrentListSelection(current);
+            });
+    connect(m_filterList, &QListWidget::itemClicked,
+            this, [this](QListWidgetItem *item) {
+                if (!item
+                    || intToType(item->data(FilterTypeRole).toInt()) != ItemType::Header) {
+                    return;
+                }
+
+                const ItemType sectionType =
+                    intToType(item->data(FilterSectionRole).toInt());
+                switch (sectionType) {
+                case ItemType::Tracker:
+                    setSectionCollapsed(sectionType, !m_trackersCollapsed);
+                    break;
+                case ItemType::Folder:
+                    setSectionCollapsed(sectionType, !m_foldersCollapsed);
+                    break;
+                case ItemType::Label:
+                    setSectionCollapsed(sectionType, !m_labelsCollapsed);
+                    break;
+                case ItemType::Group:
+                    setSectionCollapsed(sectionType, !m_groupsCollapsed);
+                    break;
+                case ItemType::Header:
+                case ItemType::Status:
+                    break;
+                }
             });
 
     m_filterList->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -243,7 +283,7 @@ void TorrentFilterController::addTrackerFilterItems(const QStringList &trackerHo
     if (!m_filterList || trackerHosts.isEmpty())
         return;
 
-    m_filterList->addItem(createHeaderItem(tr("Trackers")));
+    m_filterList->addItem(createHeaderItem(tr("Trackers"), ItemType::Tracker));
     m_filterList->addItem(createTrackerItem(tr("All Trackers"), QString()));
 
     for (const QString &trackerHost : trackerHosts)
@@ -255,7 +295,7 @@ void TorrentFilterController::addFolderFilterItems(const QStringList &downloadDi
     if (!m_filterList || downloadDirs.isEmpty())
         return;
 
-    m_filterList->addItem(createHeaderItem(tr("Folders")));
+    m_filterList->addItem(createHeaderItem(tr("Folders"), ItemType::Folder));
     m_filterList->addItem(createFolderItem(tr("All Folders"), QString()));
 
     for (const QString &downloadDir : downloadDirs)
@@ -268,7 +308,7 @@ void TorrentFilterController::addLabelFilterItems(const QStringList &labels)
         return;
 
     static const QIcon labelIcon = AppIcons::icon(AppIcons::Icon::FilterAll);
-    m_filterList->addItem(createHeaderItem(tr("Labels")));
+    m_filterList->addItem(createHeaderItem(tr("Labels"), ItemType::Label));
     m_filterList->addItem(
         createMetadataItem(ItemType::Label, tr("Unlabelled"), QString(), labelIcon));
 
@@ -282,7 +322,7 @@ void TorrentFilterController::addGroupFilterItems(const QStringList &groups)
         return;
 
     static const QIcon groupIcon = AppIcons::icon(AppIcons::Icon::FilterFolder);
-    m_filterList->addItem(createHeaderItem(tr("Groups")));
+    m_filterList->addItem(createHeaderItem(tr("Groups"), ItemType::Group));
     m_filterList->addItem(
         createMetadataItem(ItemType::Group, tr("No Group"), QString(), groupIcon));
 
@@ -290,13 +330,23 @@ void TorrentFilterController::addGroupFilterItems(const QStringList &groups)
         m_filterList->addItem(createMetadataItem(ItemType::Group, group, group, groupIcon));
 }
 
-QListWidgetItem *TorrentFilterController::createHeaderItem(const QString &label) const
+QListWidgetItem *TorrentFilterController::createHeaderItem(
+    const QString &label, ItemType sectionType) const
 {
     auto *item = new QListWidgetItem(label);
-    item->setFlags(Qt::NoItemFlags);
+    item->setFlags(sectionType == ItemType::Header ? Qt::NoItemFlags
+                                                   : Qt::ItemIsEnabled);
     item->setData(FilterTypeRole, typeToInt(ItemType::Header));
+    item->setData(FilterSectionRole, typeToInt(sectionType));
     item->setData(FilterValueRole, QString());
     item->setData(FilterBaseLabelRole, label);
+
+    if (sectionType != ItemType::Header) {
+        // A text disclosure glyph inherits the current foreground palette,
+        // retaining contrast across live light/dark appearance changes.
+        item->setText(QStringLiteral("▾ ") + label);
+        item->setToolTip(tr("Click to collapse or expand this section."));
+    }
 
     QFont headerFont = item->font();
     headerFont.setBold(true);
@@ -716,18 +766,9 @@ void TorrentFilterController::showFilterContextMenu(const QPoint &position)
 
     ItemType sectionType = type;
     if (type == ItemType::Header) {
-        const QString label = item->text();
-        if (label == tr("Trackers")) {
-            sectionType = ItemType::Tracker;
-        } else if (label == tr("Folders")) {
-            sectionType = ItemType::Folder;
-        } else if (label == tr("Labels")) {
-            sectionType = ItemType::Label;
-        } else if (label == tr("Groups")) {
-            sectionType = ItemType::Group;
-        } else {
+        sectionType = intToType(item->data(FilterSectionRole).toInt());
+        if (sectionType == ItemType::Header || sectionType == ItemType::Status)
             return;
-        }
     }
 
     QMenu menu(m_filterList);
@@ -806,18 +847,34 @@ void TorrentFilterController::copyFilterValueToClipboard(QListWidgetItem *item) 
 
 void TorrentFilterController::setSectionCollapsed(ItemType type, bool collapsed)
 {
+    const char *settingsKey = nullptr;
     if (type == ItemType::Tracker) {
+        if (m_trackersCollapsed == collapsed)
+            return;
         m_trackersCollapsed = collapsed;
+        settingsKey = SettingsKeys::FilterTrackersCollapsed;
     } else if (type == ItemType::Folder) {
+        if (m_foldersCollapsed == collapsed)
+            return;
         m_foldersCollapsed = collapsed;
+        settingsKey = SettingsKeys::FilterFoldersCollapsed;
     } else if (type == ItemType::Label) {
+        if (m_labelsCollapsed == collapsed)
+            return;
         m_labelsCollapsed = collapsed;
+        settingsKey = SettingsKeys::FilterLabelsCollapsed;
     } else if (type == ItemType::Group) {
+        if (m_groupsCollapsed == collapsed)
+            return;
         m_groupsCollapsed = collapsed;
+        settingsKey = SettingsKeys::FilterGroupsCollapsed;
     } else {
         return;
     }
 
+    // Persist only explicit transitions; setup restores member state directly
+    // to avoid redundant writes during every application launch.
+    QSettings().setValue(settingsKey, collapsed);
     applySectionCollapseState();
 }
 
@@ -832,6 +889,34 @@ void TorrentFilterController::applySectionCollapseState()
             continue;
 
         const ItemType type = intToType(item->data(FilterTypeRole).toInt());
+        if (type == ItemType::Header) {
+            const ItemType sectionType =
+                intToType(item->data(FilterSectionRole).toInt());
+            bool collapsed = false;
+            switch (sectionType) {
+            case ItemType::Tracker:
+                collapsed = m_trackersCollapsed;
+                break;
+            case ItemType::Folder:
+                collapsed = m_foldersCollapsed;
+                break;
+            case ItemType::Label:
+                collapsed = m_labelsCollapsed;
+                break;
+            case ItemType::Group:
+                collapsed = m_groupsCollapsed;
+                break;
+            case ItemType::Header:
+            case ItemType::Status:
+                continue;
+            }
+            const QString baseLabel = item->data(FilterBaseLabelRole).toString();
+            item->setText((collapsed ? QStringLiteral("▸ ")
+                                     : QStringLiteral("▾ "))
+                          + baseLabel);
+            continue;
+        }
+
         if (type == ItemType::Tracker) {
             item->setHidden(m_trackersCollapsed);
         } else if (type == ItemType::Folder) {

@@ -89,7 +89,9 @@ private:
     void addFolderFilterItems(const QStringList &downloadDirs);
     void addLabelFilterItems(const QStringList &labels);
     void addGroupFilterItems(const QStringList &groups);
-    QListWidgetItem *createHeaderItem(const QString &label) const;
+    QListWidgetItem *createHeaderItem(
+        const QString &label,
+        ItemType sectionType = ItemType::Header) const;
     QListWidgetItem *createStatusItem(const QString &label,
                                       TorrentSortProxyModel::StateFilter filter) const;
     QListWidgetItem *createTrackerItem(const QString &label,

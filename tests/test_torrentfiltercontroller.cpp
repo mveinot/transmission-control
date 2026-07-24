@@ -3,12 +3,14 @@
 #include "torrentfiltercontroller.h"
 #include "torrentmodel.h"
 #include "torrentsortproxymodel.h"
+#include "settingskeys.h"
 
 #include <QAction>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QSettings>
 
 namespace {
 
@@ -95,10 +97,13 @@ class TestTorrentFilterController : public QObject
 
 private slots:
     void setupBuildsConsistentIconListAndTrackerSelection();
+    void restoresCollapsedSectionState();
 };
 
 void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelection()
 {
+    QSettings().clear();
+
     QListWidget list;
     QLineEdit searchEdit;
     TorrentModel sourceModel;
@@ -166,6 +171,29 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
     QVERIFY(findItemByText(list, QStringLiteral("Desktop (2)")) != nullptr);
     QVERIFY(findItemByText(list, QStringLiteral("No Group (1)")) != nullptr);
 
+    QListWidgetItem *labelsHeader = findItemByText(list, QStringLiteral("▾ Labels"));
+    QListWidgetItem *linuxItem = findItemByText(list, QStringLiteral("Linux (2)"));
+    QVERIFY(labelsHeader != nullptr);
+    QVERIFY(linuxItem != nullptr);
+    QVERIFY(!linuxItem->isHidden());
+
+    // Collapsible headers are enabled but not selectable, preserving the
+    // active torrent filter while their child rows are hidden.
+    QVERIFY(QMetaObject::invokeMethod(
+        &list, "itemClicked", Qt::DirectConnection,
+        Q_ARG(QListWidgetItem *, labelsHeader)));
+    QVERIFY(linuxItem->isHidden());
+    QCOMPARE(labelsHeader->text(), QStringLiteral("▸ Labels"));
+    QCOMPARE(QSettings().value(SettingsKeys::FilterLabelsCollapsed).toBool(), true);
+    QVERIFY(findItemByText(list, QStringLiteral("All (3)"))->isHidden() == false);
+
+    QVERIFY(QMetaObject::invokeMethod(
+        &list, "itemClicked", Qt::DirectConnection,
+        Q_ARG(QListWidgetItem *, labelsHeader)));
+    QVERIFY(!linuxItem->isHidden());
+    QCOMPARE(labelsHeader->text(), QStringLiteral("▾ Labels"));
+    QCOMPARE(QSettings().value(SettingsKeys::FilterLabelsCollapsed).toBool(), false);
+
     QListWidgetItem *labelItem = findItemByText(list, QStringLiteral("Linux (2)"));
     QVERIFY(labelItem != nullptr);
     list.setCurrentItem(labelItem);
@@ -216,6 +244,37 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
     QVERIFY(findItemByText(list, QStringLiteral("All (1)")) != nullptr);
     QVERIFY(findItemByText(list, QStringLiteral("Downloading (1)")) != nullptr);
     QVERIFY(findItemByText(list, QStringLiteral("Complete (0)")) != nullptr);
+}
+
+void TestTorrentFilterController::restoresCollapsedSectionState()
+{
+    QSettings().clear();
+    QSettings().setValue(SettingsKeys::FilterLabelsCollapsed, true);
+
+    QListWidget list;
+    QLineEdit searchEdit;
+    TorrentModel sourceModel;
+    TorrentSortProxyModel proxy;
+    proxy.setSourceModel(&sourceModel);
+
+    TorrentFilterController controller(
+        &list, &searchEdit, &proxy, TorrentFilterController::Actions());
+    controller.setup();
+
+    const QVector<torrent> torrents = makeTorrentList({
+        makeTorrentValue(1, QStringLiteral("Ubuntu"), 4, 0.25, {},
+                         QStringLiteral("/downloads"),
+                         { QStringLiteral("Linux") }),
+    });
+    sourceModel.applyUpdate(torrents);
+    controller.rebuild(torrents);
+
+    QVERIFY(findItemByText(list, QStringLiteral("▸ Labels")) != nullptr);
+    QListWidgetItem *labelItem = findItemByText(list, QStringLiteral("Linux (1)"));
+    QVERIFY(labelItem != nullptr);
+    QVERIFY(labelItem->isHidden());
+
+    QSettings().clear();
 }
 
 QTEST_MAIN(TestTorrentFilterController)
