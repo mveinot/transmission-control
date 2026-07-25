@@ -1,10 +1,7 @@
 #include "torrentbackendfactory.h"
 
-#include "transmissionbackend.h"
+#include "torrentbackendrouter.h"
 
-TorrentBackend *createConfiguredTorrentBackend(QObject *parent)
-{
-    // Transmission is currently the only registered implementation. Server
-    // profiles already persist a backend identifier for future dispatch.
-    return new TransmissionBackend(parent);
+TorrentBackend *createConfiguredTorrentBackend(QObject *parent) {
+  return new TorrentBackendRouter(parent);
 }

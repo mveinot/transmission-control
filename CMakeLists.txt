@@ -90,6 +90,10 @@ set(PROJECT_SOURCES
         mainwindow.ui
         transmissionbackend.h
         transmissionbackend.cpp
+        qbittorrentbackend.h
+        qbittorrentbackend.cpp
+        torrentbackendrouter.h
+        torrentbackendrouter.cpp
         torrentbackend.h
         torrentbackendfactory.h
         torrentbackendfactory.cpp

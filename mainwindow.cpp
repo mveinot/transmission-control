@@ -1877,29 +1877,7 @@ void MainWindow::saveSelectedServerFromCombo()
     if (serverIndex < 0)
         return;
 
-    const QString backendType =
-        ui->comboServers->currentData(Qt::UserRole + 1).toString();
-
     QSettings settings;
-
-    if (backendType == QStringLiteral("qbittorrent")) {
-        if (statusBarController) {
-            statusBarController->showMessage(
-                tr("qBittorrent support is not available yet."),
-                5000);
-        }
-
-        // Keep the selector consistent with the still-active backend.
-        const int activeServerIndex =
-            settings.value(SettingsKeys::ServersCurrentIndex, -1).toInt();
-        const int activeComboIndex =
-            ui->comboServers->findData(activeServerIndex);
-        if (activeComboIndex >= 0) {
-            const QSignalBlocker blocker(ui->comboServers);
-            ui->comboServers->setCurrentIndex(activeComboIndex);
-        }
-        return;
-    }
 
     if (!client->setServerFromSettingsIndex(serverIndex)) {
         if (statusBarController)
