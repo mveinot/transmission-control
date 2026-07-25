@@ -10,6 +10,8 @@
 #include <QUrl>
 #include <QUrlQuery>
 
+#include <utility>
+
 namespace {
 
 int normalizedStatus(const QString &state) {
@@ -51,6 +53,16 @@ QByteArray formField(const QString &value) {
   // qBittorrent expects application/x-www-form-urlencoded data. QUrlQuery
   // follows URL-query rules and may leave a literal '+' ambiguous.
   return QUrl::toPercentEncoding(value);
+}
+
+QByteArray hashesForm(const QList<TorrentKey> &keys) {
+  QStringList values;
+  values.reserve(keys.size());
+  for (const TorrentKey &key : keys)
+    values.append(key);
+
+  return QByteArrayLiteral("hashes=") +
+         formField(values.join(QLatin1Char('|')));
 }
 
 } // namespace
@@ -136,6 +148,7 @@ void QBittorrentBackend::setServer(const QString &name, const QString &url,
   m_authenticated = false;
   m_authenticationPending = false;
   m_listPendingAfterLogin = false;
+  m_commandsPendingAfterLogin.clear();
   m_infoByKey.clear();
   emit serverChanged();
   emit capabilitiesChanged(capabilities());
@@ -183,6 +196,34 @@ void QBittorrentBackend::sendGet(RequestKind kind, const QString &path,
                                  const TorrentKey &key) {
   QNetworkReply *reply = m_network.get(makeRequest(path, query));
   m_requests.insert(reply, {kind, key});
+}
+
+void QBittorrentBackend::postCommand(const QString &path,
+                                     const QByteArray &form,
+                                     const QString &method,
+                                     const QString &fallbackPath) {
+  RequestContext context;
+  context.kind = RequestKind::Command;
+  context.commandMethod = method;
+  context.path = path;
+  context.fallbackPath = fallbackPath;
+  context.form = form;
+
+  if (!m_authenticated) {
+    m_commandsPendingAfterLogin.append(context);
+    authenticate();
+    return;
+  }
+
+  sendCommand(context);
+}
+
+void QBittorrentBackend::sendCommand(const RequestContext &context) {
+  QNetworkRequest request = makeRequest(context.path);
+  request.setHeader(QNetworkRequest::ContentTypeHeader,
+                    QStringLiteral("application/x-www-form-urlencoded"));
+  QNetworkReply *reply = m_network.post(request, context.form);
+  m_requests.insert(reply, context);
 }
 
 void QBittorrentBackend::getTorrentList() {
@@ -335,11 +376,9 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
     // response as HTTP 204; older releases return HTTP 200 with "Ok.".
     const bool successfulResponse =
         status == 204 ||
-        (status == 200 &&
-         responseText.compare(QByteArrayLiteral("Ok."),
-                              Qt::CaseInsensitive) == 0);
-    m_authenticated =
-        error == QNetworkReply::NoError && successfulResponse;
+        (status == 200 && responseText.compare(QByteArrayLiteral("Ok."),
+                                               Qt::CaseInsensitive) == 0);
+    m_authenticated = error == QNetworkReply::NoError && successfulResponse;
 
     if (!m_authenticated) {
       QString reason;
@@ -361,6 +400,10 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
 
       emit updateFailed(
           tr("qBittorrent authentication failed: %1").arg(reason));
+      for (const RequestContext &pending : m_commandsPendingAfterLogin) {
+        emit commandFailed(pending.commandMethod, reason);
+      }
+      m_commandsPendingAfterLogin.clear();
       return;
     }
 
@@ -368,6 +411,42 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
       m_listPendingAfterLogin = false;
       getTorrentList();
     }
+
+    const QList<RequestContext> pendingCommands =
+        std::exchange(m_commandsPendingAfterLogin, {});
+    for (const RequestContext &pending : pendingCommands)
+      sendCommand(pending);
+    return;
+  }
+
+  if (context.kind == RequestKind::Command) {
+    if (error == QNetworkReply::NoError && (status == 200 || status == 204)) {
+      emit commandSucceeded(context.commandMethod);
+      return;
+    }
+
+    if (status == 404 && !context.fallbackPath.isEmpty() &&
+        !context.usedFallback) {
+      RequestContext fallback = context;
+      fallback.path = context.fallbackPath;
+      fallback.usedFallback = true;
+      sendCommand(fallback);
+      return;
+    }
+
+    if (status == 403 && !context.retriedAuthentication) {
+      RequestContext retry = context;
+      retry.retriedAuthentication = true;
+      m_authenticated = false;
+      m_commandsPendingAfterLogin.append(retry);
+      authenticate();
+      return;
+    }
+
+    const QString reason = status > 0
+                               ? tr("qBittorrent returned HTTP %1").arg(status)
+                               : networkError;
+    emit commandFailed(context.commandMethod, reason);
     return;
   }
 
@@ -462,29 +541,55 @@ void QBittorrentBackend::addTorrentFile(const QString &, const QString &, bool,
 void QBittorrentBackend::addMagnetLink(const QString &, const QString &, bool) {
   emitUnsupported(tr("Add torrent"));
 }
-void QBittorrentBackend::startTorrents(const QList<TorrentKey> &) {
-  emitUnsupported(tr("Start torrents"));
+void QBittorrentBackend::startTorrents(const QList<TorrentKey> &keys) {
+  if (keys.isEmpty())
+    return;
+  postCommand(QStringLiteral("/api/v2/torrents/start"), hashesForm(keys),
+              QStringLiteral("torrent-start"),
+              QStringLiteral("/api/v2/torrents/resume"));
 }
 void QBittorrentBackend::startAllTorrents() {
-  emitUnsupported(tr("Start torrents"));
+  postCommand(QStringLiteral("/api/v2/torrents/start"),
+              QByteArrayLiteral("hashes=all"), QStringLiteral("torrent-start"),
+              QStringLiteral("/api/v2/torrents/resume"));
 }
 void QBittorrentBackend::startTorrentsNow(const QList<TorrentKey> &) {
   emitUnsupported(tr("Force start"));
 }
-void QBittorrentBackend::stopTorrents(const QList<TorrentKey> &) {
-  emitUnsupported(tr("Stop torrents"));
+void QBittorrentBackend::stopTorrents(const QList<TorrentKey> &keys) {
+  if (keys.isEmpty())
+    return;
+  postCommand(QStringLiteral("/api/v2/torrents/stop"), hashesForm(keys),
+              QStringLiteral("torrent-stop"),
+              QStringLiteral("/api/v2/torrents/pause"));
 }
 void QBittorrentBackend::stopAllTorrents() {
-  emitUnsupported(tr("Stop torrents"));
+  postCommand(QStringLiteral("/api/v2/torrents/stop"),
+              QByteArrayLiteral("hashes=all"), QStringLiteral("torrent-stop"),
+              QStringLiteral("/api/v2/torrents/pause"));
 }
-void QBittorrentBackend::removeTorrents(const QList<TorrentKey> &, bool) {
-  emitUnsupported(tr("Remove torrents"));
+void QBittorrentBackend::removeTorrents(const QList<TorrentKey> &keys,
+                                        bool deleteLocalData) {
+  if (keys.isEmpty())
+    return;
+  QByteArray form = hashesForm(keys);
+  form += QByteArrayLiteral("&deleteFiles=");
+  form +=
+      deleteLocalData ? QByteArrayLiteral("true") : QByteArrayLiteral("false");
+  postCommand(QStringLiteral("/api/v2/torrents/delete"), form,
+              QStringLiteral("torrent-remove"));
 }
-void QBittorrentBackend::verifyTorrents(const QList<TorrentKey> &) {
-  emitUnsupported(tr("Verify torrents"));
+void QBittorrentBackend::verifyTorrents(const QList<TorrentKey> &keys) {
+  if (keys.isEmpty())
+    return;
+  postCommand(QStringLiteral("/api/v2/torrents/recheck"), hashesForm(keys),
+              QStringLiteral("torrent-verify"));
 }
-void QBittorrentBackend::reannounceTorrents(const QList<TorrentKey> &) {
-  emitUnsupported(tr("Reannounce torrents"));
+void QBittorrentBackend::reannounceTorrents(const QList<TorrentKey> &keys) {
+  if (keys.isEmpty())
+    return;
+  postCommand(QStringLiteral("/api/v2/torrents/reannounce"), hashesForm(keys),
+              QStringLiteral("torrent-reannounce"));
 }
 void QBittorrentBackend::setTorrentLocation(const QList<TorrentKey> &,
                                             const QString &, bool) {

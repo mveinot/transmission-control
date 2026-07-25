@@ -77,10 +77,22 @@ public:
   void updateBlocklist(const QJsonObject &) override;
 
 private:
-  enum class RequestKind { Login, TorrentList, TorrentInfo, TorrentProperties };
+  enum class RequestKind {
+    Login,
+    TorrentList,
+    TorrentInfo,
+    TorrentProperties,
+    Command
+  };
   struct RequestContext {
     RequestKind kind;
     TorrentKey key;
+    QString commandMethod;
+    QString path;
+    QString fallbackPath;
+    QByteArray form;
+    bool usedFallback = false;
+    bool retriedAuthentication = false;
   };
 
   QNetworkAccessManager m_network;
@@ -93,6 +105,7 @@ private:
   bool m_authenticated = false;
   bool m_authenticationPending = false;
   bool m_listPendingAfterLogin = false;
+  QList<RequestContext> m_commandsPendingAfterLogin;
 
   void authenticate();
   void sendGet(RequestKind kind, const QString &path,
@@ -100,6 +113,10 @@ private:
   QNetworkRequest makeRequest(const QString &path,
                               const QUrlQuery &query = {}) const;
   void handleReply(QNetworkReply *reply);
+  void postCommand(const QString &path, const QByteArray &form,
+                   const QString &method,
+                   const QString &fallbackPath = QString());
+  void sendCommand(const RequestContext &context);
   void setServer(const QString &name, const QString &url,
                  const QString &username, const QString &password);
   void abortRequests();
