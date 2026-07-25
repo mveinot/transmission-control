@@ -15,7 +15,7 @@ class QLineEdit;
 class QSpinBox;
 class QTreeWidget;
 class QTreeWidgetItem;
-class rpc_client;
+class TorrentBackend;
 
 // Transactional editor for per-torrent limits and organization fields, with a
 // raw RPC view for diagnostics. Apply refreshes the server-confirmed baseline.
@@ -24,7 +24,7 @@ class TorrentPropertiesDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit TorrentPropertiesDialog(rpc_client *client,
+    explicit TorrentPropertiesDialog(TorrentBackend *client,
                                      int torrentId,
                                      QWidget *parent = nullptr);
 
@@ -48,7 +48,7 @@ private:
     static QString jsonValueTypeName(const QJsonValue &value);
     static QString jsonValueDisplayText(const QJsonValue &value);
 
-    rpc_client *m_client = nullptr;
+    TorrentBackend *m_client = nullptr;
     int m_torrentId = -1;
     QJsonObject m_properties;
     bool m_loaded = false;

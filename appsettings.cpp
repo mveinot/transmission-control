@@ -87,7 +87,7 @@ AppSettings::AppSettings(QWidget *parent)
                     QMessageBox::Warning,
                     tr("Reset Imported Torrent History"),
                     tr("This clears Planetary's record of .torrent files already imported from the watch folder.\n\n"
-                       "Any .torrent files still present may be submitted to Transmission again. Continue?"),
+                       "Any .torrent files still present may be submitted to the configured torrent server again. Continue?"),
                     QMessageBox::Yes | QMessageBox::No,
                     this);
                 confirmation.setDefaultButton(QMessageBox::No);

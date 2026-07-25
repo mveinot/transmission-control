@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QString>
 
-class rpc_client;
+class TorrentBackend;
 class TorrentAddController;
 class WatchFolderManager;
 
@@ -17,7 +17,7 @@ class WatchFolderController : public QObject
 public:
     explicit WatchFolderController(WatchFolderManager *manager,
                                    TorrentAddController *torrentAddController,
-                                   rpc_client *client,
+                                   TorrentBackend *client,
                                    QObject *parent = nullptr);
 
     void setup();
@@ -30,7 +30,7 @@ signals:
 private:
     WatchFolderManager *m_manager = nullptr;
     TorrentAddController *m_torrentAddController = nullptr;
-    rpc_client *m_client = nullptr;
+    TorrentBackend *m_client = nullptr;
 
     void handleTorrentFileAddFailed(const QString &filePath,
                                     const QString &message);

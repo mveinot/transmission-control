@@ -11,7 +11,7 @@
 class QTableWidget;
 class QTableWidgetItem;
 class QWidget;
-class rpc_client;
+class TorrentBackend;
 class TableColumnController;
 class TablePlaceholderController;
 
@@ -23,7 +23,7 @@ class TorrentTrackersController : public QObject
 
 public:
     explicit TorrentTrackersController(QTableWidget *trackerTableWidget,
-                                       rpc_client *client,
+                                       TorrentBackend *client,
                                        QWidget *dialogParent,
                                        QObject *parent = nullptr);
     ~TorrentTrackersController() override;
@@ -79,7 +79,7 @@ private:
     QTableWidgetItem *makeTextItem(const QString &text, const QVariant &sortValue = QVariant()) const;
 
     QTableWidget *trackerTableWidget = nullptr;
-    rpc_client *client = nullptr;
+    TorrentBackend *client = nullptr;
     QWidget *dialogParent = nullptr;
     int torrentId = -1;
     std::unique_ptr<TableColumnController> columnController;

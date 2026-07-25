@@ -72,7 +72,7 @@
 #include <utility>
 #include <initializer_list>
 
-#include "rpc_client.h"
+#include "torrentbackendfactory.h"
 #include "dialogabout.h"
 #include "diagnosticsdialog.h"
 #include "serverconfig.h"
@@ -860,7 +860,7 @@ MainWindow::MainWindow(QWidget *parent)
     commandRefreshTimer = new QTimer(this);
     commandRefreshTimer->setSingleShot(true);
     commandRefreshTimer->setInterval(CommandRefreshDebounceMs);
-    client = new rpc_client(this);
+    client = createConfiguredTorrentBackend(this);
     torrentModel = new TorrentModel(this);
 
     connect(commandRefreshTimer, &QTimer::timeout, this, [this]() {
@@ -976,7 +976,7 @@ MainWindow::MainWindow(QWidget *parent)
             });
 
     connect(watchFolderController, &WatchFolderController::torrentListRefreshRequested,
-            client, &rpc_client::getTorrentList);
+            client, &TorrentBackend::getTorrentList);
 
     watchFolderController->loadSettings();
     trayController = new TrayController(this, this);
@@ -1005,7 +1005,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(notificationController, &NotificationController::activityEventObserved,
             this, &MainWindow::recordActivity);
 
-    connect(client, &rpc_client::torrentAdded,
+    connect(client, &TorrentBackend::torrentAdded,
             notificationController, &NotificationController::handleTorrentAdded);
 
     torrentFilesController = new TorrentFilesController(
@@ -1029,7 +1029,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(torrentFilesController,
             &TorrentFilesController::torrentDetailsRefreshRequested,
             client,
-            &rpc_client::getTorrentFiles);
+            &TorrentBackend::getTorrentFiles);
 
     torrentTrackersController = new TorrentTrackersController(
         ui->trackerTableWidget,
@@ -1175,10 +1175,10 @@ MainWindow::MainWindow(QWidget *parent)
             });
 
     connect(torrentListController, &TorrentListController::torrentListRefreshRequested,
-            client, &rpc_client::getTorrentList);
+            client, &TorrentBackend::getTorrentList);
 
     connect(torrentListController, &TorrentListController::torrentDetailsRefreshRequested,
-            client, &rpc_client::getTorrentDetails);
+            client, &TorrentBackend::getTorrentDetails);
 
     connect(torrentAddController, &TorrentAddController::addStarted,
             this, [this]() {
@@ -1214,37 +1214,42 @@ MainWindow::MainWindow(QWidget *parent)
                 refreshCurrentTorrentTabData();
             });
 
-    connect(client, &rpc_client::serverChanged,
+    connect(client, &TorrentBackend::serverChanged,
             torrentModel, &TorrentModel::clear);
 
-    connect(client, &rpc_client::serverChanged, this, [this]() {
+    connect(client, &TorrentBackend::serverChanged, this, [this]() {
         lastFreeSpaceRefreshMs = 0;
         lastTrackerMetadataRefreshMs = 0;
         activityConnectionEstablished = false;
         activityConnectionFailed = false;
-        recordActivity(tr("Server changed"), tr("Switched active Transmission server."),
+        recordActivity(tr("Server changed"),
+                       tr("Switched active %1 server.").arg(client->backendName()),
                        ui->comboServers->currentText());
     });
 
-    connect(client, &rpc_client::updateFailed, this, [this](const QString &message) {
+    connect(client, &TorrentBackend::updateFailed, this, [this](const QString &message) {
         if (!activityConnectionFailed) {
             recordActivity(tr("Connection lost"), message, ui->comboServers->currentText());
             activityConnectionFailed = true;
         }
     });
 
-    connect(client, &rpc_client::updateFinished, this, [this]() {
+    connect(client, &TorrentBackend::updateFinished, this, [this]() {
         const QString server = ui->comboServers->currentText();
         if (activityConnectionFailed) {
-            recordActivity(tr("Reconnected"), tr("Connection to Transmission was restored."), server);
+            recordActivity(tr("Reconnected"),
+                           tr("Connection to %1 was restored.").arg(client->backendName()),
+                           server);
         } else if (!activityConnectionEstablished) {
-            recordActivity(tr("Connected"), tr("Connected to Transmission."), server);
+            recordActivity(tr("Connected"),
+                           tr("Connected to %1.").arg(client->backendName()),
+                           server);
         }
         activityConnectionEstablished = true;
         activityConnectionFailed = false;
     });
 
-    connect(client, &rpc_client::sessionSettingsReceived,
+    connect(client, &TorrentBackend::sessionSettingsReceived,
             this, &MainWindow::handleSessionSettingsReceived);
 
     connect(ui->actionTransmission_Settings, &QAction::triggered,
@@ -1291,7 +1296,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->menuHelp->insertSeparator(ui->actionAbout);
     connect(diagnosticsAction, &QAction::triggered, this, &MainWindow::showDiagnostics);
 
-    connect(client, &rpc_client::torrentDetailsReceived,
+    connect(client, &TorrentBackend::torrentDetailsReceived,
             this,
             [this](int torrentId, const QJsonObject &details) {
                 // Detail requests can overlap selection changes. Never apply a
@@ -1330,7 +1335,7 @@ MainWindow::MainWindow(QWidget *parent)
 
             });
 
-    connect(client, &rpc_client::torrentFilesReceived,
+    connect(client, &TorrentBackend::torrentFilesReceived,
             this, [this](int torrentId, const QJsonObject &details) {
                 if (torrentId != currentTorrentId())
                     return;
@@ -1344,14 +1349,14 @@ MainWindow::MainWindow(QWidget *parent)
                     details.value(QStringLiteral("priorities")).toArray());
             });
 
-    connect(client, &rpc_client::torrentPeersReceived,
+    connect(client, &TorrentBackend::torrentPeersReceived,
             this, [this](int torrentId, const QJsonObject &details) {
                 if (torrentId == currentTorrentId())
                     torrentPeersController->populate(
                         details.value(QStringLiteral("peers")).toArray());
             });
 
-    connect(client, &rpc_client::torrentTrackersReceived,
+    connect(client, &TorrentBackend::torrentTrackersReceived,
             this, [this](int torrentId, const QJsonObject &details) {
                 if (torrentId != currentTorrentId())
                     return;
@@ -1360,7 +1365,7 @@ MainWindow::MainWindow(QWidget *parent)
                 torrentTrackersController->populate(details);
             });
 
-    connect(client, &rpc_client::torrentPiecesReceived,
+    connect(client, &TorrentBackend::torrentPiecesReceived,
             this,
             [this](int torrentId, const QJsonObject &details) {
                 torrentGeneralController->updatePieces(torrentId, details);
@@ -1368,15 +1373,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Primary data path: the source model must update before observers rebuild
     // filters, counts, notifications, and status summaries.
-    connect(client, &rpc_client::torrentsReceived,
+    connect(client, &TorrentBackend::torrentsReceived,
                 torrentModel, &TorrentModel::applyUpdate);
 
     // Secondary consumers do not own torrent data and may safely derive state
     // from each completed snapshot.
-    connect(client, &rpc_client::torrentsReceived,
+    connect(client, &TorrentBackend::torrentsReceived,
             this, &MainWindow::handleTorrentsReceived);
 
-    connect(client, &rpc_client::updateFailed,
+    connect(client, &TorrentBackend::updateFailed,
             this, [this](const QString &message) {
                 if (torrentListController)
                     torrentListController->markTorrentListLoadFailed(message);
@@ -1389,16 +1394,16 @@ MainWindow::MainWindow(QWidget *parent)
                 saveSelectedServerFromCombo();
             });
 
-    connect(client, &rpc_client::freeSpaceReceived,
+    connect(client, &TorrentBackend::freeSpaceReceived,
             this, [this](const QString &, qint64 sizeBytes) {
                 if (statusBarController)
                     statusBarController->setFreeSpace(sizeBytes);
             });
 
-    connect(client, &rpc_client::torrentTrackerMetadataUpdated,
-            client, &rpc_client::getTorrentList);
+    connect(client, &TorrentBackend::torrentTrackerMetadataUpdated,
+            client, &TorrentBackend::getTorrentList);
 
-    connect(client, &rpc_client::commandSucceeded,
+    connect(client, &TorrentBackend::commandSucceeded,
             this, [this](const QString &method) {
                 // Mutating RPC responses contain little or no updated torrent
                 // state, so refresh the affected projections explicitly.
@@ -1460,7 +1465,7 @@ MainWindow::MainWindow(QWidget *parent)
                 }
             });
 
-    connect(client, &rpc_client::commandFailed,
+    connect(client, &TorrentBackend::commandFailed,
             this, [this](const QString &method, const QString &message) {
                 if (method == QStringLiteral("session-set"))
                     updateAlternativeSpeedAction(confirmedAlternativeSpeedEnabled,
@@ -1494,8 +1499,8 @@ void MainWindow::updateTorrentList()
 void MainWindow::showDiagnostics()
 {
     DiagnosticsDialog dialog(cachedSessionSettings,
-                             client ? client->getServer() : QString(),
-                             client ? client->getRpcUrl() : QString(),
+                             client ? client->serverDisplayName() : QString(),
+                             client ? client->endpointUrl() : QString(),
                              geoIpService,
                              updateIntervalMs(),
                              this);
@@ -1681,7 +1686,7 @@ void MainWindow::onServerSetupTriggered()
                 notificationController->resetBaseline();
             }
             if (statusBarController)
-                statusBarController->showMessage(client->getServer());
+                statusBarController->showMessage(client->serverDisplayName());
             if (torrentListController)
                 torrentListController->beginTorrentListRefresh();
             client->getTorrentList();
@@ -1899,7 +1904,7 @@ void MainWindow::saveSelectedServerFromCombo()
 
     if (statusBarController) {
         statusBarController->showMessage(
-            tr("Selected server: %1").arg(client->getServer()),
+            tr("Selected server: %1").arg(client->serverDisplayName()),
             3000
             );
     }
@@ -2064,7 +2069,7 @@ void MainWindow::setupConnectionStatusIndicator()
 {
     statusBarController = new StatusBarController(ui->statusbar, client, this);
     statusBarController->setup();
-    statusBarController->setServerName(client->getServer());
+    statusBarController->setServerName(client->serverDisplayName());
 
     connect(statusBarController, &StatusBarController::alternativeSpeedToggleRequested,
             this, [this]() {
@@ -2420,21 +2425,21 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     dialog.setSessionSettings(sessionSettings);
 
     connect(&dialog, &SessionSettingsDialog::portTestRequested,
-            client, &rpc_client::testPortForwarding);
+            client, &TorrentBackend::testPortForwarding);
 
-    connect(client, &rpc_client::portTestFinished,
+    connect(client, &TorrentBackend::portTestFinished,
             &dialog, &SessionSettingsDialog::setPortTestResult);
 
-    connect(client, &rpc_client::portTestFailed,
+    connect(client, &TorrentBackend::portTestFailed,
             &dialog, &SessionSettingsDialog::setPortTestFailed);
 
     connect(&dialog, &SessionSettingsDialog::blocklistUpdateRequested,
-            client, &rpc_client::updateBlocklist);
+            client, &TorrentBackend::updateBlocklist);
 
-    connect(client, &rpc_client::blocklistUpdateFinished,
+    connect(client, &TorrentBackend::blocklistUpdateFinished,
             &dialog, &SessionSettingsDialog::setBlocklistUpdateResult);
 
-    connect(client, &rpc_client::blocklistUpdateFailed,
+    connect(client, &TorrentBackend::blocklistUpdateFailed,
             &dialog, &SessionSettingsDialog::setBlocklistUpdateFailed);
 
     if (dialog.exec() != QDialog::Accepted)

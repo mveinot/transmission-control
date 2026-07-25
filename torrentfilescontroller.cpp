@@ -2,7 +2,7 @@
 
 #include "appicons.h"
 #include "percentfilldelegate.h"
-#include "rpc_client.h"
+#include "torrentbackend.h"
 #include "settingskeys.h"
 #include "tablecolumncontroller.h"
 #include "tableplaceholdercontroller.h"
@@ -74,7 +74,7 @@ bool isComplete(qint64 length, qint64 bytesCompleted)
 
 TorrentFilesController::TorrentFilesController(QTreeWidget *fileTreeWidget,
                                                QLineEdit *filterEdit,
-                                               rpc_client *client,
+                                               TorrentBackend *client,
                                                QWidget *dialogParent,
                                                QObject *parent)
     : QObject(parent)

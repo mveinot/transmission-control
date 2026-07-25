@@ -1,6 +1,6 @@
 #include "torrenttrackerscontroller.h"
 
-#include "rpc_client.h"
+#include "torrentbackend.h"
 #include "settingskeys.h"
 #include "tablecolumncontroller.h"
 #include "tableplaceholdercontroller.h"
@@ -22,7 +22,7 @@
 #include <QTableWidgetItem>
 
 TorrentTrackersController::TorrentTrackersController(QTableWidget *trackerTableWidget,
-                                                     rpc_client *client,
+                                                     TorrentBackend *client,
                                                      QWidget *dialogParent,
                                                      QObject *parent)
     : QObject(parent)

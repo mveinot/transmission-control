@@ -8,7 +8,7 @@
 #include <QStringList>
 
 class QWidget;
-class rpc_client;
+class TorrentBackend;
 
 // Orchestrates validation, metadata preview, remembered add options, and the
 // final RPC call for file and magnet sources.
@@ -17,7 +17,7 @@ class TorrentAddController : public QObject
     Q_OBJECT
 
 public:
-    explicit TorrentAddController(rpc_client *client,
+    explicit TorrentAddController(TorrentBackend *client,
                                   QWidget *dialogParent,
                                   QObject *parent = nullptr);
 
@@ -35,7 +35,7 @@ signals:
     void addFailed(const QString &message);
 
 private:
-    rpc_client *m_client = nullptr;
+    TorrentBackend *m_client = nullptr;
     QWidget *m_dialogParent = nullptr;
 
     QString m_defaultDownloadDir;

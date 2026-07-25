@@ -228,7 +228,7 @@ void NotificationController::setServerName(const QString &serverName)
 void NotificationController::handleTorrentAdded(int torrentId, const QString &name)
 {
     emit activityEventObserved(tr("Torrent added"),
-                               name.isEmpty() ? tr("Transmission accepted a new torrent.") : name,
+                               name.isEmpty() ? tr("The torrent server accepted a new torrent.") : name,
                                m_serverName);
 
     if (torrentId >= 0)
@@ -243,7 +243,7 @@ void NotificationController::handleTorrentAdded(int torrentId, const QString &na
     context.server = m_serverName;
     context.timestamp = QDateTime::currentDateTime().toString(Qt::ISODate);
     dispatchEvent(tr("Torrent added"),
-                  name.isEmpty() ? tr("Transmission accepted a new torrent.") : name,
+                  name.isEmpty() ? tr("The torrent server accepted a new torrent.") : name,
                   context, 5000);
 }
 

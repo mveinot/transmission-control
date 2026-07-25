@@ -1,6 +1,6 @@
 #include "torrentaddcontroller.h"
 
-#include "rpc_client.h"
+#include "torrentbackend.h"
 #include "torrentmetadataparser.h"
 #include "settingskeys.h"
 
@@ -30,7 +30,7 @@ bool TorrentAddController::deleteTorrentFileOnSuccessfulAdd() const
     return settings.value(SettingsKeys::DeleteTorrentOnAdd, false).toBool();
 }
 
-TorrentAddController::TorrentAddController(rpc_client *client,
+TorrentAddController::TorrentAddController(TorrentBackend *client,
                                            QWidget *dialogParent,
                                            QObject *parent)
     : QObject(parent)
@@ -81,7 +81,7 @@ void TorrentAddController::addTorrentFiles(const QStringList &filePaths)
     }
 
     if (!m_client) {
-        emit addFailed(tr("No Transmission client is available."));
+        emit addFailed(tr("No torrent backend is available."));
         return;
     }
 
@@ -122,7 +122,7 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
                                         const QString &source)
 {
     if (!m_client) {
-        emit addFailed(tr("No Transmission client is available."));
+        emit addFailed(tr("No torrent backend is available."));
         return false;
     }
 
@@ -133,7 +133,7 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
                          ? displaySourceForFile(source)
                          : source);
 
-    // Local parsing is preview-only; Transmission remains authoritative.
+    // Local parsing is preview-only; the remote backend remains authoritative.
     if (sourceType == TorrentAddDialog::SourceType::TorrentFile)
         dialog.setTorrentMetadata(TorrentMetadataParser::parseTorrentFile(source));
 
@@ -215,7 +215,7 @@ void TorrentAddController::addTorrentFileUsingDefaults(const QString &filePath)
     }
 
     if (!m_client) {
-        emit addFailed(tr("No Transmission client is available."));
+        emit addFailed(tr("No torrent backend is available."));
         return;
     }
 

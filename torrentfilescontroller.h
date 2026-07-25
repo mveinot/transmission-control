@@ -17,7 +17,7 @@ class QLineEdit;
 class QTreeWidget;
 class QTreeWidgetItem;
 class QWidget;
-class rpc_client;
+class TorrentBackend;
 class TableColumnController;
 class TablePlaceholderController;
 
@@ -30,7 +30,7 @@ class TorrentFilesController : public QObject
 public:
     explicit TorrentFilesController(QTreeWidget *fileTreeWidget,
                                     QLineEdit *filterEdit,
-                                    rpc_client *client,
+                                    TorrentBackend *client,
                                     QWidget *dialogParent,
                                     QObject *parent = nullptr);
     ~TorrentFilesController() override;
@@ -127,7 +127,7 @@ private:
 
     QTreeWidget *fileTreeWidget = nullptr;
     QLineEdit *filterEdit = nullptr;
-    rpc_client *client = nullptr;
+    TorrentBackend *client = nullptr;
     QWidget *dialogParent = nullptr;
     int torrentId = -1;
     QString torrentDownloadDir;

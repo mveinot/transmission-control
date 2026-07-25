@@ -509,7 +509,7 @@ QString torrent::getHealthDetails() const
 {
     if (hasError()) {
         return errorString.isEmpty()
-            ? QStringLiteral("Transmission reports an error for this torrent.")
+            ? QStringLiteral("The torrent backend reports an error for this torrent.")
             : errorString;
     }
 

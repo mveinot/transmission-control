@@ -6,7 +6,7 @@
 #include <QSet>
 #include <QFile>
 #include <QFileInfo>
-#include "rpc_client.h"
+#include "transmissionbackend.h"
 #include "settingskeys.h"
 
 namespace {
@@ -67,15 +67,15 @@ static bool sessionSupportsSequentialDownload(const QJsonObject &settings)
     return semverAtLeast(rpcVersionSemver, 6, 0, 0);
 }
 
-rpc_client::rpc_client(QObject *parent)
-    : QObject(parent)
+TransmissionBackend::TransmissionBackend(QObject *parent)
+    : TorrentBackend(parent)
     , na_manager(new QNetworkAccessManager(this))
 {
     connect(na_manager, &QNetworkAccessManager::finished,
-            this, &rpc_client::replyFinished);
+            this, &TransmissionBackend::replyFinished);
 }
 
-void rpc_client::init()
+void TransmissionBackend::init()
 {
     if (!loadCurrentServerFromSettings()) {
         qWarning() << "No valid Transmission server configured.";
@@ -86,7 +86,7 @@ void rpc_client::init()
     getTorrentList();
 }
 
-void rpc_client::postRpc(const QString &method,
+void TransmissionBackend::postRpc(const QString &method,
                          const QJsonObject &arguments,
                          RpcRequestType type)
 {
@@ -98,7 +98,7 @@ void rpc_client::postRpc(const QString &method,
     postRpc(context);
 }
 
-void rpc_client::postRpc(const RpcRequestContext &context)
+void TransmissionBackend::postRpc(const RpcRequestContext &context)
 {
     QNetworkRequest request = makeRequest();
 
@@ -120,7 +120,7 @@ void rpc_client::postRpc(const RpcRequestContext &context)
 }
 
 
-void rpc_client::postIdsCommand(const QString &method, const QList<int> &ids)
+void TransmissionBackend::postIdsCommand(const QString &method, const QList<int> &ids)
 {
     if (ids.isEmpty())
         return;
@@ -131,7 +131,7 @@ void rpc_client::postIdsCommand(const QString &method, const QList<int> &ids)
     postRpc(method, arguments, RpcRequestType::Command);
 }
 
-void rpc_client::postSingleTorrentSet(int torrentId, const QJsonObject &arguments)
+void TransmissionBackend::postSingleTorrentSet(int torrentId, const QJsonObject &arguments)
 {
     if (torrentId < 0 || arguments.isEmpty())
         return;
@@ -142,7 +142,7 @@ void rpc_client::postSingleTorrentSet(int torrentId, const QJsonObject &argument
     postRpc(QStringLiteral("torrent-set"), payload, RpcRequestType::Command);
 }
 
-bool rpc_client::isTorrentDetailRequest(RpcRequestType type)
+bool TransmissionBackend::isTorrentDetailRequest(RpcRequestType type)
 {
     return type == RpcRequestType::TorrentDetails
         || type == RpcRequestType::TorrentFiles
@@ -151,7 +151,7 @@ bool rpc_client::isTorrentDetailRequest(RpcRequestType type)
         || type == RpcRequestType::TorrentPieces;
 }
 
-bool rpc_client::prepareTorrentDetailRequest(RpcRequestType type, int torrentId)
+bool TransmissionBackend::prepareTorrentDetailRequest(RpcRequestType type, int torrentId)
 {
     QList<QNetworkReply *> obsoleteReplies;
 
@@ -177,7 +177,7 @@ bool rpc_client::prepareTorrentDetailRequest(RpcRequestType type, int torrentId)
     return true;
 }
 
-void rpc_client::cancelTorrentDetailRequests()
+void TransmissionBackend::cancelTorrentDetailRequests()
 {
     QList<QNetworkReply *> obsoleteReplies;
 
@@ -193,7 +193,7 @@ void rpc_client::cancelTorrentDetailRequests()
     }
 }
 
-void rpc_client::replyFinished(QNetworkReply *reply)
+void TransmissionBackend::replyFinished(QNetworkReply *reply)
 {
     /*
      * A server change removes its outstanding replies from pendingRequests
@@ -338,7 +338,10 @@ void rpc_client::replyFinished(QNetworkReply *reply)
         const QJsonObject arguments =
             root.value("arguments").toObject();
 
-        m_sequentialDownloadSupported = sessionSupportsSequentialDownload(arguments);
+        const bool sequentialDownloadWasSupported =
+            m_sequentialDownloadSupported;
+        m_sequentialDownloadSupported =
+            sessionSupportsSequentialDownload(arguments);
         const int rpcVersion = arguments.value(QStringLiteral("rpc-version")).toInt(
             arguments.value(QStringLiteral("rpc_version")).toInt());
         const bool labelsWereSupported = m_torrentLabelsSupported;
@@ -352,10 +355,18 @@ void rpc_client::replyFinished(QNetworkReply *reply)
 
         emit sessionSettingsReceived(arguments);
 
-        if (labelsWereSupported != m_torrentLabelsSupported
-            || groupsWereSupported != m_torrentGroupsSupported) {
+        const bool listFieldsChanged =
+            labelsWereSupported != m_torrentLabelsSupported
+            || groupsWereSupported != m_torrentGroupsSupported;
+        const bool capabilitiesDidChange =
+            listFieldsChanged
+            || sequentialDownloadWasSupported != m_sequentialDownloadSupported;
+
+        if (capabilitiesDidChange)
+            emit capabilitiesChanged(capabilities());
+
+        if (listFieldsChanged)
             getTorrentList();
-        }
         return;
     }
 
@@ -590,13 +601,13 @@ void rpc_client::replyFinished(QNetworkReply *reply)
     }
 }
 
-void rpc_client::setSessionToken(QByteArray token)
+void TransmissionBackend::setSessionToken(QByteArray token)
 {
     _session_token = token;
     _clientReady = true;
 }
 
-rpc_client::TransmissionServer rpc_client::readServerFromSettings(int index, bool *ok)
+TransmissionBackend::TransmissionServer TransmissionBackend::readServerFromSettings(int index, bool *ok)
 {
     if (ok)
         *ok = false;
@@ -626,7 +637,7 @@ rpc_client::TransmissionServer rpc_client::readServerFromSettings(int index, boo
     return server;
 }
 
-bool rpc_client::loadCurrentServerFromSettings()
+bool TransmissionBackend::loadCurrentServerFromSettings()
 {
     QSettings settings;
 
@@ -655,7 +666,7 @@ bool rpc_client::loadCurrentServerFromSettings()
     return setServerFromSettingsIndex(0);
 }
 
-bool rpc_client::setServerFromSettingsIndex(int index)
+bool TransmissionBackend::setServerFromSettingsIndex(int index)
 {
     bool ok = false;
     const TransmissionServer server = readServerFromSettings(index, &ok);
@@ -667,7 +678,7 @@ bool rpc_client::setServerFromSettingsIndex(int index)
     return true;
 }
 
-void rpc_client::setServer(const TransmissionServer &server)
+void TransmissionBackend::setServer(const TransmissionServer &server)
 {
     /*
      * Do not allow responses from the previous server to update the new
@@ -702,7 +713,12 @@ void rpc_client::setServer(const TransmissionServer &server)
     emit serverChanged();
 }
 
-QString rpc_client::getServer()
+QString TransmissionBackend::backendName() const
+{
+    return QStringLiteral("Transmission");
+}
+
+QString TransmissionBackend::serverDisplayName() const
 {
     if (!serverName.isEmpty())
         return serverName;
@@ -713,13 +729,31 @@ QString rpc_client::getServer()
     return tr("No server configured");
 }
 
-QString rpc_client::getRpcUrl() const
+QString TransmissionBackend::endpointUrl() const
 {
     return rpcUrl;
 }
 
+TorrentBackendCapabilities TransmissionBackend::capabilities() const
+{
+    TorrentBackendCapabilities result;
+    result.forceStart = true;
+    result.queueManagement = true;
+    result.sequentialDownload = m_sequentialDownloadSupported;
+    result.labels = m_torrentLabelsSupported;
+    result.groups = m_torrentGroupsSupported;
+    result.trackerEditing = true;
+    result.pathRenaming = true;
+    result.sessionSettings = true;
+    result.sessionStatistics = true;
+    result.freeSpaceQuery = true;
+    result.portTest = true;
+    result.blocklistUpdate = true;
+    return result;
+}
 
-void rpc_client::getTorrentList()
+
+void TransmissionBackend::getTorrentList()
 {
     if (rpcUrl.trimmed().isEmpty()) {
         emit updateFailed(tr("No Transmission server configured."));
@@ -771,7 +805,7 @@ void rpc_client::getTorrentList()
     postRpc("torrent-get", arguments, RpcRequestType::TorrentGet);
 }
 
-void rpc_client::getTorrentTrackerMetadata()
+void TransmissionBackend::getTorrentTrackerMetadata()
 {
     for (auto it = pendingRequests.cbegin(); it != pendingRequests.cend(); ++it) {
         if (it.value().type == RpcRequestType::TorrentListTrackers)
@@ -787,7 +821,7 @@ void rpc_client::getTorrentTrackerMetadata()
             RpcRequestType::TorrentListTrackers);
 }
 
-QByteArray rpc_client::makeRpcPayload(const QString &method,
+QByteArray TransmissionBackend::makeRpcPayload(const QString &method,
                                       const QJsonObject &arguments) const
 {
     QJsonObject root;
@@ -799,7 +833,7 @@ QByteArray rpc_client::makeRpcPayload(const QString &method,
     return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }
 
-QNetworkRequest rpc_client::makeRequest() const
+QNetworkRequest TransmissionBackend::makeRequest() const
 {
     QNetworkRequest request((QUrl(rpcUrl)));
 
@@ -820,7 +854,7 @@ QNetworkRequest rpc_client::makeRequest() const
     return request;
 }
 
-void rpc_client::addTorrentFromFile(const QString &filePath,
+void TransmissionBackend::addTorrentFromFile(const QString &filePath,
                                     bool deleteFileOnSuccess)
 {
     QFile file(filePath);
@@ -864,7 +898,7 @@ void rpc_client::addTorrentFromFile(const QString &filePath,
     postRpc(context);
 }
 
-void rpc_client::addTorrentFromMagnet(const QString &magnetLink)
+void TransmissionBackend::addTorrentFromMagnet(const QString &magnetLink)
 {
     const QString trimmedLink = magnetLink.trimmed();
 
@@ -879,32 +913,32 @@ void rpc_client::addTorrentFromMagnet(const QString &magnetLink)
     postRpc("torrent-add", arguments, RpcRequestType::Command);
 }
 
-void rpc_client::startTorrents(const QList<int> &ids)
+void TransmissionBackend::startTorrents(const QList<int> &ids)
 {
     postIdsCommand(QStringLiteral("torrent-start"), ids);
 }
 
-void rpc_client::startAllTorrents()
+void TransmissionBackend::startAllTorrents()
 {
     postRpc(QStringLiteral("torrent-start"), QJsonObject(), RpcRequestType::Command);
 }
 
-void rpc_client::startTorrentsNow(const QList<int> &ids)
+void TransmissionBackend::startTorrentsNow(const QList<int> &ids)
 {
     postIdsCommand(QStringLiteral("torrent-start-now"), ids);
 }
 
-void rpc_client::stopTorrents(const QList<int> &ids)
+void TransmissionBackend::stopTorrents(const QList<int> &ids)
 {
     postIdsCommand(QStringLiteral("torrent-stop"), ids);
 }
 
-void rpc_client::stopAllTorrents()
+void TransmissionBackend::stopAllTorrents()
 {
     postRpc(QStringLiteral("torrent-stop"), QJsonObject(), RpcRequestType::Command);
 }
 
-void rpc_client::removeTorrents(const QList<int> &ids, bool deleteLocalData)
+void TransmissionBackend::removeTorrents(const QList<int> &ids, bool deleteLocalData)
 {
     if (ids.isEmpty())
         return;
@@ -916,17 +950,17 @@ void rpc_client::removeTorrents(const QList<int> &ids, bool deleteLocalData)
     postRpc("torrent-remove", arguments, RpcRequestType::Command);
 }
 
-void rpc_client::verifyTorrents(const QList<int> &ids)
+void TransmissionBackend::verifyTorrents(const QList<int> &ids)
 {
     postIdsCommand(QStringLiteral("torrent-verify"), ids);
 }
 
-void rpc_client::reannounceTorrents(const QList<int> &ids)
+void TransmissionBackend::reannounceTorrents(const QList<int> &ids)
 {
     postIdsCommand(QStringLiteral("torrent-reannounce"), ids);
 }
 
-void rpc_client::setTorrentLocation(const QList<int> &ids,
+void TransmissionBackend::setTorrentLocation(const QList<int> &ids,
                                     const QString &location,
                                     bool moveData)
 {
@@ -945,7 +979,7 @@ void rpc_client::setTorrentLocation(const QList<int> &ids,
             RpcRequestType::Command);
 }
 
-void rpc_client::getTorrentDetails(int id)
+void TransmissionBackend::getTorrentDetails(int id)
 {
     if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentDetails, id))
         return;
@@ -1028,7 +1062,7 @@ void rpc_client::getTorrentDetails(int id)
     postRpc("torrent-get", arguments, RpcRequestType::TorrentDetails);
 }
 
-void rpc_client::getTorrentFiles(int id)
+void TransmissionBackend::getTorrentFiles(int id)
 {
     if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentFiles, id))
         return;
@@ -1043,7 +1077,7 @@ void rpc_client::getTorrentFiles(int id)
     postRpc(QStringLiteral("torrent-get"), arguments, RpcRequestType::TorrentFiles);
 }
 
-void rpc_client::getTorrentPeers(int id)
+void TransmissionBackend::getTorrentPeers(int id)
 {
     if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentPeers, id))
         return;
@@ -1056,7 +1090,7 @@ void rpc_client::getTorrentPeers(int id)
     postRpc(QStringLiteral("torrent-get"), arguments, RpcRequestType::TorrentPeers);
 }
 
-void rpc_client::getTorrentTrackers(int id)
+void TransmissionBackend::getTorrentTrackers(int id)
 {
     if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentTrackers, id))
         return;
@@ -1071,7 +1105,7 @@ void rpc_client::getTorrentTrackers(int id)
 }
 
 
-void rpc_client::getTorrentPieces(int id)
+void TransmissionBackend::getTorrentPieces(int id)
 {
     if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentPieces, id))
         return;
@@ -1134,7 +1168,7 @@ void rpc_client::getTorrentPieces(int id)
             RpcRequestType::TorrentPieces);
 }
 
-void rpc_client::getTorrentProperties(int id)
+void TransmissionBackend::getTorrentProperties(int id)
 {
     if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentProperties, id))
         return;
@@ -1226,7 +1260,7 @@ void rpc_client::getTorrentProperties(int id)
             RpcRequestType::TorrentProperties);
 }
 
-void rpc_client::setTorrentFilesWanted(int torrentId,
+void TransmissionBackend::setTorrentFilesWanted(int torrentId,
                                        const QList<int> &fileIndices,
                                        bool wanted)
 {
@@ -1244,7 +1278,7 @@ void rpc_client::setTorrentFilesWanted(int torrentId,
     postRpc("torrent-set", arguments, RpcRequestType::Command);
 }
 
-void rpc_client::setTorrentFilesPriority(int torrentId,
+void TransmissionBackend::setTorrentFilesPriority(int torrentId,
                                          const QList<int> &fileIndices,
                                          int priority)
 {
@@ -1270,7 +1304,7 @@ void rpc_client::setTorrentFilesPriority(int torrentId,
     postRpc("torrent-set", arguments, RpcRequestType::Command);
 }
 
-void rpc_client::setTorrentFilesWantedAndPriority(int torrentId,
+void TransmissionBackend::setTorrentFilesWantedAndPriority(int torrentId,
                                                   const QList<int> &fileIndices,
                                                   bool wanted,
                                                   int priority)
@@ -1304,7 +1338,7 @@ void rpc_client::setTorrentFilesWantedAndPriority(int torrentId,
 }
 
 
-void rpc_client::addTorrentTracker(int torrentId, const QString &announceUrl)
+void TransmissionBackend::addTorrentTracker(int torrentId, const QString &announceUrl)
 {
     const QString trimmedUrl = announceUrl.trimmed();
 
@@ -1320,7 +1354,7 @@ void rpc_client::addTorrentTracker(int torrentId, const QString &announceUrl)
             RpcRequestType::Command);
 }
 
-void rpc_client::editTorrentTracker(int torrentId,
+void TransmissionBackend::editTorrentTracker(int torrentId,
                                     int trackerId,
                                     const QString &announceUrl)
 {
@@ -1340,7 +1374,7 @@ void rpc_client::editTorrentTracker(int torrentId,
             RpcRequestType::Command);
 }
 
-void rpc_client::removeTorrentTracker(int torrentId, int trackerId)
+void TransmissionBackend::removeTorrentTracker(int torrentId, int trackerId)
 {
     if (torrentId < 0 || trackerId < 0)
         return;
@@ -1354,7 +1388,7 @@ void rpc_client::removeTorrentTracker(int torrentId, int trackerId)
             RpcRequestType::Command);
 }
 
-void rpc_client::renameTorrentPath(int torrentId,
+void TransmissionBackend::renameTorrentPath(int torrentId,
                                    const QString &path,
                                    const QString &newName)
 {
@@ -1374,7 +1408,7 @@ void rpc_client::renameTorrentPath(int torrentId,
             RpcRequestType::Command);
 }
 
-void rpc_client::setTorrentProperties(int torrentId,
+void TransmissionBackend::setTorrentProperties(int torrentId,
                                       const QJsonObject &properties)
 {
     if (torrentId < 0 || properties.isEmpty())
@@ -1388,7 +1422,7 @@ void rpc_client::setTorrentProperties(int torrentId,
             RpcRequestType::Command);
 }
 
-void rpc_client::setTorrentsSequentialDownload(const QList<int> &ids,
+void TransmissionBackend::setTorrentsSequentialDownload(const QList<int> &ids,
                                                bool enabled)
 {
     if (ids.isEmpty())
@@ -1403,7 +1437,7 @@ void rpc_client::setTorrentsSequentialDownload(const QList<int> &ids,
             RpcRequestType::Command);
 }
 
-void rpc_client::setTorrentsBandwidthPriority(const QList<int> &ids,
+void TransmissionBackend::setTorrentsBandwidthPriority(const QList<int> &ids,
                                               int priority)
 {
     if (ids.isEmpty())
@@ -1418,27 +1452,27 @@ void rpc_client::setTorrentsBandwidthPriority(const QList<int> &ids,
             RpcRequestType::Command);
 }
 
-void rpc_client::queueMoveTop(const QList<int> &ids)
+void TransmissionBackend::queueMoveTop(const QList<int> &ids)
 {
     postIdsCommand(QStringLiteral("queue-move-top"), ids);
 }
 
-void rpc_client::queueMoveUp(const QList<int> &ids)
+void TransmissionBackend::queueMoveUp(const QList<int> &ids)
 {
     postIdsCommand(QStringLiteral("queue-move-up"), ids);
 }
 
-void rpc_client::queueMoveDown(const QList<int> &ids)
+void TransmissionBackend::queueMoveDown(const QList<int> &ids)
 {
     postIdsCommand(QStringLiteral("queue-move-down"), ids);
 }
 
-void rpc_client::queueMoveBottom(const QList<int> &ids)
+void TransmissionBackend::queueMoveBottom(const QList<int> &ids)
 {
     postIdsCommand(QStringLiteral("queue-move-bottom"), ids);
 }
 
-void rpc_client::getSessionSettings()
+void TransmissionBackend::getSessionSettings()
 {
     QJsonObject arguments;
 
@@ -1490,14 +1524,14 @@ void rpc_client::getSessionSettings()
     postRpc("session-get", arguments, RpcRequestType::SessionGet);
 }
 
-void rpc_client::getSessionStatistics()
+void TransmissionBackend::getSessionStatistics()
 {
     postRpc(QStringLiteral("session-stats"),
             QJsonObject(),
             RpcRequestType::SessionStats);
 }
 
-void rpc_client::setSessionSettings(const QJsonObject &settings)
+void TransmissionBackend::setSessionSettings(const QJsonObject &settings)
 {
     if (settings.isEmpty())
         return;
@@ -1505,7 +1539,7 @@ void rpc_client::setSessionSettings(const QJsonObject &settings)
     postRpc("session-set", settings, RpcRequestType::Command);
 }
 
-void rpc_client::updateBlocklist(const QJsonObject &changedSettings)
+void TransmissionBackend::updateBlocklist(const QJsonObject &changedSettings)
 {
     if (changedSettings.isEmpty()) {
         postRpc(QStringLiteral("blocklist-update"), QJsonObject(),
@@ -1521,7 +1555,7 @@ void rpc_client::updateBlocklist(const QJsonObject &changedSettings)
     postRpc(context);
 }
 
-void rpc_client::getFreeSpace(const QString &path)
+void TransmissionBackend::getFreeSpace(const QString &path)
 {
     if (path.trimmed().isEmpty())
         return;
@@ -1532,12 +1566,12 @@ void rpc_client::getFreeSpace(const QString &path)
     postRpc(QStringLiteral("free-space"), arguments, RpcRequestType::FreeSpace);
 }
 
-void rpc_client::testPortForwarding()
+void TransmissionBackend::testPortForwarding()
 {
     postRpc(QStringLiteral("port-test"), QJsonObject(), RpcRequestType::PortTest);
 }
 
-void rpc_client::addTorrentFile(const QString &filePath,
+void TransmissionBackend::addTorrentFile(const QString &filePath,
                                 const QString &downloadDir,
                                 bool paused,
                                 const QList<int> &filesUnwanted,
@@ -1600,7 +1634,7 @@ void rpc_client::addTorrentFile(const QString &filePath,
     postRpc(context);
 }
 
-void rpc_client::addMagnetLink(const QString &magnetLink,
+void TransmissionBackend::addMagnetLink(const QString &magnetLink,
                                const QString &downloadDir,
                                bool paused)
 {

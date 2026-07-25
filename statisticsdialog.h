@@ -6,7 +6,7 @@
 
 class QLabel;
 class QPushButton;
-class rpc_client;
+class TorrentBackend;
 
 // Short-lived view over Transmission session statistics. RPC responses are
 // scoped to the dialog through QObject connection contexts.
@@ -15,7 +15,7 @@ class StatisticsDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit StatisticsDialog(rpc_client *client, QWidget *parent = nullptr);
+    explicit StatisticsDialog(TorrentBackend *client, QWidget *parent = nullptr);
 
 private slots:
     void refresh();
@@ -33,7 +33,7 @@ public:
     };
 
 private:
-    rpc_client *m_client = nullptr;
+    TorrentBackend *m_client = nullptr;
     StatisticLabels m_currentLabels;
     StatisticLabels m_cumulativeLabels;
     QPushButton *m_refreshButton = nullptr;

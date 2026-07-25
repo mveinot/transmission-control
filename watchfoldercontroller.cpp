@@ -1,6 +1,6 @@
 #include "watchfoldercontroller.h"
 
-#include "rpc_client.h"
+#include "torrentbackend.h"
 #include "settingskeys.h"
 #include "torrentaddcontroller.h"
 #include "watchfoldermanager.h"
@@ -11,7 +11,7 @@
 
 WatchFolderController::WatchFolderController(WatchFolderManager *manager,
                                              TorrentAddController *torrentAddController,
-                                             rpc_client *client,
+                                             TorrentBackend *client,
                                              QObject *parent)
     : QObject(parent)
     , m_manager(manager)
@@ -28,10 +28,10 @@ void WatchFolderController::setup()
     connect(m_manager, &WatchFolderManager::torrentFileReady,
             m_torrentAddController, &TorrentAddController::addTorrentFileUsingDefaults);
 
-    connect(m_client, &rpc_client::torrentFileAddSucceeded,
+    connect(m_client, &TorrentBackend::torrentFileAddSucceeded,
             m_manager, &WatchFolderManager::markTorrentFileProcessed);
 
-    connect(m_client, &rpc_client::torrentFileAddFailed,
+    connect(m_client, &TorrentBackend::torrentFileAddFailed,
             this, &WatchFolderController::handleTorrentFileAddFailed);
 
     connect(m_manager, &WatchFolderManager::statusMessage,
@@ -48,7 +48,7 @@ void WatchFolderController::setup()
             this, [this](const QString &) {
                 /*
                  * The add controller emits addStarted too, but this delayed refresh
-                 * keeps watch-folder behavior resilient when Transmission accepts
+                 * keeps watch-folder behavior resilient when the backend accepts
                  * the add before the next normal polling interval.
                  */
                 QTimer::singleShot(1000, this, [this]() {

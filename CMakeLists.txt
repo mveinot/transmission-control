@@ -88,8 +88,11 @@ set(PROJECT_SOURCES
         mainwindow.cpp
         mainwindow.h
         mainwindow.ui
-        rpc_client.h
-        rpc_client.cpp
+        transmissionbackend.h
+        transmissionbackend.cpp
+        torrentbackend.h
+        torrentbackendfactory.h
+        torrentbackendfactory.cpp
         torrent.h
         torrent.cpp
         dialogabout.cpp

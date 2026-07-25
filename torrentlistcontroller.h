@@ -13,7 +13,7 @@ class QModelIndex;
 class QPoint;
 class QTableView;
 class QWidget;
-class rpc_client;
+class TorrentBackend;
 class TorrentSortProxyModel;
 class TablePlaceholderController;
 
@@ -36,7 +36,7 @@ public:
 
     explicit TorrentListController(QTableView *tableView,
                                    TorrentSortProxyModel *proxyModel,
-                                   rpc_client *client,
+                                   TorrentBackend *client,
                                    QWidget *dialogParent,
                                    QObject *parent = nullptr);
 
@@ -94,7 +94,7 @@ signals:
 private:
     QTableView *m_tableView = nullptr;
     TorrentSortProxyModel *m_proxyModel = nullptr;
-    rpc_client *m_client = nullptr;
+    TorrentBackend *m_client = nullptr;
     QWidget *m_dialogParent = nullptr;
     ActionSet m_actions;
 
@@ -116,7 +116,7 @@ private:
     QString m_torrentListLoadFailureMessage;
     std::unique_ptr<TablePlaceholderController> m_placeholderController;
 
-    void invokeSelectedTorrentCommand(void (rpc_client::*command)(const QList<int> &),
+    void invokeSelectedTorrentCommand(void (TorrentBackend::*command)(const QList<int> &),
                                       const QString &message);
     void copyTextToClipboard(const QString &text,
                              const QString &statusMessage);

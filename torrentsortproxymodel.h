@@ -29,7 +29,7 @@ public:
     StateFilter stateFilter() const;
 
     // Shared by proxy row filtering and sidebar counts so both surfaces apply
-    // exactly the same interpretation of Transmission's status values.
+    // exactly the same interpretation of the normalized backend status.
     static bool matchesState(StateFilter filter,
                              int statusValue,
                              double percentDone,

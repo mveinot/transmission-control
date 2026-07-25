@@ -1,6 +1,6 @@
 #include "torrentpropertiesdialog.h"
 
-#include "rpc_client.h"
+#include "torrentbackend.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -65,7 +65,7 @@ int comboIndexForData(QComboBox *combo, int value)
 }
 }
 
-TorrentPropertiesDialog::TorrentPropertiesDialog(rpc_client *client,
+TorrentPropertiesDialog::TorrentPropertiesDialog(TorrentBackend *client,
                                                  int torrentId,
                                                  QWidget *parent)
     : QDialog(parent)
@@ -75,13 +75,13 @@ TorrentPropertiesDialog::TorrentPropertiesDialog(rpc_client *client,
     buildUi();
     setControlsEnabled(false);
 
-    connect(m_client, &rpc_client::torrentPropertiesReceived,
+    connect(m_client, &TorrentBackend::torrentPropertiesReceived,
             this, &TorrentPropertiesDialog::handlePropertiesReceived);
 
-    connect(m_client, &rpc_client::commandSucceeded,
+    connect(m_client, &TorrentBackend::commandSucceeded,
             this, &TorrentPropertiesDialog::handleCommandSucceeded);
 
-    connect(m_client, &rpc_client::commandFailed,
+    connect(m_client, &TorrentBackend::commandFailed,
             this, &TorrentPropertiesDialog::handleCommandFailed);
 
     QTimer::singleShot(0, this, [this]() {

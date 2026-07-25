@@ -10,7 +10,7 @@
 class QLabel;
 class QEvent;
 class QStatusBar;
-class rpc_client;
+class TorrentBackend;
 
 // Coordinates status-bar presentation for connection activity, aggregate
 // transfer rates, free space, and application-level shortcuts.
@@ -20,7 +20,7 @@ class StatusBarController : public QObject
 
 public:
     explicit StatusBarController(QStatusBar *statusBar,
-                                 rpc_client *client,
+                                 TorrentBackend *client,
                                  QObject *parent = nullptr);
 
     void setup();
@@ -46,7 +46,7 @@ protected:
 
 private:
     QStatusBar *m_statusBar = nullptr;
-    rpc_client *m_client = nullptr;
+    TorrentBackend *m_client = nullptr;
 
     QLabel *m_activityLabel = nullptr;
     QLabel *m_serverLabel = nullptr;

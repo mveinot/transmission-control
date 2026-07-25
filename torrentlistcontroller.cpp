@@ -1,6 +1,6 @@
 #include "torrentlistcontroller.h"
 
-#include "rpc_client.h"
+#include "torrentbackend.h"
 #include "settingskeys.h"
 #include "torrentmodel.h"
 #include "torrentpropertiesdialog.h"
@@ -105,7 +105,7 @@ QString columnTitle(QAbstractItemModel *model, int column)
 
 TorrentListController::TorrentListController(QTableView *tableView,
                                              TorrentSortProxyModel *proxyModel,
-                                             rpc_client *client,
+                                             TorrentBackend *client,
                                              QWidget *dialogParent,
                                              QObject *parent)
     : QObject(parent)
@@ -601,7 +601,7 @@ void TorrentListController::showContextMenu(const QPoint &pos)
 
     if (!m_sequentialDownloadSupported) {
         sequentialDownloadAction->setToolTip(
-            tr("Sequential download requires Transmission RPC 18 / 4.1.0 or newer.")
+            tr("Sequential download is not supported by the active torrent backend.")
             );
     } else if (!canSetSequentialDownload) {
         sequentialDownloadAction->setToolTip(
@@ -769,7 +769,7 @@ void TorrentListController::deleteSelectedTorrents()
     if (ids.size() == 1) {
         msgBox.setText(tr("Delete the selected torrent?"));
         msgBox.setInformativeText(
-            tr("Remove only the torrent from Transmission, or also delete the downloaded data?\n\n"
+            tr("Remove only the torrent from the server, or also delete the downloaded data?\n\n"
                "View details to see the affected torrent name.")
             );
         msgBox.setDetailedText(names.value(0));
@@ -781,7 +781,7 @@ void TorrentListController::deleteSelectedTorrents()
 
         msgBox.setText(tr("Delete %1 selected torrents?").arg(ids.size()));
         msgBox.setInformativeText(
-            tr("Remove only the torrents from Transmission, or also delete the downloaded data?\n\n"
+            tr("Remove only the torrents from the server, or also delete the downloaded data?\n\n"
                "View details to see the affected torrent names.")
             );
         msgBox.setDetailedText(preview);
@@ -815,31 +815,31 @@ void TorrentListController::deleteSelectedTorrents()
 
 void TorrentListController::startSelectedTorrents()
 {
-    invokeSelectedTorrentCommand(&rpc_client::startTorrents,
+    invokeSelectedTorrentCommand(&TorrentBackend::startTorrents,
                                  tr("Starting %1 torrent(s)..."));
 }
 
 void TorrentListController::stopSelectedTorrents()
 {
-    invokeSelectedTorrentCommand(&rpc_client::stopTorrents,
+    invokeSelectedTorrentCommand(&TorrentBackend::stopTorrents,
                                  tr("Stopping %1 torrent(s)..."));
 }
 
 void TorrentListController::reannounceSelectedTorrents()
 {
-    invokeSelectedTorrentCommand(&rpc_client::reannounceTorrents,
+    invokeSelectedTorrentCommand(&TorrentBackend::reannounceTorrents,
                                  tr("Reannouncing %1 torrent(s)..."));
 }
 
 void TorrentListController::verifySelectedTorrents()
 {
-    invokeSelectedTorrentCommand(&rpc_client::verifyTorrents,
+    invokeSelectedTorrentCommand(&TorrentBackend::verifyTorrents,
                                  tr("Verifying %1 torrent(s)..."));
 }
 
 void TorrentListController::forceStartSelectedTorrents()
 {
-    invokeSelectedTorrentCommand(&rpc_client::startTorrentsNow,
+    invokeSelectedTorrentCommand(&TorrentBackend::startTorrentsNow,
                                  tr("Force starting %1 torrent(s)..."));
 }
 
@@ -867,7 +867,7 @@ void TorrentListController::setSelectedTorrentsLocation()
     auto *layout = new QVBoxLayout(&dialog);
 
     auto *descriptionLabel = new QLabel(
-        tr("Set the download location on the Transmission server."),
+        tr("Set the download location on the torrent server."),
         &dialog
         );
     descriptionLabel->setWordWrap(true);
@@ -937,7 +937,7 @@ void TorrentListController::setSelectedTorrentsSequentialDownload(bool enabled)
 
     if (!m_sequentialDownloadSupported) {
         emit statusMessageRequested(
-            tr("Sequential download is not supported by this Transmission server."),
+            tr("Sequential download is not supported by the active torrent backend."),
             5000
             );
         return;
@@ -1021,26 +1021,27 @@ void TorrentListController::copySelectedTorrentHash()
 
 void TorrentListController::queueMoveSelectedTop()
 {
-    invokeSelectedTorrentCommand(&rpc_client::queueMoveTop, QString());
+    invokeSelectedTorrentCommand(&TorrentBackend::queueMoveTop, QString());
 }
 
 void TorrentListController::queueMoveSelectedUp()
 {
-    invokeSelectedTorrentCommand(&rpc_client::queueMoveUp, QString());
+    invokeSelectedTorrentCommand(&TorrentBackend::queueMoveUp, QString());
 }
 
 void TorrentListController::queueMoveSelectedDown()
 {
-    invokeSelectedTorrentCommand(&rpc_client::queueMoveDown, QString());
+    invokeSelectedTorrentCommand(&TorrentBackend::queueMoveDown, QString());
 }
 
 void TorrentListController::queueMoveSelectedBottom()
 {
-    invokeSelectedTorrentCommand(&rpc_client::queueMoveBottom, QString());
+    invokeSelectedTorrentCommand(&TorrentBackend::queueMoveBottom, QString());
 }
 
-void TorrentListController::invokeSelectedTorrentCommand(void (rpc_client::*command)(const QList<int> &),
-                                                        const QString &message)
+void TorrentListController::invokeSelectedTorrentCommand(
+    void (TorrentBackend::*command)(const QList<int> &),
+    const QString &message)
 {
     const QList<int> ids = selectedTorrentIds();
 

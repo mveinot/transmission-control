@@ -1,6 +1,6 @@
 #include "statisticsdialog.h"
 
-#include "rpc_client.h"
+#include "torrentbackend.h"
 
 #include <QDialogButtonBox>
 #include <QFormLayout>
@@ -38,7 +38,7 @@ StatisticsDialog::StatisticLabels addStatisticRows(QFormLayout *layout, bool inc
 }
 }
 
-StatisticsDialog::StatisticsDialog(rpc_client *client, QWidget *parent)
+StatisticsDialog::StatisticsDialog(TorrentBackend *client, QWidget *parent)
     : QDialog(parent)
     , m_client(client)
 {
@@ -74,9 +74,9 @@ StatisticsDialog::StatisticsDialog(rpc_client *client, QWidget *parent)
     connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(m_refreshButton, &QPushButton::clicked, this, &StatisticsDialog::refresh);
 
-    connect(m_client, &rpc_client::sessionStatisticsReceived,
+    connect(m_client, &TorrentBackend::sessionStatisticsReceived,
             this, &StatisticsDialog::updateStatistics);
-    connect(m_client, &rpc_client::sessionStatisticsFailed,
+    connect(m_client, &TorrentBackend::sessionStatisticsFailed,
             this, &StatisticsDialog::showError);
 
     refresh();

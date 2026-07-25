@@ -1,6 +1,6 @@
 #include "statusbarcontroller.h"
 
-#include "rpc_client.h"
+#include "torrentbackend.h"
 
 #include <QCursor>
 #include <QEvent>
@@ -10,7 +10,7 @@
 #include <QStatusBar>
 
 StatusBarController::StatusBarController(QStatusBar *statusBar,
-                                         rpc_client *client,
+                                         TorrentBackend *client,
                                          QObject *parent)
     : QObject(parent)
     , m_statusBar(statusBar)
@@ -58,17 +58,17 @@ void StatusBarController::setup()
     if (!m_client)
         return;
 
-    connect(m_client, &rpc_client::updateStarted,
+    connect(m_client, &TorrentBackend::updateStarted,
             this, [this]() {
                 setActivityText(tr("Updating…"));
             });
 
-    connect(m_client, &rpc_client::updateFinished,
+    connect(m_client, &TorrentBackend::updateFinished,
             this, [this]() {
                 setActivityText(tr("Connected"));
             });
 
-    connect(m_client, &rpc_client::updateFailed,
+    connect(m_client, &TorrentBackend::updateFailed,
             this, [this](const QString &message) {
                 const QString displayMessage = normalizedErrorMessage(message);
                 setActivityText(tr("Error"), true);
@@ -77,9 +77,9 @@ void StatusBarController::setup()
                     m_activityLabel->setToolTip(displayMessage);
             });
 
-    connect(m_client, &rpc_client::serverChanged,
+    connect(m_client, &TorrentBackend::serverChanged,
             this, [this]() {
-                setServerName(m_client ? m_client->getServer() : QString());
+                setServerName(m_client ? m_client->serverDisplayName() : QString());
                 setActivityText(tr("Server changed"));
             });
 }
@@ -208,10 +208,10 @@ bool StatusBarController::eventFilter(QObject *watched, QEvent *event)
 QString StatusBarController::normalizedErrorMessage(const QString &message) const
 {
     if (message.contains(QStringLiteral("timed out"), Qt::CaseInsensitive))
-        return tr("Timed out contacting Transmission");
+        return tr("Timed out contacting the torrent server");
 
     if (message.contains(QStringLiteral("connection refused"), Qt::CaseInsensitive))
-        return tr("Connection refused by Transmission");
+        return tr("Connection refused by the torrent server");
 
     if (message.contains(QStringLiteral("host not found"), Qt::CaseInsensitive))
         return tr("Host not found");
@@ -250,7 +250,7 @@ void StatusBarController::refreshServerLabel()
 
     const QString server = !m_serverName.isEmpty()
                                ? m_serverName
-                               : (m_client ? m_client->getServer() : QString());
+                               : (m_client ? m_client->serverDisplayName() : QString());
 
     m_serverLabel->setText(tr("Server: %1").arg(server.isEmpty()
                                                     ? tr("Not configured")

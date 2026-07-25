@@ -13,7 +13,7 @@
 #include <QEvent>
 #include <Qt>
 #include "foldermapping.h"
-#include "rpc_client.h"
+#include "torrentbackend.h"
 #include "torrentsortproxymodel.h"
 #include "torrentmodel.h"
 #include "geoipservice.h"
@@ -101,7 +101,7 @@ private:
     QTimer *timer;
     QTimer *commandRefreshTimer = nullptr;
     TorrentModel *torrentModel = nullptr;
-    rpc_client *client = nullptr;
+    TorrentBackend *client = nullptr;
     TorrentSortProxyModel *proxy = nullptr;
     GeoIpService *geoIpService = nullptr;
     WatchFolderManager *watchFolderManager = nullptr;

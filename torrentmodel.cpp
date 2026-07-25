@@ -119,7 +119,7 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
     if (role == Qt::ToolTipRole) {
         if (t.hasError()) {
             const QString message = t.getErrorString().isEmpty()
-                ? tr("Transmission reports an error for this torrent.")
+                ? tr("The torrent backend reports an error for this torrent.")
                 : t.getErrorString();
 
             if (index.column() == NameColumn)
