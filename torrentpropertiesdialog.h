@@ -40,6 +40,7 @@ private slots:
 
 private:
     void buildUi();
+    void applyBackendCapabilities();
     void setControlsEnabled(bool enabled);
     void populateControls(const TorrentProperties &properties);
     void populateRawTree(const QJsonObject &properties);

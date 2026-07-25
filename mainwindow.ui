@@ -898,7 +898,7 @@
   </action>
   <action name="actionTransmission_Settings">
    <property name="text">
-    <string>Transmission Settings...</string>
+    <string>Server Settings...</string>
    </property>
   </action>
   <action name="actionAlternative_Speed_Mode">

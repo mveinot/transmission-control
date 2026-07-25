@@ -73,6 +73,7 @@ TorrentPropertiesDialog::TorrentPropertiesDialog(TorrentBackend *client,
     , m_torrentKey(torrentKey)
 {
     buildUi();
+    applyBackendCapabilities();
     setControlsEnabled(false);
 
     connect(m_client, &TorrentBackend::torrentPropertiesReceived,
@@ -217,7 +218,7 @@ void TorrentPropertiesDialog::buildUi()
     labelsLayout->addWidget(labelsGroup);
 
     auto *labelsNote = new QLabel(
-        tr("Labels and group support depend on the Transmission server version."),
+        tr("Labels and group support depend on the selected backend."),
         labelsTab
         );
     labelsNote->setWordWrap(true);
@@ -258,8 +259,56 @@ void TorrentPropertiesDialog::buildUi()
             this, &TorrentPropertiesDialog::reject);
 }
 
+void TorrentPropertiesDialog::applyBackendCapabilities()
+{
+    if (!m_client)
+        return;
+
+    const TorrentBackendCapabilities capabilities = m_client->capabilities();
+    const auto setFormFieldVisible = [](QWidget *field, bool visible) {
+        if (!field)
+            return;
+
+        field->setVisible(visible);
+        if (auto *form = qobject_cast<QFormLayout *>(field->parentWidget()
+                                                        ? field->parentWidget()->layout()
+                                                        : nullptr)) {
+            if (QWidget *label = form->labelForField(field))
+                label->setVisible(visible);
+        }
+    };
+
+    setFormFieldVisible(m_bandwidthPriorityCombo,
+                        capabilities.torrentBandwidthPriority);
+    setFormFieldVisible(m_honorsSessionLimitsCheckBox,
+                        capabilities.torrentSessionLimitOverride);
+    setFormFieldVisible(m_queuePositionSpinBox,
+                        capabilities.torrentQueuePosition);
+    setFormFieldVisible(m_peerLimitSpinBox,
+                        capabilities.torrentPeerLimit);
+
+    m_downloadLimitedCheckBox->setVisible(capabilities.torrentSpeedLimits);
+    m_downloadLimitSpinBox->setVisible(capabilities.torrentSpeedLimits);
+    m_uploadLimitedCheckBox->setVisible(capabilities.torrentSpeedLimits);
+    m_uploadLimitSpinBox->setVisible(capabilities.torrentSpeedLimits);
+
+    setFormFieldVisible(m_seedRatioModeCombo,
+                        capabilities.torrentShareLimits);
+    setFormFieldVisible(m_seedRatioLimitSpinBox,
+                        capabilities.torrentShareLimits);
+    setFormFieldVisible(m_seedIdleModeCombo,
+                        capabilities.torrentShareLimits);
+    setFormFieldVisible(m_seedIdleLimitSpinBox,
+                        capabilities.torrentShareLimits);
+
+    setFormFieldVisible(m_labelsEdit, capabilities.labels);
+    setFormFieldVisible(m_groupEdit, capabilities.groups);
+}
+
 void TorrentPropertiesDialog::setControlsEnabled(bool enabled)
 {
+    const TorrentBackendCapabilities capabilities =
+        m_client ? m_client->capabilities() : TorrentBackendCapabilities{};
     const QList<QWidget *> widgets = {
         m_bandwidthPriorityCombo,
         m_honorsSessionLimitsCheckBox,
@@ -280,11 +329,38 @@ void TorrentPropertiesDialog::setControlsEnabled(bool enabled)
             widget->setEnabled(enabled);
     }
 
+    m_bandwidthPriorityCombo->setEnabled(
+        enabled && capabilities.torrentBandwidthPriority);
+    m_honorsSessionLimitsCheckBox->setEnabled(
+        enabled && capabilities.torrentSessionLimitOverride);
+    m_queuePositionSpinBox->setEnabled(
+        enabled && capabilities.torrentQueuePosition);
+    m_peerLimitSpinBox->setEnabled(
+        enabled && capabilities.torrentPeerLimit);
+    m_downloadLimitedCheckBox->setEnabled(
+        enabled && capabilities.torrentSpeedLimits);
+    m_uploadLimitedCheckBox->setEnabled(
+        enabled && capabilities.torrentSpeedLimits);
+    m_seedRatioModeCombo->setEnabled(
+        enabled && capabilities.torrentShareLimits);
+    m_seedRatioLimitSpinBox->setEnabled(
+        enabled && capabilities.torrentShareLimits);
+    m_seedIdleModeCombo->setEnabled(
+        enabled && capabilities.torrentShareLimits);
+    m_seedIdleLimitSpinBox->setEnabled(
+        enabled && capabilities.torrentShareLimits);
+    m_labelsEdit->setEnabled(enabled && capabilities.labels);
+    m_groupEdit->setEnabled(enabled && capabilities.groups);
+
     if (m_downloadLimitSpinBox)
-        m_downloadLimitSpinBox->setEnabled(enabled && m_downloadLimitedCheckBox->isChecked());
+        m_downloadLimitSpinBox->setEnabled(
+            enabled && capabilities.torrentSpeedLimits &&
+            m_downloadLimitedCheckBox->isChecked());
 
     if (m_uploadLimitSpinBox)
-        m_uploadLimitSpinBox->setEnabled(enabled && m_uploadLimitedCheckBox->isChecked());
+        m_uploadLimitSpinBox->setEnabled(
+            enabled && capabilities.torrentSpeedLimits &&
+            m_uploadLimitedCheckBox->isChecked());
 
     if (m_buttonBox) {
         if (auto *okButton = m_buttonBox->button(QDialogButtonBox::Ok))

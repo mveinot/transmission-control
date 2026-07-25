@@ -20,6 +20,15 @@ struct TorrentBackendCapabilities
     bool sequentialDownload = false;
     bool labels = false;
     bool groups = false;
+    bool torrentProperties = false;
+    bool torrentSpeedLimits = false;
+    bool torrentShareLimits = false;
+    bool torrentBandwidthPriority = false;
+    bool torrentSessionLimitOverride = false;
+    bool torrentQueuePosition = false;
+    bool torrentPeerLimit = false;
+    bool filePriorities = false;
+    bool fileLowPriority = false;
     bool trackerEditing = false;
     bool pathRenaming = false;
     bool sessionSettings = false;

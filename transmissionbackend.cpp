@@ -1011,6 +1011,15 @@ TorrentBackendCapabilities TransmissionBackend::capabilities() const
     result.sequentialDownload = m_sequentialDownloadSupported;
     result.labels = m_torrentLabelsSupported;
     result.groups = m_torrentGroupsSupported;
+    result.torrentProperties = true;
+    result.torrentSpeedLimits = true;
+    result.torrentShareLimits = true;
+    result.torrentBandwidthPriority = true;
+    result.torrentSessionLimitOverride = true;
+    result.torrentQueuePosition = true;
+    result.torrentPeerLimit = true;
+    result.filePriorities = true;
+    result.fileLowPriority = true;
     result.trackerEditing = true;
     result.pathRenaming = true;
     result.sessionSettings = true;

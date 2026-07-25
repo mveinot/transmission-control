@@ -46,6 +46,7 @@ private:
 
     QString savedDownloadDir() const;
     bool savedStartPaused() const;
+    QString downloadDirSettingKey() const;
 
     void saveOptions(const QString &downloadDir, bool startPaused);
 };

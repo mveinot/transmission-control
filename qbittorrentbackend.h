@@ -8,8 +8,8 @@
 #include <QNetworkReply>
 #include <QUrlQuery>
 
-// qBittorrent WebUI API adapter. This initial implementation covers session
-// authentication, list snapshots, and the General details surface.
+// qBittorrent WebUI API adapter. It translates WebAPI resources and mutations
+// into the backend-neutral models and signals consumed by the application.
 class QBittorrentBackend : public TorrentBackend {
   Q_OBJECT
 
@@ -82,6 +82,13 @@ private:
     TorrentList,
     TorrentInfo,
     TorrentProperties,
+    TorrentPieces,
+    TorrentFiles,
+    TorrentPeers,
+    TorrentTrackers,
+    TorrentPropertyEditor,
+    SessionSettings,
+    AddTorrent,
     Command
   };
   struct RequestContext {
@@ -91,6 +98,11 @@ private:
     QString path;
     QString fallbackPath;
     QByteArray form;
+    QString torrentFilePath;
+    QString magnetLink;
+    QString downloadDir;
+    bool startPaused = false;
+    bool deleteTorrentFileOnSuccess = false;
     bool usedFallback = false;
     bool retriedAuthentication = false;
   };
@@ -98,6 +110,7 @@ private:
   QNetworkAccessManager m_network;
   QHash<QNetworkReply *, RequestContext> m_requests;
   QHash<TorrentKey, QVariantMap> m_infoByKey;
+  QHash<TorrentKey, TorrentProperties> m_editorPropertiesByKey;
   QString m_serverName;
   QString m_baseUrl;
   QString m_username;
@@ -105,7 +118,9 @@ private:
   bool m_authenticated = false;
   bool m_authenticationPending = false;
   bool m_listPendingAfterLogin = false;
+  bool m_sessionSettingsPendingAfterLogin = false;
   QList<RequestContext> m_commandsPendingAfterLogin;
+  QList<RequestContext> m_addsPendingAfterLogin;
 
   void authenticate();
   void sendGet(RequestKind kind, const QString &path,
@@ -117,6 +132,9 @@ private:
                    const QString &method,
                    const QString &fallbackPath = QString());
   void sendCommand(const RequestContext &context);
+  void queueOrSendAdd(const RequestContext &context);
+  void sendAdd(const RequestContext &context);
+  void failAdd(const RequestContext &context, const QString &reason);
   void setServer(const QString &name, const QString &url,
                  const QString &username, const QString &password);
   void abortRequests();

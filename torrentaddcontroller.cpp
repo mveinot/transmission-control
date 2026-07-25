@@ -4,6 +4,7 @@
 #include "torrentmetadataparser.h"
 #include "settingskeys.h"
 
+#include <QCryptographicHash>
 #include <QFileInfo>
 #include <QSettings>
 #include <QWidget>
@@ -181,7 +182,7 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
 QString TorrentAddController::savedDownloadDir() const
 {
     QSettings settings;
-    return settings.value(SettingsKeys::TorrentAddDownloadDir).toString();
+    return settings.value(downloadDirSettingKey()).toString();
 }
 
 bool TorrentAddController::savedStartPaused() const
@@ -190,10 +191,33 @@ bool TorrentAddController::savedStartPaused() const
     return settings.value(SettingsKeys::StartTorrentPaused, false).toBool();
 }
 
+QString TorrentAddController::downloadDirSettingKey() const
+{
+    const QString baseKey =
+        QString::fromLatin1(SettingsKeys::TorrentAddDownloadDir);
+
+    if (!m_client)
+        return baseKey;
+
+    // Destination paths belong to the remote daemon, not the local machine.
+    // Scope them by backend and endpoint so switching servers cannot reuse an
+    // incompatible path. Keep Transmission on the legacy key for migration.
+    if (m_client->backendName() == QStringLiteral("Transmission"))
+        return baseKey;
+
+    const QByteArray identity =
+        (m_client->backendName() + QLatin1Char('\n') +
+         m_client->endpointUrl()).toUtf8();
+    const QString digest =
+        QString::fromLatin1(QCryptographicHash::hash(
+                               identity, QCryptographicHash::Sha256).toHex());
+    return baseKey + QStringLiteral("/servers/") + digest;
+}
+
 void TorrentAddController::saveOptions(const QString &downloadDir, bool startPaused)
 {
     QSettings settings;
-    settings.setValue(SettingsKeys::TorrentAddDownloadDir, downloadDir);
+    settings.setValue(downloadDirSettingKey(), downloadDir);
     // Preferences and the add dialog intentionally share this default; the
     // dialog may override it for subsequent additions when options are saved.
     settings.setValue(SettingsKeys::StartTorrentPaused, startPaused);

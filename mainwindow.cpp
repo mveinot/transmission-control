@@ -2367,7 +2367,7 @@ void MainWindow::showSessionSettings()
 
     if (statusBarController) {
         statusBarController->showMessage(
-            tr("Loading Transmission session settings..."),
+            tr("Loading server settings..."),
             3000
             );
     }
@@ -2451,7 +2451,7 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     if (changes.isEmpty()) {
         if (statusBarController) {
             statusBarController->showMessage(
-                tr("No Transmission session settings changed"),
+                tr("No server settings changed"),
                 3000
                 );
         }
@@ -2478,7 +2478,7 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
 
     if (statusBarController) {
         statusBarController->showMessage(
-            tr("Saving Transmission session settings..."),
+            tr("Saving server settings..."),
             3000
             );
     }

@@ -822,6 +822,8 @@ void TorrentFilesController::showContextMenu(const QPoint &pos)
     QAction *lowPriorityAction = priorityMenu->addAction(tr("Low"));
     QAction *normalPriorityAction = priorityMenu->addAction(tr("Normal"));
     QAction *highPriorityAction = priorityMenu->addAction(tr("High"));
+    lowPriorityAction->setVisible(client &&
+                                  client->capabilities().fileLowPriority);
 
     connect(skipPriorityAction, &QAction::triggered,
             this, [this]() { setSelectedFilesPriorityState(0, false); });
