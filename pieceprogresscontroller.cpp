@@ -1,7 +1,7 @@
 #include "pieceprogresscontroller.h"
 #include "pieceprogressbarwidget.h"
+#include "torrentdomain.h"
 
-#include <QJsonObject>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -25,19 +25,13 @@ void PieceProgressController::clear()
         m_pieceProgressBar->clear();
 }
 
-void PieceProgressController::update(const QJsonObject &details)
+void PieceProgressController::update(const TorrentPieces &pieces)
 {
     if (!m_pieceProgressBar)
         return;
 
-    const int pieceCount = details.value(QStringLiteral("pieceCount")).toInt(0);
-    const QByteArray pieces =
-        QByteArray::fromBase64(
-            details.value(QStringLiteral("pieces")).toString().toLatin1()
-        );
-
     m_pieceProgressBar->setProgress(
-        pieceCount,
-        pieces,
-        details.value(QStringLiteral("percentDone")).toDouble(0.0));
+        pieces.pieceCount,
+        pieces.completedPieces,
+        pieces.percentDone);
 }

@@ -2,8 +2,8 @@
 #define TORRENTDETAILSTABCONTROLLER_H
 
 #include <QObject>
+#include <QVariantMap>
 
-class QJsonObject;
 class QTableWidget;
 class QTabWidget;
 class QWidget;
@@ -22,7 +22,7 @@ public:
     QWidget *widget() const;
 
     void clear();
-    void update(const QJsonObject &details);
+    void update(const QVariantMap &details);
 
 private:
     QWidget *m_tab = nullptr;

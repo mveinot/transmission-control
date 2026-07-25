@@ -3,7 +3,7 @@
 
 #include <QObject>
 
-class QJsonObject;
+struct TorrentPieces;
 class QVBoxLayout;
 class QWidget;
 class PieceProgressBarWidget;
@@ -22,7 +22,7 @@ public:
     QWidget *widget() const;
 
     void clear();
-    void update(const QJsonObject &details);
+    void update(const TorrentPieces &pieces);
 
 private:
     PieceProgressBarWidget *m_pieceProgressBar = nullptr;

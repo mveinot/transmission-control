@@ -9,8 +9,6 @@
 #include <QFile>
 #include <QHostInfo>
 #include <QIcon>
-#include <QJsonObject>
-#include <QJsonValue>
 #include <QLocale>
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -146,45 +144,38 @@ void TorrentPeersController::setLoading()
         placeholderController->setMessage(tr("Loading peers…"));
 }
 
-void TorrentPeersController::populate(const QJsonArray &peers)
+void TorrentPeersController::populate(const TorrentPeers &snapshot)
 {
     if (!peerTableWidget)
         return;
 
     if (placeholderController)
-        placeholderController->setMessage(peers.isEmpty() ? tr("No peers connected.") : QString());
+        placeholderController->setMessage(snapshot.peers.isEmpty() ? tr("No peers connected.") : QString());
 
     peerTableWidget->setSortingEnabled(false);
     peerTableWidget->clearContents();
-    peerTableWidget->setRowCount(peers.size());
+    peerTableWidget->setRowCount(snapshot.peers.size());
 
     int row = 0;
 
-    for (const QJsonValue &peerValue : peers) {
-        const QJsonObject peer = peerValue.toObject();
-
-        const QString address = normalizedAddress(peer.value("address").toString());
+    for (const TorrentPeer &peer : snapshot.peers) {
+        const QString address = normalizedAddress(peer.address);
 
         const GeoIpResult geoIp =
             geoIpService ? geoIpService->lookup(address) : GeoIpResult {};
 
-        const int port = peer.value("port").toInt();
+        const int port = peer.port;
 
         const QString clientName =
-            peer.value("clientName").toString().isEmpty()
+            peer.clientName.isEmpty()
                 ? QStringLiteral("(unknown)")
-                : peer.value("clientName").toString();
+                : peer.clientName;
 
-        const double progress = peer.value("progress").toDouble() * 100.0;
-
-        const qint64 rateToClient =
-            peer.value("rateToClient").toVariant().toLongLong();
-
-        const qint64 rateToPeer =
-            peer.value("rateToPeer").toVariant().toLongLong();
-
-        const bool isEncrypted = peer.value("isEncrypted").toBool();
-        const bool isIncoming = peer.value("isIncoming").toBool();
+        const double progress = peer.progress * 100.0;
+        const qint64 rateToClient = peer.downloadRate;
+        const qint64 rateToPeer = peer.uploadRate;
+        const bool isEncrypted = peer.encrypted;
+        const bool isIncoming = peer.incoming;
 
         auto *countryItem = new QTableWidgetItem(geoIp.displayText());
         countryItem->setIcon(flagIconForCountryCode(geoIp.countryCode));

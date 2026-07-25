@@ -4,8 +4,6 @@
 #include "torrentdetailstabcontroller.h"
 
 #include <QDateTime>
-#include <QJsonObject>
-#include <QJsonValue>
 #include <QLabel>
 #include <QLineEdit>
 #include <QLocale>
@@ -77,7 +75,8 @@ void TorrentGeneralController::clear()
     if (m_detailsTabController)
         m_detailsTabController->clear();
 
-    m_currentDetailsCache = QJsonObject();
+    m_currentDetailsCache.clear();
+    m_currentPieces = {};
     m_currentTorrentKey.clear();
     m_currentHashString.clear();
     m_currentMagnetLink.clear();
@@ -85,22 +84,17 @@ void TorrentGeneralController::clear()
     emit currentTorrentDetailsCleared();
 }
 
-void TorrentGeneralController::update(const QJsonObject &details)
+void TorrentGeneralController::update(const TorrentDetails &details)
 {
-    m_currentDetailsCache = details;
-    m_currentTorrentKey = details.value(QStringLiteral("hashString")).toString();
-    if (!isValidTorrentKey(m_currentTorrentKey)) {
-        const int legacyId = details.value(QStringLiteral("id")).toInt(-1);
-        if (legacyId >= 0)
-            m_currentTorrentKey = QString::number(legacyId);
-    }
-    m_currentHashString = details.value(QStringLiteral("hashString")).toString();
-    m_currentMagnetLink = details.value(QStringLiteral("magnetLink")).toString();
+    m_currentDetailsCache = details.fields;
+    m_currentTorrentKey = details.key;
+    m_currentHashString = details.hashString;
+    m_currentMagnetLink = details.magnetLink;
 
     updateGeneralFields(details);
 
-    if (m_pieceProgressController)
-        m_pieceProgressController->update(m_currentDetailsCache);
+    if (m_pieceProgressController && m_currentPieces.key == details.key)
+        m_pieceProgressController->update(m_currentPieces);
 
     if (m_detailsTabController)
         m_detailsTabController->update(m_currentDetailsCache);
@@ -112,17 +106,19 @@ void TorrentGeneralController::update(const QJsonObject &details)
         );
 }
 
-void TorrentGeneralController::updatePieces(TorrentKey torrentKey, const QJsonObject &details)
+void TorrentGeneralController::updatePieces(const TorrentPieces &pieces)
 {
-    if (torrentKey != m_currentTorrentKey)
+    if (pieces.key != m_currentTorrentKey)
         return;
 
-    // Piece updates are partial; merge before refreshing combined detail views.
-    for (auto it = details.constBegin(); it != details.constEnd(); ++it)
-        m_currentDetailsCache.insert(it.key(), it.value());
+    m_currentPieces = pieces;
+    m_currentDetailsCache.insert(QStringLiteral("pieceCount"), pieces.pieceCount);
+    m_currentDetailsCache.insert(QStringLiteral("pieces"),
+                                 QString::fromLatin1(pieces.completedPieces.toBase64()));
+    m_currentDetailsCache.insert(QStringLiteral("percentDone"), pieces.percentDone);
 
     if (m_pieceProgressController)
-        m_pieceProgressController->update(m_currentDetailsCache);
+        m_pieceProgressController->update(pieces);
 
     if (m_detailsTabController)
         m_detailsTabController->update(m_currentDetailsCache);
@@ -191,23 +187,16 @@ void TorrentGeneralController::configureMagnetLineEdit()
         ));
 }
 
-void TorrentGeneralController::updateGeneralFields(const QJsonObject &details)
+void TorrentGeneralController::updateGeneralFields(const TorrentDetails &details)
 {
-    const QString name = details.value(QStringLiteral("name")).toString();
-    const QString comment = details.value(QStringLiteral("comment")).toString();
-    const QString creator = details.value(QStringLiteral("creator")).toString();
-    const QString downloadDir = details.value(QStringLiteral("downloadDir")).toString();
-    const qint64 totalSize = details.value(QStringLiteral("totalSize")).toVariant().toLongLong();
-    const qint64 dateCreated = details.value(QStringLiteral("dateCreated")).toVariant().toLongLong();
-
     if (m_widgets.nameLabel)
-        m_widgets.nameLabel->setText(name);
+        m_widgets.nameLabel->setText(details.name);
 
     if (m_widgets.creatorLabel)
-        m_widgets.creatorLabel->setText(creator);
+        m_widgets.creatorLabel->setText(details.creator);
 
     if (m_widgets.downloadDirLabel)
-        m_widgets.downloadDirLabel->setText(downloadDir);
+        m_widgets.downloadDirLabel->setText(details.downloadDirectory);
 
     if (m_widgets.hashLabel)
         m_widgets.hashLabel->setText(m_currentHashString);
@@ -216,7 +205,7 @@ void TorrentGeneralController::updateGeneralFields(const QJsonObject &details)
         m_widgets.magnetLineEdit->setText(m_currentMagnetLink);
 
     if (m_widgets.commentLabel) {
-        const QString trimmedComment = comment.trimmed();
+        const QString trimmedComment = details.comment.trimmed();
 
         if (trimmedComment.isEmpty()) {
             m_widgets.commentLabel->setText(tr("None"));
@@ -236,7 +225,7 @@ void TorrentGeneralController::updateGeneralFields(const QJsonObject &details)
     if (m_widgets.totalSizeLabel) {
         m_widgets.totalSizeLabel->setText(
             QLocale().formattedDataSize(
-                totalSize,
+                details.totalSize,
                 1,
                 QLocale::DataSizeIecFormat
                 )
@@ -244,8 +233,9 @@ void TorrentGeneralController::updateGeneralFields(const QJsonObject &details)
     }
 
     if (m_widgets.createdLabel) {
-        if (dateCreated > 0) {
-            const QDateTime created = QDateTime::fromSecsSinceEpoch(dateCreated);
+        if (details.creationTime > 0) {
+            const QDateTime created =
+                QDateTime::fromSecsSinceEpoch(details.creationTime);
             m_widgets.createdLabel->setText(
                 QLocale().toString(created, QLocale::ShortFormat)
                 );

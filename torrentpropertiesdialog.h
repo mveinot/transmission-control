@@ -5,6 +5,7 @@
 #include <QJsonObject>
 
 #include "torrentkey.h"
+#include "torrentdomain.h"
 
 class QCheckBox;
 class QComboBox;
@@ -20,7 +21,7 @@ class QTreeWidgetItem;
 class TorrentBackend;
 
 // Transactional editor for per-torrent limits and organization fields, with a
-// raw RPC view for diagnostics. Apply refreshes the server-confirmed baseline.
+// normalized field view for diagnostics. Apply refreshes the confirmed baseline.
 class TorrentPropertiesDialog : public QDialog
 {
     Q_OBJECT
@@ -31,7 +32,7 @@ public:
                                      QWidget *parent = nullptr);
 
 private slots:
-    void handlePropertiesReceived(TorrentKey torrentKey, const QJsonObject &properties);
+    void handlePropertiesReceived(const TorrentProperties &properties);
     void handleCommandSucceeded(const QString &method);
     void handleCommandFailed(const QString &method, const QString &message);
     void applyChanges();
@@ -40,19 +41,19 @@ private slots:
 private:
     void buildUi();
     void setControlsEnabled(bool enabled);
-    void populateControls(const QJsonObject &properties);
+    void populateControls(const TorrentProperties &properties);
     void populateRawTree(const QJsonObject &properties);
     void addJsonTreeItem(QTreeWidgetItem *parent,
                          const QString &key,
                          const QJsonValue &value);
-    QJsonObject editedProperties() const;
+    TorrentPropertyChanges editedProperties() const;
 
     static QString jsonValueTypeName(const QJsonValue &value);
     static QString jsonValueDisplayText(const QJsonValue &value);
 
     TorrentBackend *m_client = nullptr;
     TorrentKey m_torrentKey;
-    QJsonObject m_properties;
+    TorrentProperties m_properties;
     bool m_loaded = false;
 
     QLabel *m_headerLabel = nullptr;

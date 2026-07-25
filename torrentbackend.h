@@ -2,6 +2,7 @@
 #define TORRENTBACKEND_H
 
 #include "torrent.h"
+#include "torrentdomain.h"
 #include "torrentkey.h"
 
 #include <QJsonObject>
@@ -31,11 +32,7 @@ struct TorrentBackendCapabilities
 // Semantic contract between Planetary's presentation layer and a remote
 // torrent service. Implementations own authentication, transport, request
 // deduplication, and conversion from their native API into Planetary's current
-// torrent/detail payloads.
-//
-// Detail and settings payloads remain QJsonObject during the first migration
-// pass. Their keys form Planetary's compatibility schema rather than granting
-// controllers access to an implementation's raw wire response.
+// torrent/detail snapshots.
 class TorrentBackend : public QObject
 {
     Q_OBJECT
@@ -116,7 +113,7 @@ public:
                                    const QString &path,
                                    const QString &newName) = 0;
     virtual void setTorrentProperties(const TorrentKey &torrentKey,
-                                      const QJsonObject &properties) = 0;
+                                      const TorrentPropertyChanges &properties) = 0;
     virtual void setTorrentsSequentialDownload(
         const QList<TorrentKey> &torrentKeys,
                                                bool enabled) = 0;
@@ -141,18 +138,12 @@ signals:
     void updateFailed(const QString &message);
     void torrentsReceived(const QVector<torrent> &torrents);
     void torrentTrackerMetadataUpdated();
-    void torrentDetailsReceived(const TorrentKey &torrentKey,
-                                const QJsonObject &torrentDetails);
-    void torrentFilesReceived(const TorrentKey &torrentKey,
-                              const QJsonObject &torrentDetails);
-    void torrentPeersReceived(const TorrentKey &torrentKey,
-                              const QJsonObject &torrentDetails);
-    void torrentTrackersReceived(const TorrentKey &torrentKey,
-                                 const QJsonObject &torrentDetails);
-    void torrentPiecesReceived(const TorrentKey &torrentKey,
-                               const QJsonObject &pieceDetails);
-    void torrentPropertiesReceived(const TorrentKey &torrentKey,
-                                   const QJsonObject &properties);
+    void torrentDetailsReceived(const TorrentDetails &details);
+    void torrentFilesReceived(const TorrentFiles &files);
+    void torrentPeersReceived(const TorrentPeers &peers);
+    void torrentTrackersReceived(const TorrentTrackers &trackers);
+    void torrentPiecesReceived(const TorrentPieces &pieces);
+    void torrentPropertiesReceived(const TorrentProperties &properties);
     void commandSucceeded(const QString &method);
     void commandFailed(const QString &method, const QString &message);
     void torrentFileAddSucceeded(const QString &filePath);

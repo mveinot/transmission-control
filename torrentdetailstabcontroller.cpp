@@ -4,9 +4,6 @@
 #include <QDateTime>
 #include <QFont>
 #include <QHeaderView>
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QJsonValue>
 #include <QLocale>
 #include <QPalette>
 #include <QTableWidget>
@@ -18,15 +15,15 @@
 
 namespace {
 
-bool detailsJsonValueToBool(const QJsonValue &value, bool defaultValue = false)
+bool detailsValueToBool(const QVariant &value, bool defaultValue = false)
 {
-    if (value.isBool())
+    if (!value.isValid() || value.isNull())
+        return defaultValue;
+
+    if (value.metaType().id() == QMetaType::Bool)
         return value.toBool();
 
-    if (value.isDouble())
-        return value.toInt(defaultValue ? 1 : 0) != 0;
-
-    if (value.isString()) {
+    if (value.canConvert<QString>()) {
         const QString text = value.toString().trimmed().toLower();
 
         if (text == QStringLiteral("true")
@@ -42,7 +39,7 @@ bool detailsJsonValueToBool(const QJsonValue &value, bool defaultValue = false)
         }
     }
 
-    return defaultValue;
+    return value.toInt() != 0;
 }
 
 } // namespace
@@ -93,7 +90,7 @@ void TorrentDetailsTabController::clear()
     m_table->setRowCount(0);
 }
 
-void TorrentDetailsTabController::update(const QJsonObject &details)
+void TorrentDetailsTabController::update(const QVariantMap &details)
 {
     // Rebuild from a snapshot to keep section ordering deterministic when RPC
     // versions add or omit fields.
@@ -105,25 +102,25 @@ void TorrentDetailsTabController::update(const QJsonObject &details)
     m_table->setRowCount(0);
 
     auto jsonInt64 = [&details](const QString &key, qint64 defaultValue = 0) -> qint64 {
-        const QJsonValue value = details.value(key);
+        const QVariant value = details.value(key);
 
-        if (value.isUndefined() || value.isNull())
+        if (!value.isValid() || value.isNull())
             return defaultValue;
 
-        return value.toVariant().toLongLong();
+        return value.toLongLong();
     };
 
     auto jsonDouble = [&details](const QString &key, double defaultValue = 0.0) -> double {
-        const QJsonValue value = details.value(key);
+        const QVariant value = details.value(key);
 
-        if (value.isUndefined() || value.isNull())
+        if (!value.isValid() || value.isNull())
             return defaultValue;
 
-        return value.toDouble(defaultValue);
+        return value.toDouble();
     };
 
     auto jsonBool = [&details](const QString &key, bool defaultValue = false) -> bool {
-        return detailsJsonValueToBool(details.value(key), defaultValue);
+        return detailsValueToBool(details.value(key), defaultValue);
     };
 
     auto formatBytesText = [](qint64 bytes) -> QString {
@@ -284,7 +281,7 @@ void TorrentDetailsTabController::update(const QJsonObject &details)
     };
 
     const qint64 pieceSize = jsonInt64(QStringLiteral("pieceSize"));
-    const int pieceCount = details.value(QStringLiteral("pieceCount")).toInt(0);
+    const int pieceCount = details.value(QStringLiteral("pieceCount")).toInt();
     const QByteArray pieces = QByteArray::fromBase64(
         details.value(QStringLiteral("pieces")).toString().toLatin1()
     );
@@ -304,12 +301,12 @@ void TorrentDetailsTabController::update(const QJsonObject &details)
     }
 
     addSection(tr("State"));
-    addRowIfPresent(QStringLiteral("status"), tr("Status"), statusText(details.value(QStringLiteral("status")).toInt(-1)));
+    addRowIfPresent(QStringLiteral("status"), tr("Status"), statusText(details.value(QStringLiteral("status"), -1).toInt()));
     addRowIfPresent(QStringLiteral("isPrivate"), tr("Private torrent"), yesNo(jsonBool(QStringLiteral("isPrivate"))));
     addRowIfPresent(QStringLiteral("isStalled"), tr("Stalled"), yesNo(jsonBool(QStringLiteral("isStalled"))));
     addRowIfPresent(QStringLiteral("isFinished"), tr("Finished"), yesNo(jsonBool(QStringLiteral("isFinished"))));
-    if (details.value(QStringLiteral("error")).toInt(0) != 0 || !details.value(QStringLiteral("errorString")).toString().isEmpty()) {
-        addRow(tr("Error"), details.value(QStringLiteral("errorString")).toString(tr("Unknown error")));
+    if (details.value(QStringLiteral("error")).toInt() != 0 || !details.value(QStringLiteral("errorString")).toString().isEmpty()) {
+        addRow(tr("Error"), details.value(QStringLiteral("errorString"), tr("Unknown error")).toString());
     }
 
     addSection(tr("Progress"));
@@ -356,7 +353,7 @@ void TorrentDetailsTabController::update(const QJsonObject &details)
     addRowIfPresent(QStringLiteral("webseedsSendingToUs"), tr("Web seeds sending to us"), QString::number(jsonInt64(QStringLiteral("webseedsSendingToUs"))));
     addRowIfPresent(QStringLiteral("maxConnectedPeers"), tr("Max connected peers"), QString::number(jsonInt64(QStringLiteral("maxConnectedPeers"))));
     if (details.contains(QStringLiteral("peersFrom"))) {
-        const QJsonObject peersFrom = details.value(QStringLiteral("peersFrom")).toObject();
+        const QVariantMap peersFrom = details.value(QStringLiteral("peersFrom")).toMap();
         QStringList peerSources;
         for (auto it = peersFrom.constBegin(); it != peersFrom.constEnd(); ++it)
             peerSources << QStringLiteral("%1: %2").arg(it.key()).arg(it.value().toInt());
@@ -365,7 +362,7 @@ void TorrentDetailsTabController::update(const QJsonObject &details)
     }
 
     addSection(tr("Limits and seeding"));
-    addRowIfPresent(QStringLiteral("bandwidthPriority"), tr("Bandwidth priority"), priorityText(details.value(QStringLiteral("bandwidthPriority")).toInt(0)));
+    addRowIfPresent(QStringLiteral("bandwidthPriority"), tr("Bandwidth priority"), priorityText(details.value(QStringLiteral("bandwidthPriority")).toInt()));
     addRowIfPresent(QStringLiteral("honorsSessionLimits"), tr("Honor session limits"), yesNo(jsonBool(QStringLiteral("honorsSessionLimits"), true)));
     if (details.contains(QStringLiteral("downloadLimited")) || details.contains(QStringLiteral("downloadLimit"))) {
         const bool limited = jsonBool(QStringLiteral("downloadLimited"));
@@ -379,9 +376,9 @@ void TorrentDetailsTabController::update(const QJsonObject &details)
                                     ? tr("%1/s").arg(formatBytesText(jsonInt64(QStringLiteral("uploadLimit")) * 1000))
                                     : tr("Unlimited"));
     }
-    addRowIfPresent(QStringLiteral("seedRatioMode"), tr("Seed ratio mode"), seedRatioModeText(details.value(QStringLiteral("seedRatioMode")).toInt(0)));
+    addRowIfPresent(QStringLiteral("seedRatioMode"), tr("Seed ratio mode"), seedRatioModeText(details.value(QStringLiteral("seedRatioMode")).toInt()));
     addRowIfPresent(QStringLiteral("seedRatioLimit"), tr("Seed ratio limit"), QLocale().toString(jsonDouble(QStringLiteral("seedRatioLimit")), 'f', 2));
-    addRowIfPresent(QStringLiteral("seedIdleMode"), tr("Seed idle mode"), seedIdleModeText(details.value(QStringLiteral("seedIdleMode")).toInt(0)));
+    addRowIfPresent(QStringLiteral("seedIdleMode"), tr("Seed idle mode"), seedIdleModeText(details.value(QStringLiteral("seedIdleMode")).toInt()));
     addRowIfPresent(QStringLiteral("seedIdleLimit"), tr("Seed idle limit"), tr("%1 minute(s)").arg(jsonInt64(QStringLiteral("seedIdleLimit"))));
     addRowIfPresent(QStringLiteral("queuePosition"), tr("Queue position"), QString::number(jsonInt64(QStringLiteral("queuePosition"))));
 
@@ -393,9 +390,9 @@ void TorrentDetailsTabController::update(const QJsonObject &details)
                                                     ? tr("None")
                                                     : details.value(QStringLiteral("group")).toString());
     if (details.contains(QStringLiteral("labels"))) {
-        const QJsonArray labels = details.value(QStringLiteral("labels")).toArray();
+        const QVariantList labels = details.value(QStringLiteral("labels")).toList();
         QStringList labelTexts;
-        for (const QJsonValue &label : labels)
+        for (const QVariant &label : labels)
             labelTexts << label.toString();
         addRow(tr("Labels"), labelTexts.isEmpty() ? tr("None") : labelTexts.join(QStringLiteral(", ")));
     }

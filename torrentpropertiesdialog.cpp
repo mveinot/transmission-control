@@ -295,95 +295,51 @@ void TorrentPropertiesDialog::setControlsEnabled(bool enabled)
     }
 }
 
-void TorrentPropertiesDialog::handlePropertiesReceived(TorrentKey torrentKey,
-                                                       const QJsonObject &properties)
+void TorrentPropertiesDialog::handlePropertiesReceived(const TorrentProperties &properties)
 {
     // Property requests share a signal; accept only this dialog's torrent.
-    if (torrentKey != m_torrentKey)
+    if (properties.key != m_torrentKey)
         return;
 
     m_properties = properties;
     m_loaded = true;
 
     populateControls(properties);
-    populateRawTree(properties);
+    populateRawTree(QJsonObject::fromVariantMap(properties.fields));
     setControlsEnabled(true);
 
     m_statusLabel->setText(tr("Properties loaded."));
 }
 
-void TorrentPropertiesDialog::populateControls(const QJsonObject &properties)
+void TorrentPropertiesDialog::populateControls(const TorrentProperties &properties)
 {
-    const QString name = properties.value(QStringLiteral("name")).toString();
-    const QString hash = properties.value(QStringLiteral("hashString")).toString();
-
     m_headerLabel->setText(
         tr("%1\nHash: %2")
-            .arg(name.isEmpty() ? tr("Unknown torrent") : name,
-                 hash.isEmpty() ? tr("Unknown") : hash)
+            .arg(properties.name.isEmpty() ? tr("Unknown torrent") : properties.name,
+                 properties.hashString.isEmpty() ? tr("Unknown") : properties.hashString)
         );
 
-    const int bandwidthPriority =
-        properties.value(QStringLiteral("bandwidthPriority")).toInt(0);
     m_bandwidthPriorityCombo->setCurrentIndex(
-        comboIndexForData(m_bandwidthPriorityCombo, bandwidthPriority)
+        comboIndexForData(m_bandwidthPriorityCombo, properties.bandwidthPriority)
         );
 
-    m_honorsSessionLimitsCheckBox->setChecked(
-        properties.value(QStringLiteral("honorsSessionLimits")).toBool(true)
-        );
-
-    m_queuePositionSpinBox->setValue(
-        properties.value(QStringLiteral("queuePosition")).toInt(0)
-        );
-
-    m_peerLimitSpinBox->setValue(
-        properties.value(QStringLiteral("peer-limit")).toInt(-1)
-        );
-
-    m_downloadLimitedCheckBox->setChecked(
-        properties.value(QStringLiteral("downloadLimited")).toBool(false)
-        );
-
-    m_downloadLimitSpinBox->setValue(
-        properties.value(QStringLiteral("downloadLimit")).toInt(0)
-        );
-
-    m_uploadLimitedCheckBox->setChecked(
-        properties.value(QStringLiteral("uploadLimited")).toBool(false)
-        );
-
-    m_uploadLimitSpinBox->setValue(
-        properties.value(QStringLiteral("uploadLimit")).toInt(0)
-        );
-
-    const int seedRatioMode =
-        properties.value(QStringLiteral("seedRatioMode")).toInt(GlobalMode);
+    m_honorsSessionLimitsCheckBox->setChecked(properties.honorsSessionLimits);
+    m_queuePositionSpinBox->setValue(properties.queuePosition);
+    m_peerLimitSpinBox->setValue(properties.peerLimit);
+    m_downloadLimitedCheckBox->setChecked(properties.downloadLimited);
+    m_downloadLimitSpinBox->setValue(properties.downloadLimit);
+    m_uploadLimitedCheckBox->setChecked(properties.uploadLimited);
+    m_uploadLimitSpinBox->setValue(properties.uploadLimit);
     m_seedRatioModeCombo->setCurrentIndex(
-        comboIndexForData(m_seedRatioModeCombo, seedRatioMode)
+        comboIndexForData(m_seedRatioModeCombo, properties.seedRatioMode)
         );
-
-    m_seedRatioLimitSpinBox->setValue(
-        properties.value(QStringLiteral("seedRatioLimit")).toDouble(0.0)
-        );
-
-    const int seedIdleMode =
-        properties.value(QStringLiteral("seedIdleMode")).toInt(GlobalMode);
+    m_seedRatioLimitSpinBox->setValue(properties.seedRatioLimit);
     m_seedIdleModeCombo->setCurrentIndex(
-        comboIndexForData(m_seedIdleModeCombo, seedIdleMode)
+        comboIndexForData(m_seedIdleModeCombo, properties.seedIdleMode)
         );
-
-    m_seedIdleLimitSpinBox->setValue(
-        properties.value(QStringLiteral("seedIdleLimit")).toInt(0)
-        );
-
-    m_labelsEdit->setText(
-        labelsFromJsonArray(properties.value(QStringLiteral("labels")).toArray()).join(QStringLiteral(", "))
-        );
-
-    m_groupEdit->setText(
-        properties.value(QStringLiteral("group")).toString()
-        );
+    m_seedIdleLimitSpinBox->setValue(properties.seedIdleLimit);
+    m_labelsEdit->setText(properties.labels.join(QStringLiteral(", ")));
+    m_groupEdit->setText(properties.group);
 }
 
 void TorrentPropertiesDialog::populateRawTree(const QJsonObject &properties)
@@ -469,53 +425,27 @@ QString TorrentPropertiesDialog::jsonValueDisplayText(const QJsonValue &value)
     return QString();
 }
 
-QJsonObject TorrentPropertiesDialog::editedProperties() const
+TorrentPropertyChanges TorrentPropertiesDialog::editedProperties() const
 {
-    QJsonObject properties;
-
-    properties.insert(QStringLiteral("bandwidthPriority"),
-                      m_bandwidthPriorityCombo->currentData().toInt());
-
-    properties.insert(QStringLiteral("honorsSessionLimits"),
-                      m_honorsSessionLimitsCheckBox->isChecked());
-
-    properties.insert(QStringLiteral("queuePosition"),
-                      m_queuePositionSpinBox->value());
-
-    properties.insert(QStringLiteral("peer-limit"),
-                      m_peerLimitSpinBox->value());
-
-    properties.insert(QStringLiteral("downloadLimited"),
-                      m_downloadLimitedCheckBox->isChecked());
-
-    properties.insert(QStringLiteral("downloadLimit"),
-                      m_downloadLimitSpinBox->value());
-
-    properties.insert(QStringLiteral("uploadLimited"),
-                      m_uploadLimitedCheckBox->isChecked());
-
-    properties.insert(QStringLiteral("uploadLimit"),
-                      m_uploadLimitSpinBox->value());
-
-    properties.insert(QStringLiteral("seedRatioMode"),
-                      m_seedRatioModeCombo->currentData().toInt());
-
-    properties.insert(QStringLiteral("seedRatioLimit"),
-                      m_seedRatioLimitSpinBox->value());
-
-    properties.insert(QStringLiteral("seedIdleMode"),
-                      m_seedIdleModeCombo->currentData().toInt());
-
-    properties.insert(QStringLiteral("seedIdleLimit"),
-                      m_seedIdleLimitSpinBox->value());
-
-    properties.insert(QStringLiteral("labels"),
-                      labelsToJsonArray(m_labelsEdit->text()));
+    TorrentPropertyChanges properties;
+    properties.bandwidthPriority = m_bandwidthPriorityCombo->currentData().toInt();
+    properties.honorsSessionLimits = m_honorsSessionLimitsCheckBox->isChecked();
+    properties.queuePosition = m_queuePositionSpinBox->value();
+    properties.peerLimit = m_peerLimitSpinBox->value();
+    properties.downloadLimited = m_downloadLimitedCheckBox->isChecked();
+    properties.downloadLimit = m_downloadLimitSpinBox->value();
+    properties.uploadLimited = m_uploadLimitedCheckBox->isChecked();
+    properties.uploadLimit = m_uploadLimitSpinBox->value();
+    properties.seedRatioMode = m_seedRatioModeCombo->currentData().toInt();
+    properties.seedRatioLimit = m_seedRatioLimitSpinBox->value();
+    properties.seedIdleMode = m_seedIdleModeCombo->currentData().toInt();
+    properties.seedIdleLimit = m_seedIdleLimitSpinBox->value();
+    properties.labels = labelsFromJsonArray(labelsToJsonArray(m_labelsEdit->text()));
 
     const QString group = m_groupEdit->text().trimmed();
 
-    if (!group.isEmpty() || m_properties.contains(QStringLiteral("group")))
-        properties.insert(QStringLiteral("group"), group);
+    properties.setGroup = !group.isEmpty() || m_properties.hasGroup;
+    properties.group = group;
 
     return properties;
 }

@@ -11,9 +11,6 @@
 #include <QDateTime>
 #include <QHeaderView>
 #include <QInputDialog>
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QJsonValue>
 #include <QLineEdit>
 #include <QLocale>
 #include <QMenu>
@@ -138,73 +135,45 @@ void TorrentTrackersController::setTorrentKey(TorrentKey torrentKey)
     this->torrentKey = torrentKey;
 }
 
-void TorrentTrackersController::populate(const QJsonObject &details)
+void TorrentTrackersController::populate(const TorrentTrackers &snapshot)
 {
-    // RPC versions differ in which tracker array carries IDs and status; keep
-    // both inputs rather than assuming positional equivalence.
     if (!trackerTableWidget)
         return;
 
-    const QJsonArray trackerStats = details.value("trackerStats").toArray();
-    const QJsonArray trackers = details.value("trackers").toArray();
-
     if (placeholderController)
-        placeholderController->setMessage(trackerStats.isEmpty() ? tr("No trackers reported for this torrent.") : QString());
+        placeholderController->setMessage(snapshot.trackers.isEmpty() ? tr("No trackers reported for this torrent.") : QString());
 
     trackerTableWidget->setSortingEnabled(false);
     trackerTableWidget->clearContents();
-    trackerTableWidget->setRowCount(trackerStats.size());
+    trackerTableWidget->setRowCount(snapshot.trackers.size());
 
     int row = 0;
 
-    for (const QJsonValue &value : trackerStats) {
-        const QJsonObject tracker = value.toObject();
-
-        const int tier = tracker.value("tier").toInt(-1);
-        const QString host = tracker.value("host").toString();
-        const QString siteName = tracker.value("sitename").toString();
-        const QString announce = tracker.value("announce").toString();
-        const QString scrape = tracker.value("scrape").toString();
-
-        int trackerId = tracker.value("id").toInt(-1);
-
-        if (trackerId < 0 && row < trackers.size())
-            trackerId = trackers.at(row).toObject().value("id").toInt(-1);
-
-        if (trackerId < 0) {
-            for (const QJsonValue &trackerValue : trackers) {
-                const QJsonObject trackerObject = trackerValue.toObject();
-
-                if (trackerObject.value("announce").toString() == announce) {
-                    trackerId = trackerObject.value("id").toInt(-1);
-                    break;
-                }
-            }
-        }
-
-        const int announceState = tracker.value("announceState").toInt(-1);
-        const int scrapeState = tracker.value("scrapeState").toInt(-1);
-        const int seeders = tracker.value("seederCount").toInt(-1);
-        const int leechers = tracker.value("leecherCount").toInt(-1);
-        const int downloads = tracker.value("downloadCount").toInt(-1);
-
-        const qint64 lastAnnounceSeconds =
-            tracker.value("lastAnnounceTime").toVariant().toLongLong();
-        const qint64 nextAnnounceSeconds =
-            tracker.value("nextAnnounceTime").toVariant().toLongLong();
-        const qint64 lastScrapeSeconds =
-            tracker.value("lastScrapeTime").toVariant().toLongLong();
-        const qint64 nextScrapeSeconds =
-            tracker.value("nextScrapeTime").toVariant().toLongLong();
+    for (const TorrentTracker &tracker : snapshot.trackers) {
+        const int tier = tracker.tier;
+        const QString host = tracker.host;
+        const QString siteName = tracker.siteName;
+        const QString announce = tracker.announceUrl;
+        const QString scrape = tracker.scrapeUrl;
+        const int trackerId = tracker.id;
+        const int announceState = tracker.announceState;
+        const int scrapeState = tracker.scrapeState;
+        const int seeders = tracker.seederCount;
+        const int leechers = tracker.leecherCount;
+        const int downloads = tracker.downloadCount;
+        const qint64 lastAnnounceSeconds = tracker.lastAnnounceTime;
+        const qint64 nextAnnounceSeconds = tracker.nextAnnounceTime;
+        const qint64 lastScrapeSeconds = tracker.lastScrapeTime;
+        const qint64 nextScrapeSeconds = tracker.nextScrapeTime;
 
         const QString lastAnnounceResult = displayTrackerResult(
-            tracker.value("lastAnnounceResult").toString(),
-            tracker.value("lastAnnounceSucceeded").toBool(false),
-            tracker.value("lastAnnounceTimedOut").toBool(false));
+            tracker.lastAnnounceResult,
+            tracker.lastAnnounceSucceeded,
+            tracker.lastAnnounceTimedOut);
         const QString lastScrapeResult = displayTrackerResult(
-            tracker.value("lastScrapeResult").toString(),
-            tracker.value("lastScrapeSucceeded").toBool(false),
-            tracker.value("lastScrapeTimedOut").toBool(false));
+            tracker.lastScrapeResult,
+            tracker.lastScrapeSucceeded,
+            tracker.lastScrapeTimedOut);
 
         auto *tierItem = makeTextItem(tier >= 0 ? QString::number(tier) : tr("Unknown"), tier);
         auto *hostItem = makeTextItem(host);

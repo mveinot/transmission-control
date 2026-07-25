@@ -93,7 +93,8 @@ set(PROJECT_SOURCES
         torrentbackend.h
         torrentbackendfactory.h
         torrentbackendfactory.cpp
-        torrentkey.h
+    torrentkey.h
+    torrentdomain.h
         torrent.h
         torrent.cpp
         dialogabout.cpp

@@ -2,13 +2,13 @@
 #define TORRENTTRACKERSCONTROLLER_H
 
 #include <QObject>
-#include <QJsonObject>
 #include <QPoint>
 #include <QString>
 #include <QVariant>
 #include <memory>
 
 #include "torrentkey.h"
+#include "torrentdomain.h"
 
 class QTableWidget;
 class QTableWidgetItem;
@@ -32,7 +32,7 @@ public:
 
     void setup();
     void clear();
-    void populate(const QJsonObject &details);
+    void populate(const TorrentTrackers &trackers);
     void setTorrentKey(TorrentKey torrentKey);
     void saveViewState() const;
     void restoreViewState();

@@ -2,11 +2,12 @@
 #define TORRENTPEERSCONTROLLER_H
 
 #include <QHash>
-#include <QJsonArray>
 #include <QObject>
 #include <QSet>
 #include <QStringList>
 #include <memory>
+
+#include "torrentdomain.h"
 
 class GeoIpService;
 class QHostInfo;
@@ -28,7 +29,7 @@ public:
 
     void setup();
     void clear();
-    void populate(const QJsonArray &peers);
+    void populate(const TorrentPeers &peers);
     void saveViewState() const;
     void restoreViewState();
     void setLoading();

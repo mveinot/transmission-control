@@ -3,7 +3,6 @@
 
 #include <QObject>
 #include <QHash>
-#include <QJsonArray>
 #include <QList>
 #include <QPoint>
 #include <QString>
@@ -12,6 +11,7 @@
 #include <memory>
 
 #include "foldermapping.h"
+#include "torrentdomain.h"
 #include "torrentkey.h"
 
 class QLineEdit;
@@ -38,9 +38,7 @@ public:
 
     void setup();
     void clear();
-    void populate(const QJsonArray &files,
-                  const QJsonArray &wanted,
-                  const QJsonArray &priorities);
+    void populate(const TorrentFiles &files);
     void setTorrentContext(TorrentKey torrentKey, const QString &downloadDir);
     void setFolderMappingsProvider(
         std::function<QList<FolderMapping>()> folderMappingsProvider);
@@ -87,8 +85,6 @@ private:
         Unknown
     };
 
-    static bool jsonValueToBool(const QJsonValue &value,
-                                bool defaultValue = false);
     static QString priorityToString(int priority);
 
     void setItemVisualState(QTreeWidgetItem *item, FileTransferVisualState state);

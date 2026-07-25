@@ -1298,10 +1298,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(client, &TorrentBackend::torrentDetailsReceived,
             this,
-            [this](TorrentKey torrentKey, const QJsonObject &details) {
+            [this](const TorrentDetails &details) {
                 // Detail requests can overlap selection changes. Never apply a
                 // late response to widgets representing another torrent.
-                if (torrentKey != currentTorrentKey())
+                if (details.key != currentTorrentKey())
                     return;
 
                 torrentGeneralController->update(details);
@@ -1310,65 +1310,51 @@ MainWindow::MainWindow(QWidget *parent)
                 refreshCurrentTorrentTabData();
 
                 if (torrentListController) {
-                    bool hasSequentialDownload = false;
-                    const bool sequentialDownloadEnabled = jsonBoolAny(
-                        details,
-                        { "sequential_download", "sequentialDownload" },
-                        &hasSequentialDownload
-                        );
-
                     torrentListController->setCurrentTorrentSequentialDownload(
-                        torrentKey,
-                        sequentialDownloadEnabled,
-                        hasSequentialDownload
+                        details.key,
+                        details.sequentialDownload,
+                        details.hasSequentialDownload
                         );
-
-                    const bool hasBandwidthPriority =
-                        details.contains(QStringLiteral("bandwidthPriority"));
 
                     torrentListController->setCurrentTorrentBandwidthPriority(
-                        torrentKey,
-                        details.value(QStringLiteral("bandwidthPriority")).toInt(0),
-                        hasBandwidthPriority
+                        details.key,
+                        details.bandwidthPriority,
+                        details.hasBandwidthPriority
                         );
                 }
 
             });
 
     connect(client, &TorrentBackend::torrentFilesReceived,
-            this, [this](TorrentKey torrentKey, const QJsonObject &details) {
-                if (torrentKey != currentTorrentKey())
+            this, [this](const TorrentFiles &files) {
+                if (files.key != currentTorrentKey())
                     return;
 
                 torrentFilesController->setTorrentContext(
-                    torrentKey,
-                    details.value(QStringLiteral("downloadDir")).toString());
-                torrentFilesController->populate(
-                    details.value(QStringLiteral("files")).toArray(),
-                    details.value(QStringLiteral("wanted")).toArray(),
-                    details.value(QStringLiteral("priorities")).toArray());
+                    files.key,
+                    files.downloadDirectory);
+                torrentFilesController->populate(files);
             });
 
     connect(client, &TorrentBackend::torrentPeersReceived,
-            this, [this](TorrentKey torrentKey, const QJsonObject &details) {
-                if (torrentKey == currentTorrentKey())
-                    torrentPeersController->populate(
-                        details.value(QStringLiteral("peers")).toArray());
+            this, [this](const TorrentPeers &peers) {
+                if (peers.key == currentTorrentKey())
+                    torrentPeersController->populate(peers);
             });
 
     connect(client, &TorrentBackend::torrentTrackersReceived,
-            this, [this](TorrentKey torrentKey, const QJsonObject &details) {
-                if (torrentKey != currentTorrentKey())
+            this, [this](const TorrentTrackers &trackers) {
+                if (trackers.key != currentTorrentKey())
                     return;
 
-                torrentTrackersController->setTorrentKey(torrentKey);
-                torrentTrackersController->populate(details);
+                torrentTrackersController->setTorrentKey(trackers.key);
+                torrentTrackersController->populate(trackers);
             });
 
     connect(client, &TorrentBackend::torrentPiecesReceived,
             this,
-            [this](TorrentKey torrentKey, const QJsonObject &details) {
-                torrentGeneralController->updatePieces(torrentKey, details);
+            [this](const TorrentPieces &pieces) {
+                torrentGeneralController->updatePieces(pieces);
             });
 
     // Primary data path: the source model must update before observers rebuild

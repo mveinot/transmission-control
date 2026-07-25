@@ -15,8 +15,6 @@
 #include <QHeaderView>
 #include <QSignalBlocker>
 #include <QInputDialog>
-#include <QJsonObject>
-#include <QJsonValue>
 #include <QLineEdit>
 #include <QLocale>
 #include <QMenu>
@@ -204,34 +202,6 @@ void TorrentFilesController::setFolderMappingsProvider(
     this->folderMappingsProvider = std::move(folderMappingsProvider);
 }
 
-bool TorrentFilesController::jsonValueToBool(const QJsonValue &value,
-                                             bool defaultValue)
-{
-    if (value.isBool())
-        return value.toBool();
-
-    if (value.isDouble())
-        return value.toInt(defaultValue ? 1 : 0) != 0;
-
-    if (value.isString()) {
-        const QString text = value.toString().trimmed().toLower();
-
-        if (text == QStringLiteral("true")
-            || text == QStringLiteral("yes")
-            || text == QStringLiteral("1")) {
-            return true;
-        }
-
-        if (text == QStringLiteral("false")
-            || text == QStringLiteral("no")
-            || text == QStringLiteral("0")) {
-            return false;
-        }
-    }
-
-    return defaultValue;
-}
-
 QString TorrentFilesController::priorityToString(int priority)
 {
     switch (priority) {
@@ -399,9 +369,7 @@ QTreeWidgetItem *TorrentFilesController::findOrCreateChild(
     return child;
 }
 
-void TorrentFilesController::populate(const QJsonArray &files,
-                                      const QJsonArray &wanted,
-                                      const QJsonArray &priorities)
+void TorrentFilesController::populate(const TorrentFiles &snapshot)
 {
     if (!fileTreeWidget)
         return;
@@ -411,29 +379,20 @@ void TorrentFilesController::populate(const QJsonArray &files,
     fileRecords.clear();
 
     if (placeholderController)
-        placeholderController->setMessage(files.isEmpty() ? tr("No files reported for this torrent.") : QString());
+        placeholderController->setMessage(snapshot.files.isEmpty() ? tr("No files reported for this torrent.") : QString());
 
-    fileRecords.reserve(files.size());
+    fileRecords.reserve(snapshot.files.size());
 
-    for (int fileIndex = 0; fileIndex < files.size(); ++fileIndex) {
-        const QJsonObject file = files.at(fileIndex).toObject();
-
+    for (const TorrentFile &file : snapshot.files) {
         FileRecord record;
-        record.index = fileIndex;
-        record.path = file.value(QStringLiteral("name")).toString();
-        record.length = file.value(QStringLiteral("length")).toVariant().toLongLong();
-        record.bytesCompleted =
-            file.value(QStringLiteral("bytesCompleted")).toVariant().toLongLong();
-        record.wanted =
-            fileIndex < wanted.size()
-                ? jsonValueToBool(wanted.at(fileIndex), true)
-                : true;
-        record.priority =
-            fileIndex < priorities.size()
-                ? priorities.at(fileIndex).toInt(0)
-                : 0;
+        record.index = file.index;
+        record.path = file.path;
+        record.length = file.length;
+        record.bytesCompleted = file.bytesCompleted;
+        record.wanted = file.wanted;
+        record.priority = file.priority;
 
-        torrentFilePaths.insert(fileIndex, record.path);
+        torrentFilePaths.insert(record.index, record.path);
         fileRecords.append(record);
     }
 

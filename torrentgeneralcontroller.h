@@ -2,9 +2,10 @@
 #define TORRENTGENERALCONTROLLER_H
 
 #include <QObject>
-#include <QJsonObject>
 #include <QString>
+#include <QVariantMap>
 
+#include "torrentdomain.h"
 #include "torrentkey.h"
 
 class QLabel;
@@ -42,8 +43,8 @@ public:
 
     void setup();
     void clear();
-    void update(const QJsonObject &details);
-    void updatePieces(TorrentKey torrentKey, const QJsonObject &details);
+    void update(const TorrentDetails &details);
+    void updatePieces(const TorrentPieces &pieces);
 
     TorrentKey currentTorrentKey() const;
     QString currentHashString() const;
@@ -60,12 +61,13 @@ signals:
 private:
     static bool looksLikeUrl(const QString &text);
     void configureMagnetLineEdit();
-    void updateGeneralFields(const QJsonObject &details);
+    void updateGeneralFields(const TorrentDetails &details);
 
     Widgets m_widgets;
     PieceProgressController *m_pieceProgressController = nullptr;
     TorrentDetailsTabController *m_detailsTabController = nullptr;
-    QJsonObject m_currentDetailsCache;
+    QVariantMap m_currentDetailsCache;
+    TorrentPieces m_currentPieces;
     TorrentKey m_currentTorrentKey;
     QString m_currentHashString;
     QString m_currentMagnetLink;

@@ -98,7 +98,7 @@ public:
                            const QString &newName) override;
 
     void setTorrentProperties(const TorrentKey &torrentKey,
-                              const QJsonObject &properties) override;
+                              const TorrentPropertyChanges &properties) override;
 
     void setTorrentsSequentialDownload(const QList<TorrentKey> &torrentKeys,
                                        bool enabled) override;
