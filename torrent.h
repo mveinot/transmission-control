@@ -9,6 +9,8 @@
 #include <QSet>
 #include <QUrl>
 
+#include "torrentkey.h"
+
 // Immutable-by-convention snapshot of the fields used by the torrent list and
 // filters. Construct a replacement from each RPC snapshot rather than patching.
 class torrent
@@ -66,7 +68,7 @@ public:
     QString getHealthDetails() const;
     int getQueuePosition() const;
     bool sameDisplayData(const torrent &other) const;
-    int getId() const;
+    TorrentKey getKey() const;
     QJsonArray getFiles() const;
     QJsonArray getPeers() const;
     QString getPrimaryTrackerHost() const;
@@ -79,7 +81,7 @@ public:
 private:
     static Status statusFromInt(int value);
     static QString statusToString(Status status);
-    int id = 0;
+    TorrentKey key;
     QString name;
     QString hashString;
     double percentDone = 0.0;

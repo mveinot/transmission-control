@@ -68,7 +68,7 @@ void NotificationController::showTestExternalCommand(const QString &executable,
     EventContext context;
     context.event = QStringLiteral("test");
     context.name = tr("Planetary Test Torrent");
-    context.id = 123;
+    context.key = QStringLiteral("123");
     context.hash = QStringLiteral("0123456789abcdef0123456789abcdef01234567");
     context.sizeBytes = 1610612736;
     context.size = QLocale().formattedDataSize(context.sizeBytes);
@@ -134,7 +134,7 @@ QString NotificationController::expandArgument(QString argument, const EventCont
 {
     argument.replace(QStringLiteral("{event}"), context.event);
     argument.replace(QStringLiteral("{name}"), context.name);
-    argument.replace(QStringLiteral("{id}"), QString::number(context.id));
+    argument.replace(QStringLiteral("{id}"), context.key);
     argument.replace(QStringLiteral("{hash}"), context.hash);
     argument.replace(QStringLiteral("{size}"), context.size);
     argument.replace(QStringLiteral("{size_bytes}"), QString::number(context.sizeBytes));
@@ -153,7 +153,7 @@ NotificationController::EventContext NotificationController::contextForTorrent(
     EventContext context;
     context.event = event;
     context.name = torrentItem.getName();
-    context.id = torrentItem.getId();
+    context.key = torrentItem.getKey();
     context.hash = torrentItem.getHashString();
     context.sizeBytes = torrentItem.getSizeBytes();
     context.size = torrentItem.getSize();
@@ -217,7 +217,7 @@ void NotificationController::resetBaseline()
 {
     m_baselineLoaded = false;
     m_knownTorrentStates.clear();
-    m_directlyNotifiedAddedTorrentIds.clear();
+    m_directlyNotifiedAddedTorrentKeys.clear();
 }
 
 void NotificationController::setServerName(const QString &serverName)
@@ -225,21 +225,22 @@ void NotificationController::setServerName(const QString &serverName)
     m_serverName = serverName.trimmed();
 }
 
-void NotificationController::handleTorrentAdded(int torrentId, const QString &name)
+void NotificationController::handleTorrentAdded(const TorrentKey &torrentKey,
+                                                const QString &name)
 {
     emit activityEventObserved(tr("Torrent added"),
                                name.isEmpty() ? tr("The torrent server accepted a new torrent.") : name,
                                m_serverName);
 
-    if (torrentId >= 0)
-        m_directlyNotifiedAddedTorrentIds.insert(torrentId);
+    if (isValidTorrentKey(torrentKey))
+        m_directlyNotifiedAddedTorrentKeys.insert(torrentKey);
     if (!eventEnabled(SettingsKeys::NotifyTorrentAdded))
         return;
 
     EventContext context;
     context.event = QStringLiteral("torrent_added");
     context.name = name;
-    context.id = torrentId;
+    context.key = torrentKey;
     context.server = m_serverName;
     context.timestamp = QDateTime::currentDateTime().toString(Qt::ISODate);
     dispatchEvent(tr("Torrent added"),
@@ -249,10 +250,10 @@ void NotificationController::handleTorrentAdded(int torrentId, const QString &na
 
 void NotificationController::processTorrentList(const QVector<torrent> &torrents)
 {
-    QHash<int, TorrentState> currentStates;
+    QHash<TorrentKey, TorrentState> currentStates;
     currentStates.reserve(torrents.size());
     for (const torrent &torrentItem : torrents)
-        currentStates.insert(torrentItem.getId(), stateForTorrent(torrentItem));
+        currentStates.insert(torrentItem.getKey(), stateForTorrent(torrentItem));
 
     // The first snapshot establishes state only. Treating it as a transition
     // would report every pre-existing torrent as newly added or completed.
@@ -263,12 +264,12 @@ void NotificationController::processTorrentList(const QVector<torrent> &torrents
     }
 
     for (const torrent &torrentItem : torrents) {
-        const int id = torrentItem.getId();
-        const TorrentState current = currentStates.value(id);
-        const auto previousIt = m_knownTorrentStates.constFind(id);
+        const TorrentKey key = torrentItem.getKey();
+        const TorrentState current = currentStates.value(key);
+        const auto previousIt = m_knownTorrentStates.constFind(key);
 
         if (previousIt == m_knownTorrentStates.constEnd()) {
-            if (m_directlyNotifiedAddedTorrentIds.remove(id) == 0) {
+            if (m_directlyNotifiedAddedTorrentKeys.remove(key) == 0) {
                 emit activityEventObserved(tr("Torrent added"), torrentItem.getName(), m_serverName);
                 if (eventEnabled(SettingsKeys::NotifyTorrentAdded)) {
                     dispatchEvent(tr("Torrent added"), torrentItem.getName(),

@@ -10,6 +10,8 @@
 
 #include <functional>
 
+#include "torrentkey.h"
+
 class torrent;
 
 // Derives edge-triggered user notifications from successive torrent snapshots.
@@ -25,7 +27,7 @@ public:
                                     DeliveryFunction deliveryFunction = {});
 
     void processTorrentList(const QVector<torrent> &torrents);
-    void handleTorrentAdded(int torrentId, const QString &name);
+    void handleTorrentAdded(const TorrentKey &torrentKey, const QString &name);
     void resetBaseline();
     void setServerName(const QString &serverName);
     void showNotification(const QString &title,
@@ -55,7 +57,7 @@ private:
     {
         QString event;
         QString name;
-        int id = -1;
+        TorrentKey key;
         QString hash;
         qint64 sizeBytes = 0;
         QString size;
@@ -90,8 +92,8 @@ private:
     DeliveryFunction m_deliveryFunction;
     QString m_serverName;
     bool m_baselineLoaded = false;
-    QHash<int, TorrentState> m_knownTorrentStates;
-    QSet<int> m_directlyNotifiedAddedTorrentIds;
+    QHash<TorrentKey, TorrentState> m_knownTorrentStates;
+    QSet<TorrentKey> m_directlyNotifiedAddedTorrentKeys;
 };
 
 #endif // NOTIFICATIONCONTROLLER_H

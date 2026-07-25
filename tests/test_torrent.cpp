@@ -41,6 +41,7 @@ class TestTorrent : public QObject
 
 private slots:
     void parsesBasicFields();
+    void prefersStableHashIdentity();
     void mapsTransmissionStatuses();
     void sameDisplayDataIncludesQueuePosition();
 };
@@ -49,7 +50,7 @@ void TestTorrent::parsesBasicFields()
 {
     const torrent item(makeTorrentValue(42, "Ubuntu ISO", 4, 0.625, 7));
 
-    QCOMPARE(item.getId(), 42);
+    QCOMPARE(item.getKey(), QStringLiteral("42"));
     QCOMPARE(item.getName(), QStringLiteral("Ubuntu ISO"));
     QCOMPARE(item.getStatus(), QStringLiteral("Downloading"));
     QCOMPARE(item.getPercentDone(), 62.5);
@@ -57,6 +58,16 @@ void TestTorrent::parsesBasicFields()
     QCOMPARE(item.getQueuePosition(), 7);
     QCOMPARE(item.getFiles().size(), 1);
     QCOMPARE(item.getPeers().size(), 1);
+}
+
+void TestTorrent::prefersStableHashIdentity()
+{
+    QJsonObject value = makeTorrentValue(42, "Ubuntu ISO", 4, 0.625, 7).toObject();
+    value.insert(QStringLiteral("hashString"), QStringLiteral("ABCDEF012345"));
+
+    const torrent item(value);
+
+    QCOMPARE(item.getKey(), QStringLiteral("ABCDEF012345"));
 }
 
 void TestTorrent::mapsTransmissionStatuses()

@@ -109,7 +109,7 @@ private:
 
     // Selection and detail refresh helpers operate in source torrent-id space,
     // never proxy row space.
-    int currentTorrentId() const;
+    TorrentKey currentTorrentKey() const;
     bool currentTabWantsLiveTorrentDetails() const;
     void refreshCurrentTorrentLiveDetailsIfNeeded();
     void refreshCurrentTorrentTabData();

@@ -23,14 +23,41 @@ constexpr QNetworkRequest::Attribute DeleteTorrentFileOnSuccessAttribute =
     static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 3);
 }
 
-static QJsonArray idsToJsonArray(const QList<int> &ids)
+static QJsonArray keysToJsonArray(const QList<TorrentKey> &torrentKeys)
 {
     QJsonArray array;
 
-    for (int id : ids)
-        array.append(id);
+    for (const TorrentKey &torrentKey : torrentKeys)
+        array.append(torrentKey);
 
     return array;
+}
+
+// File indices are subordinate backend values, not torrent identities.
+static QJsonArray indicesToJsonArray(const QList<int> &indices)
+{
+    QJsonArray array;
+
+    for (int index : indices)
+        array.append(index);
+
+    return array;
+}
+
+static TorrentKey torrentKeyFromObject(const QJsonObject &object)
+{
+    TorrentKey key =
+        object.value(QStringLiteral("hashString")).toString().trimmed();
+
+    if (!key.isEmpty())
+        return key;
+
+    const QJsonValue legacyId = object.value(QStringLiteral("id"));
+    if (legacyId.isString())
+        return legacyId.toString().trimmed();
+
+    const int numericId = legacyId.toInt(-1);
+    return numericId >= 0 ? QString::number(numericId) : QString();
 }
 
 
@@ -120,24 +147,28 @@ void TransmissionBackend::postRpc(const RpcRequestContext &context)
 }
 
 
-void TransmissionBackend::postIdsCommand(const QString &method, const QList<int> &ids)
+void TransmissionBackend::postIdsCommand(
+    const QString &method,
+    const QList<TorrentKey> &torrentKeys)
 {
-    if (ids.isEmpty())
+    if (torrentKeys.isEmpty())
         return;
 
     QJsonObject arguments;
-    arguments[QStringLiteral("ids")] = idsToJsonArray(ids);
+    arguments[QStringLiteral("ids")] = keysToJsonArray(torrentKeys);
 
     postRpc(method, arguments, RpcRequestType::Command);
 }
 
-void TransmissionBackend::postSingleTorrentSet(int torrentId, const QJsonObject &arguments)
+void TransmissionBackend::postSingleTorrentSet(
+    const TorrentKey &torrentKey,
+    const QJsonObject &arguments)
 {
-    if (torrentId < 0 || arguments.isEmpty())
+    if (!isValidTorrentKey(torrentKey) || arguments.isEmpty())
         return;
 
     QJsonObject payload = arguments;
-    payload[QStringLiteral("ids")] = QJsonArray { torrentId };
+    payload[QStringLiteral("ids")] = QJsonArray { torrentKey };
 
     postRpc(QStringLiteral("torrent-set"), payload, RpcRequestType::Command);
 }
@@ -151,7 +182,9 @@ bool TransmissionBackend::isTorrentDetailRequest(RpcRequestType type)
         || type == RpcRequestType::TorrentPieces;
 }
 
-bool TransmissionBackend::prepareTorrentDetailRequest(RpcRequestType type, int torrentId)
+bool TransmissionBackend::prepareTorrentDetailRequest(
+    RpcRequestType type,
+    const TorrentKey &torrentKey)
 {
     QList<QNetworkReply *> obsoleteReplies;
 
@@ -160,7 +193,7 @@ bool TransmissionBackend::prepareTorrentDetailRequest(RpcRequestType type, int t
             continue;
 
         const QJsonArray ids = it.value().arguments.value(QStringLiteral("ids")).toArray();
-        if (ids.size() == 1 && ids.first().toInt(-1) == torrentId)
+        if (ids.size() == 1 && ids.first().toString() == torrentKey)
             return false;
 
         obsoleteReplies.append(it.key());
@@ -446,7 +479,7 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
 
             if (!added.isEmpty()) {
                 emit torrentAdded(
-                    added.value(QStringLiteral("id")).toInt(-1),
+                    torrentKeyFromObject(added),
                     added.value(QStringLiteral("name")).toString()
                     );
             }
@@ -490,23 +523,23 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
         torrentsValue.toArray();
 
     if (requestType == RpcRequestType::TorrentListTrackers) {
-        QSet<int> receivedIds;
+        QSet<TorrentKey> receivedKeys;
 
         for (const QJsonValue &value : newTorrentList) {
             const QJsonObject object = value.toObject();
-            const int torrentId = object.value(QStringLiteral("id")).toInt(-1);
-            if (torrentId < 0)
+            const TorrentKey torrentKey = torrentKeyFromObject(object);
+            if (!isValidTorrentKey(torrentKey))
                 continue;
 
-            receivedIds.insert(torrentId);
-            torrentTrackerMetadata.insert(torrentId, object);
+            receivedKeys.insert(torrentKey);
+            torrentTrackerMetadata.insert(torrentKey, object);
         }
 
         // Drop metadata for torrents removed since the previous slow poll.
-        const QList<int> cachedIds = torrentTrackerMetadata.keys();
-        for (int torrentId : cachedIds) {
-            if (!receivedIds.contains(torrentId))
-                torrentTrackerMetadata.remove(torrentId);
+        const QList<TorrentKey> cachedKeys = torrentTrackerMetadata.keys();
+        for (const TorrentKey &torrentKey : cachedKeys) {
+            if (!receivedKeys.contains(torrentKey))
+                torrentTrackerMetadata.remove(torrentKey);
         }
 
         emit torrentTrackerMetadataUpdated();
@@ -516,11 +549,10 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
     if (requestType == RpcRequestType::TorrentDetails) {
         if (!newTorrentList.isEmpty()) {
             const QJsonObject detail = newTorrentList.first().toObject();
-            const int torrentId = detail.value("id").toInt(-1);
+            const TorrentKey torrentKey = torrentKeyFromObject(detail);
 
-            if (torrentId >= 0) {
-                emit torrentDetailsReceived(torrentId, detail);
-            }
+            if (isValidTorrentKey(torrentKey))
+                emit torrentDetailsReceived(torrentKey, detail);
         }
 
         return;
@@ -531,15 +563,15 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
         || requestType == RpcRequestType::TorrentTrackers) {
         if (!newTorrentList.isEmpty()) {
             const QJsonObject detail = newTorrentList.first().toObject();
-            const int torrentId = detail.value(QStringLiteral("id")).toInt(-1);
+            const TorrentKey torrentKey = torrentKeyFromObject(detail);
 
-            if (torrentId >= 0) {
+            if (isValidTorrentKey(torrentKey)) {
                 if (requestType == RpcRequestType::TorrentFiles)
-                    emit torrentFilesReceived(torrentId, detail);
+                    emit torrentFilesReceived(torrentKey, detail);
                 else if (requestType == RpcRequestType::TorrentPeers)
-                    emit torrentPeersReceived(torrentId, detail);
+                    emit torrentPeersReceived(torrentKey, detail);
                 else
-                    emit torrentTrackersReceived(torrentId, detail);
+                    emit torrentTrackersReceived(torrentKey, detail);
             }
         }
 
@@ -549,10 +581,10 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
     if (requestType == RpcRequestType::TorrentPieces) {
         if (!newTorrentList.isEmpty()) {
             const QJsonObject detail = newTorrentList.first().toObject();
-            const int torrentId = detail.value(QStringLiteral("id")).toInt(-1);
+            const TorrentKey torrentKey = torrentKeyFromObject(detail);
 
-            if (torrentId >= 0)
-                emit torrentPiecesReceived(torrentId, detail);
+            if (isValidTorrentKey(torrentKey))
+                emit torrentPiecesReceived(torrentKey, detail);
         }
 
         return;
@@ -561,10 +593,10 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
     if (requestType == RpcRequestType::TorrentProperties) {
         if (!newTorrentList.isEmpty()) {
             const QJsonObject detail = newTorrentList.first().toObject();
-            const int torrentId = detail.value(QStringLiteral("id")).toInt(-1);
+            const TorrentKey torrentKey = torrentKeyFromObject(detail);
 
-            if (torrentId >= 0)
-                emit torrentPropertiesReceived(torrentId, detail);
+            if (isValidTorrentKey(torrentKey))
+                emit torrentPropertiesReceived(torrentKey, detail);
         }
 
         return;
@@ -576,8 +608,8 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
 
         for (const QJsonValue &value : newTorrentList) {
             QJsonObject object = value.toObject();
-            const int torrentId = object.value(QStringLiteral("id")).toInt(-1);
-            const QJsonObject metadata = torrentTrackerMetadata.value(torrentId);
+            const TorrentKey torrentKey = torrentKeyFromObject(object);
+            const QJsonObject metadata = torrentTrackerMetadata.value(torrentKey);
 
             if (!metadata.isEmpty()) {
                 object.insert(QStringLiteral("trackers"),
@@ -814,7 +846,8 @@ void TransmissionBackend::getTorrentTrackerMetadata()
 
     QJsonObject arguments;
     arguments[QStringLiteral("fields")] = QJsonArray {
-        QStringLiteral("id"), QStringLiteral("trackers"),
+        QStringLiteral("id"), QStringLiteral("hashString"),
+        QStringLiteral("trackers"),
         QStringLiteral("trackerStats")
     };
     postRpc(QStringLiteral("torrent-get"), arguments,
@@ -913,7 +946,7 @@ void TransmissionBackend::addTorrentFromMagnet(const QString &magnetLink)
     postRpc("torrent-add", arguments, RpcRequestType::Command);
 }
 
-void TransmissionBackend::startTorrents(const QList<int> &ids)
+void TransmissionBackend::startTorrents(const QList<TorrentKey> &ids)
 {
     postIdsCommand(QStringLiteral("torrent-start"), ids);
 }
@@ -923,12 +956,12 @@ void TransmissionBackend::startAllTorrents()
     postRpc(QStringLiteral("torrent-start"), QJsonObject(), RpcRequestType::Command);
 }
 
-void TransmissionBackend::startTorrentsNow(const QList<int> &ids)
+void TransmissionBackend::startTorrentsNow(const QList<TorrentKey> &ids)
 {
     postIdsCommand(QStringLiteral("torrent-start-now"), ids);
 }
 
-void TransmissionBackend::stopTorrents(const QList<int> &ids)
+void TransmissionBackend::stopTorrents(const QList<TorrentKey> &ids)
 {
     postIdsCommand(QStringLiteral("torrent-stop"), ids);
 }
@@ -938,29 +971,29 @@ void TransmissionBackend::stopAllTorrents()
     postRpc(QStringLiteral("torrent-stop"), QJsonObject(), RpcRequestType::Command);
 }
 
-void TransmissionBackend::removeTorrents(const QList<int> &ids, bool deleteLocalData)
+void TransmissionBackend::removeTorrents(const QList<TorrentKey> &ids, bool deleteLocalData)
 {
     if (ids.isEmpty())
         return;
 
     QJsonObject arguments;
-    arguments["ids"] = idsToJsonArray(ids);
+    arguments["ids"] = keysToJsonArray(ids);
     arguments["delete-local-data"] = deleteLocalData;
 
     postRpc("torrent-remove", arguments, RpcRequestType::Command);
 }
 
-void TransmissionBackend::verifyTorrents(const QList<int> &ids)
+void TransmissionBackend::verifyTorrents(const QList<TorrentKey> &ids)
 {
     postIdsCommand(QStringLiteral("torrent-verify"), ids);
 }
 
-void TransmissionBackend::reannounceTorrents(const QList<int> &ids)
+void TransmissionBackend::reannounceTorrents(const QList<TorrentKey> &ids)
 {
     postIdsCommand(QStringLiteral("torrent-reannounce"), ids);
 }
 
-void TransmissionBackend::setTorrentLocation(const QList<int> &ids,
+void TransmissionBackend::setTorrentLocation(const QList<TorrentKey> &ids,
                                     const QString &location,
                                     bool moveData)
 {
@@ -970,7 +1003,7 @@ void TransmissionBackend::setTorrentLocation(const QList<int> &ids,
         return;
 
     QJsonObject arguments;
-    arguments[QStringLiteral("ids")] = idsToJsonArray(ids);
+    arguments[QStringLiteral("ids")] = keysToJsonArray(ids);
     arguments[QStringLiteral("location")] = trimmedLocation;
     arguments[QStringLiteral("move")] = moveData;
 
@@ -979,9 +1012,10 @@ void TransmissionBackend::setTorrentLocation(const QList<int> &ids,
             RpcRequestType::Command);
 }
 
-void TransmissionBackend::getTorrentDetails(int id)
+void TransmissionBackend::getTorrentDetails(const TorrentKey &id)
 {
-    if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentDetails, id))
+    if (!isValidTorrentKey(id)
+        || !prepareTorrentDetailRequest(RpcRequestType::TorrentDetails, id))
         return;
 
     QJsonObject arguments;
@@ -1062,52 +1096,59 @@ void TransmissionBackend::getTorrentDetails(int id)
     postRpc("torrent-get", arguments, RpcRequestType::TorrentDetails);
 }
 
-void TransmissionBackend::getTorrentFiles(int id)
+void TransmissionBackend::getTorrentFiles(const TorrentKey &id)
 {
-    if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentFiles, id))
+    if (!isValidTorrentKey(id)
+        || !prepareTorrentDetailRequest(RpcRequestType::TorrentFiles, id))
         return;
 
     QJsonObject arguments;
     arguments[QStringLiteral("ids")] = QJsonArray { id };
     arguments[QStringLiteral("fields")] = QJsonArray {
-        QStringLiteral("id"), QStringLiteral("downloadDir"),
+        QStringLiteral("id"), QStringLiteral("hashString"),
+        QStringLiteral("downloadDir"),
         QStringLiteral("files"), QStringLiteral("wanted"),
         QStringLiteral("priorities")
     };
     postRpc(QStringLiteral("torrent-get"), arguments, RpcRequestType::TorrentFiles);
 }
 
-void TransmissionBackend::getTorrentPeers(int id)
+void TransmissionBackend::getTorrentPeers(const TorrentKey &id)
 {
-    if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentPeers, id))
+    if (!isValidTorrentKey(id)
+        || !prepareTorrentDetailRequest(RpcRequestType::TorrentPeers, id))
         return;
 
     QJsonObject arguments;
     arguments[QStringLiteral("ids")] = QJsonArray { id };
     arguments[QStringLiteral("fields")] = QJsonArray {
-        QStringLiteral("id"), QStringLiteral("peers")
+        QStringLiteral("id"), QStringLiteral("hashString"),
+        QStringLiteral("peers")
     };
     postRpc(QStringLiteral("torrent-get"), arguments, RpcRequestType::TorrentPeers);
 }
 
-void TransmissionBackend::getTorrentTrackers(int id)
+void TransmissionBackend::getTorrentTrackers(const TorrentKey &id)
 {
-    if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentTrackers, id))
+    if (!isValidTorrentKey(id)
+        || !prepareTorrentDetailRequest(RpcRequestType::TorrentTrackers, id))
         return;
 
     QJsonObject arguments;
     arguments[QStringLiteral("ids")] = QJsonArray { id };
     arguments[QStringLiteral("fields")] = QJsonArray {
-        QStringLiteral("id"), QStringLiteral("trackers"),
+        QStringLiteral("id"), QStringLiteral("hashString"),
+        QStringLiteral("trackers"),
         QStringLiteral("trackerStats")
     };
     postRpc(QStringLiteral("torrent-get"), arguments, RpcRequestType::TorrentTrackers);
 }
 
 
-void TransmissionBackend::getTorrentPieces(int id)
+void TransmissionBackend::getTorrentPieces(const TorrentKey &id)
 {
-    if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentPieces, id))
+    if (!isValidTorrentKey(id)
+        || !prepareTorrentDetailRequest(RpcRequestType::TorrentPieces, id))
         return;
 
     QJsonObject arguments;
@@ -1115,6 +1156,7 @@ void TransmissionBackend::getTorrentPieces(int id)
 
     arguments[QStringLiteral("fields")] = QJsonArray {
         QStringLiteral("id"),
+        QStringLiteral("hashString"),
         QStringLiteral("status"),
         QStringLiteral("error"),
         QStringLiteral("errorString"),
@@ -1168,9 +1210,10 @@ void TransmissionBackend::getTorrentPieces(int id)
             RpcRequestType::TorrentPieces);
 }
 
-void TransmissionBackend::getTorrentProperties(int id)
+void TransmissionBackend::getTorrentProperties(const TorrentKey &id)
 {
-    if (id < 0 || !prepareTorrentDetailRequest(RpcRequestType::TorrentProperties, id))
+    if (!isValidTorrentKey(id)
+        || !prepareTorrentDetailRequest(RpcRequestType::TorrentProperties, id))
         return;
 
     QJsonObject arguments;
@@ -1260,29 +1303,29 @@ void TransmissionBackend::getTorrentProperties(int id)
             RpcRequestType::TorrentProperties);
 }
 
-void TransmissionBackend::setTorrentFilesWanted(int torrentId,
+void TransmissionBackend::setTorrentFilesWanted(const TorrentKey &torrentId,
                                        const QList<int> &fileIndices,
                                        bool wanted)
 {
-    if (torrentId < 0 || fileIndices.isEmpty())
+    if (!isValidTorrentKey(torrentId) || fileIndices.isEmpty())
         return;
 
     QJsonObject arguments;
     arguments["ids"] = QJsonArray { torrentId };
 
     if (wanted)
-        arguments["files-wanted"] = idsToJsonArray(fileIndices);
+        arguments["files-wanted"] = indicesToJsonArray(fileIndices);
     else
-        arguments["files-unwanted"] = idsToJsonArray(fileIndices);
+        arguments["files-unwanted"] = indicesToJsonArray(fileIndices);
 
     postRpc("torrent-set", arguments, RpcRequestType::Command);
 }
 
-void TransmissionBackend::setTorrentFilesPriority(int torrentId,
+void TransmissionBackend::setTorrentFilesPriority(const TorrentKey &torrentId,
                                          const QList<int> &fileIndices,
                                          int priority)
 {
-    if (torrentId < 0 || fileIndices.isEmpty())
+    if (!isValidTorrentKey(torrentId) || fileIndices.isEmpty())
         return;
 
     QJsonObject arguments;
@@ -1290,59 +1333,59 @@ void TransmissionBackend::setTorrentFilesPriority(int torrentId,
 
     switch (priority) {
     case 1:
-        arguments["priority-high"] = idsToJsonArray(fileIndices);
+        arguments["priority-high"] = indicesToJsonArray(fileIndices);
         break;
     case -1:
-        arguments["priority-low"] = idsToJsonArray(fileIndices);
+        arguments["priority-low"] = indicesToJsonArray(fileIndices);
         break;
     case 0:
     default:
-        arguments["priority-normal"] = idsToJsonArray(fileIndices);
+        arguments["priority-normal"] = indicesToJsonArray(fileIndices);
         break;
     }
 
     postRpc("torrent-set", arguments, RpcRequestType::Command);
 }
 
-void TransmissionBackend::setTorrentFilesWantedAndPriority(int torrentId,
+void TransmissionBackend::setTorrentFilesWantedAndPriority(const TorrentKey &torrentId,
                                                   const QList<int> &fileIndices,
                                                   bool wanted,
                                                   int priority)
 {
-    if (torrentId < 0 || fileIndices.isEmpty())
+    if (!isValidTorrentKey(torrentId) || fileIndices.isEmpty())
         return;
 
     QJsonObject arguments;
     arguments["ids"] = QJsonArray { torrentId };
 
     if (wanted) {
-        arguments["files-wanted"] = idsToJsonArray(fileIndices);
+        arguments["files-wanted"] = indicesToJsonArray(fileIndices);
 
         switch (priority) {
         case 1:
-            arguments["priority-high"] = idsToJsonArray(fileIndices);
+            arguments["priority-high"] = indicesToJsonArray(fileIndices);
             break;
         case -1:
-            arguments["priority-low"] = idsToJsonArray(fileIndices);
+            arguments["priority-low"] = indicesToJsonArray(fileIndices);
             break;
         case 0:
         default:
-            arguments["priority-normal"] = idsToJsonArray(fileIndices);
+            arguments["priority-normal"] = indicesToJsonArray(fileIndices);
             break;
         }
     } else {
-        arguments["files-unwanted"] = idsToJsonArray(fileIndices);
+        arguments["files-unwanted"] = indicesToJsonArray(fileIndices);
     }
 
     postRpc("torrent-set", arguments, RpcRequestType::Command);
 }
 
 
-void TransmissionBackend::addTorrentTracker(int torrentId, const QString &announceUrl)
+void TransmissionBackend::addTorrentTracker(const TorrentKey &torrentId, const QString &announceUrl)
 {
     const QString trimmedUrl = announceUrl.trimmed();
 
-    if (torrentId < 0 || trimmedUrl.isEmpty())
+    if (!isValidTorrentKey(torrentId) || trimmedUrl.isEmpty())
         return;
 
     QJsonObject arguments;
@@ -1354,13 +1397,13 @@ void TransmissionBackend::addTorrentTracker(int torrentId, const QString &announ
             RpcRequestType::Command);
 }
 
-void TransmissionBackend::editTorrentTracker(int torrentId,
+void TransmissionBackend::editTorrentTracker(const TorrentKey &torrentId,
                                     int trackerId,
                                     const QString &announceUrl)
 {
     const QString trimmedUrl = announceUrl.trimmed();
 
-    if (torrentId < 0 || trackerId < 0 || trimmedUrl.isEmpty())
+    if (!isValidTorrentKey(torrentId) || trackerId < 0 || trimmedUrl.isEmpty())
         return;
 
     QJsonObject arguments;
@@ -1374,9 +1417,9 @@ void TransmissionBackend::editTorrentTracker(int torrentId,
             RpcRequestType::Command);
 }
 
-void TransmissionBackend::removeTorrentTracker(int torrentId, int trackerId)
+void TransmissionBackend::removeTorrentTracker(const TorrentKey &torrentId, int trackerId)
 {
-    if (torrentId < 0 || trackerId < 0)
+    if (!isValidTorrentKey(torrentId) || trackerId < 0)
         return;
 
     QJsonObject arguments;
@@ -1388,14 +1431,14 @@ void TransmissionBackend::removeTorrentTracker(int torrentId, int trackerId)
             RpcRequestType::Command);
 }
 
-void TransmissionBackend::renameTorrentPath(int torrentId,
+void TransmissionBackend::renameTorrentPath(const TorrentKey &torrentId,
                                    const QString &path,
                                    const QString &newName)
 {
     const QString trimmedPath = path.trimmed();
     const QString trimmedName = newName.trimmed();
 
-    if (torrentId < 0 || trimmedPath.isEmpty() || trimmedName.isEmpty())
+    if (!isValidTorrentKey(torrentId) || trimmedPath.isEmpty() || trimmedName.isEmpty())
         return;
 
     QJsonObject arguments;
@@ -1408,10 +1451,10 @@ void TransmissionBackend::renameTorrentPath(int torrentId,
             RpcRequestType::Command);
 }
 
-void TransmissionBackend::setTorrentProperties(int torrentId,
+void TransmissionBackend::setTorrentProperties(const TorrentKey &torrentId,
                                       const QJsonObject &properties)
 {
-    if (torrentId < 0 || properties.isEmpty())
+    if (!isValidTorrentKey(torrentId) || properties.isEmpty())
         return;
 
     QJsonObject arguments = properties;
@@ -1422,14 +1465,14 @@ void TransmissionBackend::setTorrentProperties(int torrentId,
             RpcRequestType::Command);
 }
 
-void TransmissionBackend::setTorrentsSequentialDownload(const QList<int> &ids,
+void TransmissionBackend::setTorrentsSequentialDownload(const QList<TorrentKey> &ids,
                                                bool enabled)
 {
     if (ids.isEmpty())
         return;
 
     QJsonObject arguments;
-    arguments[QStringLiteral("ids")] = idsToJsonArray(ids);
+    arguments[QStringLiteral("ids")] = keysToJsonArray(ids);
     arguments[QStringLiteral("sequential_download")] = enabled;
 
     postRpc(QStringLiteral("torrent-set"),
@@ -1437,14 +1480,14 @@ void TransmissionBackend::setTorrentsSequentialDownload(const QList<int> &ids,
             RpcRequestType::Command);
 }
 
-void TransmissionBackend::setTorrentsBandwidthPriority(const QList<int> &ids,
+void TransmissionBackend::setTorrentsBandwidthPriority(const QList<TorrentKey> &ids,
                                               int priority)
 {
     if (ids.isEmpty())
         return;
 
     QJsonObject arguments;
-    arguments[QStringLiteral("ids")] = idsToJsonArray(ids);
+    arguments[QStringLiteral("ids")] = keysToJsonArray(ids);
     arguments[QStringLiteral("bandwidthPriority")] = priority;
 
     postRpc(QStringLiteral("torrent-set"),
@@ -1452,22 +1495,22 @@ void TransmissionBackend::setTorrentsBandwidthPriority(const QList<int> &ids,
             RpcRequestType::Command);
 }
 
-void TransmissionBackend::queueMoveTop(const QList<int> &ids)
+void TransmissionBackend::queueMoveTop(const QList<TorrentKey> &ids)
 {
     postIdsCommand(QStringLiteral("queue-move-top"), ids);
 }
 
-void TransmissionBackend::queueMoveUp(const QList<int> &ids)
+void TransmissionBackend::queueMoveUp(const QList<TorrentKey> &ids)
 {
     postIdsCommand(QStringLiteral("queue-move-up"), ids);
 }
 
-void TransmissionBackend::queueMoveDown(const QList<int> &ids)
+void TransmissionBackend::queueMoveDown(const QList<TorrentKey> &ids)
 {
     postIdsCommand(QStringLiteral("queue-move-down"), ids);
 }
 
-void TransmissionBackend::queueMoveBottom(const QList<int> &ids)
+void TransmissionBackend::queueMoveBottom(const QList<TorrentKey> &ids)
 {
     postIdsCommand(QStringLiteral("queue-move-bottom"), ids);
 }
@@ -1614,15 +1657,15 @@ void TransmissionBackend::addTorrentFile(const QString &filePath,
 
     if (!filesUnwanted.isEmpty())
         arguments.insert(QStringLiteral("files-unwanted"),
-                         idsToJsonArray(filesUnwanted));
+                         indicesToJsonArray(filesUnwanted));
 
     if (!priorityLow.isEmpty())
         arguments.insert(QStringLiteral("priority-low"),
-                         idsToJsonArray(priorityLow));
+                         indicesToJsonArray(priorityLow));
 
     if (!priorityHigh.isEmpty())
         arguments.insert(QStringLiteral("priority-high"),
-                         idsToJsonArray(priorityHigh));
+                         indicesToJsonArray(priorityHigh));
 
     RpcRequestContext context;
     context.method = QStringLiteral("torrent-add");

@@ -133,9 +133,9 @@ void TorrentTrackersController::setLoading()
         placeholderController->setMessage(tr("Loading trackers…"));
 }
 
-void TorrentTrackersController::setTorrentId(int torrentId)
+void TorrentTrackersController::setTorrentKey(TorrentKey torrentKey)
 {
-    this->torrentId = torrentId;
+    this->torrentKey = torrentKey;
 }
 
 void TorrentTrackersController::populate(const QJsonObject &details)
@@ -313,7 +313,7 @@ QString TorrentTrackersController::trackerAnnounceUrlForRow(int row) const
 
 void TorrentTrackersController::addTrackerFromContextMenu()
 {
-    if (!client || torrentId < 0)
+    if (!client || !isValidTorrentKey(torrentKey))
         return;
 
     bool ok = false;
@@ -338,13 +338,13 @@ void TorrentTrackersController::addTrackerFromContextMenu()
         return;
     }
 
-    client->addTorrentTracker(torrentId, trackerUrl);
+    client->addTorrentTracker(torrentKey, trackerUrl);
     emit statusMessageRequested(tr("Adding tracker..."), 3000);
 }
 
 void TorrentTrackersController::editTrackerFromContextMenu(int row)
 {
-    if (!client || torrentId < 0)
+    if (!client || !isValidTorrentKey(torrentKey))
         return;
 
     const int trackerId = trackerIdForRow(row);
@@ -378,13 +378,13 @@ void TorrentTrackersController::editTrackerFromContextMenu(int row)
     if (trackerUrl == oldTrackerUrl)
         return;
 
-    client->editTorrentTracker(torrentId, trackerId, trackerUrl);
+    client->editTorrentTracker(torrentKey, trackerId, trackerUrl);
     emit statusMessageRequested(tr("Updating tracker..."), 3000);
 }
 
 void TorrentTrackersController::removeTrackerFromContextMenu(int row)
 {
-    if (!client || torrentId < 0)
+    if (!client || !isValidTorrentKey(torrentKey))
         return;
 
     const int trackerId = trackerIdForRow(row);
@@ -404,7 +404,7 @@ void TorrentTrackersController::removeTrackerFromContextMenu(int row)
     if (result != QMessageBox::Yes)
         return;
 
-    client->removeTorrentTracker(torrentId, trackerId);
+    client->removeTorrentTracker(torrentKey, trackerId);
     emit statusMessageRequested(tr("Removing tracker..."), 3000);
 }
 
@@ -425,13 +425,13 @@ void TorrentTrackersController::showContextMenu(const QPoint &pos)
     QMenu menu(dialogParent);
 
     QAction *addTrackerAction = menu.addAction(tr("Add Tracker…"));
-    addTrackerAction->setEnabled(torrentId >= 0);
+    addTrackerAction->setEnabled(isValidTorrentKey(torrentKey));
 
     QAction *editTrackerAction = menu.addAction(tr("Edit Tracker…"));
-    editTrackerAction->setEnabled(torrentId >= 0 && row >= 0 && trackerId >= 0);
+    editTrackerAction->setEnabled(isValidTorrentKey(torrentKey) && row >= 0 && trackerId >= 0);
 
     QAction *removeTrackerAction = menu.addAction(tr("Remove Tracker"));
-    removeTrackerAction->setEnabled(torrentId >= 0 && row >= 0 && trackerId >= 0);
+    removeTrackerAction->setEnabled(isValidTorrentKey(torrentKey) && row >= 0 && trackerId >= 0);
 
     menu.addSeparator();
 

@@ -67,7 +67,7 @@ private slots:
     void exposesQueueColumn();
     void exposesOptionalColumns();
     void exposesTorrentErrorState();
-    void indexesRowsByTorrentId();
+    void indexesRowsByTorrentKey();
     void queuePositionChangeEmitsDataChanged();
     void removesMissingRowsOnUpdate();
 };
@@ -186,7 +186,7 @@ void TestTorrentModel::exposesTorrentErrorState()
     QVERIFY(qvariant_cast<QFont>(model.data(statusIndex, Qt::FontRole)).bold());
 }
 
-void TestTorrentModel::indexesRowsByTorrentId()
+void TestTorrentModel::indexesRowsByTorrentKey()
 {
     TorrentModel model;
     model.applyUpdate(makeTorrentList({
@@ -194,11 +194,11 @@ void TestTorrentModel::indexesRowsByTorrentId()
         makeTorrentValue(20, "Twenty", 0, 1.0, 2048, 1),
     }));
 
-    QCOMPARE(model.rowForId(10), 0);
-    QCOMPARE(model.rowForId(20), 1);
-    QCOMPARE(model.rowForId(999), -1);
+    QCOMPARE(model.rowForKey(QStringLiteral("10")), 0);
+    QCOMPARE(model.rowForKey(QStringLiteral("20")), 1);
+    QCOMPARE(model.rowForKey(QStringLiteral("999")), -1);
 
-    QCOMPARE(model.data(model.index(model.rowForId(20), TorrentModel::NameColumn)).toString(),
+    QCOMPARE(model.data(model.index(model.rowForKey(QStringLiteral("20")), TorrentModel::NameColumn)).toString(),
              QStringLiteral("Twenty"));
 }
 
@@ -235,8 +235,8 @@ void TestTorrentModel::removesMissingRowsOnUpdate()
 
     QCOMPARE(rowsRemovedSpy.count(), 1);
     QCOMPARE(model.rowCount(), 1);
-    QCOMPARE(model.rowForId(10), -1);
-    QCOMPARE(model.rowForId(20), 0);
+    QCOMPARE(model.rowForKey(QStringLiteral("10")), -1);
+    QCOMPARE(model.rowForKey(QStringLiteral("20")), 0);
 }
 
 QTEST_MAIN(TestTorrentModel)

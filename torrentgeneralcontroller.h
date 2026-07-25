@@ -5,6 +5,8 @@
 #include <QJsonObject>
 #include <QString>
 
+#include "torrentkey.h"
+
 class QLabel;
 class QLineEdit;
 class QTabWidget;
@@ -41,16 +43,16 @@ public:
     void setup();
     void clear();
     void update(const QJsonObject &details);
-    void updatePieces(int torrentId, const QJsonObject &details);
+    void updatePieces(TorrentKey torrentKey, const QJsonObject &details);
 
-    int currentTorrentId() const;
+    TorrentKey currentTorrentKey() const;
     QString currentHashString() const;
     QString currentMagnetLink() const;
     QString currentDownloadDir() const;
     bool wantsLiveTorrentDetails(QWidget *currentTab) const;
 
 signals:
-    void currentTorrentDetailsChanged(int torrentId,
+    void currentTorrentDetailsChanged(TorrentKey torrentKey,
                                       const QString &hashString,
                                       const QString &magnetLink);
     void currentTorrentDetailsCleared();
@@ -64,7 +66,7 @@ private:
     PieceProgressController *m_pieceProgressController = nullptr;
     TorrentDetailsTabController *m_detailsTabController = nullptr;
     QJsonObject m_currentDetailsCache;
-    int m_currentTorrentId = -1;
+    TorrentKey m_currentTorrentKey;
     QString m_currentHashString;
     QString m_currentMagnetLink;
 };

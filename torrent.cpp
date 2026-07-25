@@ -31,9 +31,23 @@ torrent::torrent(const QJsonValue &val)
 {
     const QJsonObject obj = val.toObject();
 
-    id = obj.value("id").toInt();
-    name = obj.value("name").toString();
     hashString = obj.value("hashString").toString().trimmed();
+    key = hashString;
+
+    // Compatibility fallback for normalized fixtures and older adapters.
+    // Production backends should always provide a stable string key.
+    if (key.isEmpty()) {
+        const QJsonValue idValue = obj.value(QStringLiteral("id"));
+        if (idValue.isString()) {
+            key = idValue.toString().trimmed();
+        } else {
+            const int numericId = idValue.toInt(-1);
+            if (numericId >= 0)
+                key = QString::number(numericId);
+        }
+    }
+
+    name = obj.value("name").toString();
     eta = obj.value("eta").toInt();
     percentDone = obj.value("percentDone").toDouble() * 100.0;
     status = statusFromInt(obj.value("status").toInt());
@@ -160,7 +174,7 @@ torrent::Status torrent::statusFromInt(int value)
     }
 }
 
-int torrent::getId() const { return id; }
+TorrentKey torrent::getKey() const { return key; }
 QString torrent::getName() const { return name; }
 QString torrent::getHashString() const { return hashString; }
 double torrent::getPercentDone() const { return percentDone; }
@@ -559,7 +573,7 @@ QJsonArray torrent::getPeers() const
 
 bool torrent::sameDisplayData(const torrent &other) const
 {
-    return id == other.id
+    return key == other.key
            && hashString == other.hashString
            && name == other.name
            && percentDone == other.percentDone

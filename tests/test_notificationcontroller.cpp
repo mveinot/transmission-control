@@ -80,7 +80,7 @@ void TestNotificationController::directAddSuppressesRefreshDuplicate()
         });
 
     controller.processTorrentList({});
-    controller.handleTorrentAdded(7, QStringLiteral("Example"));
+    controller.handleTorrentAdded(QStringLiteral("7"), QStringLiteral("Example"));
     controller.processTorrentList({
         makeTorrent(7, QStringLiteral("Example"), 0.0, torrent::Status::Downloading)
     });
@@ -101,7 +101,7 @@ void TestNotificationController::disabledDirectAddStillSuppressesRefreshDuplicat
         });
 
     controller.processTorrentList({});
-    controller.handleTorrentAdded(9, QStringLiteral("Example"));
+    controller.handleTorrentAdded(QStringLiteral("9"), QStringLiteral("Example"));
 
     QSettings().setValue(SettingsKeys::NotifyTorrentAdded, true);
     controller.processTorrentList({

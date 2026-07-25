@@ -8,6 +8,8 @@
 #include <QVariant>
 #include <memory>
 
+#include "torrentkey.h"
+
 class QTableWidget;
 class QTableWidgetItem;
 class QWidget;
@@ -31,7 +33,7 @@ public:
     void setup();
     void clear();
     void populate(const QJsonObject &details);
-    void setTorrentId(int torrentId);
+    void setTorrentKey(TorrentKey torrentKey);
     void saveViewState() const;
     void restoreViewState();
     void setLoading();
@@ -81,7 +83,7 @@ private:
     QTableWidget *trackerTableWidget = nullptr;
     TorrentBackend *client = nullptr;
     QWidget *dialogParent = nullptr;
-    int torrentId = -1;
+    TorrentKey torrentKey;
     std::unique_ptr<TableColumnController> columnController;
     std::unique_ptr<TablePlaceholderController> placeholderController;
 };

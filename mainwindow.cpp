@@ -230,12 +230,12 @@ void MainWindow::clearGeneralTab()
         torrentGeneralController->clear();
 
     if (torrentFilesController) {
-        torrentFilesController->setTorrentContext(-1, QString());
+        torrentFilesController->setTorrentContext({}, QString());
         torrentFilesController->clear();
     }
 
     if (torrentTrackersController) {
-        torrentTrackersController->setTorrentId(-1);
+        torrentTrackersController->setTorrentKey({});
         torrentTrackersController->clear();
     }
 
@@ -752,9 +752,9 @@ void MainWindow::setDetailsPaneVisibleFromAction(bool visible)
 
         // Hidden panes do not receive live detail updates. Rehydrate both the
         // summary and the active tab once when the user exposes the pane.
-        const int torrentId = currentTorrentId();
-        if (torrentId >= 0) {
-            client->getTorrentDetails(torrentId);
+        const TorrentKey torrentKey = currentTorrentKey();
+        if (isValidTorrentKey(torrentKey)) {
+            client->getTorrentDetails(torrentKey);
             refreshCurrentTorrentTabData();
         }
     }
@@ -867,9 +867,9 @@ MainWindow::MainWindow(QWidget *parent)
         client->getTorrentList();
 
         if (pendingCommandDetailsRefresh) {
-            const int torrentId = currentTorrentId();
-            if (torrentId >= 0)
-                client->getTorrentDetails(torrentId);
+            const TorrentKey torrentKey = currentTorrentKey();
+            if (isValidTorrentKey(torrentKey))
+                client->getTorrentDetails(torrentKey);
         }
 
         pendingCommandDetailsRefresh = false;
@@ -926,10 +926,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(torrentGeneralController,
             &TorrentGeneralController::currentTorrentDetailsChanged,
             this,
-            [this](int torrentId, const QString &hashString, const QString &magnetLink) {
+            [this](TorrentKey torrentKey, const QString &hashString, const QString &magnetLink) {
                 if (torrentListController) {
                     torrentListController->setCurrentTorrentDetails(
-                        torrentId,
+                        torrentKey,
                         hashString,
                         magnetLink
                         );
@@ -1151,20 +1151,20 @@ MainWindow::MainWindow(QWidget *parent)
             });
 
     connect(torrentListController, &TorrentListController::torrentSelected,
-            this, [this](int torrentId) {
+            this, [this](TorrentKey torrentKey) {
                 // Selection defines a new detail generation. Cancel every
                 // category still associated with the previous torrent.
                 client->cancelTorrentDetailRequests();
                 clearGeneralTab();
                 torrentPeersController->clear();
                 torrentTrackersController->clear();
-                torrentTrackersController->setTorrentId(torrentId);
-                torrentFilesController->setTorrentContext(-1, QString());
+                torrentTrackersController->setTorrentKey(torrentKey);
+                torrentFilesController->setTorrentContext({}, QString());
                 torrentFilesController->clear();
                 torrentPeersController->setLoading();
                 torrentTrackersController->setLoading();
                 torrentFilesController->setLoading();
-                client->getTorrentDetails(torrentId);
+                client->getTorrentDetails(torrentKey);
                 refreshCurrentTorrentTabData();
             });
 
@@ -1298,10 +1298,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(client, &TorrentBackend::torrentDetailsReceived,
             this,
-            [this](int torrentId, const QJsonObject &details) {
+            [this](TorrentKey torrentKey, const QJsonObject &details) {
                 // Detail requests can overlap selection changes. Never apply a
                 // late response to widgets representing another torrent.
-                if (torrentId != currentTorrentId())
+                if (torrentKey != currentTorrentKey())
                     return;
 
                 torrentGeneralController->update(details);
@@ -1318,7 +1318,7 @@ MainWindow::MainWindow(QWidget *parent)
                         );
 
                     torrentListController->setCurrentTorrentSequentialDownload(
-                        torrentId,
+                        torrentKey,
                         sequentialDownloadEnabled,
                         hasSequentialDownload
                         );
@@ -1327,7 +1327,7 @@ MainWindow::MainWindow(QWidget *parent)
                         details.contains(QStringLiteral("bandwidthPriority"));
 
                     torrentListController->setCurrentTorrentBandwidthPriority(
-                        torrentId,
+                        torrentKey,
                         details.value(QStringLiteral("bandwidthPriority")).toInt(0),
                         hasBandwidthPriority
                         );
@@ -1336,12 +1336,12 @@ MainWindow::MainWindow(QWidget *parent)
             });
 
     connect(client, &TorrentBackend::torrentFilesReceived,
-            this, [this](int torrentId, const QJsonObject &details) {
-                if (torrentId != currentTorrentId())
+            this, [this](TorrentKey torrentKey, const QJsonObject &details) {
+                if (torrentKey != currentTorrentKey())
                     return;
 
                 torrentFilesController->setTorrentContext(
-                    torrentId,
+                    torrentKey,
                     details.value(QStringLiteral("downloadDir")).toString());
                 torrentFilesController->populate(
                     details.value(QStringLiteral("files")).toArray(),
@@ -1350,25 +1350,25 @@ MainWindow::MainWindow(QWidget *parent)
             });
 
     connect(client, &TorrentBackend::torrentPeersReceived,
-            this, [this](int torrentId, const QJsonObject &details) {
-                if (torrentId == currentTorrentId())
+            this, [this](TorrentKey torrentKey, const QJsonObject &details) {
+                if (torrentKey == currentTorrentKey())
                     torrentPeersController->populate(
                         details.value(QStringLiteral("peers")).toArray());
             });
 
     connect(client, &TorrentBackend::torrentTrackersReceived,
-            this, [this](int torrentId, const QJsonObject &details) {
-                if (torrentId != currentTorrentId())
+            this, [this](TorrentKey torrentKey, const QJsonObject &details) {
+                if (torrentKey != currentTorrentKey())
                     return;
 
-                torrentTrackersController->setTorrentId(torrentId);
+                torrentTrackersController->setTorrentKey(torrentKey);
                 torrentTrackersController->populate(details);
             });
 
     connect(client, &TorrentBackend::torrentPiecesReceived,
             this,
-            [this](int torrentId, const QJsonObject &details) {
-                torrentGeneralController->updatePieces(torrentId, details);
+            [this](TorrentKey torrentKey, const QJsonObject &details) {
+                torrentGeneralController->updatePieces(torrentKey, details);
             });
 
     // Primary data path: the source model must update before observers rebuild
@@ -1621,9 +1621,9 @@ void MainWindow::on_actionSettings_triggered()
         watchFolderController->loadSettings();
 }
 
-int MainWindow::currentTorrentId() const
+TorrentKey MainWindow::currentTorrentKey() const
 {
-    return torrentListController ? torrentListController->currentTorrentId() : -1;
+    return torrentListController ? torrentListController->currentTorrentKey() : TorrentKey();
 }
 
 void MainWindow::saveTableViewState()
@@ -1894,9 +1894,9 @@ void MainWindow::saveSelectedServerFromCombo()
         notificationController->resetBaseline();
     }
 
-    torrentFilesController->setTorrentContext(-1, QString());
+    torrentFilesController->setTorrentContext({}, QString());
     torrentFilesController->clear();
-    torrentTrackersController->setTorrentId(-1);
+    torrentTrackersController->setTorrentKey({});
     torrentTrackersController->clear();
     torrentPeersController->clear();
     if (torrentListController)
@@ -2006,12 +2006,12 @@ void MainWindow::refreshCurrentTorrentLiveDetailsIfNeeded()
     if (!torrentGeneralController || !currentTabWantsLiveTorrentDetails())
         return;
 
-    const int torrentId = torrentGeneralController->currentTorrentId();
+    const TorrentKey torrentKey = torrentGeneralController->currentTorrentKey();
 
-    if (torrentId < 0)
+    if (!isValidTorrentKey(torrentKey))
         return;
 
-    client->getTorrentPieces(torrentId);
+    client->getTorrentPieces(torrentKey);
 }
 
 void MainWindow::refreshCurrentTorrentTabData()
@@ -2022,9 +2022,9 @@ void MainWindow::refreshCurrentTorrentTabData()
         return;
     }
 
-    const int torrentId = currentTorrentId();
+    const TorrentKey torrentKey = currentTorrentKey();
 
-    if (torrentId < 0)
+    if (!isValidTorrentKey(torrentKey))
         return;
 
     // Large collection fields are requested only for the visible consumer.
@@ -2032,12 +2032,12 @@ void MainWindow::refreshCurrentTorrentTabData()
     QWidget *currentTab = ui->tabWidget->currentWidget();
 
     if (currentTab == ui->fileList)
-        client->getTorrentFiles(torrentId);
+        client->getTorrentFiles(torrentKey);
     else if (currentTab == ui->trackers)
-        client->getTorrentTrackers(torrentId);
+        client->getTorrentTrackers(torrentKey);
     else if (currentTab == ui->peers)
-        client->getTorrentPeers(torrentId);
-    else if (torrentGeneralController->currentTorrentId() == torrentId)
+        client->getTorrentPeers(torrentKey);
+    else if (torrentGeneralController->currentTorrentKey() == torrentKey)
         refreshCurrentTorrentLiveDetailsIfNeeded();
 }
 

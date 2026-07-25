@@ -191,10 +191,10 @@ void TorrentFilesController::setLoading()
         placeholderController->setMessage(tr("Loading files…"));
 }
 
-void TorrentFilesController::setTorrentContext(int torrentId,
+void TorrentFilesController::setTorrentContext(TorrentKey torrentKey,
                                                const QString &downloadDir)
 {
-    this->torrentId = torrentId;
+    this->torrentKey = torrentKey;
     torrentDownloadDir = downloadDir;
 }
 
@@ -765,7 +765,7 @@ QString TorrentFilesController::torrentPathForFileTreeItem(
 
 void TorrentFilesController::renameFileTreeItem(QTreeWidgetItem *item)
 {
-    if (torrentId < 0 || !item || !client)
+    if (!isValidTorrentKey(torrentKey) || !item || !client)
         return;
 
     const QString oldPath = torrentPathForFileTreeItem(item);
@@ -806,10 +806,10 @@ void TorrentFilesController::renameFileTreeItem(QTreeWidgetItem *item)
     if (newName == oldName)
         return;
 
-    client->renameTorrentPath(torrentId, oldPath, newName);
+    client->renameTorrentPath(torrentKey, oldPath, newName);
 
     emit statusMessageRequested(tr("Renaming %1...").arg(oldName), 3000);
-    emit torrentDetailsRefreshRequested(torrentId);
+    emit torrentDetailsRefreshRequested(torrentKey);
 }
 
 void TorrentFilesController::showContextMenu(const QPoint &pos)
@@ -1085,7 +1085,7 @@ void TorrentFilesController::openContainingFolderFromContextMenu(
 void TorrentFilesController::setSelectedFilesPriorityState(int priority,
                                                            bool wanted)
 {
-    if (torrentId < 0 || !client || !fileTreeWidget)
+    if (!isValidTorrentKey(torrentKey) || !client || !fileTreeWidget)
         return;
 
     QTreeWidgetItem *item = fileTreeWidget->currentItem();
@@ -1098,7 +1098,7 @@ void TorrentFilesController::setSelectedFilesPriorityState(int priority,
     if (fileIndices.isEmpty())
         return;
 
-    client->setTorrentFilesWantedAndPriority(torrentId, fileIndices, wanted, priority);
+    client->setTorrentFilesWantedAndPriority(torrentKey, fileIndices, wanted, priority);
 
     const QString priorityText = wanted ? priorityToString(priority) : tr("Skip");
 
@@ -1108,5 +1108,5 @@ void TorrentFilesController::setSelectedFilesPriorityState(int priority,
             .arg(priorityText),
         3000);
 
-    emit torrentDetailsRefreshRequested(torrentId);
+    emit torrentDetailsRefreshRequested(torrentKey);
 }

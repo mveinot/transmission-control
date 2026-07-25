@@ -4,6 +4,8 @@
 #include <QDialog>
 #include <QJsonObject>
 
+#include "torrentkey.h"
+
 class QCheckBox;
 class QComboBox;
 class QDialogButtonBox;
@@ -25,11 +27,11 @@ class TorrentPropertiesDialog : public QDialog
 
 public:
     explicit TorrentPropertiesDialog(TorrentBackend *client,
-                                     int torrentId,
+                                     TorrentKey torrentKey,
                                      QWidget *parent = nullptr);
 
 private slots:
-    void handlePropertiesReceived(int torrentId, const QJsonObject &properties);
+    void handlePropertiesReceived(TorrentKey torrentKey, const QJsonObject &properties);
     void handleCommandSucceeded(const QString &method);
     void handleCommandFailed(const QString &method, const QString &message);
     void applyChanges();
@@ -49,7 +51,7 @@ private:
     static QString jsonValueDisplayText(const QJsonValue &value);
 
     TorrentBackend *m_client = nullptr;
-    int m_torrentId = -1;
+    TorrentKey m_torrentKey;
     QJsonObject m_properties;
     bool m_loaded = false;
 

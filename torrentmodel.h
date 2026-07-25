@@ -63,7 +63,7 @@ public:
                         int role = Qt::DisplayRole) const override;
 
     torrent getTorrent(int row) const;
-    int rowForId(int id) const;
+    int rowForKey(const TorrentKey &key) const;
 
 public slots:
     void applyUpdate(const QVector<torrent> &incoming);
@@ -71,7 +71,7 @@ public slots:
 
 private:
     QVector<torrent> torrentVector;
-    QHash<int, int> m_rowById;
+    QHash<TorrentKey, int> m_rowByKey;
 
     void rebuildIndex();
 };

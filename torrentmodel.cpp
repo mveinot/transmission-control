@@ -161,7 +161,7 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
         case IdColumn:
-            return t.getId();
+            return t.getKey();
 
         case NameColumn:
             return t.getName();
@@ -227,7 +227,7 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
      *     sourceIndex.data(Qt::UserRole).toInt()
      */
     if (role == Qt::UserRole) {
-        return t.getId();
+        return t.getKey();
     }
 
     /*
@@ -242,7 +242,7 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
     if (role == Qt::UserRole + 1) {
         switch (index.column()) {
         case IdColumn:
-            return t.getId();
+            return t.getKey();
 
         case NameColumn:
             return t.getName();
@@ -406,9 +406,9 @@ torrent TorrentModel::getTorrent(int row) const
     return torrentVector.at(row);
 }
 
-int TorrentModel::rowForId(int id) const
+int TorrentModel::rowForKey(const TorrentKey &key) const
 {
-    return m_rowById.value(id, -1);
+    return m_rowByKey.value(key, -1);
 }
 
 void TorrentModel::clear()
@@ -416,7 +416,7 @@ void TorrentModel::clear()
     beginResetModel();
 
     torrentVector.clear();
-    m_rowById.clear();
+    m_rowByKey.clear();
 
     endResetModel();
 }
@@ -425,25 +425,24 @@ void TorrentModel::rebuildIndex()
 {
     // Row numbers can shift after removals and inserts; deriving the map from
     // the vector is less error-prone than incrementally repairing it.
-    m_rowById.clear();
-    m_rowById.reserve(torrentVector.size());
+    m_rowByKey.clear();
+    m_rowByKey.reserve(torrentVector.size());
 
-    for (int row = 0; row < torrentVector.size(); ++row) {
-        m_rowById.insert(torrentVector.at(row).getId(), row);
-    }
+    for (int row = 0; row < torrentVector.size(); ++row)
+        m_rowByKey.insert(torrentVector.at(row).getKey(), row);
 }
 
 void TorrentModel::applyUpdate(const QVector<torrent> &incoming)
 {
-    QHash<int, torrent> incomingById;
-    incomingById.reserve(incoming.size());
+    QHash<TorrentKey, torrent> incomingByKey;
+    incomingByKey.reserve(incoming.size());
 
-    QSet<int> incomingIds;
-    incomingIds.reserve(incoming.size());
+    QSet<TorrentKey> incomingKeys;
+    incomingKeys.reserve(incoming.size());
 
     for (const torrent &t : incoming) {
-        incomingById.insert(t.getId(), t);
-        incomingIds.insert(t.getId());
+        incomingByKey.insert(t.getKey(), t);
+        incomingKeys.insert(t.getKey());
     }
 
     /*
@@ -454,9 +453,9 @@ void TorrentModel::applyUpdate(const QVector<torrent> &incoming)
      * little self-inflicted wounds C++ never prevents.
      */
     for (int row = torrentVector.size() - 1; row >= 0; --row) {
-        const int id = torrentVector.at(row).getId();
+        const TorrentKey key = torrentVector.at(row).getKey();
 
-        if (!incomingIds.contains(id)) {
+        if (!incomingKeys.contains(key)) {
             beginRemoveRows(QModelIndex(), row, row);
             torrentVector.removeAt(row);
             endRemoveRows();
@@ -472,11 +471,11 @@ void TorrentModel::applyUpdate(const QVector<torrent> &incoming)
      * even if the visible table fields did not change.
      */
     for (int row = 0; row < torrentVector.size(); ++row) {
-        const int id = torrentVector.at(row).getId();
+        const TorrentKey key = torrentVector.at(row).getKey();
 
-        auto it = incomingById.constFind(id);
+        auto it = incomingByKey.constFind(key);
 
-        if (it == incomingById.cend()) {
+        if (it == incomingByKey.cend()) {
             continue;
         }
 
@@ -503,14 +502,14 @@ void TorrentModel::applyUpdate(const QVector<torrent> &incoming)
      * Appending is simplest; the proxy handles sorted/filter view order.
      */
     for (const torrent &t : incoming) {
-        if (!m_rowById.contains(t.getId())) {
+        if (!m_rowByKey.contains(t.getKey())) {
             const int row = torrentVector.size();
 
             beginInsertRows(QModelIndex(), row, row);
             torrentVector.append(t);
             endInsertRows();
 
-            m_rowById.insert(t.getId(), row);
+            m_rowByKey.insert(t.getKey(), row);
         }
     }
 

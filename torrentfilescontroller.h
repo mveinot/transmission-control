@@ -12,6 +12,7 @@
 #include <memory>
 
 #include "foldermapping.h"
+#include "torrentkey.h"
 
 class QLineEdit;
 class QTreeWidget;
@@ -40,7 +41,7 @@ public:
     void populate(const QJsonArray &files,
                   const QJsonArray &wanted,
                   const QJsonArray &priorities);
-    void setTorrentContext(int torrentId, const QString &downloadDir);
+    void setTorrentContext(TorrentKey torrentKey, const QString &downloadDir);
     void setFolderMappingsProvider(
         std::function<QList<FolderMapping>()> folderMappingsProvider);
     void saveViewState() const;
@@ -49,7 +50,7 @@ public:
 
 signals:
     void statusMessageRequested(const QString &message, int timeoutMs);
-    void torrentDetailsRefreshRequested(int torrentId);
+    void torrentDetailsRefreshRequested(TorrentKey torrentKey);
 
 private:
     enum FileTreeColumn {
@@ -129,7 +130,7 @@ private:
     QLineEdit *filterEdit = nullptr;
     TorrentBackend *client = nullptr;
     QWidget *dialogParent = nullptr;
-    int torrentId = -1;
+    TorrentKey torrentKey;
     QString torrentDownloadDir;
     QHash<int, QString> torrentFilePaths;
     QVector<FileRecord> fileRecords;

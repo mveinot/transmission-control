@@ -2,6 +2,7 @@
 #define TORRENTBACKEND_H
 
 #include "torrent.h"
+#include "torrentkey.h"
 
 #include <QJsonObject>
 #include <QList>
@@ -58,12 +59,12 @@ public:
 
     virtual void getTorrentList() = 0;
     virtual void getTorrentTrackerMetadata() = 0;
-    virtual void getTorrentDetails(int id) = 0;
-    virtual void getTorrentFiles(int id) = 0;
-    virtual void getTorrentPeers(int id) = 0;
-    virtual void getTorrentTrackers(int id) = 0;
-    virtual void getTorrentPieces(int id) = 0;
-    virtual void getTorrentProperties(int id) = 0;
+    virtual void getTorrentDetails(const TorrentKey &torrentKey) = 0;
+    virtual void getTorrentFiles(const TorrentKey &torrentKey) = 0;
+    virtual void getTorrentPeers(const TorrentKey &torrentKey) = 0;
+    virtual void getTorrentTrackers(const TorrentKey &torrentKey) = 0;
+    virtual void getTorrentPieces(const TorrentKey &torrentKey) = 0;
+    virtual void getTorrentProperties(const TorrentKey &torrentKey) = 0;
     virtual void cancelTorrentDetailRequests() = 0;
 
     virtual void addTorrentFromFile(const QString &filePath,
@@ -80,49 +81,52 @@ public:
                                const QString &downloadDir = QString(),
                                bool paused = false) = 0;
 
-    virtual void startTorrents(const QList<int> &ids) = 0;
+    virtual void startTorrents(const QList<TorrentKey> &torrentKeys) = 0;
     virtual void startAllTorrents() = 0;
-    virtual void startTorrentsNow(const QList<int> &ids) = 0;
-    virtual void stopTorrents(const QList<int> &ids) = 0;
+    virtual void startTorrentsNow(const QList<TorrentKey> &torrentKeys) = 0;
+    virtual void stopTorrents(const QList<TorrentKey> &torrentKeys) = 0;
     virtual void stopAllTorrents() = 0;
-    virtual void removeTorrents(const QList<int> &ids,
+    virtual void removeTorrents(const QList<TorrentKey> &torrentKeys,
                                 bool deleteLocalData) = 0;
-    virtual void verifyTorrents(const QList<int> &ids) = 0;
-    virtual void reannounceTorrents(const QList<int> &ids) = 0;
-    virtual void setTorrentLocation(const QList<int> &ids,
+    virtual void verifyTorrents(const QList<TorrentKey> &torrentKeys) = 0;
+    virtual void reannounceTorrents(const QList<TorrentKey> &torrentKeys) = 0;
+    virtual void setTorrentLocation(const QList<TorrentKey> &torrentKeys,
                                     const QString &location,
                                     bool moveData) = 0;
-    virtual void setTorrentFilesWanted(int torrentId,
+    virtual void setTorrentFilesWanted(const TorrentKey &torrentKey,
                                        const QList<int> &fileIndices,
                                        bool wanted) = 0;
-    virtual void setTorrentFilesPriority(int torrentId,
+    virtual void setTorrentFilesPriority(const TorrentKey &torrentKey,
                                          const QList<int> &fileIndices,
                                          int priority) = 0;
     virtual void setTorrentFilesWantedAndPriority(
-        int torrentId,
+        const TorrentKey &torrentKey,
         const QList<int> &fileIndices,
         bool wanted,
         int priority) = 0;
 
-    virtual void addTorrentTracker(int torrentId,
+    virtual void addTorrentTracker(const TorrentKey &torrentKey,
                                    const QString &announceUrl) = 0;
-    virtual void editTorrentTracker(int torrentId,
+    virtual void editTorrentTracker(const TorrentKey &torrentKey,
                                     int trackerId,
                                     const QString &announceUrl) = 0;
-    virtual void removeTorrentTracker(int torrentId, int trackerId) = 0;
-    virtual void renameTorrentPath(int torrentId,
+    virtual void removeTorrentTracker(const TorrentKey &torrentKey,
+                                      int trackerId) = 0;
+    virtual void renameTorrentPath(const TorrentKey &torrentKey,
                                    const QString &path,
                                    const QString &newName) = 0;
-    virtual void setTorrentProperties(int torrentId,
+    virtual void setTorrentProperties(const TorrentKey &torrentKey,
                                       const QJsonObject &properties) = 0;
-    virtual void setTorrentsSequentialDownload(const QList<int> &ids,
+    virtual void setTorrentsSequentialDownload(
+        const QList<TorrentKey> &torrentKeys,
                                                bool enabled) = 0;
-    virtual void setTorrentsBandwidthPriority(const QList<int> &ids,
+    virtual void setTorrentsBandwidthPriority(
+        const QList<TorrentKey> &torrentKeys,
                                               int priority) = 0;
-    virtual void queueMoveTop(const QList<int> &ids) = 0;
-    virtual void queueMoveUp(const QList<int> &ids) = 0;
-    virtual void queueMoveDown(const QList<int> &ids) = 0;
-    virtual void queueMoveBottom(const QList<int> &ids) = 0;
+    virtual void queueMoveTop(const QList<TorrentKey> &torrentKeys) = 0;
+    virtual void queueMoveUp(const QList<TorrentKey> &torrentKeys) = 0;
+    virtual void queueMoveDown(const QList<TorrentKey> &torrentKeys) = 0;
+    virtual void queueMoveBottom(const QList<TorrentKey> &torrentKeys) = 0;
 
     virtual void getSessionSettings() = 0;
     virtual void getSessionStatistics() = 0;
@@ -137,22 +141,22 @@ signals:
     void updateFailed(const QString &message);
     void torrentsReceived(const QVector<torrent> &torrents);
     void torrentTrackerMetadataUpdated();
-    void torrentDetailsReceived(int torrentId,
+    void torrentDetailsReceived(const TorrentKey &torrentKey,
                                 const QJsonObject &torrentDetails);
-    void torrentFilesReceived(int torrentId,
+    void torrentFilesReceived(const TorrentKey &torrentKey,
                               const QJsonObject &torrentDetails);
-    void torrentPeersReceived(int torrentId,
+    void torrentPeersReceived(const TorrentKey &torrentKey,
                               const QJsonObject &torrentDetails);
-    void torrentTrackersReceived(int torrentId,
+    void torrentTrackersReceived(const TorrentKey &torrentKey,
                                  const QJsonObject &torrentDetails);
-    void torrentPiecesReceived(int torrentId,
+    void torrentPiecesReceived(const TorrentKey &torrentKey,
                                const QJsonObject &pieceDetails);
-    void torrentPropertiesReceived(int torrentId,
+    void torrentPropertiesReceived(const TorrentKey &torrentKey,
                                    const QJsonObject &properties);
     void commandSucceeded(const QString &method);
     void commandFailed(const QString &method, const QString &message);
     void torrentFileAddSucceeded(const QString &filePath);
-    void torrentAdded(int torrentId, const QString &name);
+    void torrentAdded(const TorrentKey &torrentKey, const QString &name);
     void torrentFileAddFailed(const QString &filePath,
                               const QString &message);
     void serverChanged();

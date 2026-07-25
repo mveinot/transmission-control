@@ -78,7 +78,7 @@ void TorrentGeneralController::clear()
         m_detailsTabController->clear();
 
     m_currentDetailsCache = QJsonObject();
-    m_currentTorrentId = -1;
+    m_currentTorrentKey.clear();
     m_currentHashString.clear();
     m_currentMagnetLink.clear();
 
@@ -88,7 +88,12 @@ void TorrentGeneralController::clear()
 void TorrentGeneralController::update(const QJsonObject &details)
 {
     m_currentDetailsCache = details;
-    m_currentTorrentId = details.value(QStringLiteral("id")).toInt(-1);
+    m_currentTorrentKey = details.value(QStringLiteral("hashString")).toString();
+    if (!isValidTorrentKey(m_currentTorrentKey)) {
+        const int legacyId = details.value(QStringLiteral("id")).toInt(-1);
+        if (legacyId >= 0)
+            m_currentTorrentKey = QString::number(legacyId);
+    }
     m_currentHashString = details.value(QStringLiteral("hashString")).toString();
     m_currentMagnetLink = details.value(QStringLiteral("magnetLink")).toString();
 
@@ -101,15 +106,15 @@ void TorrentGeneralController::update(const QJsonObject &details)
         m_detailsTabController->update(m_currentDetailsCache);
 
     emit currentTorrentDetailsChanged(
-        m_currentTorrentId,
+        m_currentTorrentKey,
         m_currentHashString,
         m_currentMagnetLink
         );
 }
 
-void TorrentGeneralController::updatePieces(int torrentId, const QJsonObject &details)
+void TorrentGeneralController::updatePieces(TorrentKey torrentKey, const QJsonObject &details)
 {
-    if (torrentId != m_currentTorrentId)
+    if (torrentKey != m_currentTorrentKey)
         return;
 
     // Piece updates are partial; merge before refreshing combined detail views.
@@ -123,9 +128,9 @@ void TorrentGeneralController::updatePieces(int torrentId, const QJsonObject &de
         m_detailsTabController->update(m_currentDetailsCache);
 }
 
-int TorrentGeneralController::currentTorrentId() const
+TorrentKey TorrentGeneralController::currentTorrentKey() const
 {
-    return m_currentTorrentId;
+    return m_currentTorrentKey;
 }
 
 QString TorrentGeneralController::currentHashString() const

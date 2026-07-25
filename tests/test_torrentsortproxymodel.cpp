@@ -69,7 +69,7 @@ QVector<torrent> makeTorrentList(std::initializer_list<QJsonValue> values)
 
 int torrentIdAtProxyRow(const TorrentSortProxyModel &proxy, int row)
 {
-    return proxy.index(row, TorrentModel::IdColumn).data(Qt::UserRole).toInt();
+    return proxy.index(row, TorrentModel::IdColumn).data(Qt::UserRole).toString().toInt();
 }
 
 } // namespace

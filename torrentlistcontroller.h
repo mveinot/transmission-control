@@ -8,6 +8,8 @@
 #include <functional>
 #include <memory>
 
+#include "torrentkey.h"
+
 class QAction;
 class QModelIndex;
 class QPoint;
@@ -47,18 +49,18 @@ public:
     void markTorrentListLoaded();
     void markTorrentListLoadFailed(const QString &message);
 
-    int currentTorrentId() const;
-    QList<int> selectedTorrentIds() const;
+    TorrentKey currentTorrentKey() const;
+    QList<TorrentKey> selectedTorrentKeys() const;
     QStringList selectedTorrentNames() const;
 
-    void setCurrentTorrentDetails(int torrentId,
+    void setCurrentTorrentDetails(TorrentKey torrentKey,
                                   const QString &hashString,
                                   const QString &magnetLink);
     void clearCurrentTorrentDetails();
     void setDefaultDownloadDir(const QString &downloadDir);
     void setSequentialDownloadSupported(bool supported);
-    void setCurrentTorrentSequentialDownload(int torrentId, bool enabled, bool known);
-    void setCurrentTorrentBandwidthPriority(int torrentId, int priority, bool known);
+    void setCurrentTorrentSequentialDownload(TorrentKey torrentKey, bool enabled, bool known);
+    void setCurrentTorrentBandwidthPriority(TorrentKey torrentKey, int priority, bool known);
     void setCurrentDetailsDownloadDirProvider(const std::function<QString()> &provider);
 
 public slots:
@@ -85,11 +87,11 @@ public slots:
     void queueMoveSelectedBottom();
 
 signals:
-    void torrentSelected(int torrentId);
+    void torrentSelected(TorrentKey torrentKey);
     void torrentSelectionCleared();
     void statusMessageRequested(const QString &message, int timeoutMs);
     void torrentListRefreshRequested();
-    void torrentDetailsRefreshRequested(int torrentId);
+    void torrentDetailsRefreshRequested(TorrentKey torrentKey);
 
 private:
     QTableView *m_tableView = nullptr;
@@ -98,25 +100,25 @@ private:
     QWidget *m_dialogParent = nullptr;
     ActionSet m_actions;
 
-    int m_currentDetailsTorrentId = -1;
+    TorrentKey m_currentDetailsTorrentKey;
     QString m_currentTorrentHashString;
     QString m_currentTorrentMagnetLink;
     bool m_sequentialDownloadSupported = false;
-    int m_currentSequentialDownloadTorrentId = -1;
+    TorrentKey m_currentSequentialDownloadTorrentKey;
     bool m_currentSequentialDownloadEnabled = false;
     bool m_currentSequentialDownloadKnown = false;
-    int m_currentBandwidthPriorityTorrentId = -1;
+    TorrentKey m_currentBandwidthPriorityTorrentKey;
     int m_currentBandwidthPriority = 0;
     bool m_currentBandwidthPriorityKnown = false;
     QString m_defaultDownloadDir;
     std::function<QString()> m_currentDetailsDownloadDirProvider;
-    int m_lastEmittedTorrentId = -1;
+    TorrentKey m_lastEmittedTorrentKey;
     bool m_torrentListLoaded = false;
     bool m_torrentListLoadFailed = false;
     QString m_torrentListLoadFailureMessage;
     std::unique_ptr<TablePlaceholderController> m_placeholderController;
 
-    void invokeSelectedTorrentCommand(void (TorrentBackend::*command)(const QList<int> &),
+    void invokeSelectedTorrentCommand(void (TorrentBackend::*command)(const QList<TorrentKey> &),
                                       const QString &message);
     void copyTextToClipboard(const QString &text,
                              const QString &statusMessage);

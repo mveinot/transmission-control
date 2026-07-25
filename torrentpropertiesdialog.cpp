@@ -66,11 +66,11 @@ int comboIndexForData(QComboBox *combo, int value)
 }
 
 TorrentPropertiesDialog::TorrentPropertiesDialog(TorrentBackend *client,
-                                                 int torrentId,
+                                                 TorrentKey torrentKey,
                                                  QWidget *parent)
     : QDialog(parent)
     , m_client(client)
-    , m_torrentId(torrentId)
+    , m_torrentKey(torrentKey)
 {
     buildUi();
     setControlsEnabled(false);
@@ -85,11 +85,11 @@ TorrentPropertiesDialog::TorrentPropertiesDialog(TorrentBackend *client,
             this, &TorrentPropertiesDialog::handleCommandFailed);
 
     QTimer::singleShot(0, this, [this]() {
-        if (!m_client || m_torrentId < 0)
+        if (!m_client || !isValidTorrentKey(m_torrentKey))
             return;
 
         m_statusLabel->setText(tr("Loading torrent properties…"));
-        m_client->getTorrentProperties(m_torrentId);
+        m_client->getTorrentProperties(m_torrentKey);
     });
 }
 
@@ -295,11 +295,11 @@ void TorrentPropertiesDialog::setControlsEnabled(bool enabled)
     }
 }
 
-void TorrentPropertiesDialog::handlePropertiesReceived(int torrentId,
+void TorrentPropertiesDialog::handlePropertiesReceived(TorrentKey torrentKey,
                                                        const QJsonObject &properties)
 {
     // Property requests share a signal; accept only this dialog's torrent.
-    if (torrentId != m_torrentId)
+    if (torrentKey != m_torrentKey)
         return;
 
     m_properties = properties;
@@ -522,11 +522,11 @@ QJsonObject TorrentPropertiesDialog::editedProperties() const
 
 void TorrentPropertiesDialog::applyChanges()
 {
-    if (!m_client || m_torrentId < 0 || !m_loaded)
+    if (!m_client || !isValidTorrentKey(m_torrentKey) || !m_loaded)
         return;
 
     m_statusLabel->setText(tr("Applying torrent properties…"));
-    m_client->setTorrentProperties(m_torrentId, editedProperties());
+    m_client->setTorrentProperties(m_torrentKey, editedProperties());
 }
 
 void TorrentPropertiesDialog::accept()
@@ -542,8 +542,8 @@ void TorrentPropertiesDialog::handleCommandSucceeded(const QString &method)
 
     m_statusLabel->setText(tr("Torrent properties updated."));
 
-    if (m_client && m_torrentId >= 0)
-        m_client->getTorrentProperties(m_torrentId);
+    if (m_client && isValidTorrentKey(m_torrentKey))
+        m_client->getTorrentProperties(m_torrentKey);
 }
 
 void TorrentPropertiesDialog::handleCommandFailed(const QString &method,

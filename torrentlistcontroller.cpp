@@ -301,20 +301,20 @@ void TorrentListController::saveViewState() const
     settings.setValue(SettingsKeys::TorrentTableVisibleColumns, visibleColumnIds);
 }
 
-int TorrentListController::currentTorrentId() const
+TorrentKey TorrentListController::currentTorrentKey() const
 {
     if (!m_tableView || !m_proxyModel)
-        return -1;
+        return {};
 
     const QItemSelectionModel *selection = m_tableView->selectionModel();
 
     if (!selection)
-        return -1;
+        return {};
 
     const QModelIndexList proxyRows = selection->selectedRows();
 
     if (proxyRows.isEmpty())
-        return -1;
+        return {};
 
     QModelIndex proxyIndex = m_tableView->currentIndex();
 
@@ -326,14 +326,14 @@ int TorrentListController::currentTorrentId() const
     const QModelIndex sourceIndex = m_proxyModel->mapToSource(proxyIndex);
 
     if (!sourceIndex.isValid())
-        return -1;
+        return {};
 
-    return sourceIndex.data(Qt::UserRole).toInt();
+    return sourceIndex.data(Qt::UserRole).toString();
 }
 
-QList<int> TorrentListController::selectedTorrentIds() const
+QList<TorrentKey> TorrentListController::selectedTorrentKeys() const
 {
-    QList<int> ids;
+    QList<TorrentKey> ids;
 
     if (!m_tableView || !m_proxyModel)
         return ids;
@@ -351,9 +351,9 @@ QList<int> TorrentListController::selectedTorrentIds() const
         if (!sourceIndex.isValid())
             continue;
 
-        const int id = sourceIndex.data(Qt::UserRole).toInt();
+        const TorrentKey id = sourceIndex.data(Qt::UserRole).toString();
 
-        if (id >= 0)
+        if (isValidTorrentKey(id))
             ids.append(id);
     }
 
@@ -392,24 +392,24 @@ QStringList TorrentListController::selectedTorrentNames() const
     return names;
 }
 
-void TorrentListController::setCurrentTorrentDetails(int torrentId,
+void TorrentListController::setCurrentTorrentDetails(TorrentKey torrentKey,
                                                      const QString &hashString,
                                                      const QString &magnetLink)
 {
-    m_currentDetailsTorrentId = torrentId;
+    m_currentDetailsTorrentKey = torrentKey;
     m_currentTorrentHashString = hashString;
     m_currentTorrentMagnetLink = magnetLink;
 }
 
 void TorrentListController::clearCurrentTorrentDetails()
 {
-    m_currentDetailsTorrentId = -1;
+    m_currentDetailsTorrentKey.clear();
     m_currentTorrentHashString.clear();
     m_currentTorrentMagnetLink.clear();
-    m_currentSequentialDownloadTorrentId = -1;
+    m_currentSequentialDownloadTorrentKey.clear();
     m_currentSequentialDownloadEnabled = false;
     m_currentSequentialDownloadKnown = false;
-    m_currentBandwidthPriorityTorrentId = -1;
+    m_currentBandwidthPriorityTorrentKey.clear();
     m_currentBandwidthPriority = 0;
     m_currentBandwidthPriorityKnown = false;
 }
@@ -424,20 +424,20 @@ void TorrentListController::setSequentialDownloadSupported(bool supported)
     m_sequentialDownloadSupported = supported;
 }
 
-void TorrentListController::setCurrentTorrentSequentialDownload(int torrentId,
+void TorrentListController::setCurrentTorrentSequentialDownload(TorrentKey torrentKey,
                                                                 bool enabled,
                                                                 bool known)
 {
-    m_currentSequentialDownloadTorrentId = torrentId;
+    m_currentSequentialDownloadTorrentKey = torrentKey;
     m_currentSequentialDownloadEnabled = enabled;
     m_currentSequentialDownloadKnown = known;
 }
 
-void TorrentListController::setCurrentTorrentBandwidthPriority(int torrentId,
+void TorrentListController::setCurrentTorrentBandwidthPriority(TorrentKey torrentKey,
                                                               int priority,
                                                               bool known)
 {
-    m_currentBandwidthPriorityTorrentId = torrentId;
+    m_currentBandwidthPriorityTorrentKey = torrentKey;
     m_currentBandwidthPriority = priority;
     m_currentBandwidthPriorityKnown = known;
 }
@@ -456,15 +456,15 @@ void TorrentListController::handleTableClicked(const QModelIndex &proxyIndex)
 void TorrentListController::updateCurrentTorrentSelection()
 {
     // Downstream controllers receive stable IDs, never volatile proxy rows.
-    const int torrentId = currentTorrentId();
+    const TorrentKey torrentKey = currentTorrentKey();
 
-    if (torrentId == m_lastEmittedTorrentId)
+    if (torrentKey == m_lastEmittedTorrentKey)
         return;
 
-    m_lastEmittedTorrentId = torrentId;
+    m_lastEmittedTorrentKey = torrentKey;
 
-    if (torrentId >= 0) {
-        emit torrentSelected(torrentId);
+    if (isValidTorrentKey(torrentKey)) {
+        emit torrentSelected(torrentKey);
         return;
     }
 
@@ -519,12 +519,12 @@ void TorrentListController::showContextMenu(const QPoint &pos)
         m_tableView->setCurrentIndex(index);
     }
 
-    const QList<int> contextTorrentIds = selectedTorrentIds();
+    const QList<TorrentKey> contextTorrentIds = selectedTorrentKeys();
     const bool hasSelection = !contextTorrentIds.isEmpty();
     const bool hasSingleSelection = contextTorrentIds.size() == 1;
     const bool canCopyCurrentTorrentDetails =
         hasSingleSelection
-        && m_currentDetailsTorrentId == contextTorrentIds.first();
+        && m_currentDetailsTorrentKey == contextTorrentIds.first();
 
     QMenu menu(m_dialogParent);
 
@@ -566,7 +566,7 @@ void TorrentListController::showContextMenu(const QPoint &pos)
     const bool canShowCurrentPriority =
         hasSingleSelection
         && m_currentBandwidthPriorityKnown
-        && m_currentBandwidthPriorityTorrentId == contextTorrentIds.first();
+        && m_currentBandwidthPriorityTorrentKey == contextTorrentIds.first();
 
     for (const auto &priorityAction : priorityActions) {
         QAction *action = priorityAction.first;
@@ -592,7 +592,7 @@ void TorrentListController::showContextMenu(const QPoint &pos)
         m_sequentialDownloadSupported
         && hasSingleSelection
         && m_currentSequentialDownloadKnown
-        && m_currentSequentialDownloadTorrentId == contextTorrentIds.first();
+        && m_currentSequentialDownloadTorrentKey == contextTorrentIds.first();
 
     sequentialDownloadAction->setEnabled(canSetSequentialDownload);
     sequentialDownloadAction->setChecked(
@@ -747,7 +747,7 @@ void TorrentListController::showHeaderContextMenu(const QPoint &pos)
 
 void TorrentListController::deleteSelectedTorrents()
 {
-    const QList<int> ids = selectedTorrentIds();
+    const QList<TorrentKey> ids = selectedTorrentKeys();
     const QStringList names = selectedTorrentNames();
 
     if (ids.isEmpty()) {
@@ -845,7 +845,7 @@ void TorrentListController::forceStartSelectedTorrents()
 
 void TorrentListController::setSelectedTorrentsLocation()
 {
-    const QList<int> ids = selectedTorrentIds();
+    const QList<TorrentKey> ids = selectedTorrentKeys();
 
     if (ids.isEmpty()) {
         emit statusMessageRequested(tr("No torrent selected."), 3000);
@@ -854,7 +854,7 @@ void TorrentListController::setSelectedTorrentsLocation()
 
     QString initialLocation = m_defaultDownloadDir.trimmed();
 
-    if (ids.size() == 1 && currentTorrentId() == ids.first() && m_currentDetailsDownloadDirProvider) {
+    if (ids.size() == 1 && currentTorrentKey() == ids.first() && m_currentDetailsDownloadDirProvider) {
         const QString currentDownloadDir = m_currentDetailsDownloadDirProvider().trimmed();
 
         if (!currentDownloadDir.isEmpty() && currentDownloadDir != tr("Unknown"))
@@ -928,7 +928,7 @@ void TorrentListController::setSelectedTorrentsLocation()
 
 void TorrentListController::setSelectedTorrentsSequentialDownload(bool enabled)
 {
-    const QList<int> ids = selectedTorrentIds();
+    const QList<TorrentKey> ids = selectedTorrentKeys();
 
     if (ids.isEmpty()) {
         emit statusMessageRequested(tr("No torrent selected."), 3000);
@@ -955,7 +955,7 @@ void TorrentListController::setSelectedTorrentsSequentialDownload(bool enabled)
 
 void TorrentListController::setSelectedTorrentsBandwidthPriority(int priority)
 {
-    const QList<int> ids = selectedTorrentIds();
+    const QList<TorrentKey> ids = selectedTorrentKeys();
 
     if (ids.isEmpty()) {
         emit statusMessageRequested(tr("No torrent selected."), 3000);
@@ -989,7 +989,7 @@ void TorrentListController::setSelectedTorrentsBandwidthPriority(int priority)
 
 void TorrentListController::showSelectedTorrentProperties()
 {
-    const QList<int> ids = selectedTorrentIds();
+    const QList<TorrentKey> ids = selectedTorrentKeys();
 
     if (ids.size() != 1) {
         emit statusMessageRequested(tr("Select one torrent to edit properties."), 3000);
@@ -1040,10 +1040,10 @@ void TorrentListController::queueMoveSelectedBottom()
 }
 
 void TorrentListController::invokeSelectedTorrentCommand(
-    void (TorrentBackend::*command)(const QList<int> &),
+    void (TorrentBackend::*command)(const QList<TorrentKey> &),
     const QString &message)
 {
-    const QList<int> ids = selectedTorrentIds();
+    const QList<TorrentKey> ids = selectedTorrentKeys();
 
     if (ids.isEmpty()) {
         emit statusMessageRequested(tr("No torrent selected."), 3000);
@@ -1072,10 +1072,10 @@ void TorrentListController::copyTextToClipboard(const QString &text,
 
 void TorrentListController::refreshCurrentTorrentDetails()
 {
-    const int torrentId = currentTorrentId();
+    const TorrentKey torrentKey = currentTorrentKey();
 
-    if (torrentId >= 0)
-        emit torrentDetailsRefreshRequested(torrentId);
+    if (isValidTorrentKey(torrentKey))
+        emit torrentDetailsRefreshRequested(torrentKey);
 }
 
 void TorrentListController::applyDefaultColumnVisibility()

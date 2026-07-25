@@ -40,12 +40,12 @@ public:
     void init() override;
     void getTorrentList() override;
     void getTorrentTrackerMetadata() override;
-    void getTorrentDetails(int id) override;
-    void getTorrentFiles(int id) override;
-    void getTorrentPeers(int id) override;
-    void getTorrentTrackers(int id) override;
-    void getTorrentPieces(int id) override;
-    void getTorrentProperties(int id) override;
+    void getTorrentDetails(const TorrentKey &torrentKey) override;
+    void getTorrentFiles(const TorrentKey &torrentKey) override;
+    void getTorrentPeers(const TorrentKey &torrentKey) override;
+    void getTorrentTrackers(const TorrentKey &torrentKey) override;
+    void getTorrentPieces(const TorrentKey &torrentKey) override;
+    void getTorrentProperties(const TorrentKey &torrentKey) override;
     void cancelTorrentDetailRequests() override;
     void addTorrentFromFile(const QString &filePath,
                             bool deleteFileOnSuccess) override;
@@ -61,55 +61,55 @@ public:
     void addMagnetLink(const QString &magnetLink,
                        const QString &downloadDir = QString(),
                        bool paused = false) override;
-    void startTorrents(const QList<int> &ids) override;
+    void startTorrents(const QList<TorrentKey> &torrentKeys) override;
     void startAllTorrents() override;
-    void startTorrentsNow(const QList<int> &ids) override;
-    void stopTorrents(const QList<int> &ids) override;
+    void startTorrentsNow(const QList<TorrentKey> &torrentKeys) override;
+    void stopTorrents(const QList<TorrentKey> &torrentKeys) override;
     void stopAllTorrents() override;
-    void removeTorrents(const QList<int> &ids,
+    void removeTorrents(const QList<TorrentKey> &torrentKeys,
                         bool deleteLocalData) override;
-    void verifyTorrents(const QList<int> &ids) override;
-    void reannounceTorrents(const QList<int> &ids) override;
-    void setTorrentLocation(const QList<int> &ids,
+    void verifyTorrents(const QList<TorrentKey> &torrentKeys) override;
+    void reannounceTorrents(const QList<TorrentKey> &torrentKeys) override;
+    void setTorrentLocation(const QList<TorrentKey> &torrentKeys,
                             const QString &location,
                             bool moveData) override;
-    void setTorrentFilesWanted(int torrentId,
+    void setTorrentFilesWanted(const TorrentKey &torrentKey,
                                const QList<int> &fileIndices,
                                bool wanted) override;
 
-    void setTorrentFilesPriority(int torrentId,
+    void setTorrentFilesPriority(const TorrentKey &torrentKey,
                                  const QList<int> &fileIndices,
                                  int priority) override;
 
-    void setTorrentFilesWantedAndPriority(int torrentId,
+    void setTorrentFilesWantedAndPriority(const TorrentKey &torrentKey,
                                           const QList<int> &fileIndices,
                                           bool wanted,
                                           int priority) override;
 
-    void addTorrentTracker(int torrentId,
+    void addTorrentTracker(const TorrentKey &torrentKey,
                            const QString &announceUrl) override;
-    void editTorrentTracker(int torrentId,
+    void editTorrentTracker(const TorrentKey &torrentKey,
                             int trackerId,
                             const QString &announceUrl) override;
-    void removeTorrentTracker(int torrentId, int trackerId) override;
+    void removeTorrentTracker(const TorrentKey &torrentKey, int trackerId) override;
 
-    void renameTorrentPath(int torrentId,
+    void renameTorrentPath(const TorrentKey &torrentKey,
                            const QString &path,
                            const QString &newName) override;
 
-    void setTorrentProperties(int torrentId,
+    void setTorrentProperties(const TorrentKey &torrentKey,
                               const QJsonObject &properties) override;
 
-    void setTorrentsSequentialDownload(const QList<int> &ids,
+    void setTorrentsSequentialDownload(const QList<TorrentKey> &torrentKeys,
                                        bool enabled) override;
 
-    void setTorrentsBandwidthPriority(const QList<int> &ids,
+    void setTorrentsBandwidthPriority(const QList<TorrentKey> &torrentKeys,
                                       int priority) override;
 
-    void queueMoveTop(const QList<int> &ids) override;
-    void queueMoveUp(const QList<int> &ids) override;
-    void queueMoveDown(const QList<int> &ids) override;
-    void queueMoveBottom(const QList<int> &ids) override;
+    void queueMoveTop(const QList<TorrentKey> &torrentKeys) override;
+    void queueMoveUp(const QList<TorrentKey> &torrentKeys) override;
+    void queueMoveDown(const QList<TorrentKey> &torrentKeys) override;
+    void queueMoveBottom(const QList<TorrentKey> &torrentKeys) override;
     void getSessionSettings() override;
     void getSessionStatistics() override;
     void setSessionSettings(const QJsonObject &settings) override;
@@ -168,14 +168,14 @@ private:
     QHash<QNetworkReply *, RpcRequestContext> pendingRequests;
     // Tracker arrays change much less frequently than rates/status. Cache them
     // separately and merge them into fast list snapshots client-side.
-    QHash<int, QJsonObject> torrentTrackerMetadata;
+    QHash<TorrentKey, QJsonObject> torrentTrackerMetadata;
     void postRpc(const RpcRequestContext &context);
     void postRpc(const QString &method,
                  const QJsonObject &arguments,
                  RpcRequestType type);
-    void postIdsCommand(const QString &method, const QList<int> &ids);
-    void postSingleTorrentSet(int torrentId, const QJsonObject &arguments);
-    bool prepareTorrentDetailRequest(RpcRequestType type, int torrentId);
+    void postIdsCommand(const QString &method, const QList<TorrentKey> &torrentKeys);
+    void postSingleTorrentSet(const TorrentKey &torrentKey, const QJsonObject &arguments);
+    bool prepareTorrentDetailRequest(RpcRequestType type, const TorrentKey &torrentKey);
     static bool isTorrentDetailRequest(RpcRequestType type);
 
 
