@@ -4,6 +4,8 @@
 #include "foldermappingsdialog.h"
 #include "settingskeys.h"
 
+#include <QComboBox>
+#include <QCoreApplication>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -20,6 +22,24 @@
 #include <QSettings>
 #include <QSignalBlocker>
 
+namespace {
+
+QString serverTypeDisplayName(const QString &backendType)
+{
+    if (backendType == QStringLiteral("qbittorrent"))
+        return QCoreApplication::translate("ServerConfig", "qBittorrent");
+
+    return QCoreApplication::translate("ServerConfig", "Transmission");
+}
+
+bool isConfigurableServerType(const QString &backendType)
+{
+    return backendType == QStringLiteral("transmission")
+           || backendType == QStringLiteral("qbittorrent");
+}
+
+} // namespace
+
 ServerConfig::ServerConfig(QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::ServerConfig)
@@ -29,6 +49,18 @@ ServerConfig::ServerConfig(QWidget *parent)
     setFixedSize(size());
 
     setWindowTitle(tr("Server Configuration"));
+
+    // Stable data values are persisted; display text may be translated or
+    // refined without changing the server-profile format.
+    ui->comboServerType->addItem(tr("Transmission"), QStringLiteral("transmission"));
+    ui->comboServerType->addItem(tr("qBittorrent"), QStringLiteral("qbittorrent"));
+
+    connect(ui->comboServerType,
+            &QComboBox::currentIndexChanged,
+            this,
+            [this]() {
+                updateEditorForServerType();
+            });
 
     ui->listServers->setModel(serverListModel);
 
@@ -151,7 +183,13 @@ void ServerConfig::loadServers()
     for (int i = 0; i < count; ++i) {
         settings.setArrayIndex(i);
 
-        TransmissionServer server;
+        ServerDefinition server;
+        server.backendType =
+            settings.value(SettingsKeys::ServerBackendType,
+                           QStringLiteral("transmission"))
+                .toString().trimmed().toLower();
+        if (!isConfigurableServerType(server.backendType))
+            server.backendType = QStringLiteral("transmission");
         server.name = settings.value(SettingsKeys::ServerName).toString();
         server.rpcUrl = settings.value(SettingsKeys::ServerRpcUrl).toString();
         server.username = settings.value(SettingsKeys::ServerUsername).toString();
@@ -199,6 +237,8 @@ void ServerConfig::saveServers()
         settings.setArrayIndex(i);
 
         settings.setValue(SettingsKeys::ServerName, servers.at(i).name);
+        settings.setValue(SettingsKeys::ServerBackendType,
+                          servers.at(i).backendType);
         settings.setValue(SettingsKeys::ServerRpcUrl, servers.at(i).rpcUrl);
         settings.setValue(SettingsKeys::ServerUsername, servers.at(i).username);
         settings.setValue(SettingsKeys::ServerPassword, servers.at(i).password);
@@ -244,7 +284,9 @@ void ServerConfig::refreshServerList()
         if (i == defaultServerIndex)
             name += tr(" (default)");
 
-        names.append(name);
+        names.append(tr("%1 — %2").arg(
+            name,
+            serverTypeDisplayName(servers.at(i).backendType)));
     }
 
     serverListModel->setStringList(names);
@@ -255,13 +297,19 @@ void ServerConfig::loadServerIntoEditor(int index)
     if (index < 0 || index >= servers.size())
         return;
 
-    const TransmissionServer &server = servers.at(index);
+    const ServerDefinition &server = servers.at(index);
 
     QSignalBlocker blockerName(ui->editServerName);
+    QSignalBlocker blockerType(ui->comboServerType);
     QSignalBlocker blockerUrl(ui->editServerUrl);
     QSignalBlocker blockerUsername(ui->editServerUsername);
     QSignalBlocker blockerPassword(ui->editServerPassword);
 
+    const int typeIndex = ui->comboServerType->findData(server.backendType);
+    ui->comboServerType->setCurrentIndex(typeIndex >= 0 ? typeIndex : 0);
+    // Loading deliberately blocks editor signals, so dependent labels and
+    // placeholders must be synchronized explicitly.
+    updateEditorForServerType();
     ui->editServerName->setText(server.name);
     ui->editServerUrl->setText(server.rpcUrl);
     ui->editServerUsername->setText(server.username);
@@ -275,6 +323,8 @@ void ServerConfig::saveEditorToServer(int index)
     if (index < 0 || index >= servers.size())
         return;
 
+    servers[index].backendType =
+        ui->comboServerType->currentData().toString();
     servers[index].name = ui->editServerName->text().trimmed();
     servers[index].rpcUrl = ui->editServerUrl->text().trimmed();
     servers[index].username = ui->editServerUsername->text().trimmed();
@@ -287,6 +337,8 @@ void ServerConfig::saveEditorToServer(int index)
 
 void ServerConfig::clearEditor()
 {
+    ui->comboServerType->setCurrentIndex(0);
+    updateEditorForServerType();
     ui->editServerName->clear();
     ui->editServerUrl->clear();
     ui->editServerUsername->clear();
@@ -294,8 +346,35 @@ void ServerConfig::clearEditor()
     updateFolderMappingsSummary();
 }
 
+void ServerConfig::updateEditorForServerType()
+{
+    const bool qBittorrent =
+        ui->comboServerType->currentData().toString()
+        == QStringLiteral("qbittorrent");
+    const QString transmissionDefault =
+        QStringLiteral("http://server:9091/transmission/rpc");
+    const QString qBittorrentDefault =
+        QStringLiteral("http://server:8080");
+
+    ui->labelRpcUrl->setText(
+        qBittorrent ? tr("WebUI URL:") : tr("RPC URL:"));
+    ui->editServerUrl->setPlaceholderText(
+        qBittorrent ? qBittorrentDefault : transmissionDefault);
+
+    // A newly-created profile contains the previous type's sample as editable
+    // text. Replace only that known default; never overwrite a user URL.
+    const QString currentUrl = ui->editServerUrl->text().trimmed();
+    if (currentUrl.isEmpty()
+        || (qBittorrent && currentUrl == transmissionDefault)
+        || (!qBittorrent && currentUrl == qBittorrentDefault)) {
+        ui->editServerUrl->setText(
+            qBittorrent ? qBittorrentDefault : transmissionDefault);
+    }
+}
+
 void ServerConfig::setEditorEnabled(bool enabled)
 {
+    ui->comboServerType->setEnabled(enabled);
     ui->editServerName->setEnabled(enabled);
     ui->editServerUrl->setEnabled(enabled);
     ui->editServerUsername->setEnabled(enabled);
@@ -305,7 +384,8 @@ void ServerConfig::setEditorEnabled(bool enabled)
 
 void ServerConfig::addServer()
 {
-    TransmissionServer server;
+    ServerDefinition server;
+    server.backendType = QStringLiteral("transmission");
     server.name = tr("New Server");
     server.rpcUrl = "http://server:9091/transmission/rpc";
     server.username = "";
@@ -334,9 +414,10 @@ void ServerConfig::addServer()
 }
 
 
-QJsonObject ServerConfig::serverToJson(const TransmissionServer &server, bool includePassword) const
+QJsonObject ServerConfig::serverToJson(const ServerDefinition &server, bool includePassword) const
 {
     QJsonObject object;
+    object.insert(QStringLiteral("backendType"), server.backendType);
     object.insert(QStringLiteral("name"), server.name);
     object.insert(QStringLiteral("rpcUrl"), server.rpcUrl);
     object.insert(QStringLiteral("username"), server.username);
@@ -359,13 +440,21 @@ QJsonObject ServerConfig::serverToJson(const TransmissionServer &server, bool in
 }
 
 bool ServerConfig::serverFromJson(const QJsonObject &object,
-                                  TransmissionServer *server,
+                                  ServerDefinition *server,
                                   QString *errorMessage) const
 {
     if (!server)
         return false;
 
-    TransmissionServer parsed;
+    ServerDefinition parsed;
+    parsed.backendType =
+        object.value(QStringLiteral("backendType"))
+            .toString(QStringLiteral("transmission")).trimmed().toLower();
+    if (!isConfigurableServerType(parsed.backendType)) {
+        if (errorMessage)
+            *errorMessage = tr("The server file uses an unsupported server type.");
+        return false;
+    }
     parsed.name = object.value(QStringLiteral("name")).toString().trimmed();
     parsed.rpcUrl = object.value(QStringLiteral("rpcUrl")).toString().trimmed();
     parsed.username = object.value(QStringLiteral("username")).toString();
@@ -403,7 +492,7 @@ bool ServerConfig::serverFromJson(const QJsonObject &object,
     return true;
 }
 
-QString ServerConfig::suggestedExportFileName(const TransmissionServer &server) const
+QString ServerConfig::suggestedExportFileName(const ServerDefinition &server) const
 {
     QString name = server.name.trimmed().toLower();
 
@@ -434,7 +523,7 @@ QString ServerConfig::uniqueServerName(const QString &baseName) const
         candidate = tr("Imported Server");
 
     auto nameExists = [this](const QString &name) {
-        for (const TransmissionServer &server : servers) {
+        for (const ServerDefinition &server : servers) {
             if (server.name.compare(name, Qt::CaseInsensitive) == 0)
                 return true;
         }
@@ -517,7 +606,7 @@ void ServerConfig::importServerFromFile()
         return;
     }
 
-    TransmissionServer server;
+    ServerDefinition server;
     QString errorMessage;
 
     if (!serverFromJson(serverObject, &server, &errorMessage)) {
@@ -566,7 +655,7 @@ void ServerConfig::exportSelectedServer()
     if (!saveSelectedServer())
         return;
 
-    const TransmissionServer &server = servers.at(index);
+    const ServerDefinition &server = servers.at(index);
 
     QMessageBox passwordPrompt(this);
     passwordPrompt.setIcon(QMessageBox::Warning);

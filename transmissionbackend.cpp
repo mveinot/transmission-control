@@ -880,6 +880,18 @@ TransmissionBackend::TransmissionServer TransmissionBackend::readServerFromSetti
 
     settings.setArrayIndex(index);
 
+    const QString backendType =
+        settings.value(SettingsKeys::ServerBackendType,
+                       QStringLiteral("transmission"))
+            .toString().trimmed().toLower();
+
+    // Never send Transmission RPC traffic to a profile owned by another
+    // backend implementation.
+    if (backendType != QStringLiteral("transmission")) {
+        settings.endArray();
+        return {};
+    }
+
     TransmissionServer server;
     server.name = settings.value(SettingsKeys::ServerName).toString().trimmed();
     server.rpcUrl = settings.value(SettingsKeys::ServerRpcUrl).toString().trimmed();

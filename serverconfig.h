@@ -24,8 +24,9 @@ public:
     ~ServerConfig();
 
 private:
-    struct TransmissionServer
+    struct ServerDefinition
     {
+        QString backendType = QStringLiteral("transmission");
         QString name;
         QString rpcUrl;
         QString username;
@@ -35,7 +36,7 @@ private:
 
     Ui::ServerConfig *ui;
 
-    QVector<TransmissionServer> servers;
+    QVector<ServerDefinition> servers;
     QStringListModel *serverListModel = nullptr;
 
     int currentServerIndex() const;
@@ -48,6 +49,7 @@ private:
     void saveEditorToServer(int index);
     void clearEditor();
     void setEditorEnabled(bool enabled);
+    void updateEditorForServerType();
     void updateFolderMappingsSummary();
 
     void addServer();
@@ -59,9 +61,9 @@ private:
     int defaultServerIndex = -1;
     void setSelectedServerAsDefault();
 
-    QJsonObject serverToJson(const TransmissionServer &server, bool includePassword) const;
-    bool serverFromJson(const QJsonObject &object, TransmissionServer *server, QString *errorMessage) const;
-    QString suggestedExportFileName(const TransmissionServer &server) const;
+    QJsonObject serverToJson(const ServerDefinition &server, bool includePassword) const;
+    bool serverFromJson(const QJsonObject &object, ServerDefinition *server, QString *errorMessage) const;
+    QString suggestedExportFileName(const ServerDefinition &server) const;
     QString uniqueServerName(const QString &baseName) const;
 };
 

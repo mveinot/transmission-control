@@ -1811,6 +1811,14 @@ void MainWindow::loadServerCombo()
 
         QString name = settings.value(SettingsKeys::ServerName).toString().trimmed();
         const QString rpcUrl = settings.value(SettingsKeys::ServerRpcUrl).toString().trimmed();
+        const QString backendType =
+            settings.value(SettingsKeys::ServerBackendType,
+                           QStringLiteral("transmission"))
+                .toString().trimmed().toLower();
+        const QString backendName =
+            backendType == QStringLiteral("qbittorrent")
+                ? tr("qBittorrent")
+                : tr("Transmission");
 
         if (name.isEmpty()) {
             name = rpcUrl.isEmpty()
@@ -1821,7 +1829,13 @@ void MainWindow::loadServerCombo()
         if (i == defaultIndex)
             name += tr(" (default)");
 
-        ui->comboServers->addItem(name, i);
+        ui->comboServers->addItem(
+            tr("%1 — %2").arg(name, backendName),
+            i);
+        ui->comboServers->setItemData(
+            ui->comboServers->count() - 1,
+            backendType,
+            Qt::UserRole + 1);
     }
 
     settings.endArray();
@@ -1863,15 +1877,38 @@ void MainWindow::saveSelectedServerFromCombo()
     if (serverIndex < 0)
         return;
 
+    const QString backendType =
+        ui->comboServers->currentData(Qt::UserRole + 1).toString();
+
     QSettings settings;
-    settings.setValue(SettingsKeys::ServersCurrentIndex, serverIndex);
-    settings.sync();
+
+    if (backendType == QStringLiteral("qbittorrent")) {
+        if (statusBarController) {
+            statusBarController->showMessage(
+                tr("qBittorrent support is not available yet."),
+                5000);
+        }
+
+        // Keep the selector consistent with the still-active backend.
+        const int activeServerIndex =
+            settings.value(SettingsKeys::ServersCurrentIndex, -1).toInt();
+        const int activeComboIndex =
+            ui->comboServers->findData(activeServerIndex);
+        if (activeComboIndex >= 0) {
+            const QSignalBlocker blocker(ui->comboServers);
+            ui->comboServers->setCurrentIndex(activeComboIndex);
+        }
+        return;
+    }
 
     if (!client->setServerFromSettingsIndex(serverIndex)) {
         if (statusBarController)
             statusBarController->showMessage(tr("Could not switch server."), 5000);
         return;
     }
+
+    settings.setValue(SettingsKeys::ServersCurrentIndex, serverIndex);
+    settings.sync();
 
     // A server switch defines a new notification baseline; otherwise torrents
     // on the new server would be reported as newly added or completed.

@@ -4,8 +4,7 @@
 
 TorrentBackend *createConfiguredTorrentBackend(QObject *parent)
 {
-    // Existing server records predate backend typing and are therefore
-    // Transmission profiles. A later migration can dispatch on a persisted
-    // backend identifier while preserving this compatibility default.
+    // Transmission is currently the only registered implementation. Server
+    // profiles already persist a backend identifier for future dispatch.
     return new TransmissionBackend(parent);
 }
