@@ -33,6 +33,7 @@ struct TorrentBackendCapabilities
     bool pathRenaming = false;
     bool torrentLocation = false;
     bool torrentLocationModeSelection = false;
+    bool addTorrentFileSelection = false;
     bool sessionSettings = false;
     bool sessionEncryptionDisable = false;
     bool sessionStatistics = false;

@@ -134,9 +134,12 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
                          ? displaySourceForFile(source)
                          : source);
 
-    // Local parsing is preview-only; the remote backend remains authoritative.
-    if (sourceType == TorrentAddDialog::SourceType::TorrentFile)
+    // Only expose add-time file choices when the backend can submit them with
+    // the add request. Existing-torrent file controls are a separate capability.
+    if (sourceType == TorrentAddDialog::SourceType::TorrentFile
+        && m_client->capabilities().addTorrentFileSelection) {
         dialog.setTorrentMetadata(TorrentMetadataParser::parseTorrentFile(source));
+    }
 
     const QString rememberedDownloadDir = savedDownloadDir();
 

@@ -116,6 +116,7 @@ TorrentBackendCapabilities QBittorrentBackend::capabilities() const {
   result.torrentProperties = true;
   result.torrentSpeedLimits = true;
   result.torrentShareLimits = true;
+  result.torrentPeerLimit = true;
   result.filePriorities = true;
   result.forceStart = true;
   result.queueManagement = true;
@@ -1382,6 +1383,15 @@ void QBittorrentBackend::setTorrentProperties(
       QByteArrayLiteral("hashes=") + formField(key);
   bool commandPosted = false;
 
+  if (changes.peerLimit != current.peerLimit) {
+    // qBittorrent uses -1 to inherit the global per-torrent connection limit.
+    postCommand(QStringLiteral("/api/v2/torrents/setMaxConnections"),
+                hashes + QByteArrayLiteral("&value=") +
+                    QByteArray::number(changes.peerLimit),
+                QStringLiteral("torrent-set"));
+    commandPosted = true;
+  }
+
   if (changes.downloadLimited != current.downloadLimited ||
       (changes.downloadLimited &&
        changes.downloadLimit != current.downloadLimit)) {
@@ -1494,6 +1504,7 @@ void QBittorrentBackend::setTorrentProperties(
   m_infoByKey.insert(key, info);
 
   TorrentProperties confirmed = current;
+  confirmed.peerLimit = changes.peerLimit;
   confirmed.downloadLimited = changes.downloadLimited;
   confirmed.downloadLimit = changes.downloadLimit;
   confirmed.uploadLimited = changes.uploadLimited;

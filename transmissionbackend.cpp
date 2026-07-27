@@ -1024,6 +1024,7 @@ TorrentBackendCapabilities TransmissionBackend::capabilities() const
     result.pathRenaming = true;
     result.torrentLocation = true;
     result.torrentLocationModeSelection = true;
+    result.addTorrentFileSelection = true;
     result.sessionSettings = true;
     result.sessionStatistics = true;
     result.freeSpaceQuery = true;
