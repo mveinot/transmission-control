@@ -54,6 +54,7 @@ void StatusBarController::setup()
     refreshFreeSpaceLabel();
     refreshSpeedModeLabel();
     refreshIntervalLabel();
+    setFreeSpaceAvailable(m_client && m_client->capabilities().freeSpaceQuery);
 
     if (!m_client)
         return;
@@ -81,6 +82,10 @@ void StatusBarController::setup()
             this, [this]() {
                 setServerName(m_client ? m_client->serverDisplayName() : QString());
                 setActivityText(tr("Server changed"));
+            });
+    connect(m_client, &TorrentBackend::capabilitiesChanged,
+            this, [this](const TorrentBackendCapabilities &capabilities) {
+                setFreeSpaceAvailable(capabilities.freeSpaceQuery);
             });
 }
 
@@ -117,6 +122,13 @@ void StatusBarController::clearFreeSpace()
 {
     m_freeSpaceBytes = -1;
     refreshFreeSpaceLabel();
+}
+
+void StatusBarController::setFreeSpaceAvailable(bool available)
+{
+    m_freeSpaceAvailable = available;
+    if (m_freeSpaceLabel)
+        m_freeSpaceLabel->setVisible(available);
 }
 
 void StatusBarController::setSessionSettings(const QJsonObject &settings)

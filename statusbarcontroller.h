@@ -28,6 +28,7 @@ public:
     void updateTorrents(const QVector<torrent> &torrents);
     void setFreeSpace(qint64 sizeBytes);
     void clearFreeSpace();
+    void setFreeSpaceAvailable(bool available);
     void setSessionSettings(const QJsonObject &settings);
     void setUpdateIntervalSeconds(int seconds);
     void setServerName(const QString &serverName);
@@ -64,6 +65,7 @@ private:
     double m_uploadRateBytesPerSecond = 0.0;
     qint64 m_freeSpaceBytes = -1;
     bool m_altSpeedEnabled = false;
+    bool m_freeSpaceAvailable = true;
     int m_updateIntervalSeconds = 0;
     QString m_serverName;
 

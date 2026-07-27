@@ -809,7 +809,12 @@ void TorrentFilesController::showContextMenu(const QPoint &pos)
             });
 
     QAction *renameAction = menu.addAction(tr("Rename…"));
-    renameAction->setEnabled(fileTreeWidget->selectedItems().size() == 1);
+    const TorrentBackendCapabilities capabilities =
+        client ? client->capabilities() : TorrentBackendCapabilities{};
+    renameAction->setVisible(capabilities.pathRenaming);
+    renameAction->setEnabled(
+        capabilities.pathRenaming
+        && fileTreeWidget->selectedItems().size() == 1);
 
     connect(renameAction, &QAction::triggered,
             this, [this, item]() { renameFileTreeItem(item); });
@@ -817,13 +822,14 @@ void TorrentFilesController::showContextMenu(const QPoint &pos)
     menu.addSeparator();
 
     QMenu *priorityMenu = menu.addMenu(tr("Priority"));
+    priorityMenu->setVisible(capabilities.filePriorities);
+    priorityMenu->setEnabled(capabilities.filePriorities);
 
     QAction *skipPriorityAction = priorityMenu->addAction(tr("Skip"));
     QAction *lowPriorityAction = priorityMenu->addAction(tr("Low"));
     QAction *normalPriorityAction = priorityMenu->addAction(tr("Normal"));
     QAction *highPriorityAction = priorityMenu->addAction(tr("High"));
-    lowPriorityAction->setVisible(client &&
-                                  client->capabilities().fileLowPriority);
+    lowPriorityAction->setVisible(capabilities.fileLowPriority);
 
     connect(skipPriorityAction, &QAction::triggered,
             this, [this]() { setSelectedFilesPriorityState(0, false); });

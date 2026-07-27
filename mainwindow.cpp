@@ -460,11 +460,19 @@ void MainWindow::setupViewMenu()
     addStyleAction(tr("Text Only"), Qt::ToolButtonTextOnly);
 
     viewMenu->addSeparator();
-    QAction *statisticsAction = viewMenu->addAction(tr("Statistics…"));
-    statisticsAction->setToolTip(tr("Show Transmission session statistics"));
+    statisticsAction = viewMenu->addAction(tr("Statistics…"));
+    statisticsAction->setToolTip(tr("Show session statistics"));
+    statisticsAction->setVisible(client->capabilities().sessionStatistics);
 
     connect(statisticsAction, &QAction::triggered,
             this, &MainWindow::showStatistics);
+    connect(client, &TorrentBackend::capabilitiesChanged,
+            statisticsAction,
+            [this](const TorrentBackendCapabilities &capabilities) {
+                if (statisticsAction)
+                    statisticsAction->setVisible(
+                        capabilities.sessionStatistics);
+            });
 
     connect(showToolBarAction, &QAction::toggled,
             this, &MainWindow::setToolBarVisibleFromAction);
@@ -2053,13 +2061,15 @@ void MainWindow::scheduleTorrentRefresh(bool refreshDetails)
 void MainWindow::refreshSlowRpcData(bool force)
 {
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    const TorrentBackendCapabilities capabilities = client->capabilities();
 
     if (force || now - lastTrackerMetadataRefreshMs >= SlowRpcRefreshIntervalMs) {
         lastTrackerMetadataRefreshMs = now;
         client->getTorrentTrackerMetadata();
     }
 
-    if (!remoteDownloadDir.isEmpty()
+    if (capabilities.freeSpaceQuery
+        && !remoteDownloadDir.isEmpty()
         && (force || now - lastFreeSpaceRefreshMs >= SlowRpcRefreshIntervalMs)) {
         lastFreeSpaceRefreshMs = now;
         client->getFreeSpace(remoteDownloadDir);
@@ -2205,6 +2215,9 @@ void MainWindow::updateAlternativeSpeedAction(bool enabled, bool available)
 
 void MainWindow::refreshRemoteFreeSpace()
 {
+    if (!client->capabilities().freeSpaceQuery)
+        return;
+
     if (remoteDownloadDir.trimmed().isEmpty()) {
         if (statusBarController) {
             statusBarController->showMessage(
@@ -2405,7 +2418,8 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     if (statusBarController)
         statusBarController->setSessionSettings(sessionSettings);
 
-    if (!remoteDownloadDir.isEmpty()) {
+    if (client->capabilities().freeSpaceQuery
+        && !remoteDownloadDir.isEmpty()) {
         lastFreeSpaceRefreshMs = QDateTime::currentMSecsSinceEpoch();
         client->getFreeSpace(remoteDownloadDir);
     } else if (statusBarController) {
@@ -2471,7 +2485,8 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
         if (torrentListController)
             torrentListController->setDefaultDownloadDir(remoteDownloadDir);
 
-        if (!remoteDownloadDir.isEmpty()) {
+        if (client->capabilities().freeSpaceQuery
+            && !remoteDownloadDir.isEmpty()) {
             lastFreeSpaceRefreshMs = QDateTime::currentMSecsSinceEpoch();
             client->getFreeSpace(remoteDownloadDir);
         }

@@ -216,6 +216,15 @@ void TorrentListController::setup(const ActionSet &actions)
                 &TorrentListController::forceStartSelectedTorrents);
     }
 
+    if (m_client) {
+        // Server switches can change capabilities without changing the current
+        // table selection, so refresh persistent action state explicitly.
+        connect(m_client, &TorrentBackend::capabilitiesChanged,
+                this, [this](const TorrentBackendCapabilities &) {
+                    updateActionState();
+                });
+    }
+
     updateActionState();
     updatePlaceholder();
 }
@@ -494,8 +503,12 @@ void TorrentListController::updateActionState()
     if (m_actions.reannounce)
         m_actions.reannounce->setEnabled(hasSelection);
 
-    if (m_actions.forceStart)
-        m_actions.forceStart->setEnabled(hasSelection);
+    if (m_actions.forceStart) {
+        const bool supported =
+            m_client && m_client->capabilities().forceStart;
+        m_actions.forceStart->setVisible(supported);
+        m_actions.forceStart->setEnabled(supported && hasSelection);
+    }
 }
 
 void TorrentListController::showContextMenu(const QPoint &pos)
@@ -525,6 +538,8 @@ void TorrentListController::showContextMenu(const QPoint &pos)
     const bool canCopyCurrentTorrentDetails =
         hasSingleSelection
         && m_currentDetailsTorrentKey == contextTorrentIds.first();
+    const TorrentBackendCapabilities capabilities =
+        m_client ? m_client->capabilities() : TorrentBackendCapabilities{};
 
     QMenu menu(m_dialogParent);
 
@@ -534,7 +549,7 @@ void TorrentListController::showContextMenu(const QPoint &pos)
     if (m_actions.stop)
         menu.addAction(m_actions.stop);
 
-    if (m_actions.forceStart)
+    if (m_actions.forceStart && capabilities.forceStart)
         menu.addAction(m_actions.forceStart);
 
     menu.addSeparator();
@@ -548,7 +563,9 @@ void TorrentListController::showContextMenu(const QPoint &pos)
     menu.addSeparator();
 
     QMenu *priorityMenu = menu.addMenu(tr("Priority"));
-    priorityMenu->setEnabled(hasSelection);
+    priorityMenu->setVisible(capabilities.torrentBandwidthPriority);
+    priorityMenu->setEnabled(
+        capabilities.torrentBandwidthPriority && hasSelection);
 
     QActionGroup *priorityGroup = new QActionGroup(priorityMenu);
     priorityGroup->setExclusive(true);
@@ -612,7 +629,8 @@ void TorrentListController::showContextMenu(const QPoint &pos)
     menu.addSeparator();
 
     QMenu *queueMenu = menu.addMenu(tr("Queue"));
-    queueMenu->setEnabled(hasSelection);
+    queueMenu->setVisible(capabilities.queueManagement);
+    queueMenu->setEnabled(capabilities.queueManagement && hasSelection);
 
     QAction *moveTopAction = queueMenu->addAction(tr("Move to Top"));
     QAction *moveUpAction = queueMenu->addAction(tr("Move Up"));
@@ -622,7 +640,9 @@ void TorrentListController::showContextMenu(const QPoint &pos)
     menu.addSeparator();
 
     QAction *setLocationAction = menu.addAction(tr("Set Location…"));
-    setLocationAction->setEnabled(hasSelection);
+    setLocationAction->setVisible(capabilities.torrentLocation);
+    setLocationAction->setEnabled(
+        capabilities.torrentLocation && hasSelection);
 
     QAction *propertiesAction = menu.addAction(tr("Properties…"));
     propertiesAction->setEnabled(hasSingleSelection);

@@ -172,6 +172,7 @@ private:
     QAction *showStatusBarAction = nullptr;
     QAction *showDetailsPaneAction = nullptr;
     QAction *showFilterSidebarAction = nullptr;
+    QAction *statisticsAction = nullptr;
     QActionGroup *toolBarStyleActionGroup = nullptr;
     QDockWidget *activityDock = nullptr;
     QTableView *activityTable = nullptr;

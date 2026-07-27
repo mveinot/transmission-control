@@ -392,17 +392,28 @@ void TorrentTrackersController::showContextMenu(const QPoint &pos)
     const int trackerId = trackerIdForRow(row);
 
     QMenu menu(dialogParent);
+    const bool editingSupported =
+        client && client->capabilities().trackerEditing;
 
     QAction *addTrackerAction = menu.addAction(tr("Add Tracker…"));
-    addTrackerAction->setEnabled(isValidTorrentKey(torrentKey));
+    addTrackerAction->setVisible(editingSupported);
+    addTrackerAction->setEnabled(
+        editingSupported && isValidTorrentKey(torrentKey));
 
     QAction *editTrackerAction = menu.addAction(tr("Edit Tracker…"));
-    editTrackerAction->setEnabled(isValidTorrentKey(torrentKey) && row >= 0 && trackerId >= 0);
+    editTrackerAction->setVisible(editingSupported);
+    editTrackerAction->setEnabled(
+        editingSupported && isValidTorrentKey(torrentKey)
+        && row >= 0 && trackerId >= 0);
 
     QAction *removeTrackerAction = menu.addAction(tr("Remove Tracker"));
-    removeTrackerAction->setEnabled(isValidTorrentKey(torrentKey) && row >= 0 && trackerId >= 0);
+    removeTrackerAction->setVisible(editingSupported);
+    removeTrackerAction->setEnabled(
+        editingSupported && isValidTorrentKey(torrentKey)
+        && row >= 0 && trackerId >= 0);
 
-    menu.addSeparator();
+    if (editingSupported)
+        menu.addSeparator();
 
     QAction *copyTrackerUrlAction = menu.addAction(tr("Copy Tracker URL"));
     copyTrackerUrlAction->setEnabled(!trackerUrl.isEmpty());

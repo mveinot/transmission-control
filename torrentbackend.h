@@ -31,6 +31,7 @@ struct TorrentBackendCapabilities
     bool fileLowPriority = false;
     bool trackerEditing = false;
     bool pathRenaming = false;
+    bool torrentLocation = false;
     bool sessionSettings = false;
     bool sessionEncryptionDisable = false;
     bool sessionStatistics = false;
