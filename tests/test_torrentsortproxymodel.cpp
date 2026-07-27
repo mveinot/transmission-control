@@ -254,17 +254,18 @@ void TestTorrentSortProxyModel::filtersByLabelAndGroup()
 {
     TorrentModel sourceModel;
 
-    QJsonObject linux = makeTorrentValue(1, "Linux", 4, 0.25, 0.0, 1024, 0).toObject();
-    linux[QStringLiteral("labels")] =
+    QJsonObject linuxTorrent =
+        makeTorrentValue(1, "Linux", 4, 0.25, 0.0, 1024, 0).toObject();
+    linuxTorrent[QStringLiteral("labels")] =
         QJsonArray { QStringLiteral("ISO"), QStringLiteral("Linux") };
-    linux[QStringLiteral("group")] = QStringLiteral("Desktop");
+    linuxTorrent[QStringLiteral("group")] = QStringLiteral("Desktop");
 
     QJsonObject unassigned =
         makeTorrentValue(2, "Unassigned", 0, 0.25, 0.0, 1024, 1).toObject();
     unassigned[QStringLiteral("labels")] = QJsonArray();
     unassigned[QStringLiteral("group")] = QString();
 
-    sourceModel.applyUpdate(makeTorrentList({ linux, unassigned }));
+    sourceModel.applyUpdate(makeTorrentList({ linuxTorrent, unassigned }));
 
     TorrentSortProxyModel proxy;
     proxy.setSourceModel(&sourceModel);
