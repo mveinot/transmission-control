@@ -125,6 +125,8 @@ TorrentBackendCapabilities QBittorrentBackend::capabilities() const {
   result.torrentLocation = true;
   result.sessionSettings = true;
   result.sessionEncryptionDisable = true;
+  result.sessionStatistics = true;
+  result.freeSpaceQuery = true;
   return result;
 }
 
@@ -189,6 +191,9 @@ void QBittorrentBackend::setServer(const QString &name, const QString &url,
   m_authenticationPending = false;
   m_listPendingAfterLogin = false;
   m_sessionSettingsPendingAfterLogin = false;
+  m_serverStateStatisticsPending = false;
+  m_serverStateFreeSpacePending = false;
+  m_requestedFreeSpacePath.clear();
   m_commandsPendingAfterLogin.clear();
   m_addsPendingAfterLogin.clear();
   m_infoByKey.clear();
@@ -621,6 +626,7 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
         failAdd(pending, reason);
       m_addsPendingAfterLogin.clear();
       m_sessionSettingsPendingAfterLogin = false;
+      failServerStateRequest(reason);
       return;
     }
 
@@ -633,6 +639,9 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
       m_sessionSettingsPendingAfterLogin = false;
       getSessionSettings();
     }
+
+    if (m_serverStateStatisticsPending || m_serverStateFreeSpacePending)
+      requestServerState();
 
     const QList<RequestContext> pendingCommands =
         std::exchange(m_commandsPendingAfterLogin, {});
@@ -720,6 +729,8 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
     if (context.kind == RequestKind::TorrentList) {
       emit updateFailed(tr("qBittorrent request failed: %1").arg(networkError));
       emit updateFinished();
+    } else if (context.kind == RequestKind::ServerState) {
+      failServerStateRequest(networkError);
     }
     return;
   }
@@ -727,7 +738,11 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
   QJsonParseError parseError;
   const QJsonDocument document = QJsonDocument::fromJson(body, &parseError);
   if (parseError.error != QJsonParseError::NoError)
+  {
+    if (context.kind == RequestKind::ServerState)
+      failServerStateRequest(parseError.errorString());
     return;
+  }
 
   if (context.kind == RequestKind::TorrentList) {
     QVector<torrent> torrents;
@@ -947,6 +962,50 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
     properties.fields = fields;
     m_editorPropertiesByKey.insert(context.key, properties);
     emit torrentPropertiesReceived(properties);
+  } else if (context.kind == RequestKind::ServerState) {
+    const QJsonObject state =
+        document.object().value(QStringLiteral("server_state")).toObject();
+    if (state.isEmpty()) {
+      failServerStateRequest(tr("qBittorrent returned no daemon state."));
+      return;
+    }
+
+    if (m_serverStateFreeSpacePending) {
+      const QJsonValue freeSpace =
+          state.value(QStringLiteral("free_space_on_disk"));
+      if (freeSpace.isDouble()) {
+        emit freeSpaceReceived(
+            m_requestedFreeSpacePath,
+            static_cast<qint64>(freeSpace.toDouble()));
+      }
+    }
+
+    if (m_serverStateStatisticsPending) {
+      const auto integerValue = [&state](const char *key) {
+        const QJsonValue value =
+            state.value(QString::fromLatin1(key));
+        return value.isDouble()
+                   ? QJsonValue::fromVariant(value.toVariant().toLongLong())
+                   : QJsonValue();
+      };
+      const QJsonObject current{
+          {QStringLiteral("downloadedBytes"),
+           integerValue("dl_info_data")},
+          {QStringLiteral("uploadedBytes"),
+           integerValue("up_info_data")}};
+      const QJsonObject cumulative{
+          {QStringLiteral("downloadedBytes"),
+           integerValue("alltime_dl")},
+          {QStringLiteral("uploadedBytes"),
+           integerValue("alltime_ul")}};
+      emit sessionStatisticsReceived(
+          QJsonObject{{QStringLiteral("current-stats"), current},
+                      {QStringLiteral("cumulative-stats"), cumulative}});
+    }
+
+    m_serverStateStatisticsPending = false;
+    m_serverStateFreeSpacePending = false;
+    m_requestedFreeSpacePath.clear();
   } else if (context.kind == RequestKind::SessionSettings) {
     m_sessionPreferences = document.object();
     QJsonObject settings;
@@ -997,11 +1056,12 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
       const QString key = QString::fromLatin1(nativeKey);
       if (!m_sessionPreferences.contains(key))
         return;
-      const qint64 bytesPerSecond =
+      const qint64 kibibytesPerSecond =
           m_sessionPreferences.value(key).toVariant().toLongLong();
-      settings.insert(QString::fromLatin1(enabledKey), bytesPerSecond > 0);
+      settings.insert(QString::fromLatin1(enabledKey),
+                      kibibytesPerSecond > 0);
       settings.insert(QString::fromLatin1(limitKey),
-                      bytesPerSecond > 0 ? bytesPerSecond / 1000 : 0);
+                      kibibytesPerSecond > 0 ? kibibytesPerSecond : 0);
     };
     normalizeRate("speed-limit-down-enabled", "speed-limit-down",
                   "dl_limit");
@@ -1013,7 +1073,7 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
       if (m_sessionPreferences.contains(key)) {
         settings.insert(
             QString::fromLatin1(normalized),
-            m_sessionPreferences.value(key).toVariant().toLongLong() / 1000);
+            m_sessionPreferences.value(key).toVariant().toLongLong());
       }
     };
     normalizeRateValue("alt-speed-down", "alt_dl_limit");
@@ -1503,7 +1563,10 @@ void QBittorrentBackend::getSessionSettings() {
   sendGet(RequestKind::SessionSettings,
           QStringLiteral("/api/v2/app/preferences"));
 }
-void QBittorrentBackend::getSessionStatistics() {}
+void QBittorrentBackend::getSessionStatistics() {
+  m_serverStateStatisticsPending = true;
+  requestServerState();
+}
 void QBittorrentBackend::setSessionSettings(const QJsonObject &settings) {
   QJsonObject native;
 
@@ -1577,9 +1640,8 @@ void QBittorrentBackend::setSessionSettings(const QJsonObject &settings) {
         const qint64 kilobytesPerSecond =
             settings.contains(limit)
                 ? settings.value(limit).toVariant().toLongLong()
-                : currentRate / 1000;
-        native.insert(destination,
-                      isEnabled ? kilobytesPerSecond * 1000 : 0);
+                : currentRate;
+        native.insert(destination, isEnabled ? kilobytesPerSecond : 0);
       };
   denormalizeRate("speed-limit-down-enabled", "speed-limit-down",
                   "dl_limit");
@@ -1591,7 +1653,7 @@ void QBittorrentBackend::setSessionSettings(const QJsonObject &settings) {
         if (settings.contains(source)) {
           native.insert(
               QString::fromLatin1(nativeKey),
-              settings.value(source).toVariant().toLongLong() * 1000);
+              settings.value(source));
         }
       };
   denormalizeRateValue("alt-speed-down", "alt_dl_limit");
@@ -1608,7 +1670,44 @@ void QBittorrentBackend::setSessionSettings(const QJsonObject &settings) {
               QByteArrayLiteral("json=") + formField(QString::fromUtf8(json)),
               QStringLiteral("session-set"));
 }
-void QBittorrentBackend::getFreeSpace(const QString &) {}
+void QBittorrentBackend::getFreeSpace(const QString &path) {
+  if (path.trimmed().isEmpty())
+    return;
+  m_requestedFreeSpacePath = path;
+  m_serverStateFreeSpacePending = true;
+  requestServerState();
+}
+
+void QBittorrentBackend::requestServerState() {
+  if (!m_authenticated) {
+    authenticate();
+    return;
+  }
+
+  // Statistics and free-space refreshes commonly coincide. One full daemon
+  // state snapshot can satisfy both consumers.
+  for (auto it = m_requests.cbegin(); it != m_requests.cend(); ++it) {
+    if (it.value().kind == RequestKind::ServerState)
+      return;
+  }
+
+  QUrlQuery query;
+  query.addQueryItem(QStringLiteral("rid"), QStringLiteral("0"));
+  sendGet(RequestKind::ServerState,
+          QStringLiteral("/api/v2/sync/maindata"), query);
+}
+
+void QBittorrentBackend::failServerStateRequest(const QString &reason) {
+  if (m_serverStateStatisticsPending) {
+    emit sessionStatisticsFailed(
+        reason.trimmed().isEmpty()
+            ? tr("qBittorrent daemon state could not be retrieved.")
+            : reason);
+  }
+  m_serverStateStatisticsPending = false;
+  m_serverStateFreeSpacePending = false;
+  m_requestedFreeSpacePath.clear();
+}
 void QBittorrentBackend::testPortForwarding() {}
 void QBittorrentBackend::updateBlocklist(const QJsonObject &) {
   emitUnsupported(tr("Update blocklist"));

@@ -89,6 +89,7 @@ private:
     TorrentTrackers,
     TorrentPropertyEditor,
     SessionSettings,
+    ServerState,
     AddTorrent,
     Command
   };
@@ -123,6 +124,9 @@ private:
   bool m_authenticationPending = false;
   bool m_listPendingAfterLogin = false;
   bool m_sessionSettingsPendingAfterLogin = false;
+  bool m_serverStateStatisticsPending = false;
+  bool m_serverStateFreeSpacePending = false;
+  QString m_requestedFreeSpacePath;
   QList<RequestContext> m_commandsPendingAfterLogin;
   QList<RequestContext> m_addsPendingAfterLogin;
 
@@ -139,6 +143,8 @@ private:
   void queueOrSendAdd(const RequestContext &context);
   void sendAdd(const RequestContext &context);
   void failAdd(const RequestContext &context, const QString &reason);
+  void requestServerState();
+  void failServerStateRequest(const QString &reason);
   void setServer(const QString &name, const QString &url,
                  const QString &username, const QString &password);
   void abortRequests();
