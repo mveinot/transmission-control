@@ -563,7 +563,9 @@ void TorrentListController::showContextMenu(const QPoint &pos)
     menu.addSeparator();
 
     QMenu *priorityMenu = menu.addMenu(tr("Priority"));
-    priorityMenu->setVisible(capabilities.torrentBandwidthPriority);
+    // A submenu is represented in its parent by menuAction(). Showing the
+    // QMenu itself can create a detached popup at the screen origin.
+    priorityMenu->menuAction()->setVisible(capabilities.torrentBandwidthPriority);
     priorityMenu->setEnabled(
         capabilities.torrentBandwidthPriority && hasSelection);
 
@@ -629,7 +631,7 @@ void TorrentListController::showContextMenu(const QPoint &pos)
     menu.addSeparator();
 
     QMenu *queueMenu = menu.addMenu(tr("Queue"));
-    queueMenu->setVisible(capabilities.queueManagement);
+    queueMenu->menuAction()->setVisible(capabilities.queueManagement);
     queueMenu->setEnabled(capabilities.queueManagement && hasSelection);
 
     QAction *moveTopAction = queueMenu->addAction(tr("Move to Top"));
