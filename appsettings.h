@@ -24,9 +24,11 @@ signals:
 
 private:
     Ui::AppSettings *ui;
+    QString m_initialAppearance;
 
     void loadSettings();
     void saveSettings();
+    QString selectedAppearance() const;
     void updateNotificationOptionAvailability();
     void refreshDefaultHandlerStatus();
     void requestDefaultHandler(bool magnetLinks);

@@ -66,6 +66,20 @@
                 </property>
                </widget>
               </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="labelAppearance">
+                <property name="text">
+                 <string>Appearance</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QComboBox" name="appearanceCombo">
+                <property name="toolTip">
+                 <string>Follow the operating system appearance or override it for Planetary</string>
+                </property>
+               </widget>
+              </item>
              </layout>
             </item>
            </layout>

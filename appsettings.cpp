@@ -1,7 +1,9 @@
 #include "appsettings.h"
+#include "applicationappearance.h"
 #include "ui_appsettings.h"
 #include "settingskeys.h"
 
+#include <QComboBox>
 #include <QPushButton>
 #include <QFileInfo>
 #include <QFileDialog>
@@ -31,6 +33,13 @@ AppSettings::AppSettings(QWidget *parent)
     ui->updateInterval->setMaximum(MaximumUpdateIntervalSeconds);
     ui->updateInterval->setSuffix(tr(" seconds"));
 
+    ui->appearanceCombo->addItem(tr("Follow System"),
+                                 QString::fromLatin1(ApplicationAppearance::FollowSystem));
+    ui->appearanceCombo->addItem(tr("Light"),
+                                 QString::fromLatin1(ApplicationAppearance::Light));
+    ui->appearanceCombo->addItem(tr("Dark"),
+                                 QString::fromLatin1(ApplicationAppearance::Dark));
+
     loadSettings();
     updateNotificationOptionAvailability();
     refreshDefaultHandlerStatus();
@@ -39,6 +48,11 @@ AppSettings::AppSettings(QWidget *parent)
             this, &AppSettings::updateNotificationOptionAvailability);
     connect(ui->enableDesktopNotifications, &QCheckBox::toggled,
             this, &AppSettings::updateNotificationOptionAvailability);
+    connect(ui->appearanceCombo, &QComboBox::currentIndexChanged,
+            this, [this]() {
+                // Preview the choice without persisting it until the dialog is accepted.
+                ApplicationAppearance::apply(selectedAppearance());
+            });
 
     connect(ui->buttonTestNotification, &QPushButton::clicked,
             this, &AppSettings::testNotificationRequested);
@@ -70,6 +84,11 @@ AppSettings::AppSettings(QWidget *parent)
 
     connect(ui->settingsCancel, &QPushButton::clicked, this, [this]() {
         reject();
+    });
+    connect(this, &QDialog::rejected, this, [this]() {
+        // Escape and the window close button have the same rollback semantics
+        // as the explicit Cancel button.
+        ApplicationAppearance::apply(m_initialAppearance);
     });
 
     connect(ui->buttonBrowseWatchFolder, &QPushButton::clicked,
@@ -128,6 +147,12 @@ AppSettings::~AppSettings()
 void AppSettings::loadSettings()
 {
     QSettings settings;
+
+    m_initialAppearance =
+        settings.value(SettingsKeys::Appearance,
+                       QString::fromLatin1(ApplicationAppearance::FollowSystem)).toString();
+    const int appearanceIndex = ui->appearanceCombo->findData(m_initialAppearance);
+    ui->appearanceCombo->setCurrentIndex(appearanceIndex >= 0 ? appearanceIndex : 0);
 
     const int intervalSeconds =
         settings.value(SettingsKeys::UpdateInterval,
@@ -206,6 +231,8 @@ void AppSettings::saveSettings()
 {
     QSettings settings;
 
+    settings.setValue(SettingsKeys::Appearance, selectedAppearance());
+
     settings.setValue(SettingsKeys::UpdateInterval,
                       ui->updateInterval->value());
 
@@ -256,6 +283,11 @@ void AppSettings::saveSettings()
                       ui->spinWatchFolderStableChecks->value());
 
     settings.sync();
+}
+
+QString AppSettings::selectedAppearance() const
+{
+    return ui->appearanceCombo->currentData().toString();
 }
 
 void AppSettings::updateNotificationOptionAvailability()

@@ -1,10 +1,13 @@
+#include "applicationappearance.h"
 #include "mainwindow.h"
+#include "settingskeys.h"
 #include "singleinstanceguard.h"
 #include "version.h"
 
 #include <QApplication>
 #include <QLocale>
 #include <QTranslator>
+#include <QSettings>
 #include <QTimer>
 #include <QCoreApplication>
 #include <QDir>
@@ -83,6 +86,12 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationDomain("mvgrafx.net");
     QCoreApplication::setApplicationName(QString("Planetary"));
     QCoreApplication::setApplicationVersion(__PLANETARY_VERSION__);
+
+    // Apply the saved override before constructing any application windows.
+    QSettings settings;
+    ApplicationAppearance::apply(
+        settings.value(SettingsKeys::Appearance,
+                       QString::fromLatin1(ApplicationAppearance::FollowSystem)).toString());
 
     a.setWindowIcon(QIcon(":/icons/planetary.icns"));
 
