@@ -28,6 +28,8 @@ private:
     void loadSettings();
     void saveSettings();
     void updateNotificationOptionAvailability();
+    void refreshDefaultHandlerStatus();
+    void requestDefaultHandler(bool magnetLinks);
 };
 
 #endif // APPSETTINGS_H

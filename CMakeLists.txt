@@ -256,17 +256,21 @@ if(APPLE)
         macapplicationbackend.mm
         macnotificationbackend.h
         macnotificationbackend.mm
+        macdefaulthandlerbackend.h
+        macdefaulthandlerbackend.mm
     )
 
     set_source_files_properties(
         macapplicationbackend.mm
         macnotificationbackend.mm
+        macdefaulthandlerbackend.mm
         PROPERTIES
         COMPILE_FLAGS "-fobjc-arc"
     )
 
     find_library(APPKIT_FRAMEWORK AppKit)
     find_library(USER_NOTIFICATIONS_FRAMEWORK UserNotifications)
+    find_library(UNIFORM_TYPE_IDENTIFIERS_FRAMEWORK UniformTypeIdentifiers)
 
     if(NOT APPKIT_FRAMEWORK)
         message(FATAL_ERROR "AppKit framework not found")
@@ -276,9 +280,14 @@ if(APPLE)
         message(FATAL_ERROR "UserNotifications framework not found")
     endif()
 
+    if(NOT UNIFORM_TYPE_IDENTIFIERS_FRAMEWORK)
+        message(FATAL_ERROR "UniformTypeIdentifiers framework not found")
+    endif()
+
     target_link_libraries(Planetary PRIVATE
         ${APPKIT_FRAMEWORK}
         ${USER_NOTIFICATIONS_FRAMEWORK}
+        ${UNIFORM_TYPE_IDENTIFIERS_FRAMEWORK}
     )
 endif()
 

@@ -7,6 +7,11 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QSettings>
+#include <QPointer>
+
+#ifdef Q_OS_MACOS
+#include "macdefaulthandlerbackend.h"
+#endif
 
 namespace {
 constexpr int DefaultUpdateIntervalSeconds = 10;
@@ -28,6 +33,7 @@ AppSettings::AppSettings(QWidget *parent)
 
     loadSettings();
     updateNotificationOptionAvailability();
+    refreshDefaultHandlerStatus();
 
     connect(ui->enableNotifications, &QCheckBox::toggled,
             this, &AppSettings::updateNotificationOptionAvailability);
@@ -52,6 +58,10 @@ AppSettings::AppSettings(QWidget *parent)
         emit testExternalCommandRequested(ui->externalCommandExecutable->text().trimmed(),
                                           ui->externalCommandArguments->text());
     });
+    connect(ui->buttonDefaultMagnet, &QPushButton::clicked,
+            this, [this]() { requestDefaultHandler(true); });
+    connect(ui->buttonDefaultTorrent, &QPushButton::clicked,
+            this, [this]() { requestDefaultHandler(false); });
 
     connect(ui->settingsOK, &QPushButton::clicked, this, [this]() {
         saveSettings();
@@ -259,4 +269,66 @@ void AppSettings::updateNotificationOptionAvailability()
     ui->externalCommandOptions->setEnabled(externalEnabled);
     ui->buttonTestExternalCommand->setEnabled(
         externalEnabled && !ui->externalCommandExecutable->text().trimmed().isEmpty());
+}
+
+void AppSettings::refreshDefaultHandlerStatus()
+{
+#ifdef Q_OS_MACOS
+    const MacDefaultHandlerStatus status = macDefaultHandlerStatus();
+    ui->defaultHandlersGroup->setVisible(true);
+
+    if (!status.supported) {
+        ui->labelDefaultHandlerDescription->setText(
+            tr("Default-handler requests require macOS 12 or later."));
+        ui->labelMagnetStatus->setText(tr("Unavailable"));
+        ui->labelTorrentStatus->setText(tr("Unavailable"));
+        ui->buttonDefaultMagnet->setEnabled(false);
+        ui->buttonDefaultTorrent->setEnabled(false);
+        return;
+    }
+
+    ui->labelDefaultHandlerDescription->setText(
+        tr("Planetary can ask macOS to become the default application for "
+           "torrent links and files."));
+    ui->labelMagnetStatus->setText(
+        status.magnetLinks ? tr("Planetary is the default")
+                           : tr("Another application is the default"));
+    ui->labelTorrentStatus->setText(
+        status.torrentFiles ? tr("Planetary is the default")
+                            : tr("Another application is the default"));
+    ui->buttonDefaultMagnet->setEnabled(!status.magnetLinks);
+    ui->buttonDefaultTorrent->setEnabled(!status.torrentFiles);
+#else
+    ui->defaultHandlersGroup->hide();
+#endif
+}
+
+void AppSettings::requestDefaultHandler(bool magnetLinks)
+{
+#ifdef Q_OS_MACOS
+    QPushButton *button =
+        magnetLinks ? ui->buttonDefaultMagnet : ui->buttonDefaultTorrent;
+    button->setEnabled(false);
+
+    const QPointer<AppSettings> guard(this);
+    requestMacDefaultHandler(
+        magnetLinks ? MacDefaultHandlerKind::MagnetLinks
+                    : MacDefaultHandlerKind::TorrentFiles,
+        [guard](const QString &error) {
+            if (!guard)
+                return;
+
+            if (!error.isEmpty()) {
+                QMessageBox::warning(
+                    guard,
+                    AppSettings::tr("Default Application"),
+                    AppSettings::tr(
+                        "Planetary could not become the default application:\n\n%1")
+                        .arg(error));
+            }
+            guard->refreshDefaultHandlerStatus();
+        });
+#else
+    Q_UNUSED(magnetLinks)
+#endif
 }
