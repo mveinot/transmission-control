@@ -45,7 +45,9 @@ public:
     void setup(const ActionSet &actions);
     void restoreViewState();
     void saveViewState() const;
-    void beginTorrentListRefresh();
+    // A server switch invalidates the previous successful-load state; routine
+    // polling retains it so the existing table remains usable during refresh.
+    void beginTorrentListRefresh(bool serverChanged = false);
     void markTorrentListLoaded();
     void markTorrentListLoadFailed(const QString &message);
 
@@ -114,6 +116,7 @@ private:
     std::function<QString()> m_currentDetailsDownloadDirProvider;
     TorrentKey m_lastEmittedTorrentKey;
     bool m_torrentListLoaded = false;
+    bool m_connectingToServer = false;
     bool m_torrentListLoadFailed = false;
     QString m_torrentListLoadFailureMessage;
     std::unique_ptr<TablePlaceholderController> m_placeholderController;

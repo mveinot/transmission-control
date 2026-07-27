@@ -229,8 +229,13 @@ void TorrentListController::setup(const ActionSet &actions)
     updatePlaceholder();
 }
 
-void TorrentListController::beginTorrentListRefresh()
+void TorrentListController::beginTorrentListRefresh(bool serverChanged)
 {
+    if (serverChanged) {
+        m_torrentListLoaded = false;
+        m_connectingToServer = true;
+    }
+
     m_torrentListLoadFailed = false;
     m_torrentListLoadFailureMessage.clear();
 
@@ -241,6 +246,7 @@ void TorrentListController::beginTorrentListRefresh()
 void TorrentListController::markTorrentListLoaded()
 {
     m_torrentListLoaded = true;
+    m_connectingToServer = false;
     m_torrentListLoadFailed = false;
     m_torrentListLoadFailureMessage.clear();
     updatePlaceholder();
@@ -1242,7 +1248,9 @@ void TorrentListController::updatePlaceholder()
     }
 
     if (!m_torrentListLoaded) {
-        m_placeholderController->setMessage(tr("Loading torrents…"));
+        m_placeholderController->setMessage(
+            m_connectingToServer ? tr("Connecting to server…")
+                                 : tr("Loading torrents…"));
         return;
     }
 

@@ -1649,7 +1649,7 @@ void MainWindow::onServerSetupTriggered()
             if (statusBarController)
                 statusBarController->showMessage(client->serverDisplayName());
             if (torrentListController)
-                torrentListController->beginTorrentListRefresh();
+                torrentListController->beginTorrentListRefresh(true);
             client->getTorrentList();
         }
     }
@@ -1886,7 +1886,7 @@ void MainWindow::saveSelectedServerFromCombo()
     }
 
     if (torrentListController)
-        torrentListController->beginTorrentListRefresh();
+        torrentListController->beginTorrentListRefresh(true);
     client->getTorrentList();
 
     // Session-derived state is server-specific and remains unknown until the
