@@ -6,6 +6,7 @@
 #include <QHash>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QSet>
 #include <QUrlQuery>
 
 // qBittorrent WebUI API adapter. It translates WebAPI resources and mutations
@@ -111,6 +112,8 @@ private:
   QHash<QNetworkReply *, RequestContext> m_requests;
   QHash<TorrentKey, QVariantMap> m_infoByKey;
   QHash<TorrentKey, TorrentProperties> m_editorPropertiesByKey;
+  QHash<TorrentKey, QHash<int, QString>> m_trackerUrlsByKey;
+  QHash<TorrentKey, QSet<QString>> m_filePathsByKey;
   QJsonObject m_sessionPreferences;
   QString m_serverName;
   QString m_baseUrl;

@@ -117,6 +117,12 @@ TorrentBackendCapabilities QBittorrentBackend::capabilities() const {
   result.torrentSpeedLimits = true;
   result.torrentShareLimits = true;
   result.filePriorities = true;
+  result.forceStart = true;
+  result.queueManagement = true;
+  result.sequentialDownload = true;
+  result.trackerEditing = true;
+  result.pathRenaming = true;
+  result.torrentLocation = true;
   result.sessionSettings = true;
   result.sessionEncryptionDisable = true;
   return result;
@@ -187,6 +193,8 @@ void QBittorrentBackend::setServer(const QString &name, const QString &url,
   m_addsPendingAfterLogin.clear();
   m_infoByKey.clear();
   m_editorPropertiesByKey.clear();
+  m_trackerUrlsByKey.clear();
+  m_filePathsByKey.clear();
   m_sessionPreferences = {};
   emit serverChanged();
   emit capabilitiesChanged(capabilities());
@@ -557,6 +565,10 @@ QBittorrentBackend::normalizeDetails(const QVariantMap &info,
       normalized.value(QStringLiteral("totalSize")).toVariant().toLongLong();
   details.creationTime =
       normalized.value(QStringLiteral("dateCreated")).toVariant().toLongLong();
+  details.hasSequentialDownload =
+      info.contains(QStringLiteral("seq_dl"));
+  details.sequentialDownload =
+      info.value(QStringLiteral("seq_dl")).toBool();
   details.fields = normalized.toVariantMap();
   return details;
 }
@@ -782,6 +794,7 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
         m_infoByKey.value(context.key)
             .value(QStringLiteral("save_path")).toString();
     files.files.reserve(sourceFiles.size());
+    QSet<QString> filePaths;
 
     for (const QJsonValue &value : sourceFiles) {
       const QJsonObject source = value.toObject();
@@ -789,6 +802,7 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
       file.index = source.value(QStringLiteral("index")).toInt(
           files.files.size());
       file.path = source.value(QStringLiteral("name")).toString();
+      filePaths.insert(file.path);
       file.length =
           source.value(QStringLiteral("size")).toVariant().toLongLong();
       file.bytesCompleted = qRound64(
@@ -801,6 +815,7 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
       file.priority = nativePriority >= 6 ? 1 : 0;
       files.files.append(file);
     }
+    m_filePathsByKey.insert(context.key, filePaths);
     emit torrentFilesReceived(files);
   } else if (context.kind == RequestKind::TorrentPeers) {
     TorrentPeers peers;
@@ -835,8 +850,10 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
     TorrentTrackers trackers;
     trackers.key = context.key;
     trackers.trackers.reserve(sourceTrackers.size());
+    QHash<int, QString> trackerUrls;
 
-    for (const QJsonValue &value : sourceTrackers) {
+    for (int index = 0; index < sourceTrackers.size(); ++index) {
+      const QJsonValue value = sourceTrackers.at(index);
       const QJsonObject source = value.toObject();
       TorrentTracker tracker;
       tracker.tier = source.value(QStringLiteral("tier")).toInt(-1);
@@ -871,8 +888,14 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
       tracker.lastAnnounceResult =
           source.value(QStringLiteral("msg")).toString();
       tracker.lastAnnounceSucceeded = nativeStatus == 2;
+      if (QUrl(tracker.announceUrl).isValid() &&
+          !tracker.announceUrl.startsWith(QStringLiteral("**"))) {
+        tracker.id = index;
+        trackerUrls.insert(index, tracker.announceUrl);
+      }
       trackers.trackers.append(tracker);
     }
+    m_trackerUrlsByKey.insert(context.key, trackerUrls);
     emit torrentTrackersReceived(trackers);
   } else if (context.kind == RequestKind::TorrentPropertyEditor) {
     const QVariantMap nativeProperties = document.object().toVariantMap();
@@ -1152,8 +1175,12 @@ void QBittorrentBackend::startAllTorrents() {
               QByteArrayLiteral("hashes=all"), QStringLiteral("torrent-start"),
               QStringLiteral("/api/v2/torrents/resume"));
 }
-void QBittorrentBackend::startTorrentsNow(const QList<TorrentKey> &) {
-  emitUnsupported(tr("Force start"));
+void QBittorrentBackend::startTorrentsNow(const QList<TorrentKey> &keys) {
+  if (keys.isEmpty())
+    return;
+  postCommand(QStringLiteral("/api/v2/torrents/setForceStart"),
+              hashesForm(keys) + QByteArrayLiteral("&value=true"),
+              QStringLiteral("torrent-start-now"));
 }
 void QBittorrentBackend::stopTorrents(const QList<TorrentKey> &keys) {
   if (keys.isEmpty())
@@ -1190,9 +1217,18 @@ void QBittorrentBackend::reannounceTorrents(const QList<TorrentKey> &keys) {
   postCommand(QStringLiteral("/api/v2/torrents/reannounce"), hashesForm(keys),
               QStringLiteral("torrent-reannounce"));
 }
-void QBittorrentBackend::setTorrentLocation(const QList<TorrentKey> &,
-                                            const QString &, bool) {
-  emitUnsupported(tr("Set location"));
+void QBittorrentBackend::setTorrentLocation(const QList<TorrentKey> &keys,
+                                            const QString &location,
+                                            bool) {
+  if (keys.isEmpty() || location.trimmed().isEmpty())
+    return;
+
+  // qBittorrent's setLocation operation always relocates existing content; it
+  // has no equivalent to Transmission's "find existing data here" mode.
+  postCommand(QStringLiteral("/api/v2/torrents/setLocation"),
+              hashesForm(keys) + QByteArrayLiteral("&location=") +
+                  formField(location.trimmed()),
+              QStringLiteral("torrent-set-location"));
 }
 void QBittorrentBackend::setTorrentFilesWanted(const TorrentKey &key,
                                                const QList<int> &indices,
@@ -1223,20 +1259,58 @@ void QBittorrentBackend::setTorrentFilesWantedAndPriority(
               filePriorityForm(key, indices, nativePriority),
               QStringLiteral("torrent-set"));
 }
-void QBittorrentBackend::addTorrentTracker(const TorrentKey &,
-                                           const QString &) {
-  emitUnsupported(tr("Add tracker"));
+void QBittorrentBackend::addTorrentTracker(const TorrentKey &key,
+                                           const QString &announceUrl) {
+  if (!isValidTorrentKey(key) || announceUrl.trimmed().isEmpty())
+    return;
+  postCommand(QStringLiteral("/api/v2/torrents/addTrackers"),
+              QByteArrayLiteral("hash=") + formField(key) +
+                  QByteArrayLiteral("&urls=") +
+                  formField(announceUrl.trimmed()),
+              QStringLiteral("torrent-set"));
 }
-void QBittorrentBackend::editTorrentTracker(const TorrentKey &, int,
-                                            const QString &) {
-  emitUnsupported(tr("Edit tracker"));
+void QBittorrentBackend::editTorrentTracker(const TorrentKey &key, int trackerId,
+                                            const QString &announceUrl) {
+  const QString originalUrl =
+      m_trackerUrlsByKey.value(key).value(trackerId);
+  if (!isValidTorrentKey(key) || originalUrl.isEmpty() ||
+      announceUrl.trimmed().isEmpty())
+    return;
+  postCommand(QStringLiteral("/api/v2/torrents/editTracker"),
+              QByteArrayLiteral("hash=") + formField(key) +
+                  QByteArrayLiteral("&origUrl=") + formField(originalUrl) +
+                  QByteArrayLiteral("&newUrl=") +
+                  formField(announceUrl.trimmed()),
+              QStringLiteral("torrent-set"));
 }
-void QBittorrentBackend::removeTorrentTracker(const TorrentKey &, int) {
-  emitUnsupported(tr("Remove tracker"));
+void QBittorrentBackend::removeTorrentTracker(const TorrentKey &key,
+                                              int trackerId) {
+  const QString announceUrl =
+      m_trackerUrlsByKey.value(key).value(trackerId);
+  if (!isValidTorrentKey(key) || announceUrl.isEmpty())
+    return;
+  postCommand(QStringLiteral("/api/v2/torrents/removeTrackers"),
+              QByteArrayLiteral("hash=") + formField(key) +
+                  QByteArrayLiteral("&urls=") + formField(announceUrl),
+              QStringLiteral("torrent-set"));
 }
-void QBittorrentBackend::renameTorrentPath(const TorrentKey &, const QString &,
-                                           const QString &) {
-  emitUnsupported(tr("Rename path"));
+void QBittorrentBackend::renameTorrentPath(const TorrentKey &key,
+                                           const QString &path,
+                                           const QString &newName) {
+  if (!isValidTorrentKey(key) || path.isEmpty() || newName.isEmpty())
+    return;
+
+  const int separator = path.lastIndexOf(QLatin1Char('/'));
+  const QString parent =
+      separator >= 0 ? path.left(separator + 1) : QString();
+  const QString newPath = parent + newName;
+  const bool isFile = m_filePathsByKey.value(key).contains(path);
+  postCommand(isFile ? QStringLiteral("/api/v2/torrents/renameFile")
+                     : QStringLiteral("/api/v2/torrents/renameFolder"),
+              QByteArrayLiteral("hash=") + formField(key) +
+                  QByteArrayLiteral("&oldPath=") + formField(path) +
+                  QByteArrayLiteral("&newPath=") + formField(newPath),
+              QStringLiteral("torrent-set"));
 }
 void QBittorrentBackend::setTorrentProperties(
     const TorrentKey &key, const TorrentPropertyChanges &changes) {
@@ -1377,24 +1451,47 @@ void QBittorrentBackend::setTorrentProperties(
     emit commandSucceeded(QStringLiteral("torrent-set"));
 }
 void QBittorrentBackend::setTorrentsSequentialDownload(
-    const QList<TorrentKey> &, bool) {
-  emitUnsupported(tr("Sequential download"));
+    const QList<TorrentKey> &keys, bool enabled) {
+  QList<TorrentKey> keysToToggle;
+  for (const TorrentKey &key : keys) {
+    auto info = m_infoByKey.find(key);
+    if (info == m_infoByKey.end())
+      continue;
+    if (info->value(QStringLiteral("seq_dl")).toBool() == enabled)
+      continue;
+    keysToToggle.append(key);
+  }
+
+  if (keysToToggle.isEmpty()) {
+    emit commandSucceeded(QStringLiteral("torrent-set"));
+    return;
+  }
+  postCommand(QStringLiteral("/api/v2/torrents/toggleSequentialDownload"),
+              hashesForm(keysToToggle), QStringLiteral("torrent-set"));
 }
 void QBittorrentBackend::setTorrentsBandwidthPriority(const QList<TorrentKey> &,
                                                       int) {
   emitUnsupported(tr("Set priority"));
 }
-void QBittorrentBackend::queueMoveTop(const QList<TorrentKey> &) {
-  emitUnsupported(tr("Move queue"));
+void QBittorrentBackend::queueMoveTop(const QList<TorrentKey> &keys) {
+  if (!keys.isEmpty())
+    postCommand(QStringLiteral("/api/v2/torrents/topPrio"),
+                hashesForm(keys), QStringLiteral("queue-move-top"));
 }
-void QBittorrentBackend::queueMoveUp(const QList<TorrentKey> &) {
-  emitUnsupported(tr("Move queue"));
+void QBittorrentBackend::queueMoveUp(const QList<TorrentKey> &keys) {
+  if (!keys.isEmpty())
+    postCommand(QStringLiteral("/api/v2/torrents/increasePrio"),
+                hashesForm(keys), QStringLiteral("queue-move-up"));
 }
-void QBittorrentBackend::queueMoveDown(const QList<TorrentKey> &) {
-  emitUnsupported(tr("Move queue"));
+void QBittorrentBackend::queueMoveDown(const QList<TorrentKey> &keys) {
+  if (!keys.isEmpty())
+    postCommand(QStringLiteral("/api/v2/torrents/decreasePrio"),
+                hashesForm(keys), QStringLiteral("queue-move-down"));
 }
-void QBittorrentBackend::queueMoveBottom(const QList<TorrentKey> &) {
-  emitUnsupported(tr("Move queue"));
+void QBittorrentBackend::queueMoveBottom(const QList<TorrentKey> &keys) {
+  if (!keys.isEmpty())
+    postCommand(QStringLiteral("/api/v2/torrents/bottomPrio"),
+                hashesForm(keys), QStringLiteral("queue-move-bottom"));
 }
 void QBittorrentBackend::getSessionSettings() {
   if (!m_authenticated) {

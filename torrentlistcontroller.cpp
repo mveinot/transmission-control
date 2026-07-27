@@ -906,6 +906,15 @@ void TorrentListController::setSelectedTorrentsLocation()
         &dialog
         );
     moveDataCheckBox->setChecked(false);
+    if (!m_client->capabilities().torrentLocationModeSelection) {
+        // Some backends expose relocation only and cannot merely associate
+        // already-present data with a new path.
+        moveDataCheckBox->setChecked(true);
+        moveDataCheckBox->hide();
+        descriptionLabel->setText(
+            tr("Move the torrent's existing data to a new location on the "
+               "torrent server."));
+    }
     layout->addWidget(moveDataCheckBox);
 
     auto *buttonBox = new QDialogButtonBox(

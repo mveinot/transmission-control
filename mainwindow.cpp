@@ -151,39 +151,6 @@ void syncToolBarStyleActionGroup(QActionGroup *group, Qt::ToolButtonStyle style)
         matchingAction->setChecked(true);
 }
 
-bool semverAtLeast(const QString &version, int requiredMajor, int requiredMinor, int requiredPatch)
-{
-    const QStringList parts = version.split(QLatin1Char('.'));
-
-    const int major = parts.value(0).toInt();
-    const int minor = parts.value(1).toInt();
-    const int patch = parts.value(2).toInt();
-
-    if (major != requiredMajor)
-        return major > requiredMajor;
-
-    if (minor != requiredMinor)
-        return minor > requiredMinor;
-
-    return patch >= requiredPatch;
-}
-
-bool sessionSupportsSequentialDownload(const QJsonObject &settings)
-{
-    const int rpcVersion = settings.value(QStringLiteral("rpc-version")).toInt(
-        settings.value(QStringLiteral("rpc_version")).toInt()
-        );
-
-    if (rpcVersion >= 18)
-        return true;
-
-    const QString rpcVersionSemver = settings.value(QStringLiteral("rpc-version-semver")).toString(
-        settings.value(QStringLiteral("rpc_version_semver")).toString()
-        );
-
-    return semverAtLeast(rpcVersionSemver, 6, 0, 0);
-}
-
 bool jsonBoolAny(const QJsonObject &object,
                  std::initializer_list<const char *> keys,
                  bool *found = nullptr)
@@ -2406,7 +2373,7 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
 
     if (torrentListController)
         torrentListController->setSequentialDownloadSupported(
-            sessionSupportsSequentialDownload(sessionSettings)
+            client->capabilities().sequentialDownload
             );
 
     if (torrentAddController)
