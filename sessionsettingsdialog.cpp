@@ -1,4 +1,5 @@
 #include "sessionsettingsdialog.h"
+#include "torrentbackend.h"
 #include "ui_sessionsettingsdialog.h"
 
 #include <QComboBox>
@@ -166,28 +167,67 @@ SessionSettingsDialog::~SessionSettingsDialog()
 
 void SessionSettingsDialog::setupPortTestControls()
 {
-    auto *container = new QWidget(this);
-    auto *layout = new QHBoxLayout(container);
+    portTestContainer = new QWidget(this);
+    auto *layout = new QHBoxLayout(portTestContainer);
     layout->setContentsMargins(0, 0, 0, 0);
 
-    testPortButton = new QPushButton(tr("Test Port"), container);
+    testPortButton = new QPushButton(tr("Test Port"), portTestContainer);
     testPortButton->setToolTip(
         tr("Test whether Transmission's current listening port is reachable from the Internet. Apply any port changes before testing.")
         );
 
-    portTestResultLabel = new QLabel(tr("Not tested"), container);
+    portTestResultLabel = new QLabel(tr("Not tested"), portTestContainer);
     portTestResultLabel->setWordWrap(true);
 
     layout->addWidget(testPortButton);
     layout->addWidget(portTestResultLabel, 1);
 
-    ui->listeningForm->addRow(tr("Port test:"), container);
+    ui->listeningForm->addRow(tr("Port test:"), portTestContainer);
 
     connect(testPortButton, &QPushButton::clicked,
             this, [this]() {
                 setPortTestRunning();
                 emit portTestRequested();
             });
+}
+
+void SessionSettingsDialog::configureBackend(
+    const QString &backendName,
+    const TorrentBackendCapabilities &capabilities)
+{
+    const QString displayName =
+        backendName.trimmed().isEmpty() ? tr("Server") : backendName.trimmed();
+    setWindowTitle(tr("%1 Settings").arg(displayName));
+    ui->labelDescription->setText(
+        tr("Configure settings on the remote %1 daemon. Paths are remote "
+           "daemon paths, not local paths.").arg(displayName));
+
+    supportsDisabledEncryption = capabilities.sessionEncryptionDisable;
+    ui->groupBlocklist->setVisible(capabilities.blocklistUpdate);
+    if (portTestContainer) {
+        portTestContainer->setVisible(capabilities.portTest);
+        // QFormLayout owns the row label independently of its field widget.
+        // Keep both halves of the capability-controlled row in sync.
+        if (QWidget *label =
+                ui->listeningForm->labelForField(portTestContainer)) {
+            label->setVisible(capabilities.portTest);
+        }
+    }
+
+    const bool isQBittorrent =
+        backendName.compare(QStringLiteral("qBittorrent"),
+                            Qt::CaseInsensitive) == 0;
+    if (isQBittorrent) {
+        // qBittorrent has one queueing switch shared by download and seed
+        // limits; use the first checkbox as that switch.
+        ui->checkDownloadQueue->setText(tr("Enable torrent queueing"));
+        ui->checkSeedQueue->hide();
+        ui->checkRenamePartialFiles->setText(
+            tr("Append .!qB to incomplete files"));
+        ui->checkSeedRatioLimit->setText(tr("Enable global ratio limit"));
+        ui->checkIdleSeedingLimit->setText(
+            tr("Enable global inactive-seeding limit"));
+    }
 }
 
 void SessionSettingsDialog::setPortTestRunning()
@@ -250,6 +290,11 @@ void SessionSettingsDialog::populateEncryptionCombo(const QString &currentValue)
     ui->comboEncryption->addItem(tr("Allowed"), allowedValue);
     ui->comboEncryption->addItem(tr("Preferred"), QStringLiteral("preferred"));
     ui->comboEncryption->addItem(tr("Required"), QStringLiteral("required"));
+    if (supportsDisabledEncryption ||
+        currentValue == QStringLiteral("disabled")) {
+        ui->comboEncryption->addItem(tr("Disabled"),
+                                    QStringLiteral("disabled"));
+    }
 
     setComboCurrentData(currentValue);
 }

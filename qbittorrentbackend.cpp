@@ -117,6 +117,8 @@ TorrentBackendCapabilities QBittorrentBackend::capabilities() const {
   result.torrentSpeedLimits = true;
   result.torrentShareLimits = true;
   result.filePriorities = true;
+  result.sessionSettings = true;
+  result.sessionEncryptionDisable = true;
   return result;
 }
 
@@ -185,6 +187,7 @@ void QBittorrentBackend::setServer(const QString &name, const QString &url,
   m_addsPendingAfterLogin.clear();
   m_infoByKey.clear();
   m_editorPropertiesByKey.clear();
+  m_sessionPreferences = {};
   emit serverChanged();
   emit capabilitiesChanged(capabilities());
 }
@@ -922,11 +925,87 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
     m_editorPropertiesByKey.insert(context.key, properties);
     emit torrentPropertiesReceived(properties);
   } else if (context.kind == RequestKind::SessionSettings) {
-    QJsonObject settings = document.object();
-    // MainWindow consumes a small backend-neutral subset using Transmission's
-    // established field names. Preserve the native object for future mappings.
-    settings.insert(QStringLiteral("download-dir"),
-                    settings.value(QStringLiteral("save_path")).toString());
+    m_sessionPreferences = document.object();
+    QJsonObject settings;
+    const auto copy = [&settings, this](const char *normalized,
+                                        const char *native) {
+      const QString nativeKey = QString::fromLatin1(native);
+      if (m_sessionPreferences.contains(nativeKey)) {
+        settings.insert(QString::fromLatin1(normalized),
+                        m_sessionPreferences.value(nativeKey));
+      }
+    };
+
+    copy("peer-port", "listen_port");
+    copy("peer-port-random-on-start", "random_port");
+    copy("port-forwarding-enabled", "upnp");
+    copy("dht-enabled", "dht");
+    copy("pex-enabled", "pex");
+    copy("lpd-enabled", "lsd");
+    copy("peer-limit-global", "max_connec");
+    copy("peer-limit-per-torrent", "max_connec_per_torrent");
+    copy("alt-speed-enabled", "use_alt_speed_limits");
+    copy("download-queue-enabled", "queueing_enabled");
+    copy("seed-queue-enabled", "queueing_enabled");
+    copy("download-queue-size", "max_active_downloads");
+    copy("seed-queue-size", "max_active_uploads");
+    copy("queue-stalled-enabled", "dont_count_slow_torrents");
+    copy("queue-stalled-minutes", "slow_torrent_inactive_timer");
+    copy("download-dir", "save_path");
+    copy("incomplete-dir-enabled", "temp_path_enabled");
+    copy("incomplete-dir", "temp_path");
+    copy("rename-partial-files", "incomplete_files_ext");
+    copy("seedRatioLimited", "max_ratio_enabled");
+    copy("seedRatioLimit", "max_ratio");
+    copy("idle-seeding-limit-enabled",
+         "max_inactive_seeding_time_enabled");
+    copy("idle-seeding-limit", "max_inactive_seeding_time");
+
+    if (m_sessionPreferences.contains(QStringLiteral("start_paused_enabled"))) {
+      settings.insert(
+          QStringLiteral("start-added-torrents"),
+          !m_sessionPreferences.value(QStringLiteral("start_paused_enabled"))
+               .toBool());
+    }
+
+    const auto normalizeRate = [&settings, this](const char *enabledKey,
+                                                  const char *limitKey,
+                                                  const char *nativeKey) {
+      const QString key = QString::fromLatin1(nativeKey);
+      if (!m_sessionPreferences.contains(key))
+        return;
+      const qint64 bytesPerSecond =
+          m_sessionPreferences.value(key).toVariant().toLongLong();
+      settings.insert(QString::fromLatin1(enabledKey), bytesPerSecond > 0);
+      settings.insert(QString::fromLatin1(limitKey),
+                      bytesPerSecond > 0 ? bytesPerSecond / 1000 : 0);
+    };
+    normalizeRate("speed-limit-down-enabled", "speed-limit-down",
+                  "dl_limit");
+    normalizeRate("speed-limit-up-enabled", "speed-limit-up", "up_limit");
+
+    const auto normalizeRateValue = [&settings, this](const char *normalized,
+                                                       const char *native) {
+      const QString key = QString::fromLatin1(native);
+      if (m_sessionPreferences.contains(key)) {
+        settings.insert(
+            QString::fromLatin1(normalized),
+            m_sessionPreferences.value(key).toVariant().toLongLong() / 1000);
+      }
+    };
+    normalizeRateValue("alt-speed-down", "alt_dl_limit");
+    normalizeRateValue("alt-speed-up", "alt_up_limit");
+
+    if (m_sessionPreferences.contains(QStringLiteral("encryption"))) {
+      const int encryption =
+          m_sessionPreferences.value(QStringLiteral("encryption")).toInt();
+      settings.insert(QStringLiteral("encryption"),
+                      encryption == 1
+                          ? QStringLiteral("required")
+                          : (encryption == 2 ? QStringLiteral("disabled")
+                                             : QStringLiteral("preferred")));
+    }
+
     emit sessionSettingsReceived(settings);
   }
 }
@@ -1328,8 +1407,109 @@ void QBittorrentBackend::getSessionSettings() {
           QStringLiteral("/api/v2/app/preferences"));
 }
 void QBittorrentBackend::getSessionStatistics() {}
-void QBittorrentBackend::setSessionSettings(const QJsonObject &) {
-  emitUnsupported(tr("Session settings"));
+void QBittorrentBackend::setSessionSettings(const QJsonObject &settings) {
+  QJsonObject native;
+
+  const auto copy = [&settings, &native](const char *normalized,
+                                         const char *nativeKey) {
+    const QString source = QString::fromLatin1(normalized);
+    if (settings.contains(source))
+      native.insert(QString::fromLatin1(nativeKey), settings.value(source));
+  };
+
+  copy("peer-port", "listen_port");
+  copy("peer-port-random-on-start", "random_port");
+  copy("port-forwarding-enabled", "upnp");
+  copy("dht-enabled", "dht");
+  copy("pex-enabled", "pex");
+  copy("lpd-enabled", "lsd");
+  copy("peer-limit-global", "max_connec");
+  copy("peer-limit-per-torrent", "max_connec_per_torrent");
+  copy("alt-speed-enabled", "use_alt_speed_limits");
+  copy("download-queue-size", "max_active_downloads");
+  copy("seed-queue-size", "max_active_uploads");
+  copy("queue-stalled-enabled", "dont_count_slow_torrents");
+  copy("queue-stalled-minutes", "slow_torrent_inactive_timer");
+  copy("download-dir", "save_path");
+  copy("incomplete-dir-enabled", "temp_path_enabled");
+  copy("incomplete-dir", "temp_path");
+  copy("rename-partial-files", "incomplete_files_ext");
+  copy("seedRatioLimited", "max_ratio_enabled");
+  copy("seedRatioLimit", "max_ratio");
+  copy("idle-seeding-limit-enabled",
+       "max_inactive_seeding_time_enabled");
+  copy("idle-seeding-limit", "max_inactive_seeding_time");
+
+  // qBittorrent exposes a single queueing switch; the dialog presents that
+  // switch in the download-queue row and retains separate active limits.
+  if (settings.contains(QStringLiteral("download-queue-enabled"))) {
+    native.insert(QStringLiteral("queueing_enabled"),
+                  settings.value(QStringLiteral("download-queue-enabled")));
+  }
+
+  if (settings.contains(QStringLiteral("start-added-torrents"))) {
+    native.insert(
+        QStringLiteral("start_paused_enabled"),
+        !settings.value(QStringLiteral("start-added-torrents")).toBool());
+  }
+
+  if (settings.contains(QStringLiteral("encryption"))) {
+    const QString encryption =
+        settings.value(QStringLiteral("encryption")).toString();
+    native.insert(QStringLiteral("encryption"),
+                  encryption == QStringLiteral("required")
+                      ? 1
+                      : (encryption == QStringLiteral("disabled") ? 2 : 0));
+  }
+
+  const auto denormalizeRate =
+      [this, &settings, &native](const char *enabledKey,
+                                 const char *limitKey,
+                                 const char *nativeKey) {
+        const QString enabled = QString::fromLatin1(enabledKey);
+        const QString limit = QString::fromLatin1(limitKey);
+        if (!settings.contains(enabled) && !settings.contains(limit))
+          return;
+
+        const QString destination = QString::fromLatin1(nativeKey);
+        const qint64 currentRate =
+            m_sessionPreferences.value(destination).toVariant().toLongLong();
+        const bool isEnabled =
+            settings.contains(enabled) ? settings.value(enabled).toBool()
+                                       : currentRate > 0;
+        const qint64 kilobytesPerSecond =
+            settings.contains(limit)
+                ? settings.value(limit).toVariant().toLongLong()
+                : currentRate / 1000;
+        native.insert(destination,
+                      isEnabled ? kilobytesPerSecond * 1000 : 0);
+      };
+  denormalizeRate("speed-limit-down-enabled", "speed-limit-down",
+                  "dl_limit");
+  denormalizeRate("speed-limit-up-enabled", "speed-limit-up", "up_limit");
+
+  const auto denormalizeRateValue =
+      [&settings, &native](const char *normalized, const char *nativeKey) {
+        const QString source = QString::fromLatin1(normalized);
+        if (settings.contains(source)) {
+          native.insert(
+              QString::fromLatin1(nativeKey),
+              settings.value(source).toVariant().toLongLong() * 1000);
+        }
+      };
+  denormalizeRateValue("alt-speed-down", "alt_dl_limit");
+  denormalizeRateValue("alt-speed-up", "alt_up_limit");
+
+  if (native.isEmpty()) {
+    emit commandSucceeded(QStringLiteral("session-set"));
+    return;
+  }
+
+  const QByteArray json =
+      QJsonDocument(native).toJson(QJsonDocument::Compact);
+  postCommand(QStringLiteral("/api/v2/app/setPreferences"),
+              QByteArrayLiteral("json=") + formField(QString::fromUtf8(json)),
+              QStringLiteral("session-set"));
 }
 void QBittorrentBackend::getFreeSpace(const QString &) {}
 void QBittorrentBackend::testPortForwarding() {}

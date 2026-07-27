@@ -32,6 +32,7 @@ struct TorrentBackendCapabilities
     bool trackerEditing = false;
     bool pathRenaming = false;
     bool sessionSettings = false;
+    bool sessionEncryptionDisable = false;
     bool sessionStatistics = false;
     bool freeSpaceQuery = false;
     bool portTest = false;

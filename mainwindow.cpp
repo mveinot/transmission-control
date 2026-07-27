@@ -2423,6 +2423,7 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     openSessionSettingsWhenReceived = false;
 
     SessionSettingsDialog dialog(this);
+    dialog.configureBackend(client->backendName(), client->capabilities());
     dialog.setSessionSettings(sessionSettings);
 
     connect(&dialog, &SessionSettingsDialog::portTestRequested,

@@ -7,6 +7,8 @@
 
 class QLabel;
 class QPushButton;
+class QWidget;
+struct TorrentBackendCapabilities;
 
 namespace Ui {
 class SessionSettingsDialog;
@@ -23,6 +25,8 @@ public:
     ~SessionSettingsDialog() override;
 
     void setSessionSettings(const QJsonObject &settings);
+    void configureBackend(const QString &backendName,
+                          const TorrentBackendCapabilities &capabilities);
     QJsonObject changedSettings() const;
 
 public slots:
@@ -42,6 +46,8 @@ private:
     QJsonObject originalSettings;
     QPushButton *testPortButton = nullptr;
     QLabel *portTestResultLabel = nullptr;
+    QWidget *portTestContainer = nullptr;
+    bool supportsDisabledEncryption = false;
 
     void populateEncryptionCombo(const QString &currentValue);
     void setComboCurrentData(const QString &value);

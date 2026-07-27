@@ -632,7 +632,7 @@
        <item>
         <widget class="QLabel" name="labelRemotePathWarning">
          <property name="text">
-          <string>These paths are interpreted by the remote Transmission daemon. Do not use local paths unless Planetary and Transmission are running on the same machine.</string>
+          <string>These paths are interpreted by the remote daemon. Do not use local paths unless Planetary and the torrent service are running on the same machine.</string>
          </property>
          <property name="wordWrap">
           <bool>true</bool>

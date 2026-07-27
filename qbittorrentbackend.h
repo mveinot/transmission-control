@@ -111,6 +111,7 @@ private:
   QHash<QNetworkReply *, RequestContext> m_requests;
   QHash<TorrentKey, QVariantMap> m_infoByKey;
   QHash<TorrentKey, TorrentProperties> m_editorPropertiesByKey;
+  QJsonObject m_sessionPreferences;
   QString m_serverName;
   QString m_baseUrl;
   QString m_username;
