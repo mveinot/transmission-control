@@ -267,6 +267,8 @@ void ServerConfig::saveServers()
 */
 
     settings.setValue(SettingsKeys::ServersDefaultIndex, defaultServerIndex);
+    if (servers.isEmpty())
+        settings.setValue(SettingsKeys::ServersCurrentIndex, -1);
 
     settings.sync();
 }
@@ -769,8 +771,13 @@ bool ServerConfig::saveSelectedServer()
 {
     const int index = currentServerIndex();
 
-    if (index < 0)
+    if (index < 0) {
+        // Removing the final server intentionally leaves no editor selection.
+        // Persist that empty transactional state when the dialog is accepted.
+        if (servers.isEmpty())
+            saveServers();
         return true;
+    }
 
     if (ui->editServerName->text().trimmed().isEmpty()) {
         QMessageBox::warning(
