@@ -60,7 +60,8 @@ public:
     void showMainWindow();
     void quitApplication();
     void handleLaunchArguments(const QStringList &arguments);
-    void runFirstTimeServerSetup(const QStringList &launchArguments = {});
+    void runFirstTimeServerSetup(const QStringList &launchArguments = {},
+                                 bool forceWizard = false);
 
 public slots:
     void bringToFront();

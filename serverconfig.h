@@ -22,6 +22,7 @@ class ServerConfig : public QDialog
 public:
     explicit ServerConfig(QWidget *parent = nullptr);
     ~ServerConfig();
+    bool importServerFromFile();
 
 private:
     struct ServerDefinition
@@ -53,7 +54,6 @@ private:
     void updateFolderMappingsSummary();
 
     void addServer();
-    void importServerFromFile();
     void exportSelectedServer();
     void removeSelectedServer();
     bool saveSelectedServer();

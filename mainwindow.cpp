@@ -1669,18 +1669,24 @@ void MainWindow::onServerSetupTriggered()
     }
 }
 
-void MainWindow::runFirstTimeServerSetup(const QStringList &launchArguments)
+void MainWindow::runFirstTimeServerSetup(const QStringList &launchArguments,
+                                         bool forceWizard)
 {
     pendingLaunchArguments.append(launchArguments);
 
-    if (!ServerSetupWizard::hasConfiguredServer()) {
-        ServerSetupWizard wizard(this);
+    const bool alreadyConfigured = ServerSetupWizard::hasConfiguredServer();
+    if (!alreadyConfigured || forceWizard) {
+        ServerSetupWizard wizard(alreadyConfigured, this);
         if (wizard.exec() != QDialog::Accepted)
             return;
 
         // Rebuild the selector and route the stable backend facade to the new
         // definition before consuming any launch-time torrent arguments.
         loadServerCombo();
+        const int comboIndex =
+            ui->comboServers->findData(wizard.savedServerIndex());
+        if (comboIndex >= 0)
+            ui->comboServers->setCurrentIndex(comboIndex);
         saveSelectedServerFromCombo();
     }
 

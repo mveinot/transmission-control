@@ -546,7 +546,7 @@ QString ServerConfig::uniqueServerName(const QString &baseName) const
     return tr("%1 (imported)").arg(original);
 }
 
-void ServerConfig::importServerFromFile()
+bool ServerConfig::importServerFromFile()
 {
     const QString filePath = QFileDialog::getOpenFileName(
         this,
@@ -556,7 +556,7 @@ void ServerConfig::importServerFromFile()
         );
 
     if (filePath.isEmpty())
-        return;
+        return false;
 
     QFile file(filePath);
 
@@ -566,7 +566,7 @@ void ServerConfig::importServerFromFile()
             tr("Import Server Failed"),
             tr("Could not read server file:\n%1").arg(filePath)
             );
-        return;
+        return false;
     }
 
     const QByteArray data = file.readAll();
@@ -580,7 +580,7 @@ void ServerConfig::importServerFromFile()
             tr("Import Server Failed"),
             tr("The selected file is not valid JSON:\n%1").arg(parseError.errorString())
             );
-        return;
+        return false;
     }
 
     const QJsonObject root = document.object();
@@ -592,7 +592,7 @@ void ServerConfig::importServerFromFile()
             tr("Import Server Failed"),
             tr("The selected file does not appear to be a Planetary server export.")
             );
-        return;
+        return false;
     }
 
     const QJsonObject serverObject = root.value(QStringLiteral("server")).toObject();
@@ -603,7 +603,7 @@ void ServerConfig::importServerFromFile()
             tr("Import Server Failed"),
             tr("The selected file does not contain a server configuration.")
             );
-        return;
+        return false;
     }
 
     ServerDefinition server;
@@ -615,7 +615,7 @@ void ServerConfig::importServerFromFile()
             tr("Import Server Failed"),
             errorMessage.isEmpty() ? tr("The selected file contains an invalid server configuration.") : errorMessage
             );
-        return;
+        return false;
     }
 
     server.name = uniqueServerName(server.name);
@@ -643,6 +643,7 @@ void ServerConfig::importServerFromFile()
     ui->buttonConfigureFolderMappings->setEnabled(true);
     updateFolderMappingsSummary();
     saveServers();
+    return true;
 }
 
 void ServerConfig::exportSelectedServer()

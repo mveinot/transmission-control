@@ -1,5 +1,6 @@
 #include "serversetupwizard.h"
 
+#include "serverconfig.h"
 #include "settingskeys.h"
 
 #include <QColor>
@@ -40,9 +41,10 @@ public:
 };
 }
 
-ServerSetupWizard::ServerSetupWizard(QWidget *parent)
+ServerSetupWizard::ServerSetupWizard(bool appendToExisting, QWidget *parent)
     : QWizard(parent)
     , m_network(new QNetworkAccessManager(this))
+    , m_appendToExisting(appendToExisting)
 {
     setWindowTitle(tr("Set Up Planetary"));
     setOption(QWizard::NoBackButtonOnStartPage);
@@ -51,8 +53,10 @@ ServerSetupWizard::ServerSetupWizard(QWidget *parent)
     auto *welcomePage = new QWizardPage(this);
     welcomePage->setTitle(tr("Welcome to Planetary"));
     welcomePage->setSubTitle(
-        tr("Planetary connects to an existing torrent server. "
-           "Add your first server to begin."));
+        appendToExisting
+            ? tr("Add another torrent server to Planetary.")
+            : tr("Planetary connects to an existing torrent server. "
+                 "Add your first server to begin."));
     auto *welcomeLayout = new QVBoxLayout(welcomePage);
     auto *welcomeText = new QLabel(
         tr("You will need the Web UI or RPC address for a Transmission or "
@@ -62,6 +66,12 @@ ServerSetupWizard::ServerSetupWizard(QWidget *parent)
     welcomeText->setWordWrap(true);
     welcomeLayout->addWidget(welcomeText);
     welcomeLayout->addStretch();
+    auto *importButton =
+        new QPushButton(tr("Import Saved Server…"), welcomePage);
+    auto *importLayout = new QHBoxLayout;
+    importLayout->addWidget(importButton);
+    importLayout->addStretch();
+    welcomeLayout->addLayout(importLayout);
     addPage(welcomePage);
 
     auto *detailsPage = new ServerDetailsPage(this);
@@ -112,6 +122,8 @@ ServerSetupWizard::ServerSetupWizard(QWidget *parent)
             this, &ServerSetupWizard::updateBackendFields);
     connect(m_testButton, &QPushButton::clicked,
             this, &ServerSetupWizard::testConnection);
+    connect(importButton, &QPushButton::clicked,
+            this, &ServerSetupWizard::importServer);
     connect(m_network, &QNetworkAccessManager::finished,
             this, &ServerSetupWizard::handleConnectionTestReply);
 
@@ -124,6 +136,11 @@ ServerSetupWizard::ServerSetupWizard(QWidget *parent)
     connect(m_passwordEdit, &QLineEdit::textChanged, this, clearTestResult);
 
     updateBackendFields();
+}
+
+int ServerSetupWizard::savedServerIndex() const
+{
+    return m_savedServerIndex;
 }
 
 bool ServerSetupWizard::hasConfiguredServer()
@@ -173,9 +190,17 @@ void ServerSetupWizard::accept()
     }
 
     QSettings settings;
-    settings.remove(SettingsKeys::ServersArray);
-    settings.beginWriteArray(SettingsKeys::ServersArray, 1);
-    settings.setArrayIndex(0);
+    int serverIndex = 0;
+
+    if (m_appendToExisting) {
+        serverIndex = settings.beginReadArray(SettingsKeys::ServersArray);
+        settings.endArray();
+    } else {
+        settings.remove(SettingsKeys::ServersArray);
+    }
+
+    settings.beginWriteArray(SettingsKeys::ServersArray, serverIndex + 1);
+    settings.setArrayIndex(serverIndex);
     settings.setValue(SettingsKeys::ServerName, name);
     settings.setValue(SettingsKeys::ServerBackendType, backendType());
     settings.setValue(SettingsKeys::ServerRpcUrl, endpoint);
@@ -183,10 +208,24 @@ void ServerSetupWizard::accept()
                       m_usernameEdit->text().trimmed());
     settings.setValue(SettingsKeys::ServerPassword, m_passwordEdit->text());
     settings.endArray();
-    settings.setValue(SettingsKeys::ServersDefaultIndex, 0);
-    settings.setValue(SettingsKeys::ServersCurrentIndex, 0);
+    if (!m_appendToExisting)
+        settings.setValue(SettingsKeys::ServersDefaultIndex, serverIndex);
+    settings.setValue(SettingsKeys::ServersCurrentIndex, serverIndex);
     settings.sync();
 
+    m_savedServerIndex = serverIndex;
+    QWizard::accept();
+}
+
+void ServerSetupWizard::importServer()
+{
+    ServerConfig importer(this);
+    if (!importer.importServerFromFile())
+        return;
+
+    QSettings settings;
+    m_savedServerIndex = settings.beginReadArray(SettingsKeys::ServersArray) - 1;
+    settings.endArray();
     QWizard::accept();
 }
 

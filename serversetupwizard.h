@@ -17,9 +17,11 @@ class ServerSetupWizard : public QWizard
     Q_OBJECT
 
 public:
-    explicit ServerSetupWizard(QWidget *parent = nullptr);
+    explicit ServerSetupWizard(bool appendToExisting = false,
+                               QWidget *parent = nullptr);
 
     static bool hasConfiguredServer();
+    int savedServerIndex() const;
 
 protected:
     void accept() override;
@@ -34,10 +36,13 @@ private:
     QLabel *m_testStatus = nullptr;
     QPushButton *m_testButton = nullptr;
     QNetworkAccessManager *m_network = nullptr;
+    bool m_appendToExisting = false;
+    int m_savedServerIndex = -1;
     bool m_transmissionRetry = false;
 
     QString backendType() const;
     void updateBackendFields();
+    void importServer();
     void testConnection();
     void sendTransmissionTest(const QByteArray &sessionToken = {});
     void handleConnectionTestReply(QNetworkReply *reply);

@@ -127,7 +127,9 @@ int main(int argc, char *argv[])
     // First-run setup is presented only after the main window is visible.
     // Launch-time magnet/file arguments remain pending until a server exists.
     QTimer::singleShot(0, &w, [&w, launchArguments]() {
-        w.runFirstTimeServerSetup(launchArguments);
+        const bool forceWizard =
+            QApplication::queryKeyboardModifiers().testFlag(Qt::ShiftModifier);
+        w.runFirstTimeServerSetup(launchArguments, forceWizard);
     });
 
     return a.exec();
