@@ -124,11 +124,11 @@ int main(int argc, char *argv[])
 
     w.show();
 
-    if (!launchArguments.isEmpty()) {
-        QTimer::singleShot(0, &w, [&w, launchArguments]() {
-            w.handleLaunchArguments(launchArguments);
-        });
-    }
+    // First-run setup is presented only after the main window is visible.
+    // Launch-time magnet/file arguments remain pending until a server exists.
+    QTimer::singleShot(0, &w, [&w, launchArguments]() {
+        w.runFirstTimeServerSetup(launchArguments);
+    });
 
     return a.exec();
 }

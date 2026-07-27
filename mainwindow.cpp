@@ -77,6 +77,7 @@
 #include "diagnosticsdialog.h"
 #include "serverconfig.h"
 #include "appsettings.h"
+#include "serversetupwizard.h"
 #include "torrentsortproxymodel.h"
 #include "percentfilldelegate.h"
 #include "elidedtexttooltipdelegate.h"
@@ -1439,9 +1440,14 @@ MainWindow::MainWindow(QWidget *parent)
 
     restoreTableViewState();
 
-    client->init();
     applyAppSettings();
-    client->getSessionSettings();
+
+    // A first-run window has no backend to initialize; the setup assistant
+    // activates the saved definition before requesting list/session data.
+    if (ServerSetupWizard::hasConfiguredServer()) {
+        client->init();
+        client->getSessionSettings();
+    }
 }
 
 MainWindow::~MainWindow()
@@ -1651,8 +1657,39 @@ void MainWindow::onServerSetupTriggered()
             if (torrentListController)
                 torrentListController->beginTorrentListRefresh(true);
             client->getTorrentList();
+
+            if (!pendingLaunchArguments.isEmpty()) {
+                const QStringList arguments = pendingLaunchArguments;
+                pendingLaunchArguments.clear();
+                QTimer::singleShot(0, this, [this, arguments]() {
+                    handleLaunchArguments(arguments);
+                });
+            }
         }
     }
+}
+
+void MainWindow::runFirstTimeServerSetup(const QStringList &launchArguments)
+{
+    pendingLaunchArguments.append(launchArguments);
+
+    if (!ServerSetupWizard::hasConfiguredServer()) {
+        ServerSetupWizard wizard(this);
+        if (wizard.exec() != QDialog::Accepted)
+            return;
+
+        // Rebuild the selector and route the stable backend facade to the new
+        // definition before consuming any launch-time torrent arguments.
+        loadServerCombo();
+        saveSelectedServerFromCombo();
+    }
+
+    if (pendingLaunchArguments.isEmpty())
+        return;
+
+    const QStringList arguments = pendingLaunchArguments;
+    pendingLaunchArguments.clear();
+    handleLaunchArguments(arguments);
 }
 
 void MainWindow::handleLaunchArguments(const QStringList &arguments)

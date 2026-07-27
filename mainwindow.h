@@ -60,6 +60,7 @@ public:
     void showMainWindow();
     void quitApplication();
     void handleLaunchArguments(const QStringList &arguments);
+    void runFirstTimeServerSetup(const QStringList &launchArguments = {});
 
 public slots:
     void bringToFront();
@@ -182,6 +183,7 @@ private:
     // failed poll while the connection remains in the same state.
     bool activityConnectionEstablished = false;
     bool activityConnectionFailed = false;
+    QStringList pendingLaunchArguments;
     int detailsPaneHeight = 300;
     int filterSidebarWidth = 220;
 
