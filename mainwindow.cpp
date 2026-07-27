@@ -1198,10 +1198,16 @@ MainWindow::MainWindow(QWidget *parent)
         lastTrackerMetadataRefreshMs = 0;
         activityConnectionEstablished = false;
         activityConnectionFailed = false;
+        updateServerSettingsAction();
         recordActivity(tr("Server changed"),
                        tr("Switched active %1 server.").arg(client->backendName()),
                        ui->comboServers->currentText());
     });
+
+    connect(client, &TorrentBackend::capabilitiesChanged,
+            this, [this](const TorrentBackendCapabilities &) {
+                updateServerSettingsAction();
+            });
 
     connect(client, &TorrentBackend::updateFailed, this, [this](const QString &message) {
         if (!activityConnectionFailed) {
@@ -1231,6 +1237,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionTransmission_Settings, &QAction::triggered,
             this, &MainWindow::showSessionSettings);
 
+    updateServerSettingsAction();
     updateAlternativeSpeedAction(false, false);
 
     connect(ui->actionAlternative_Speed_Mode, &QAction::triggered,
@@ -2220,6 +2227,22 @@ void MainWindow::updateAlternativeSpeedAction(bool enabled, bool available)
     const QSignalBlocker blocker(ui->actionAlternative_Speed_Mode);
     ui->actionAlternative_Speed_Mode->setEnabled(available);
     ui->actionAlternative_Speed_Mode->setChecked(enabled);
+}
+
+void MainWindow::updateServerSettingsAction()
+{
+    const QString backendName = client->backendName().trimmed();
+    const bool available =
+        !backendName.isEmpty() && client->capabilities().sessionSettings;
+
+    // Backend names distinguish remote daemon settings from Planetary's
+    // connection-profile manager and naturally accommodate future backends.
+    ui->actionTransmission_Settings->setText(
+        available
+            ? tr("%1 Settings...").arg(backendName)
+            : tr("Server Settings...")
+        );
+    ui->actionTransmission_Settings->setEnabled(available);
 }
 
 

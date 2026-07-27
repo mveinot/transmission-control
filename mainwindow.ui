@@ -745,7 +745,7 @@
   </action>
   <action name="actionServer_Setup">
    <property name="text">
-    <string>Server Setup...</string>
+    <string>Manage Servers...</string>
    </property>
   </action>
   <action name="actionStart_Torrent">
@@ -897,6 +897,9 @@
    </property>
   </action>
   <action name="actionTransmission_Settings">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Server Settings...</string>
    </property>

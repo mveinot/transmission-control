@@ -129,6 +129,7 @@ private:
     QList<FolderMapping> currentServerFolderMappings() const;
     void applyAppSettings();
     void updateAlternativeSpeedAction(bool enabled, bool available);
+    void updateServerSettingsAction();
     void setupViewMenu();
     void setupEditMenu();
     void setupActivityDock();
