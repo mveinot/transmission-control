@@ -580,6 +580,14 @@ QBittorrentBackend::normalizeDetails(const QVariantMap &info,
 }
 
 void QBittorrentBackend::handleReply(QNetworkReply *reply) {
+  // Aborted detail requests and requests from the previous server are removed
+  // from the registry before abort() emits finished(). Ignore those callbacks;
+  // a default RequestContext has no meaningful request kind to dispatch.
+  if (!m_requests.contains(reply)) {
+    reply->deleteLater();
+    return;
+  }
+
   const RequestContext context = m_requests.take(reply);
   const QByteArray body = reply->readAll();
   const auto error = reply->error();
