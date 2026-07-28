@@ -99,6 +99,7 @@ private:
     QString commandMethod;
     QString path;
     QString fallbackPath;
+    QUrlQuery query;
     QByteArray form;
     QString torrentFilePath;
     QString magnetLink;
@@ -129,10 +130,12 @@ private:
   QString m_requestedFreeSpacePath;
   QList<RequestContext> m_commandsPendingAfterLogin;
   QList<RequestContext> m_addsPendingAfterLogin;
+  QList<RequestContext> m_readsPendingAfterLogin;
 
   void authenticate();
   void sendGet(RequestKind kind, const QString &path,
                const QUrlQuery &query = {}, const TorrentKey &key = {});
+  void sendRead(const RequestContext &context);
   QNetworkRequest makeRequest(const QString &path,
                               const QUrlQuery &query = {}) const;
   void handleReply(QNetworkReply *reply);

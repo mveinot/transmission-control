@@ -13,6 +13,7 @@
 #include <QUrl>
 #include <QUrlQuery>
 
+#include <algorithm>
 #include <utility>
 
 namespace {
@@ -197,6 +198,7 @@ void QBittorrentBackend::setServer(const QString &name, const QString &url,
   m_requestedFreeSpacePath.clear();
   m_commandsPendingAfterLogin.clear();
   m_addsPendingAfterLogin.clear();
+  m_readsPendingAfterLogin.clear();
   m_infoByKey.clear();
   m_editorPropertiesByKey.clear();
   m_trackerUrlsByKey.clear();
@@ -261,8 +263,18 @@ void QBittorrentBackend::sendGet(RequestKind kind, const QString &path,
     }
   }
 
-  QNetworkReply *reply = m_network.get(makeRequest(path, query));
-  m_requests.insert(reply, {kind, key});
+  RequestContext context;
+  context.kind = kind;
+  context.key = key;
+  context.path = path;
+  context.query = query;
+  sendRead(context);
+}
+
+void QBittorrentBackend::sendRead(const RequestContext &context) {
+  QNetworkReply *reply =
+      m_network.get(makeRequest(context.path, context.query));
+  m_requests.insert(reply, context);
 }
 
 void QBittorrentBackend::postCommand(const QString &path,
@@ -634,23 +646,59 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
       for (const RequestContext &pending : m_addsPendingAfterLogin)
         failAdd(pending, reason);
       m_addsPendingAfterLogin.clear();
+      const bool torrentListRetryWasPending =
+          std::any_of(m_readsPendingAfterLogin.cbegin(),
+                      m_readsPendingAfterLogin.cend(),
+                      [](const RequestContext &pending) {
+                        return pending.kind == RequestKind::TorrentList;
+                      });
+      m_listPendingAfterLogin = false;
       m_sessionSettingsPendingAfterLogin = false;
+      m_readsPendingAfterLogin.clear();
       failServerStateRequest(reason);
+      if (torrentListRetryWasPending)
+        emit updateFinished();
       return;
     }
 
-    if (m_listPendingAfterLogin) {
+    const QList<RequestContext> pendingReads =
+        std::exchange(m_readsPendingAfterLogin, {});
+    const bool retryingTorrentList =
+        std::any_of(pendingReads.cbegin(), pendingReads.cend(),
+                    [](const RequestContext &pending) {
+                      return pending.kind == RequestKind::TorrentList;
+                    });
+    const bool retryingSessionSettings =
+        std::any_of(pendingReads.cbegin(), pendingReads.cend(),
+                    [](const RequestContext &pending) {
+                      return pending.kind == RequestKind::SessionSettings;
+                    });
+    const bool retryingServerState =
+        std::any_of(pendingReads.cbegin(), pendingReads.cend(),
+                    [](const RequestContext &pending) {
+                      return pending.kind == RequestKind::ServerState;
+                    });
+
+    if (m_listPendingAfterLogin && !retryingTorrentList) {
       m_listPendingAfterLogin = false;
       getTorrentList();
+    } else {
+      m_listPendingAfterLogin = false;
     }
 
-    if (m_sessionSettingsPendingAfterLogin) {
+    if (m_sessionSettingsPendingAfterLogin && !retryingSessionSettings) {
       m_sessionSettingsPendingAfterLogin = false;
       getSessionSettings();
+    } else {
+      m_sessionSettingsPendingAfterLogin = false;
     }
 
-    if (m_serverStateStatisticsPending || m_serverStateFreeSpacePending)
+    if ((m_serverStateStatisticsPending || m_serverStateFreeSpacePending) &&
+        !retryingServerState)
       requestServerState();
+
+    for (const RequestContext &pending : pendingReads)
+      sendRead(pending);
 
     const QList<RequestContext> pendingCommands =
         std::exchange(m_commandsPendingAfterLogin, {});
@@ -731,6 +779,15 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
                                ? tr("qBittorrent returned HTTP %1").arg(status)
                                : networkError;
     emit commandFailed(context.commandMethod, reason);
+    return;
+  }
+
+  if (status == 403 && !context.retriedAuthentication) {
+    RequestContext retry = context;
+    retry.retriedAuthentication = true;
+    m_authenticated = false;
+    m_readsPendingAfterLogin.append(retry);
+    authenticate();
     return;
   }
 
