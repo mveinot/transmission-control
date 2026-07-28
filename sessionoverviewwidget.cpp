@@ -17,6 +17,7 @@ namespace {
 constexpr int GraphTop = 54;
 constexpr int GraphBottomMargin = 52;
 constexpr int PanelLeftMargin = 6;
+constexpr int PanelRightMargin = 6;
 constexpr int PanelContentMargin = 12;
 
 QColor downloadColor()
@@ -90,7 +91,8 @@ QRectF SessionOverviewWidget::graphRect() const
     const int contentLeft = PanelLeftMargin + PanelContentMargin;
     return QRectF(contentLeft,
                   GraphTop,
-                  qMax(1, width() - contentLeft - PanelContentMargin),
+                  qMax(1, width() - contentLeft -
+                              PanelRightMargin - PanelContentMargin),
                   qMax(1, height() - GraphTop - GraphBottomMargin));
 }
 
@@ -118,11 +120,13 @@ void SessionOverviewWidget::paintEvent(QPaintEvent *)
     painter.setRenderHint(QPainter::Antialiasing);
     painter.fillRect(rect(), palette().brush(QPalette::Window));
 
-    const QRect panelRect = rect().adjusted(PanelLeftMargin, 0, 0, 0);
+    const QRect panelRect =
+        rect().adjusted(PanelLeftMargin, 0, -PanelRightMargin, 0);
     painter.fillRect(panelRect, palette().brush(QPalette::Base));
     const int contentLeft = PanelLeftMargin + PanelContentMargin;
     const int contentWidth =
-        qMax(1, width() - contentLeft - PanelContentMargin);
+        qMax(1, width() - contentLeft -
+                    PanelRightMargin - PanelContentMargin);
 
     const QColor textColor = palette().color(QPalette::Text);
     QColor secondaryText = textColor;
