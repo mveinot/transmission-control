@@ -6,6 +6,8 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
+#include <QStyle>
+#include <QStyleOptionFrame>
 #include <QToolTip>
 
 #include <algorithm>
@@ -14,7 +16,7 @@
 namespace {
 constexpr int GraphTop = 54;
 constexpr int GraphBottomMargin = 52;
-constexpr int GraphSideMargin = 18;
+constexpr int GraphSideMargin = 6;
 
 QColor downloadColor()
 {
@@ -207,6 +209,17 @@ void SessionOverviewWidget::paintEvent(QPaintEvent *)
                              QPointF(marker.x(), plot.bottom()));
         }
     }
+
+    // Use the platform frame primitive so the chart boundary matches the
+    // filter list and torrent table across native light and dark styles.
+    QStyleOptionFrame frame;
+    frame.initFrom(this);
+    frame.rect = plot.toAlignedRect();
+    frame.lineWidth =
+        style()->pixelMetric(QStyle::PM_DefaultFrameWidth, &frame, this);
+    frame.midLineWidth = 0;
+    frame.state |= QStyle::State_Sunken;
+    style()->drawPrimitive(QStyle::PE_Frame, &frame, &painter, this);
 
     const double currentDownload =
         m_samples.isEmpty() ? 0.0 : m_samples.constLast().downloadRate;
