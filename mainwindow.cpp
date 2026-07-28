@@ -12,6 +12,7 @@
 #include "traycontroller.h"
 #include "statusbarcontroller.h"
 #include "statisticsdialog.h"
+#include "sessionoverviewwidget.h"
 #include "notificationcontroller.h"
 #include "activitylogmodel.h"
 #include "appicons.h"
@@ -52,6 +53,7 @@
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QSpinBox>
+#include <QStackedWidget>
 #include <QStandardPaths>
 #include <QScrollBar>
 #include <QStringList>
@@ -643,7 +645,8 @@ void MainWindow::restoreViewSettings()
 
     ui->toolBar->setVisible(toolBarVisible);
     ui->statusbar->setVisible(statusBarVisible);
-    ui->tabWidget->setVisible(detailsPaneVisible);
+    if (detailsPaneStack)
+        detailsPaneStack->setVisible(detailsPaneVisible);
     ui->filterPanel->setVisible(filterSidebarVisible);
 
     if (detailsPaneVisible) {
@@ -717,10 +720,12 @@ void MainWindow::setDetailsPaneVisibleFromAction(bool visible)
         if (currentHeight > 0)
             detailsPaneHeight = currentHeight;
 
-        ui->tabWidget->hide();
+        if (detailsPaneStack)
+            detailsPaneStack->hide();
         client->cancelTorrentDetailRequests();
     } else {
-        ui->tabWidget->show();
+        if (detailsPaneStack)
+            detailsPaneStack->show();
 
         const int totalHeight = ui->splitter_2->height();
         ui->splitter_2->setSizes(
@@ -868,6 +873,7 @@ MainWindow::MainWindow(QWidget *parent)
     // setupUi() must precede controller construction because controllers retain
     // pointers to widgets owned by the generated UI tree.
     ui->setupUi(this);
+    setupDetailsPane();
 
     // Native controls can exceed their nominal 28 px minimum (notably the
     // macOS combo box). Match the filter header to the actual control-row
@@ -1128,6 +1134,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(torrentListController, &TorrentListController::torrentSelected,
             this, [this](TorrentKey torrentKey) {
+                showTorrentDetails(true);
                 // Selection defines a new detail generation. Cancel every
                 // category still associated with the previous torrent.
                 client->cancelTorrentDetailRequests();
@@ -1146,6 +1153,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(torrentListController, &TorrentListController::torrentSelectionCleared,
             this, [this]() {
+                showTorrentDetails(false);
                 client->cancelTorrentDetailRequests();
                 clearGeneralTab();
             });
@@ -1198,6 +1206,9 @@ MainWindow::MainWindow(QWidget *parent)
         lastTrackerMetadataRefreshMs = 0;
         activityConnectionEstablished = false;
         activityConnectionFailed = false;
+        showTorrentDetails(false);
+        if (sessionOverviewWidget)
+            sessionOverviewWidget->clearHistory();
         updateServerSettingsAction();
         recordActivity(tr("Server changed"),
                        tr("Switched active %1 server.").arg(client->backendName()),
@@ -1210,6 +1221,8 @@ MainWindow::MainWindow(QWidget *parent)
             });
 
     connect(client, &TorrentBackend::updateFailed, this, [this](const QString &message) {
+        if (sessionOverviewWidget)
+            sessionOverviewWidget->markDisconnected();
         if (!activityConnectionFailed) {
             recordActivity(tr("Connection lost"), message, ui->comboServers->currentText());
             activityConnectionFailed = true;
@@ -2022,7 +2035,8 @@ bool MainWindow::currentTabWantsLiveTorrentDetails() const
 {
     return showDetailsPaneAction
            && showDetailsPaneAction->isChecked()
-           && !ui->tabWidget->isHidden()
+           && detailsPaneStack
+           && !detailsPaneStack->isHidden()
            && torrentGeneralController
            && torrentGeneralController->wantsLiveTorrentDetails(ui->tabWidget->currentWidget());
 }
@@ -2044,7 +2058,8 @@ void MainWindow::refreshCurrentTorrentTabData()
 {
     if (!showDetailsPaneAction
         || !showDetailsPaneAction->isChecked()
-        || ui->tabWidget->isHidden()) {
+        || !detailsPaneStack
+        || detailsPaneStack->isHidden()) {
         return;
     }
 
@@ -2117,6 +2132,33 @@ void MainWindow::setupConnectionStatusIndicator()
             this, &MainWindow::on_actionSettings_triggered);
 }
 
+void MainWindow::setupDetailsPane()
+{
+    const int detailsIndex = ui->splitter_2->indexOf(ui->tabWidget);
+    detailsPaneStack = new QStackedWidget(ui->splitter_2);
+    detailsPaneStack->setMinimumHeight(ui->tabWidget->minimumHeight());
+
+    // Reparenting removes the tab widget from the splitter; the stack takes
+    // its original slot and preserves the splitter's existing sizing model.
+    ui->tabWidget->setParent(detailsPaneStack);
+    sessionOverviewWidget = new SessionOverviewWidget(detailsPaneStack);
+    detailsPaneStack->addWidget(sessionOverviewWidget);
+    detailsPaneStack->addWidget(ui->tabWidget);
+    ui->splitter_2->insertWidget(detailsIndex, detailsPaneStack);
+    detailsPaneStack->setCurrentWidget(sessionOverviewWidget);
+}
+
+void MainWindow::showTorrentDetails(bool torrentSelected)
+{
+    if (!detailsPaneStack)
+        return;
+
+    detailsPaneStack->setCurrentWidget(
+        torrentSelected
+            ? static_cast<QWidget *>(ui->tabWidget)
+            : static_cast<QWidget *>(sessionOverviewWidget));
+}
+
 void MainWindow::bringToFront()
 {
     // Route external activation through the tray controller so platform state
@@ -2171,6 +2213,41 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
 
     if (statusBarController)
         statusBarController->updateTorrents(torrents);
+
+    if (sessionOverviewWidget) {
+        double downloadRate = 0.0;
+        double uploadRate = 0.0;
+        int downloadingCount = 0;
+        int seedingCount = 0;
+        int waitingCount = 0;
+
+        for (const torrent &item : torrents) {
+            downloadRate += item.getRateDownloadBytesPerSecond();
+            uploadRate += item.getRateUploadBytesPerSecond();
+
+            switch (item.getStatusValue()) {
+            case 3:
+                ++waitingCount;
+                break;
+            case 4:
+                ++downloadingCount;
+                break;
+            case 6:
+                ++seedingCount;
+                break;
+            default:
+                break;
+            }
+        }
+
+        sessionOverviewWidget->addSample(
+            QDateTime::currentMSecsSinceEpoch(),
+            downloadRate,
+            uploadRate,
+            downloadingCount,
+            seedingCount,
+            waitingCount);
+    }
 
     refreshSlowRpcData();
 

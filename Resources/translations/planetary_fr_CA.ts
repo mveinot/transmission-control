@@ -60,7 +60,7 @@
     <message>
         <location line="+7"/>
         <source>Follow the operating system appearance or override it for Planetary</source>
-        <translation>Suivez l'apparence du système d'exploitation ou remplacez-la pour Planetary</translation>
+        <translation>Suivez l&apos;apparence du système d&apos;exploitation ou remplacez-la pour Planetary</translation>
     </message>
     <message>
         <location line="+12"/>
@@ -132,7 +132,7 @@
     <message>
         <location line="+6"/>
         <source>Always show tray icon</source>
-        <translation>Toujours afficher l'icône de la barre d'état</translation>
+        <translation>Toujours afficher l&apos;icône de la barre d&apos;état</translation>
     </message>
     <message>
         <location line="+10"/>
@@ -144,12 +144,12 @@
         <location line="+6"/>
         <location filename="../../appsettings.cpp" line="-33"/>
         <source>Planetary can ask macOS to become the default application for torrent links and files.</source>
-        <translation>Planetary peut demander à macOS de devenir l'application par défaut pour les liens et fichiers torrent.</translation>
+        <translation>Planetary peut demander à macOS de devenir l&apos;application par défaut pour les liens et fichiers torrent.</translation>
     </message>
     <message>
         <location line="+10"/>
         <source>Magnet links:</source>
-        <translation>Liens magnétiques :</translation>
+        <translation>Liens magnétiques&#xa0;:</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -166,7 +166,7 @@
     <message>
         <location line="-14"/>
         <source>.torrent files:</source>
-        <translation>Fichiers .torrent :</translation>
+        <translation>Fichiers .torrent&#xa0;:</translation>
     </message>
     <message>
         <location line="+27"/>
@@ -226,7 +226,7 @@
     <message>
         <location line="+3"/>
         <source>Executable:</source>
-        <translation>Exécutable :</translation>
+        <translation>Exécutable&#xa0;:</translation>
     </message>
     <message>
         <location line="+1"/>
@@ -236,22 +236,22 @@
     <message>
         <location line="+2"/>
         <source>Arguments:</source>
-        <translation>Arguments :</translation>
+        <translation>Arguments&#xa0;:</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>Arguments support quotes. Available placeholders: {event}, {name}, {id}, {hash}, {size}, {size_bytes}, {status}, {progress}, {download_dir}, {server}, {error}, {timestamp}</source>
-        <translation>Les arguments prennent en charge les guillemets. Espaces réservés disponibles : {event}, {name}, {id}, {hash}, {size}, {size_bytes}, {status}, {progress}, {download_dir}, {server}, {error}, {timestamp}</translation>
+        <translation>Les arguments prennent en charge les guillemets. Espaces réservés disponibles&#xa0;: {event}, {name}, {id}, {hash}, {size}, {size_bytes}, {status}, {progress}, {download_dir}, {server}, {error}, {timestamp}</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>--event {event} --name &quot;{name}&quot;</source>
-        <translation>--événement {event} --nom "{name}"</translation>
+        <translation>--événement {event} --nom &quot;{name}&quot;</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>Placeholders: {event}, {name}, {id}, {hash}, {size}, {size_bytes}, {status}, {progress}, {download_dir}, {server}, {error}, {timestamp}</source>
-        <translation>Espaces réservés : {event}, {name}, {id}, {hash}, {size}, {size_bytes}, {status}, {progress}, {download_dir}, {server}, {error}, {timestamp}</translation>
+        <translation>Espaces réservés&#xa0;: {event}, {name}, {id}, {hash}, {size}, {size_bytes}, {status}, {progress}, {download_dir}, {server}, {error}, {timestamp}</translation>
     </message>
     <message>
         <location line="+1"/>
@@ -281,7 +281,7 @@
     <message>
         <location line="+3"/>
         <source>Reset Imported History…</source>
-        <translation>Réinitialiser l'historique importé…</translation>
+        <translation>Réinitialiser l&apos;historique importé…</translation>
     </message>
     <message>
         <location line="+44"/>
@@ -326,26 +326,26 @@
     <message>
         <location line="+19"/>
         <source>Reset Imported Torrent History</source>
-        <translation>Réinitialiser l'historique des torrents importés</translation>
+        <translation>Réinitialiser l&apos;historique des torrents importés</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>This clears Planetary&apos;s record of .torrent files already imported from the watch folder.
 
 Any .torrent files still present may be submitted to the configured torrent server again. Continue?</source>
-        <translation>Cela efface l'enregistrement de Planetary des fichiers .torrent déjà importés du dossier de surveillance.
+        <translation>Cela efface l&apos;enregistrement de Planetary des fichiers .torrent déjà importés du dossier de surveillance.
 
 Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au serveur torrent configuré. Continuer?</translation>
     </message>
     <message>
         <location line="+18"/>
         <source>Imported Torrent History Reset</source>
-        <translation>Réinitialisation de l'historique des torrents importés</translation>
+        <translation>Réinitialisation de l&apos;historique des torrents importés</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>The watch folder import history has been cleared.</source>
-        <translation>L'historique d'importation du dossier de surveillance a été effacé.</translation>
+        <translation>L&apos;historique d&apos;importation du dossier de surveillance a été effacé.</translation>
     </message>
     <message>
         <location line="+177"/>
@@ -375,7 +375,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <source>Planetary could not become the default application:
 
 %1</source>
-        <translation>Planetary n'a pas pu devenir l'application par défaut :
+        <translation>Planetary n&apos;a pas pu devenir l&apos;application par défaut&#xa0;:
 
 %1</translation>
     </message>
@@ -390,7 +390,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
     <message>
         <location line="+4"/>
         <source>Diagnostic information collected from Planetary and the active Transmission session. Passwords and authentication data are not included.</source>
-        <translation>Informations de diagnostic collectées à partir de Planetary et de la session de transmission active. Les mots de passe et les données d'authentification ne sont pas inclus.</translation>
+        <translation>Informations de diagnostic collectées à partir de Planetary et de la session de transmission active. Les mots de passe et les données d&apos;authentification ne sont pas inclus.</translation>
     </message>
     <message>
         <location line="+12"/>
@@ -400,12 +400,12 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
     <message>
         <location line="+1"/>
         <source>Contact Support...</source>
-        <translation>Contacter l'assistance...</translation>
+        <translation>Contacter l&apos;assistance...</translation>
     </message>
     <message>
         <location line="+11"/>
         <source>Planetary %1 support request</source>
-        <translation>Demande d'assistance Planetary %1</translation>
+        <translation>Demande d&apos;assistance Planetary %1</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -419,7 +419,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
     <message>
         <location line="+5"/>
         <source>Could not open the default email application. Contact planetary@mvgrafx.net directly.</source>
-        <translation>Impossible d'ouvrir l'application de messagerie par défaut. Contactez directement planetary@mvgrafx.net.</translation>
+        <translation>Impossible d&apos;ouvrir l&apos;application de messagerie par défaut. Contactez directement planetary@mvgrafx.net.</translation>
     </message>
 </context>
 <context>
@@ -614,17 +614,17 @@ Enregistrer ce mappage quand même?</translation>
     <message>
         <location line="-117"/>
         <source>%1: %2</source>
-        <translation>%1 : %2</translation>
+        <translation>%1&#xa0;: %2</translation>
     </message>
     <message>
         <location line="+18"/>
         <source>GeoIP database file was not found. Checked: %1</source>
-        <translation>Le fichier de base de données GeoIP est introuvable. Vérifié : %1</translation>
+        <translation>Le fichier de base de données GeoIP est introuvable. Vérifié&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+3"/>
         <source>GeoIP database could not be loaded. %1</source>
-        <translation>La base de données GeoIP n'a pas pu être chargée. %1</translation>
+        <translation>La base de données GeoIP n&apos;a pas pu être chargée. %1</translation>
     </message>
     <message>
         <location line="+32"/>
@@ -639,7 +639,7 @@ Enregistrer ce mappage quand même?</translation>
     <message>
         <location line="+11"/>
         <source>Could not open GeoIP database: %1</source>
-        <translation>Impossible d'ouvrir la base de données GeoIP : %1</translation>
+        <translation>Impossible d&apos;ouvrir la base de données GeoIP&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+84"/>
@@ -766,7 +766,7 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+23"/>
-        <location filename="../../mainwindow.cpp" line="+1799"/>
+        <location filename="../../mainwindow.cpp" line="+1812"/>
         <source>Magnet link:</source>
         <translation>Lien magnet :</translation>
     </message>
@@ -862,7 +862,7 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+93"/>
-        <location filename="../../mainwindow.cpp" line="+444"/>
+        <location filename="../../mainwindow.cpp" line="+508"/>
         <source>Server Settings...</source>
         <translation>Paramètres du serveur...</translation>
     </message>
@@ -957,7 +957,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Importer les paramètres...</translation>
     </message>
     <message>
-        <location filename="../../mainwindow.cpp" line="-1080"/>
+        <location filename="../../mainwindow.cpp" line="-1149"/>
         <source>Adding torrent...</source>
         <translation>Ajout du torrent...</translation>
     </message>
@@ -967,7 +967,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Ajout du torrent annulé.</translation>
     </message>
     <message>
-        <location line="+598"/>
+        <location line="+603"/>
         <source>Torrent Files (*.torrent);;All Files (*)</source>
         <translation>Fichiers torrent (*.torrent);;Tous les fichiers (*)</translation>
     </message>
@@ -1007,7 +1007,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Intervalle de mise à jour : %1 secondes</translation>
     </message>
     <message>
-        <location line="-1789"/>
+        <location line="-1800"/>
         <source>Settings…</source>
         <translation>Paramètres…</translation>
     </message>
@@ -1041,7 +1041,7 @@ Enregistrer ce mappage quand même?</translation>
         <location line="+127"/>
         <location line="+5"/>
         <source>Toolbar</source>
-        <translation>Barre d'outils</translation>
+        <translation>Barre d&apos;outils</translation>
     </message>
     <message>
         <location line="-3"/>
@@ -1051,17 +1051,17 @@ Enregistrer ce mappage quand même?</translation>
     <message>
         <location line="+5"/>
         <source>Show or hide the main toolbar</source>
-        <translation>Afficher ou masquer la barre d'outils principale</translation>
+        <translation>Afficher ou masquer la barre d&apos;outils principale</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Status Bar</source>
-        <translation>Barre d'état</translation>
+        <translation>Barre d&apos;état</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Show or hide the status bar</source>
-        <translation>Afficher ou masquer la barre d'état</translation>
+        <translation>Afficher ou masquer la barre d&apos;état</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -1085,30 +1085,30 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+8"/>
-        <location line="+393"/>
+        <location line="+396"/>
         <source>Toolbar Display</source>
-        <translation>Affichage de la barre d'outils</translation>
+        <translation>Affichage de la barre d&apos;outils</translation>
     </message>
     <message>
-        <location line="-380"/>
-        <location line="+394"/>
+        <location line="-383"/>
+        <location line="+397"/>
         <source>Icons Only</source>
         <translation>Icônes uniquement</translation>
     </message>
     <message>
-        <location line="-393"/>
-        <location line="+394"/>
+        <location line="-396"/>
+        <location line="+397"/>
         <source>Icons and Text</source>
         <translation>Icônes et texte</translation>
     </message>
     <message>
-        <location line="-393"/>
-        <location line="+394"/>
+        <location line="-396"/>
+        <location line="+397"/>
         <source>Text Only</source>
         <translation>Texte uniquement</translation>
     </message>
     <message>
-        <location line="-391"/>
+        <location line="-394"/>
         <source>Statistics…</source>
         <translation>Statistiques…</translation>
     </message>
@@ -1126,25 +1126,25 @@ Enregistrer ce mappage quand même?</translation>
     <message>
         <location line="+1"/>
         <source>Show or hide activity observed while Planetary is connected</source>
-        <translation>Afficher ou masquer l'activité observée lorsque Planetary est connecté</translation>
+        <translation>Afficher ou masquer l&apos;activité observée lorsque Planetary est connecté</translation>
     </message>
     <message>
         <location line="+10"/>
         <source>Clear Activity</source>
-        <translation>Effacer l'activité</translation>
+        <translation>Effacer l&apos;activité</translation>
     </message>
     <message>
-        <location line="+245"/>
+        <location line="+248"/>
         <source>Hide Toolbar</source>
-        <translation>Masquer la barre d'outils</translation>
+        <translation>Masquer la barre d&apos;outils</translation>
     </message>
     <message>
         <location line="+0"/>
         <source>Show Toolbar</source>
-        <translation>Afficher la barre d'outils</translation>
+        <translation>Afficher la barre d&apos;outils</translation>
     </message>
     <message>
-        <location line="+404"/>
+        <location line="+410"/>
         <source>Server changed</source>
         <translation>Le serveur a changé</translation>
     </message>
@@ -1154,7 +1154,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Serveur %1 actif commuté.</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+13"/>
         <source>Connection lost</source>
         <translation>Connexion perdue</translation>
     </message>
@@ -1186,17 +1186,17 @@ Enregistrer ce mappage quand même?</translation>
     <message>
         <location line="+6"/>
         <source>Could not open the Planetary website.</source>
-        <translation>Impossible d'ouvrir le site Web Planetary.</translation>
+        <translation>Impossible d&apos;ouvrir le site Web Planetary.</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>Contact Support...</source>
-        <translation>Contacter l'assistance...</translation>
+        <translation>Contacter l&apos;assistance...</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>Could not open the default email application. Contact planetary@mvgrafx.net directly.</source>
-        <translation>Impossible d'ouvrir l'application de messagerie par défaut. Contactez directement planetary@mvgrafx.net.</translation>
+        <translation>Impossible d&apos;ouvrir l&apos;application de messagerie par défaut. Contactez directement planetary@mvgrafx.net.</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -1226,7 +1226,7 @@ Enregistrer ce mappage quand même?</translation>
     <message>
         <location line="+65"/>
         <source>Watch folder import history cleared.</source>
-        <translation>L'historique d'importation du dossier de surveillance a été effacé.</translation>
+        <translation>L&apos;historique d&apos;importation du dossier de surveillance a été effacé.</translation>
     </message>
     <message>
         <location line="+190"/>
@@ -1249,19 +1249,19 @@ Enregistrer ce mappage quand même?</translation>
         <translation>%1 — %2</translation>
     </message>
     <message>
-        <location line="+384"/>
+        <location line="+448"/>
         <source>%1 Settings...</source>
         <translation>Paramètres %1...</translation>
     </message>
     <message>
         <location line="+15"/>
         <source>No remote download directory is available yet.</source>
-        <translation>Aucun répertoire de téléchargement à distance n'est encore disponible.</translation>
+        <translation>Aucun répertoire de téléchargement à distance n&apos;est encore disponible.</translation>
     </message>
     <message>
         <location line="+11"/>
         <source>Refreshing free-space information...</source>
-        <translation>Actualisation des informations sur l'espace libre...</translation>
+        <translation>Actualisation des informations sur l&apos;espace libre...</translation>
     </message>
     <message>
         <location line="+16"/>
@@ -1329,7 +1329,7 @@ Enregistrer ce mappage quand même?</translation>
     <message>
         <location line="+86"/>
         <source>No server settings changed</source>
-        <translation>Aucun paramètre du serveur n'a été modifié</translation>
+        <translation>Aucun paramètre du serveur n&apos;a été modifié</translation>
     </message>
     <message>
         <location line="+28"/>
@@ -1383,7 +1383,7 @@ Redémarrez Planetary pour que tous les changements prennent effet.</translation
         <location filename="../../notificationcontroller.cpp" line="+52"/>
         <location line="+63"/>
         <source>%1: %2</source>
-        <translation>%1 : %2</translation>
+        <translation>%1&#xa0;: %2</translation>
     </message>
     <message>
         <location line="-57"/>
@@ -1398,7 +1398,7 @@ Redémarrez Planetary pour que tous les changements prennent effet.</translation
     <message>
         <location line="+3"/>
         <source>Notification test: no supported desktop notification backend was available.</source>
-        <translation>Test de notification : aucun backend de notification de bureau pris en charge n'était disponible.</translation>
+        <translation>Test de notification&#xa0;: aucun backend de notification de bureau pris en charge n&apos;était disponible.</translation>
     </message>
     <message>
         <location line="+8"/>
@@ -1476,14 +1476,14 @@ Redémarrez Planetary pour que tous les changements prennent effet.</translation
 <context>
     <name>QBittorrentBackend</name>
     <message>
-        <location filename="../../qbittorrentbackend.cpp" line="+332"/>
+        <location filename="../../qbittorrentbackend.cpp" line="+344"/>
         <source>Could not open torrent file: %1</source>
-        <translation>Impossible d'ouvrir le fichier torrent : %1</translation>
+        <translation>Impossible d&apos;ouvrir le fichier torrent&#xa0;: %1</translation>
     </message>
     <message>
-        <location line="+276"/>
+        <location line="+284"/>
         <source>access was forbidden; qBittorrent may have banned this client IP after repeated login failures</source>
-        <translation>l'accès était interdit ; qBittorrent a peut-être banni l'adresse IP de ce client après des échecs de connexion répétés</translation>
+        <translation>l&apos;accès était interdit ; qBittorrent a peut-être banni l&apos;adresse IP de ce client après des échecs de connexion répétés</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -1493,27 +1493,27 @@ Redémarrez Planetary pour que tous les changements prennent effet.</translation
     <message>
         <location line="+3"/>
         <source>the server rejected the username or password</source>
-        <translation>le serveur a rejeté le nom d'utilisateur ou le mot de passe</translation>
+        <translation>le serveur a rejeté le nom d&apos;utilisateur ou le mot de passe</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>unexpected login response: %1</source>
-        <translation>réponse de connexion inattendue : %1</translation>
+        <translation>réponse de connexion inattendue&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>qBittorrent authentication failed: %1</source>
-        <translation>Échec de l'authentification qBittorrent : %1</translation>
+        <translation>Échec de l&apos;authentification qBittorrent&#xa0;: %1</translation>
     </message>
     <message>
-        <location line="+65"/>
+        <location line="+101"/>
         <source>qBittorrent rejected the torrent.</source>
         <translation>qBittorrent a rejeté le torrent.</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>qBittorrent reported that the torrent file is invalid.</source>
-        <translation>qBittorrent a signalé que le fichier torrent n'est pas valide.</translation>
+        <translation>qBittorrent a signalé que le fichier torrent n&apos;est pas valide.</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -1522,19 +1522,19 @@ Redémarrez Planetary pour que tous les changements prennent effet.</translation
         <translation>qBittorrent a renvoyé HTTP %1</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+17"/>
         <source>qBittorrent request failed: %1</source>
-        <translation>Échec de la requête qBittorrent : %1</translation>
+        <translation>Échec de la requête qBittorrent&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+239"/>
         <source>qBittorrent returned no daemon state.</source>
-        <translation>qBittorrent n'a renvoyé aucun état de démon.</translation>
+        <translation>qBittorrent n&apos;a renvoyé aucun état de démon.</translation>
     </message>
     <message>
         <location line="+157"/>
         <source>%1 is not implemented for qBittorrent yet.</source>
-        <translation>%1 n'est pas encore implémenté pour qBittorrent.</translation>
+        <translation>%1 n&apos;est pas encore implémenté pour qBittorrent.</translation>
     </message>
     <message>
         <location line="+75"/>
@@ -1645,7 +1645,7 @@ Continuer?</translation>
     <message>
         <location filename="../../torrentmetadataparser.cpp" line="+71"/>
         <source>Could not open torrent file: %1</source>
-        <translation>Impossible d'ouvrir le fichier torrent : %1</translation>
+        <translation>Impossible d&apos;ouvrir le fichier torrent&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+21"/>
@@ -1655,7 +1655,7 @@ Continuer?</translation>
     <message>
         <location line="+7"/>
         <source>Torrent metadata is missing the info dictionary.</source>
-        <translation>Les métadonnées du torrent ne contiennent pas le dictionnaire d'informations.</translation>
+        <translation>Les métadonnées du torrent ne contiennent pas le dictionnaire d&apos;informations.</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -1670,7 +1670,7 @@ Continuer?</translation>
     <message>
         <location line="+9"/>
         <source>Torrent file entry is not a dictionary.</source>
-        <translation>L'entrée du fichier torrent n'est pas un dictionnaire.</translation>
+        <translation>L&apos;entrée du fichier torrent n&apos;est pas un dictionnaire.</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -1690,7 +1690,7 @@ Continuer?</translation>
     <message>
         <location line="+8"/>
         <source>Single-file torrent metadata is missing a length.</source>
-        <translation>Il manque une longueur dans les métadonnées torrent d'un seul fichier.</translation>
+        <translation>Il manque une longueur dans les métadonnées torrent d&apos;un seul fichier.</translation>
     </message>
 </context>
 <context>
@@ -1863,7 +1863,7 @@ Continuer?</translation>
     <message>
         <location line="+73"/>
         <source>WebUI URL:</source>
-        <translation>URL WebUI :</translation>
+        <translation>URL WebUI&#xa0;:</translation>
     </message>
     <message>
         <location line="+95"/>
@@ -1878,7 +1878,7 @@ Continuer?</translation>
     <message>
         <location line="+6"/>
         <source>The server file does not contain an RPC URL.</source>
-        <translation>Le fichier du serveur ne contient pas d'URL RPC.</translation>
+        <translation>Le fichier du serveur ne contient pas d&apos;URL RPC.</translation>
     </message>
     <message>
         <location line="+52"/>
@@ -1898,7 +1898,7 @@ Continuer?</translation>
     <message>
         <location line="+7"/>
         <source>Import Server</source>
-        <translation>Serveur d'importation</translation>
+        <translation>Serveur d&apos;importation</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -1912,13 +1912,13 @@ Continuer?</translation>
         <location line="+11"/>
         <location line="+12"/>
         <source>Import Server Failed</source>
-        <translation>Échec de l'importation du serveur</translation>
+        <translation>Échec de l&apos;importation du serveur</translation>
     </message>
     <message>
         <location line="-48"/>
         <source>Could not read server file:
 %1</source>
-        <translation>Impossible de lire le fichier du serveur :
+        <translation>Impossible de lire le fichier du serveur&#xa0;:
 %1</translation>
     </message>
     <message>
@@ -1947,17 +1947,17 @@ Continuer?</translation>
         <location line="+47"/>
         <location line="+21"/>
         <source>Export Server</source>
-        <translation>Serveur d'exportation</translation>
+        <translation>Serveur d&apos;exportation</translation>
     </message>
     <message>
         <location line="-20"/>
         <source>Export server &quot;%1&quot;?</source>
-        <translation>Exporter le serveur "%1" ?</translation>
+        <translation>Exporter le serveur &quot;%1&quot;&#xa0;?</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>The export can include this server&apos;s saved password. Only include it if the file will be stored securely.</source>
-        <translation>L'exportation peut inclure le mot de passe enregistré de ce serveur. Incluez-le uniquement si le fichier doit être stocké en toute sécurité.</translation>
+        <translation>L&apos;exportation peut inclure le mot de passe enregistré de ce serveur. Incluez-le uniquement si le fichier doit être stocké en toute sécurité.</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -1977,13 +1977,13 @@ Continuer?</translation>
     <message>
         <location line="+22"/>
         <source>Export Server Failed</source>
-        <translation>Échec de l'exportation du serveur</translation>
+        <translation>Échec de l&apos;exportation du serveur</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>Could not write server file:
 %1</source>
-        <translation>Impossible d'écrire le fichier du serveur :
+        <translation>Impossible d&apos;écrire le fichier du serveur&#xa0;:
 %1</translation>
     </message>
     <message>
@@ -2045,7 +2045,7 @@ Continuer?</translation>
     <message>
         <location line="+4"/>
         <source>You will need the Web UI or RPC address for a Transmission or qBittorrent server. Credentials are optional when the server does not require authentication.</source>
-        <translation>Vous aurez besoin de l'interface Web UI ou de l'adresse RPC pour un serveur de transmission ou qBittorrent. Les informations d'identification sont facultatives lorsque le serveur ne nécessite pas d'authentification.</translation>
+        <translation>Vous aurez besoin de l&apos;interface Web UI ou de l&apos;adresse RPC pour un serveur de transmission ou qBittorrent. Les informations d&apos;identification sont facultatives lorsque le serveur ne nécessite pas d&apos;authentification.</translation>
     </message>
     <message>
         <location line="+8"/>
@@ -2075,7 +2075,7 @@ Continuer?</translation>
     <message>
         <location line="+1"/>
         <source>Server type:</source>
-        <translation>Type de serveur :</translation>
+        <translation>Type de serveur&#xa0;:</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -2105,7 +2105,7 @@ Continuer?</translation>
     <message>
         <location line="+63"/>
         <source>Web UI URL:</source>
-        <translation>URL de l'interface utilisateur Web :</translation>
+        <translation>URL de l&apos;interface utilisateur Web&#xa0;:</translation>
     </message>
     <message>
         <location line="+0"/>
@@ -2135,7 +2135,7 @@ Continuer?</translation>
     <message>
         <location line="+3"/>
         <source>Authentication failed.</source>
-        <translation>L'authentification a échoué.</translation>
+        <translation>L&apos;authentification a échoué.</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -2145,7 +2145,85 @@ Continuer?</translation>
     <message>
         <location line="+2"/>
         <source>Connection failed: %1</source>
-        <translation>Échec de la connexion : %1</translation>
+        <translation>Échec de la connexion&#xa0;: %1</translation>
+    </message>
+</context>
+<context>
+    <name>SessionOverviewWidget</name>
+    <message>
+        <location filename="../../sessionoverviewwidget.cpp" line="+91"/>
+        <source>B/s</source>
+        <translation>o/s</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>KiB/s</source>
+        <translation>Kio/s</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>MiB/s</source>
+        <translation>Mio/s</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>GiB/s</source>
+        <translation>Gio/s</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>%1 %2</source>
+        <translation>%1 %2</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Bandwidth Activity</source>
+        <translation>Activité de la bande passante</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Last 5 minutes</source>
+        <translation>5 dernières minutes</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Waiting for bandwidth data…</source>
+        <translation>En attente des données de bande passante…</translation>
+    </message>
+    <message>
+        <location line="+67"/>
+        <source>Download %1</source>
+        <translation>Téléchargement %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Upload %1</source>
+        <translation>Envoi %1</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Downloading %1</source>
+        <translation>En téléchargement %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Seeding %1</source>
+        <translation>En partage %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Waiting %1</source>
+        <translation>En attente %1</translation>
+    </message>
+    <message>
+        <location line="+51"/>
+        <source>Download: %1</source>
+        <translation>Téléchargement : %1</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Upload: %1</source>
+        <translation>Envoi : %1</translation>
     </message>
 </context>
 <context>
@@ -2252,7 +2330,7 @@ Continuer?</translation>
     <message>
         <location line="+7"/>
         <source>Blocklist URL:</source>
-        <translation>URL de la liste de blocage :</translation>
+        <translation>URL de la liste de blocage&#xa0;:</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -2421,7 +2499,7 @@ Continuer?</translation>
     <message>
         <location line="+10"/>
         <source>These paths are interpreted by the remote daemon. Do not use local paths unless Planetary and the torrent service are running on the same machine.</source>
-        <translation>Ces chemins sont interprétés par le démon distant. N'utilisez pas de chemins locaux sauf si Planetary et le service torrent s'exécutent sur la même machine.</translation>
+        <translation>Ces chemins sont interprétés par le démon distant. N&apos;utilisez pas de chemins locaux sauf si Planetary et le service torrent s&apos;exécutent sur la même machine.</translation>
     </message>
     <message>
         <location line="+24"/>
@@ -2471,12 +2549,12 @@ Continuer?</translation>
     <message>
         <location line="+25"/>
         <source>Test Port</source>
-        <translation>Port d'essai</translation>
+        <translation>Port d&apos;essai</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Test whether Transmission&apos;s current listening port is reachable from the Internet. Apply any port changes before testing.</source>
-        <translation>Testez si le port d'écoute actuel de Transmission est accessible depuis Internet. Appliquez toutes les modifications de port avant de tester.</translation>
+        <translation>Testez si le port d&apos;écoute actuel de Transmission est accessible depuis Internet. Appliquez toutes les modifications de port avant de tester.</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -2486,7 +2564,7 @@ Continuer?</translation>
     <message>
         <location line="+6"/>
         <source>Port test:</source>
-        <translation>Test des ports :</translation>
+        <translation>Test des ports&#xa0;:</translation>
     </message>
     <message>
         <location line="+14"/>
@@ -2506,7 +2584,7 @@ Continuer?</translation>
     <message>
         <location line="+21"/>
         <source>Enable torrent queueing</source>
-        <translation>Activer la file d'attente torrent</translation>
+        <translation>Activer la file d&apos;attente torrent</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -2541,7 +2619,7 @@ Continuer?</translation>
     <message>
         <location line="+1"/>
         <source>Closed%1 - incoming port is not reachable.</source>
-        <translation>Closed%1 - le port entrant n'est pas accessible.</translation>
+        <translation>Closed%1 - le port entrant n&apos;est pas accessible.</translation>
     </message>
     <message>
         <location line="+12"/>
@@ -2551,7 +2629,7 @@ Continuer?</translation>
     <message>
         <location line="+1"/>
         <source>Test failed: %1</source>
-        <translation>Échec du test : %1</translation>
+        <translation>Échec du test&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+25"/>
@@ -2561,7 +2639,7 @@ Continuer?</translation>
     <message>
         <location line="+369"/>
         <source>Updated successfully: %1 rules.</source>
-        <translation>Mise à jour réussie : règles %1.</translation>
+        <translation>Mise à jour réussie&#xa0;:&#xa0;règles %1.</translation>
     </message>
     <message>
         <location line="+1"/>
@@ -2576,7 +2654,7 @@ Continuer?</translation>
     <message>
         <location line="+1"/>
         <source>Blocklist update failed: %1</source>
-        <translation>Échec de la mise à jour de la liste de blocage : %1</translation>
+        <translation>Échec de la mise à jour de la liste de blocage&#xa0;: %1</translation>
     </message>
 </context>
 <context>
@@ -2584,12 +2662,12 @@ Continuer?</translation>
     <message>
         <location filename="../../statisticsdialog.cpp" line="+29"/>
         <source>Downloaded:</source>
-        <translation>Téléchargé :</translation>
+        <translation>Téléchargé&#xa0;:</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>Uploaded:</source>
-        <translation>Envoyé :</translation>
+        <translation>Envoyé&#xa0;:</translation>
     </message>
     <message>
         <location line="+1"/>
@@ -2599,17 +2677,17 @@ Continuer?</translation>
     <message>
         <location line="+1"/>
         <source>Active time:</source>
-        <translation>Temps d'activité :</translation>
+        <translation>Temps d&apos;activité&#xa0;:</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Sessions:</source>
-        <translation>Séances :</translation>
+        <translation>Séances&#xa0;:</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>Torrents added:</source>
-        <translation>Torrents ajoutés :</translation>
+        <translation>Torrents ajoutés&#xa0;:</translation>
     </message>
     <message>
         <location line="+10"/>
@@ -2639,7 +2717,7 @@ Continuer?</translation>
     <message>
         <location line="+17"/>
         <source>Could not retrieve statistics: %1</source>
-        <translation>Impossible de récupérer les statistiques : %1</translation>
+        <translation>Impossible de récupérer les statistiques&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+20"/>
@@ -2681,7 +2759,7 @@ Continuer?</translation>
     <message>
         <location line="+2"/>
         <source>Torrents: 0</source>
-        <translation>Torrents : 0</translation>
+        <translation>Torrents&#xa0;: 0</translation>
     </message>
     <message>
         <location line="+16"/>
@@ -2696,7 +2774,7 @@ Continuer?</translation>
     <message>
         <location line="+1"/>
         <source>Refresh free-space information</source>
-        <translation>Actualiser les informations sur l'espace libre</translation>
+        <translation>Actualiser les informations sur l&apos;espace libre</translation>
     </message>
     <message>
         <location line="+1"/>
@@ -2706,7 +2784,7 @@ Continuer?</translation>
     <message>
         <location line="+1"/>
         <source>Open application settings</source>
-        <translation>Ouvrir les paramètres de l'application</translation>
+        <translation>Ouvrir les paramètres de l&apos;application</translation>
     </message>
     <message>
         <location line="+16"/>
@@ -2746,7 +2824,7 @@ Continuer?</translation>
     <message>
         <location line="+8"/>
         <source>0 B/s</source>
-        <translation>0 B/s</translation>
+        <translation>0&#xa0;B/s</translation>
     </message>
     <message>
         <location line="+6"/>
@@ -2756,7 +2834,7 @@ Continuer?</translation>
     <message>
         <location line="+24"/>
         <source>Server: %1</source>
-        <translation>Serveur : %1</translation>
+        <translation>Serveur&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+1"/>
@@ -2766,12 +2844,12 @@ Continuer?</translation>
     <message>
         <location line="+11"/>
         <source>Torrents: %1 of %2</source>
-        <translation>Torrents : %1 ou %2</translation>
+        <translation>Torrents&#xa0;: %1 ou %2</translation>
     </message>
     <message>
         <location line="+5"/>
         <source>Torrents: %1</source>
-        <translation>Torrents : %1</translation>
+        <translation>Torrents&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+19"/>
@@ -2791,22 +2869,22 @@ Continuer?</translation>
     <message>
         <location line="+6"/>
         <source>Alt speed: On</source>
-        <translation>Vitesse alternative : activée</translation>
+        <translation>Vitesse alternative&#xa0;: activée</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>Alt speed: Off</source>
-        <translation>Vitesse alternative : désactivée</translation>
+        <translation>Vitesse alternative&#xa0;: désactivée</translation>
     </message>
     <message>
         <location line="+9"/>
         <source>Refresh: —</source>
-        <translation>Actualiser : —</translation>
+        <translation>Actualiser&#xa0;: —</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>Refresh: %1s</source>
-        <translation>Actualiser : %1s</translation>
+        <translation>Actualiser&#xa0;: %1s</translation>
     </message>
 </context>
 <context>
@@ -2835,14 +2913,14 @@ Continuer?</translation>
     <message>
         <location line="-159"/>
         <source>No torrent files were specified.</source>
-        <translation>Aucun fichier torrent n'a été spécifié.</translation>
+        <translation>Aucun fichier torrent n&apos;a été spécifié.</translation>
     </message>
     <message>
         <location line="+5"/>
         <location line="+41"/>
         <location line="+119"/>
         <source>No torrent backend is available.</source>
-        <translation>Aucun backend torrent n'est disponible.</translation>
+        <translation>Aucun backend torrent n&apos;est disponible.</translation>
     </message>
     <message>
         <location line="-135"/>
@@ -2954,7 +3032,7 @@ Continuer?</translation>
     <message>
         <location line="+34"/>
         <source>Torrent contents could not be read: %1</source>
-        <translation>Le contenu du torrent n'a pas pu être lu : %1</translation>
+        <translation>Le contenu du torrent n&apos;a pas pu être lu&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+10"/>
@@ -3081,7 +3159,7 @@ Continuer?</translation>
     <message>
         <location line="+2"/>
         <source>Queued for download</source>
-        <translation>En file d'attente pour le téléchargement</translation>
+        <translation>En file d&apos;attente pour le téléchargement</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -3125,7 +3203,7 @@ Continuer?</translation>
     <message>
         <location line="+11"/>
         <source>Use torrent idle limit</source>
-        <translation>Utiliser la limite d'inactivité du torrent</translation>
+        <translation>Utiliser la limite d&apos;inactivité du torrent</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -3290,7 +3368,7 @@ Continuer?</translation>
     <message>
         <location line="+1"/>
         <source>Idle ETA</source>
-        <translation>ETA d'inactivité</translation>
+        <translation>ETA d&apos;inactivité</translation>
     </message>
     <message>
         <location line="+1"/>
@@ -3431,7 +3509,7 @@ Continuer?</translation>
     <message>
         <location line="+1"/>
         <source>Queue position</source>
-        <translation>Position dans la file d'attente</translation>
+        <translation>Position dans la file d&apos;attente</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -3631,12 +3709,12 @@ Continuer?</translation>
     <message>
         <location line="+11"/>
         <source>Planetary could not determine the selected file path.</source>
-        <translation>Planetary n'a pas pu déterminer le chemin du fichier sélectionné.</translation>
+        <translation>Planetary n&apos;a pas pu déterminer le chemin du fichier sélectionné.</translation>
     </message>
     <message>
         <location line="+8"/>
         <source>Planetary could not determine the torrent download directory.</source>
-        <translation>Planetary n'a pas pu déterminer le répertoire de téléchargement torrent.</translation>
+        <translation>Planetary n&apos;a pas pu déterminer le répertoire de téléchargement torrent.</translation>
     </message>
     <message>
         <location line="+19"/>
@@ -3649,9 +3727,9 @@ Continuer?</translation>
 
 Remote path:
 %1</source>
-        <translation>Planetary n'a pas pu mapper ce chemin de fichier distant à un chemin de fichier local.
+        <translation>Planetary n&apos;a pas pu mapper ce chemin de fichier distant à un chemin de fichier local.
 
-Chemin distant :
+Chemin distant&#xa0;:
 %1</translation>
     </message>
     <message>
@@ -3668,12 +3746,12 @@ Remote path:
 
 Local path:
 %2</source>
-        <translation>Le fichier local mappé n'existe pas.
+        <translation>Le fichier local mappé n&apos;existe pas.
 
-Chemin distant :
+Chemin distant&#xa0;:
 %1
 
-Chemin local :
+Chemin local&#xa0;:
 %2</translation>
     </message>
     <message>
@@ -3684,14 +3762,14 @@ Chemin local :
     <message>
         <location line="+12"/>
         <source>Open File Failed</source>
-        <translation>Échec de l'ouverture du fichier</translation>
+        <translation>Échec de l&apos;ouverture du fichier</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>The operating system could not open this file:
 
 %1</source>
-        <translation>Le système d'exploitation n'a pas pu ouvrir ce fichier :
+        <translation>Le système d&apos;exploitation n&apos;a pas pu ouvrir ce fichier&#xa0;:
 
 %1</translation>
     </message>
@@ -3716,23 +3794,23 @@ Local folder:
 %2</source>
         <translation>Le dossier contenant mappé n’existe pas.
 
-Chemin distant :
+Chemin distant&#xa0;:
 %1
 
-Dossier local :
+Dossier local&#xa0;:
 %2</translation>
     </message>
     <message>
         <location line="+12"/>
         <source>Open Folder Failed</source>
-        <translation>Échec de l'ouverture du dossier</translation>
+        <translation>Échec de l&apos;ouverture du dossier</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>The operating system could not open this folder:
 
 %1</source>
-        <translation>Le système d'exploitation n'a pas pu ouvrir ce dossier :
+        <translation>Le système d&apos;exploitation n&apos;a pas pu ouvrir ce dossier&#xa0;:
 
 %1</translation>
     </message>
@@ -3859,7 +3937,7 @@ Dossier local :
     <message>
         <location line="+330"/>
         <source>Filtered by label: Unlabelled</source>
-        <translation>Filtré par étiquette : Sans étiquette</translation>
+        <translation>Filtré par étiquette&#xa0;: Sans étiquette</translation>
     </message>
     <message>
         <location line="+1"/>
@@ -3869,17 +3947,17 @@ Dossier local :
     <message>
         <location line="+4"/>
         <source>Filtered by group: No Group</source>
-        <translation>Filtré par groupe : Aucun groupe</translation>
+        <translation>Filtré par groupe&#xa0;:&#xa0;Aucun groupe</translation>
     </message>
     <message>
         <location line="+1"/>
         <source>Filtered by group: %1</source>
-        <translation>Filtré par groupe : %1</translation>
+        <translation>Filtré par groupe&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Filtered by tracker: %1</source>
-        <translation>Filtré par tracker : %1</translation>
+        <translation>Filtré par tracker&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -3889,7 +3967,7 @@ Dossier local :
     <message>
         <location line="+2"/>
         <source>Filtered by status: %1</source>
-        <translation>Filtré par statut : %1</translation>
+        <translation>Filtré par statut&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+5"/>
@@ -3970,7 +4048,7 @@ Dossier local :
         <location line="+16"/>
         <location line="+348"/>
         <source>Sequential download is not supported by the active torrent backend.</source>
-        <translation>Le téléchargement séquentiel n'est pas pris en charge par le backend torrent actif.</translation>
+        <translation>Le téléchargement séquentiel n&apos;est pas pris en charge par le backend torrent actif.</translation>
     </message>
     <message>
         <location line="-344"/>
@@ -4005,7 +4083,7 @@ Dossier local :
     <message>
         <location line="+4"/>
         <source>Set Location…</source>
-        <translation>Définir l'emplacement…</translation>
+        <translation>Définir l&apos;emplacement…</translation>
     </message>
     <message>
         <location line="+5"/>
@@ -4041,12 +4119,12 @@ Dossier local :
     <message>
         <location line="-6"/>
         <source>No torrent is selected.</source>
-        <translation>Aucun torrent n'est sélectionné.</translation>
+        <translation>Aucun torrent n&apos;est sélectionné.</translation>
     </message>
     <message>
         <location line="+13"/>
         <source>Delete the selected torrent?</source>
-        <translation>Supprimer le torrent sélectionné ?</translation>
+        <translation>Supprimer le torrent sélectionné&#xa0;?</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -4070,7 +4148,7 @@ Affichez les détails pour voir le nom du torrent concerné.</translation>
     <message>
         <location line="+4"/>
         <source>Delete %1 selected torrents?</source>
-        <translation>Supprimer les torrents sélectionnés %1 ?</translation>
+        <translation>Supprimer les torrents sélectionnés %1&#xa0;?</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -4138,12 +4216,12 @@ Affichez les détails pour voir les noms des torrents concernés.</translation>
         <location line="+5"/>
         <location line="+55"/>
         <source>Set Location</source>
-        <translation>Définir l'emplacement</translation>
+        <translation>Définir l&apos;emplacement</translation>
     </message>
     <message>
         <location line="-50"/>
         <source>Set the download location on the torrent server.</source>
-        <translation>Définissez l'emplacement de téléchargement sur le serveur torrent.</translation>
+        <translation>Définissez l&apos;emplacement de téléchargement sur le serveur torrent.</translation>
     </message>
     <message>
         <location line="+8"/>
@@ -4168,7 +4246,7 @@ Affichez les détails pour voir les noms des torrents concernés.</translation>
     <message>
         <location line="+26"/>
         <source>The download location cannot be empty.</source>
-        <translation>L'emplacement de téléchargement ne peut pas être vide.</translation>
+        <translation>L&apos;emplacement de téléchargement ne peut pas être vide.</translation>
     </message>
     <message>
         <location line="+11"/>
@@ -4178,7 +4256,7 @@ Affichez les détails pour voir les noms des torrents concernés.</translation>
     <message>
         <location line="+1"/>
         <source>Setting location for %1 torrent(s) to %2...</source>
-        <translation>Définition de l'emplacement du(des) torrent(s) %1 vers %2...</translation>
+        <translation>Définition de l&apos;emplacement du(des) torrent(s) %1 vers %2...</translation>
     </message>
     <message>
         <location line="+26"/>
@@ -4249,12 +4327,12 @@ Affichez les détails pour voir les noms des torrents concernés.</translation>
         <location line="+4"/>
         <location line="+3"/>
         <source>Error: %1</source>
-        <translation>Erreur : %1</translation>
+        <translation>Erreur&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+4"/>
         <source>Status: %1</source>
-        <translation>Statut : %1</translation>
+        <translation>Statut&#xa0;: %1</translation>
     </message>
 </context>
 <context>
@@ -4350,7 +4428,7 @@ Affichez les détails pour voir les noms des torrents concernés.</translation>
     <message>
         <location line="+7"/>
         <source>No reverse DNS hostname found for %1</source>
-        <translation>Aucun nom d'hôte DNS inversé trouvé pour %1</translation>
+        <translation>Aucun nom d&apos;hôte DNS inversé trouvé pour %1</translation>
     </message>
 </context>
 <context>
@@ -4369,7 +4447,7 @@ Affichez les détails pour voir les noms des torrents concernés.</translation>
     <message>
         <location line="+15"/>
         <source>Bandwidth and Queue</source>
-        <translation>Bande passante et file d'attente</translation>
+        <translation>Bande passante et file d&apos;attente</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -4389,7 +4467,7 @@ Affichez les détails pour voir les noms des torrents concernés.</translation>
     <message>
         <location line="+1"/>
         <source>Bandwidth priority:</source>
-        <translation>Priorité de bande passante :</translation>
+        <translation>Priorité de bande passante&#xa0;:</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -4399,7 +4477,7 @@ Affichez les détails pour voir les noms des torrents concernés.</translation>
     <message>
         <location line="+7"/>
         <source>Queue position:</source>
-        <translation>Position dans la file d'attente :</translation>
+        <translation>Position dans la file d&apos;attente&#xa0;:</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -4409,7 +4487,7 @@ Affichez les détails pour voir les noms des torrents concernés.</translation>
     <message>
         <location line="+1"/>
         <source>Peer limit:</source>
-        <translation>Limite de pairs :</translation>
+        <translation>Limite de pairs&#xa0;:</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -4461,7 +4539,7 @@ Affichez les détails pour voir les noms des torrents concernés.</translation>
     <message>
         <location line="+1"/>
         <source>Ratio mode:</source>
-        <translation>Mode rapport :</translation>
+        <translation>Mode rapport&#xa0;:</translation>
     </message>
     <message>
         <location line="+6"/>
@@ -4486,7 +4564,7 @@ Affichez les détails pour voir les noms des torrents concernés.</translation>
     <message>
         <location line="+1"/>
         <source>Idle mode:</source>
-        <translation>Mode veille :</translation>
+        <translation>Mode veille&#xa0;:</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -4496,7 +4574,7 @@ Affichez les détails pour voir les noms des torrents concernés.</translation>
     <message>
         <location line="+1"/>
         <source>Idle limit:</source>
-        <translation>Limite d'inactivité :</translation>
+        <translation>Limite d&apos;inactivité&#xa0;:</translation>
     </message>
     <message>
         <location line="+5"/>
@@ -4516,7 +4594,7 @@ Affichez les détails pour voir les noms des torrents concernés.</translation>
     <message>
         <location line="+1"/>
         <source>Labels:</source>
-        <translation>Étiquettes :</translation>
+        <translation>Étiquettes&#xa0;:</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -4563,7 +4641,7 @@ Affichez les détails pour voir les noms des torrents concernés.</translation>
         <source>%1
 Hash: %2</source>
         <translation>%1
-Hachage : %2</translation>
+Hachage&#xa0;: %2</translation>
     </message>
     <message>
         <location line="+1"/>
@@ -4654,7 +4732,7 @@ Hachage : %2</translation>
     <message>
         <location line="+13"/>
         <source>Could not update torrent properties: %1</source>
-        <translation>Impossible de mettre à jour les propriétés du torrent : %1</translation>
+        <translation>Impossible de mettre à jour les propriétés du torrent&#xa0;: %1</translation>
     </message>
 </context>
 <context>
@@ -4787,10 +4865,10 @@ Hachage : %2</translation>
 Announce: %2
 Scrape: %3
 Tier: %4</source>
-        <translation>Hôte : %1
-Annoncer : %2
-Scrape : %3
-Niveau : %4</translation>
+        <translation>Hôte&#xa0;: %1
+Annoncer&#xa0;: %2
+Scrape&#xa0;: %3
+Niveau&#xa0;: %4</translation>
     </message>
     <message>
         <location line="+92"/>
@@ -4802,18 +4880,18 @@ Niveau : %4</translation>
         <location line="-12"/>
         <location line="+37"/>
         <source>Announce URL:</source>
-        <translation>URL d’annonce :</translation>
+        <translation>URL d’annonce&#xa0;:</translation>
     </message>
     <message>
         <location line="-24"/>
         <location line="+37"/>
         <source>The tracker announce URL cannot be empty.</source>
-        <translation>L'URL d'annonce du tracker ne peut pas être vide.</translation>
+        <translation>L&apos;URL d&apos;annonce du tracker ne peut pas être vide.</translation>
     </message>
     <message>
         <location line="-31"/>
         <source>Adding tracker...</source>
-        <translation>Ajout d'un tracker...</translation>
+        <translation>Ajout d&apos;un tracker...</translation>
     </message>
     <message>
         <location line="+17"/>
@@ -4859,7 +4937,7 @@ Niveau : %4</translation>
     <message>
         <location line="+15"/>
         <source>Copy Tracker URL</source>
-        <translation>Copier l'URL du tracker</translation>
+        <translation>Copier l&apos;URL du tracker</translation>
     </message>
     <message>
         <location line="+35"/>
@@ -4874,7 +4952,7 @@ Niveau : %4</translation>
     <message>
         <location line="+2"/>
         <source>Queued</source>
-        <translation>En file d'attente</translation>
+        <translation>En file d&apos;attente</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -4922,7 +5000,7 @@ Niveau : %4</translation>
     <message>
         <location line="+13"/>
         <source>Transmission RPC call failed.</source>
-        <translation>La transmission de l'appel RPC a échoué.</translation>
+        <translation>La transmission de l&apos;appel RPC a échoué.</translation>
     </message>
     <message>
         <location line="+157"/>
@@ -4943,13 +5021,13 @@ Niveau : %4</translation>
         <location line="+106"/>
         <location line="+752"/>
         <source>Could not open torrent file: %1</source>
-        <translation>Impossible d'ouvrir le fichier torrent : %1</translation>
+        <translation>Impossible d&apos;ouvrir le fichier torrent&#xa0;: %1</translation>
     </message>
     <message>
         <location line="-737"/>
         <location line="+748"/>
         <source>Torrent file is empty: %1</source>
-        <translation>Le fichier torrent est vide : %1</translation>
+        <translation>Le fichier torrent est vide&#xa0;: %1</translation>
     </message>
 </context>
 <context>
@@ -4982,8 +5060,8 @@ Niveau : %4</translation>
         <location line="+31"/>
         <source>Installed version: %1
 Latest version: %2</source>
-        <translation>Version installée : %1
-Dernière version : %2</translation>
+        <translation>Version installée&#xa0;: %1
+Dernière version&#xa0;: %2</translation>
     </message>
     <message>
         <location line="-25"/>
@@ -5011,14 +5089,14 @@ Dernière version : %2</translation>
         <source>Planetary could not check for updates.
 
 %1</source>
-        <translation>Planetary n'a pas pu rechercher les mises à jour.
+        <translation>Planetary n&apos;a pas pu rechercher les mises à jour.
 
 %1</translation>
     </message>
     <message>
         <location line="+6"/>
         <source>Update check failed: %1</source>
-        <translation>Échec de la vérification de la mise à jour : %1</translation>
+        <translation>Échec de la vérification de la mise à jour&#xa0;: %1</translation>
     </message>
 </context>
 <context>
@@ -5039,12 +5117,12 @@ Dernière version : %2</translation>
     <message>
         <location filename="../../watchfoldercontroller.cpp" line="+101"/>
         <source>Watch folder skipped duplicate torrent: %1</source>
-        <translation>Dossier de surveillance ignoré torrent en double : %1</translation>
+        <translation>Dossier de surveillance ignoré torrent en double&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+9"/>
         <source>Watch folder add failed; will retry %1: %2</source>
-        <translation>L'ajout du dossier surveillé a échoué ; je vais réessayer %1 : %2</translation>
+        <translation>L&apos;ajout du dossier surveillé a échoué&#xa0;; je vais réessayer %1&#xa0;: %2</translation>
     </message>
 </context>
 <context>
@@ -5062,7 +5140,7 @@ Dernière version : %2</translation>
     <message>
         <location line="+9"/>
         <source>Could not monitor folder changes; using periodic scans: %1</source>
-        <translation>Impossible de surveiller les modifications des dossiers ; à l'aide d'analyses périodiques : %1</translation>
+        <translation>Impossible de surveiller les modifications des dossiers&#xa0;; à l&apos;aide d&apos;analyses périodiques&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+6"/>

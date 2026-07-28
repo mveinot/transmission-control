@@ -108,6 +108,12 @@ add_planetary_test(test_pieceprogressbarwidget
     ${CMAKE_SOURCE_DIR}/pieceprogressbarwidget.h
 )
 
+add_planetary_test(test_sessionoverviewwidget
+    test_sessionoverviewwidget.cpp
+    ${CMAKE_SOURCE_DIR}/sessionoverviewwidget.cpp
+    ${CMAKE_SOURCE_DIR}/sessionoverviewwidget.h
+)
+
 if(APPLE)
     target_sources(test_notificationcontroller PRIVATE
         ${CMAKE_SOURCE_DIR}/macnotificationbackend.h

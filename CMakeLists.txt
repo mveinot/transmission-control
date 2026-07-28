@@ -218,6 +218,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         notificationcontroller.h notificationcontroller.cpp
         activitylogmodel.h activitylogmodel.cpp
         statusbarcontroller.h statusbarcontroller.cpp
+        sessionoverviewwidget.h sessionoverviewwidget.cpp
         torrentpropertiesdialog.h torrentpropertiesdialog.cpp
     )
 

@@ -25,6 +25,7 @@ QT_END_NAMESPACE
 class QActionGroup;
 class ActivityLogModel;
 class QDockWidget;
+class QStackedWidget;
 class QTableView;
 class TorrentAddController;
 class WatchFolderManager;
@@ -39,6 +40,7 @@ class TorrentListController;
 class TorrentFilterController;
 class StatusBarController;
 class NotificationController;
+class SessionOverviewWidget;
 
 /*
  * Application composition root for the desktop UI. MainWindow owns the RPC
@@ -125,6 +127,8 @@ private:
     int updateIntervalMs() const;
     void applyUpdateInterval();
     void setupConnectionStatusIndicator();
+    void setupDetailsPane();
+    void showTorrentDetails(bool torrentSelected);
     void clearGeneralTab();
     QList<FolderMapping> currentServerFolderMappings() const;
     void applyAppSettings();
@@ -170,6 +174,8 @@ private:
     TrayController *trayController = nullptr;
     StatusBarController *statusBarController = nullptr;
     NotificationController *notificationController = nullptr;
+    QStackedWidget *detailsPaneStack = nullptr;
+    SessionOverviewWidget *sessionOverviewWidget = nullptr;
     QMenu *viewMenu = nullptr;
     QAction *showToolBarAction = nullptr;
     QAction *showStatusBarAction = nullptr;
