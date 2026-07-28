@@ -199,7 +199,10 @@ void SessionOverviewWidget::paintEvent(QPaintEvent *)
                     path.lineTo(point);
                 }
             }
-            painter.setPen(QPen(color, 2.0));
+            QPen seriesPen(color, 2.0);
+            seriesPen.setCapStyle(Qt::RoundCap);
+            seriesPen.setJoinStyle(Qt::RoundJoin);
+            painter.setPen(seriesPen);
             painter.drawPath(path);
         };
 
