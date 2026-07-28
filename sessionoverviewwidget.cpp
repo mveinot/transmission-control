@@ -16,7 +16,8 @@
 namespace {
 constexpr int GraphTop = 54;
 constexpr int GraphBottomMargin = 52;
-constexpr int GraphSideMargin = 6;
+constexpr int PanelLeftMargin = 6;
+constexpr int PanelContentMargin = 12;
 
 QColor downloadColor()
 {
@@ -86,9 +87,10 @@ int SessionOverviewWidget::sampleCount() const
 
 QRectF SessionOverviewWidget::graphRect() const
 {
-    return QRectF(GraphSideMargin,
+    const int contentLeft = PanelLeftMargin + PanelContentMargin;
+    return QRectF(contentLeft,
                   GraphTop,
-                  qMax(1, width() - 2 * GraphSideMargin),
+                  qMax(1, width() - contentLeft - PanelContentMargin),
                   qMax(1, height() - GraphTop - GraphBottomMargin));
 }
 
@@ -114,7 +116,13 @@ void SessionOverviewWidget::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.fillRect(rect(), palette().brush(QPalette::Base));
+    painter.fillRect(rect(), palette().brush(QPalette::Window));
+
+    const QRect panelRect = rect().adjusted(PanelLeftMargin, 0, 0, 0);
+    painter.fillRect(panelRect, palette().brush(QPalette::Base));
+    const int contentLeft = PanelLeftMargin + PanelContentMargin;
+    const int contentWidth =
+        qMax(1, width() - contentLeft - PanelContentMargin);
 
     const QColor textColor = palette().color(QPalette::Text);
     QColor secondaryText = textColor;
@@ -125,14 +133,14 @@ void SessionOverviewWidget::paintEvent(QPaintEvent *)
     headingFont.setPointSizeF(headingFont.pointSizeF() + 1.0);
     painter.setFont(headingFont);
     painter.setPen(textColor);
-    painter.drawText(QRectF(GraphSideMargin, 12, width() / 2.0, 24),
+    painter.drawText(QRectF(contentLeft, 12, contentWidth / 2.0, 24),
                      Qt::AlignLeft | Qt::AlignVCenter,
                      tr("Bandwidth Activity"));
 
     painter.setFont(font());
     painter.setPen(secondaryText);
-    painter.drawText(QRectF(width() / 2.0, 12,
-                            width() / 2.0 - GraphSideMargin, 24),
+    painter.drawText(QRectF(contentLeft + contentWidth / 2.0, 12,
+                            contentWidth / 2.0, 24),
                      Qt::AlignRight | Qt::AlignVCenter,
                      tr("Last 5 minutes"));
 
@@ -210,11 +218,11 @@ void SessionOverviewWidget::paintEvent(QPaintEvent *)
         }
     }
 
-    // Use the platform frame primitive so the chart boundary matches the
-    // filter list and torrent table across native light and dark styles.
+    // Frame the complete empty-selection surface, matching the native list and
+    // table boundaries without visually boxing the graph inside it.
     QStyleOptionFrame frame;
     frame.initFrom(this);
-    frame.rect = plot.toAlignedRect();
+    frame.rect = panelRect;
     frame.lineWidth =
         style()->pixelMetric(QStyle::PM_DefaultFrameWidth, &frame, this);
     frame.midLineWidth = 0;
@@ -230,8 +238,8 @@ void SessionOverviewWidget::paintEvent(QPaintEvent *)
         QStringLiteral("    ") +
         tr("Upload %1").arg(rateText(currentUpload));
     painter.setPen(textColor);
-    painter.drawText(QRectF(GraphSideMargin, height() - 44,
-                            width() - 2 * GraphSideMargin, 18),
+    painter.drawText(QRectF(contentLeft, height() - 44,
+                            contentWidth, 18),
                      Qt::AlignLeft | Qt::AlignVCenter,
                      legend);
 
@@ -242,8 +250,8 @@ void SessionOverviewWidget::paintEvent(QPaintEvent *)
         tr("Seeding %1").arg(m_seedingCount) +
         QStringLiteral("    ") +
         tr("Waiting %1").arg(m_waitingCount);
-    painter.drawText(QRectF(GraphSideMargin, height() - 24,
-                            width() - 2 * GraphSideMargin, 18),
+    painter.drawText(QRectF(contentLeft, height() - 24,
+                            contentWidth, 18),
                      Qt::AlignLeft | Qt::AlignVCenter,
                      counts);
 }
