@@ -161,6 +161,7 @@ private:
     qint64 lastFreeSpaceRefreshMs = 0;
     qint64 lastTrackerMetadataRefreshMs = 0;
     bool pendingCommandDetailsRefresh = false;
+    bool sessionOverviewEnabled = false;
 
     // Feature controllers are QObject children of MainWindow unless their
     // constructors document a different owner.

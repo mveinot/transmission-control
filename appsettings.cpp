@@ -172,6 +172,10 @@ void AppSettings::loadSettings()
         settings.value(SettingsKeys::StartTorrentPaused, false).toBool()
         );
 
+    ui->showSessionOverview->setChecked(
+        settings.value(SettingsKeys::ShowSessionOverview, false).toBool()
+        );
+
     ui->showTrayIcon->setChecked(
         settings.value(SettingsKeys::ShowTrayIcon, true).toBool()
         );
@@ -243,6 +247,9 @@ void AppSettings::saveSettings()
     // TorrentAddDialog, keeping both configuration surfaces synchronized.
     settings.setValue(SettingsKeys::StartTorrentPaused,
                       ui->startTorrentPaused->isChecked());
+
+    settings.setValue(SettingsKeys::ShowSessionOverview,
+                      ui->showSessionOverview->isChecked());
 
     settings.setValue(SettingsKeys::ShowTrayIcon,
                       ui->showTrayIcon->isChecked());

@@ -2153,10 +2153,12 @@ void MainWindow::showTorrentDetails(bool torrentSelected)
     if (!detailsPaneStack)
         return;
 
+    const bool showOverview =
+        sessionOverviewEnabled && !torrentSelected;
     detailsPaneStack->setCurrentWidget(
-        torrentSelected
-            ? static_cast<QWidget *>(ui->tabWidget)
-            : static_cast<QWidget *>(sessionOverviewWidget));
+        showOverview
+            ? static_cast<QWidget *>(sessionOverviewWidget)
+            : static_cast<QWidget *>(ui->tabWidget));
 }
 
 void MainWindow::bringToFront()
@@ -2193,6 +2195,11 @@ bool MainWindow::event(QEvent *event)
 void MainWindow::applyAppSettings()
 {
     applyUpdateInterval();
+
+    QSettings settings;
+    sessionOverviewEnabled =
+        settings.value(SettingsKeys::ShowSessionOverview, false).toBool();
+    showTorrentDetails(isValidTorrentKey(currentTorrentKey()));
 
     if (trayController)
         trayController->applySettings();

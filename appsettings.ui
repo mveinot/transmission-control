@@ -80,6 +80,16 @@
                 </property>
                </widget>
               </item>
+              <item row="2" column="0" colspan="2">
+               <widget class="QCheckBox" name="showSessionOverview">
+                <property name="toolTip">
+                 <string>Show recent bandwidth activity in the details pane when no torrent is selected</string>
+                </property>
+                <property name="text">
+                 <string>Show bandwidth graph when no torrent is selected</string>
+                </property>
+               </widget>
+              </item>
              </layout>
             </item>
            </layout>

@@ -63,7 +63,7 @@
         <translation>Suivez l&apos;apparence du système d&apos;exploitation ou remplacez-la pour Planetary</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+22"/>
         <source>Add Torrent</source>
         <translation>Ajouter un torrent</translation>
     </message>
@@ -115,7 +115,17 @@
         <translation>Parcourir…</translation>
     </message>
     <message>
-        <location line="-269"/>
+        <location line="-299"/>
+        <source>Show recent bandwidth activity in the details pane when no torrent is selected</source>
+        <translation>Afficher l’activité récente de la bande passante dans le volet de détails lorsqu’aucun torrent n’est sélectionné</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Show bandwidth graph when no torrent is selected</source>
+        <translation>Afficher le graphique de bande passante lorsqu’aucun torrent n’est sélectionné</translation>
+    </message>
+    <message>
+        <location line="+27"/>
         <source>Use paused as the default state in the Add Torrent dialog</source>
         <translation>Utiliser la pause comme état par défaut dans la boîte de dialogue Ajouter un torrent</translation>
     </message>
@@ -136,7 +146,7 @@
     </message>
     <message>
         <location line="+10"/>
-        <location filename="../../appsettings.cpp" line="+322"/>
+        <location filename="../../appsettings.cpp" line="+329"/>
         <source>Default Application</source>
         <translation>Application par défaut</translation>
     </message>
@@ -294,7 +304,7 @@
         <translation>OK</translation>
     </message>
     <message>
-        <location filename="../../appsettings.cpp" line="-293"/>
+        <location filename="../../appsettings.cpp" line="-300"/>
         <source>Application Settings</source>
         <translation>Paramètres de l’application</translation>
     </message>
@@ -348,7 +358,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>L&apos;historique d&apos;importation du dossier de surveillance a été effacé.</translation>
     </message>
     <message>
-        <location line="+177"/>
+        <location line="+184"/>
         <source>Default-handler requests require macOS 12 or later.</source>
         <translation>Les requêtes du gestionnaire par défaut nécessitent macOS 12 ou version ultérieure.</translation>
     </message>
@@ -862,7 +872,7 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+93"/>
-        <location filename="../../mainwindow.cpp" line="+508"/>
+        <location filename="../../mainwindow.cpp" line="+515"/>
         <source>Server Settings...</source>
         <translation>Paramètres du serveur...</translation>
     </message>
@@ -957,7 +967,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Importer les paramètres...</translation>
     </message>
     <message>
-        <location filename="../../mainwindow.cpp" line="-1149"/>
+        <location filename="../../mainwindow.cpp" line="-1156"/>
         <source>Adding torrent...</source>
         <translation>Ajout du torrent...</translation>
     </message>
@@ -1249,7 +1259,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>%1 — %2</translation>
     </message>
     <message>
-        <location line="+448"/>
+        <location line="+455"/>
         <source>%1 Settings...</source>
         <translation>Paramètres %1...</translation>
     </message>
@@ -2151,7 +2161,7 @@ Continuer?</translation>
 <context>
     <name>SessionOverviewWidget</name>
     <message>
-        <location filename="../../sessionoverviewwidget.cpp" line="+91"/>
+        <location filename="../../sessionoverviewwidget.cpp" line="+96"/>
         <source>B/s</source>
         <translation>o/s</translation>
     </message>
@@ -2218,12 +2228,12 @@ Continuer?</translation>
     <message>
         <location line="+51"/>
         <source>Download: %1</source>
-        <translation>Téléchargement : %1</translation>
+        <translation>Téléchargement&#xa0;: %1</translation>
     </message>
     <message>
         <location line="+2"/>
         <source>Upload: %1</source>
-        <translation>Envoi : %1</translation>
+        <translation>Envoi&#xa0;: %1</translation>
     </message>
 </context>
 <context>
