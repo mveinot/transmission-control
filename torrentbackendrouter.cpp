@@ -1,5 +1,6 @@
 #include "torrentbackendrouter.h"
 
+#include "delugebackend.h"
 #include "qbittorrentbackend.h"
 #include "settingskeys.h"
 #include "transmissionbackend.h"
@@ -30,6 +31,8 @@ QString TorrentBackendRouter::backendTypeForServer(int index) const {
 TorrentBackend *TorrentBackendRouter::createBackend(const QString &type) {
   if (type == QStringLiteral("qbittorrent"))
     return new QBittorrentBackend(this);
+  if (type == QStringLiteral("deluge"))
+    return new DelugeBackend(this);
   if (type == QStringLiteral("transmission"))
     return new TransmissionBackend(this);
   return nullptr;
@@ -112,6 +115,8 @@ bool TorrentBackendRouter::setServerFromSettingsIndex(int index) {
   if (!m_backend ||
       (type == QStringLiteral("qbittorrent") &&
        m_backend->backendName() != QStringLiteral("qBittorrent")) ||
+      (type == QStringLiteral("deluge") &&
+       m_backend->backendName() != QStringLiteral("Deluge")) ||
       (type == QStringLiteral("transmission") &&
        m_backend->backendName() != QStringLiteral("Transmission"))) {
     replaceBackend(createBackend(type));

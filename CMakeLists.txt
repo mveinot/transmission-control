@@ -92,6 +92,8 @@ set(PROJECT_SOURCES
         transmissionbackend.cpp
         qbittorrentbackend.h
         qbittorrentbackend.cpp
+        delugebackend.h
+        delugebackend.cpp
         torrentbackendrouter.h
         torrentbackendrouter.cpp
         torrentbackend.h

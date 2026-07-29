@@ -28,6 +28,8 @@ QString serverTypeDisplayName(const QString &backendType)
 {
     if (backendType == QStringLiteral("qbittorrent"))
         return QCoreApplication::translate("ServerConfig", "qBittorrent");
+    if (backendType == QStringLiteral("deluge"))
+        return QCoreApplication::translate("ServerConfig", "Deluge");
 
     return QCoreApplication::translate("ServerConfig", "Transmission");
 }
@@ -35,7 +37,8 @@ QString serverTypeDisplayName(const QString &backendType)
 bool isConfigurableServerType(const QString &backendType)
 {
     return backendType == QStringLiteral("transmission")
-           || backendType == QStringLiteral("qbittorrent");
+           || backendType == QStringLiteral("qbittorrent")
+           || backendType == QStringLiteral("deluge");
 }
 
 } // namespace
@@ -54,6 +57,7 @@ ServerConfig::ServerConfig(QWidget *parent)
     // refined without changing the server-profile format.
     ui->comboServerType->addItem(tr("Transmission"), QStringLiteral("transmission"));
     ui->comboServerType->addItem(tr("qBittorrent"), QStringLiteral("qbittorrent"));
+    ui->comboServerType->addItem(tr("Deluge"), QStringLiteral("deluge"));
 
     connect(ui->comboServerType,
             &QComboBox::currentIndexChanged,
@@ -350,28 +354,43 @@ void ServerConfig::clearEditor()
 
 void ServerConfig::updateEditorForServerType()
 {
-    const bool qBittorrent =
-        ui->comboServerType->currentData().toString()
-        == QStringLiteral("qbittorrent");
+    const QString backendType = ui->comboServerType->currentData().toString();
+    const bool deluge = backendType == QStringLiteral("deluge");
     const QString transmissionDefault =
         QStringLiteral("http://server:9091/transmission/rpc");
     const QString qBittorrentDefault =
         QStringLiteral("http://server:8080");
+    const QString delugeDefault =
+        QStringLiteral("http://server:8112");
 
-    ui->labelRpcUrl->setText(
-        qBittorrent ? tr("WebUI URL:") : tr("RPC URL:"));
-    ui->editServerUrl->setPlaceholderText(
-        qBittorrent ? qBittorrentDefault : transmissionDefault);
+    QString defaultUrl = transmissionDefault;
+    QString urlLabel = tr("RPC URL:");
+    if (backendType == QStringLiteral("qbittorrent")) {
+        defaultUrl = qBittorrentDefault;
+        urlLabel = tr("WebUI URL:");
+    } else if (deluge) {
+        defaultUrl = delugeDefault;
+        urlLabel = tr("Web UI URL:");
+    }
+
+    ui->labelRpcUrl->setText(urlLabel);
+    ui->editServerUrl->setPlaceholderText(defaultUrl);
+    // Deluge Web authenticates with a Web UI password rather than a username.
+    // Keep any existing username in the model in case the profile type changes.
+    ui->labelUsername->setVisible(!deluge);
+    ui->editServerUsername->setVisible(!deluge);
+    ui->editServerPassword->setPlaceholderText(
+        deluge ? tr("Required") : tr("Optional"));
 
     // A newly-created profile contains the previous type's sample as editable
     // text. Replace only that known default; never overwrite a user URL.
     const QString currentUrl = ui->editServerUrl->text().trimmed();
-    if (currentUrl.isEmpty()
-        || (qBittorrent && currentUrl == transmissionDefault)
-        || (!qBittorrent && currentUrl == qBittorrentDefault)) {
-        ui->editServerUrl->setText(
-            qBittorrent ? qBittorrentDefault : transmissionDefault);
-    }
+    const bool isKnownDefault =
+        currentUrl == transmissionDefault
+        || currentUrl == qBittorrentDefault
+        || currentUrl == delugeDefault;
+    if (currentUrl.isEmpty() || isKnownDefault)
+        ui->editServerUrl->setText(defaultUrl);
 }
 
 void ServerConfig::setEditorEnabled(bool enabled)
