@@ -91,6 +91,10 @@ private:
         TorrentTrackers,
         TorrentPieces,
         TorrentProperties,
+        SessionSettings,
+        SessionStatistics,
+        FreeSpace,
+        PortTest,
         Command,
         AddTorrent
     };
@@ -102,6 +106,7 @@ private:
         QString commandMethod;
         QString torrentFilePath;
         QString torrentName;
+        QString requestedPath;
         TorrentKey torrentKey;
         QJsonArray parameters;
         quint64 generation = 0;
@@ -116,6 +121,7 @@ private:
     QHash<TorrentKey, QHash<QString, int>> m_fileIndicesByKey;
     QHash<TorrentKey, QJsonArray> m_trackersByKey;
     QHash<TorrentKey, TorrentProperties> m_propertiesByKey;
+    QJsonObject m_sessionConfig;
     QString m_serverName;
     QString m_baseUrl;
     QString m_rpcUrl;
@@ -152,6 +158,8 @@ private:
                            int priority, bool changePriority);
     void setTrackers(const TorrentKey &torrentKey,
                      const QJsonArray &trackers);
+    static QJsonObject normalizeSessionSettings(
+        const QJsonObject &nativeSettings);
     QNetworkRequest makeRequest() const;
     void handleReply(QNetworkReply *reply);
     void handleAuthenticationFailure(const QString &reason);

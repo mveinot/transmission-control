@@ -45,6 +45,10 @@ public:
     bool expireFirstTorrentRequest = false;
     QJsonObject torrents;
     QJsonObject torrentStatus;
+    QJsonObject sessionConfig;
+    QJsonObject sessionStatus;
+    qint64 freeSpace = 0;
+    bool portOpen = false;
     QString addedTorrentId = QStringLiteral("added-torrent-id");
     QStringList methods;
     QHash<QString, QJsonArray> parametersByMethod;
@@ -114,6 +118,14 @@ private:
                 response.insert(QStringLiteral("result"), torrents);
             else if (method == QStringLiteral("core.get_torrent_status"))
                 response.insert(QStringLiteral("result"), torrentStatus);
+            else if (method == QStringLiteral("core.get_config"))
+                response.insert(QStringLiteral("result"), sessionConfig);
+            else if (method == QStringLiteral("core.get_session_status"))
+                response.insert(QStringLiteral("result"), sessionStatus);
+            else if (method == QStringLiteral("core.get_free_space"))
+                response.insert(QStringLiteral("result"), freeSpace);
+            else if (method == QStringLiteral("core.test_listen_port"))
+                response.insert(QStringLiteral("result"), portOpen);
             else if (method == QStringLiteral("core.add_torrent_magnet")
                      || method
                             == QStringLiteral("core.add_torrent_file_async")) {
@@ -157,6 +169,7 @@ private slots:
     void magnetAndFileAddsSendOptionsAndReportSuccess();
     void selectedTorrentDetailsAreNormalized();
     void torrentMutationsUseDelugeCoreMethods();
+    void sessionOperationsAreNormalized();
     void rejectedPasswordReportsAuthenticationFailure();
     void disconnectedDaemonHasDistinctFailure();
 
@@ -677,6 +690,101 @@ void TestDelugeBackend::torrentMutationsUseDelugeCoreMethods()
         server.parametersByMethod.value(QStringLiteral("core.rename_files"));
     QCOMPARE(renameParameters.at(1).toArray().first().toArray(),
              QJsonArray({0, QStringLiteral("folder/renamed.bin")}));
+}
+
+void TestDelugeBackend::sessionOperationsAreNormalized()
+{
+    FakeDelugeWeb server;
+    server.sessionConfig = QJsonObject{
+        {QStringLiteral("listen_ports"), QJsonArray{52000, 52000}},
+        {QStringLiteral("random_port"), false},
+        {QStringLiteral("upnp"), true},
+        {QStringLiteral("dht"), true},
+        {QStringLiteral("utpex"), true},
+        {QStringLiteral("lsd"), false},
+        {QStringLiteral("max_connections_global"), 300},
+        {QStringLiteral("max_connections_per_torrent"), 60},
+        {QStringLiteral("max_download_speed"), 1200.0},
+        {QStringLiteral("max_upload_speed"), -1.0},
+        {QStringLiteral("max_active_downloading"), 4},
+        {QStringLiteral("max_active_seeding"), -1},
+        {QStringLiteral("download_location"), QStringLiteral("/downloads")},
+        {QStringLiteral("add_paused"), true},
+        {QStringLiteral("enc_in_policy"), 0},
+        {QStringLiteral("enc_out_policy"), 0}
+    };
+    server.sessionStatus = QJsonObject{
+        {QStringLiteral("total_payload_download"), 123456},
+        {QStringLiteral("total_payload_upload"), 654321}
+    };
+    server.freeSpace = 987654321;
+    server.portOpen = true;
+    configureServer(server.url(), QStringLiteral("correct"));
+
+    DelugeBackend backend;
+    QVERIFY(backend.loadCurrentServerFromSettings());
+    QSignalSpy settingsSpy(
+        &backend, &TorrentBackend::sessionSettingsReceived);
+    QSignalSpy statisticsSpy(
+        &backend, &TorrentBackend::sessionStatisticsReceived);
+    QSignalSpy freeSpaceSpy(&backend, &TorrentBackend::freeSpaceReceived);
+    QSignalSpy portSpy(&backend, &TorrentBackend::portTestFinished);
+    QSignalSpy succeeded(&backend, &TorrentBackend::commandSucceeded);
+
+    backend.getSessionSettings();
+    backend.getSessionStatistics();
+    backend.getFreeSpace(QStringLiteral("/downloads"));
+    backend.testPortForwarding();
+    QTRY_COMPARE(settingsSpy.size(), 1);
+    QTRY_COMPARE(statisticsSpy.size(), 1);
+    QTRY_COMPARE(freeSpaceSpy.size(), 1);
+    QTRY_COMPARE(portSpy.size(), 1);
+
+    const QJsonObject settings =
+        settingsSpy.first().first().toJsonObject();
+    QCOMPARE(settings.value(QStringLiteral("peer-port")).toInt(), 52000);
+    QCOMPARE(settings.value(QStringLiteral("download-dir")).toString(),
+             QStringLiteral("/downloads"));
+    QVERIFY(!settings.value(
+        QStringLiteral("start-added-torrents")).toBool());
+    QCOMPARE(settings.value(QStringLiteral("encryption")).toString(),
+             QStringLiteral("required"));
+    QVERIFY(settings.value(
+        QStringLiteral("speed-limit-down-enabled")).toBool());
+    QVERIFY(!settings.value(
+        QStringLiteral("speed-limit-up-enabled")).toBool());
+
+    const QJsonObject statistics =
+        statisticsSpy.first().first().toJsonObject();
+    QCOMPARE(statistics.value(QStringLiteral("current-stats")).toObject()
+                 .value(QStringLiteral("downloadedBytes"))
+                 .toInt(),
+             123456);
+    QCOMPARE(freeSpaceSpy.first().at(0).toString(),
+             QStringLiteral("/downloads"));
+    QCOMPARE(freeSpaceSpy.first().at(1).toLongLong(), 987654321);
+    QVERIFY(portSpy.first().at(0).toBool());
+
+    backend.setSessionSettings(
+        QJsonObject{
+            {QStringLiteral("peer-port"), 53000},
+            {QStringLiteral("start-added-torrents"), true},
+            {QStringLiteral("speed-limit-down-enabled"), false},
+            {QStringLiteral("download-queue-enabled"), false},
+            {QStringLiteral("encryption"), QStringLiteral("disabled")}
+        });
+    QTRY_COMPARE(succeeded.size(), 1);
+    const QJsonObject native =
+        server.parametersByMethod.value(QStringLiteral("core.set_config"))
+            .first().toObject();
+    QCOMPARE(native.value(QStringLiteral("listen_ports")).toArray(),
+             QJsonArray({53000, 53000}));
+    QVERIFY(!native.value(QStringLiteral("add_paused")).toBool());
+    QCOMPARE(native.value(QStringLiteral("max_download_speed")).toDouble(),
+             -1.0);
+    QCOMPARE(native.value(QStringLiteral("max_active_downloading")).toInt(),
+             -1);
+    QCOMPARE(native.value(QStringLiteral("enc_in_policy")).toInt(), 2);
 }
 
 void TestDelugeBackend::disconnectedDaemonHasDistinctFailure()

@@ -142,6 +142,11 @@ TorrentBackendCapabilities DelugeBackend::capabilities() const
     result.torrentLocation = true;
     // Deluge's move_storage operation always moves existing payload data.
     result.torrentLocationModeSelection = false;
+    result.sessionSettings = true;
+    result.sessionEncryptionDisable = true;
+    result.sessionStatistics = true;
+    result.freeSpaceQuery = true;
+    result.portTest = true;
     return result;
 }
 
@@ -214,6 +219,7 @@ void DelugeBackend::setServer(const QString &name, const QString &url,
     m_fileIndicesByKey.clear();
     m_trackersByKey.clear();
     m_propertiesByKey.clear();
+    m_sessionConfig = {};
     m_authenticated = false;
     m_ready = false;
     m_authenticationPending = false;
@@ -426,6 +432,20 @@ void DelugeBackend::failRequest(const RequestContext &context,
         return;
     }
 
+    if (context.kind == RequestKind::SessionStatistics) {
+        emit sessionStatisticsFailed(reason);
+        return;
+    }
+    if (context.kind == RequestKind::PortTest) {
+        emit portTestFailed(reason);
+        return;
+    }
+    if (context.kind == RequestKind::SessionSettings
+        || context.kind == RequestKind::FreeSpace) {
+        emit commandFailed(QStringLiteral("session-get"), reason);
+        return;
+    }
+
     if (context.kind >= RequestKind::TorrentDetails
         && context.kind <= RequestKind::TorrentProperties) {
         // Detail failures are deliberately non-fatal to the list poll. The
@@ -567,6 +587,64 @@ void DelugeBackend::handleReply(QNetworkReply *reply)
         } else if (pending.isEmpty()) {
             emit updateFinished();
         }
+        return;
+    }
+
+    if (context.kind == RequestKind::SessionSettings) {
+        const QJsonValue result = response.value(QStringLiteral("result"));
+        if (!result.isObject()) {
+            failRequest(context,
+                        tr("Deluge returned invalid session settings."));
+            return;
+        }
+        m_sessionConfig = result.toObject();
+        emit sessionSettingsReceived(
+            normalizeSessionSettings(m_sessionConfig));
+        return;
+    }
+
+    if (context.kind == RequestKind::SessionStatistics) {
+        const QJsonValue result = response.value(QStringLiteral("result"));
+        if (!result.isObject()) {
+            failRequest(context,
+                        tr("Deluge returned invalid session statistics."));
+            return;
+        }
+        const QJsonObject native = result.toObject();
+        const QJsonObject current{
+            {QStringLiteral("downloadedBytes"),
+             native.value(QStringLiteral("total_payload_download"))},
+            {QStringLiteral("uploadedBytes"),
+             native.value(QStringLiteral("total_payload_upload"))}
+        };
+        emit sessionStatisticsReceived(
+            QJsonObject{
+                {QStringLiteral("current-stats"), current}
+            });
+        return;
+    }
+
+    if (context.kind == RequestKind::FreeSpace) {
+        const QJsonValue result = response.value(QStringLiteral("result"));
+        if (!result.isDouble()) {
+            failRequest(context,
+                        tr("Deluge returned invalid free-space data."));
+            return;
+        }
+        emit freeSpaceReceived(
+            context.requestedPath,
+            result.toVariant().toLongLong());
+        return;
+    }
+
+    if (context.kind == RequestKind::PortTest) {
+        const QJsonValue result = response.value(QStringLiteral("result"));
+        if (!result.isBool()) {
+            failRequest(context,
+                        tr("Deluge returned an invalid port-test result."));
+            return;
+        }
+        emit portTestFinished(result.toBool(), QString());
         return;
     }
 
@@ -807,6 +885,84 @@ void DelugeBackend::handleTorrentStatus(const RequestContext &context,
     properties.fields = status.toVariantMap();
     m_propertiesByKey.insert(context.torrentKey, properties);
     emit torrentPropertiesReceived(properties);
+}
+
+QJsonObject DelugeBackend::normalizeSessionSettings(
+    const QJsonObject &native)
+{
+    QJsonObject settings;
+    const auto copy = [&native, &settings](const char *source,
+                                           const char *destination) {
+        const QString sourceKey = QString::fromLatin1(source);
+        if (native.contains(sourceKey)) {
+            settings.insert(QString::fromLatin1(destination),
+                            native.value(sourceKey));
+        }
+    };
+
+    const QJsonArray listenPorts =
+        native.value(QStringLiteral("listen_ports")).toArray();
+    if (!listenPorts.isEmpty())
+        settings.insert(QStringLiteral("peer-port"), listenPorts.first());
+    copy("random_port", "peer-port-random-on-start");
+    settings.insert(
+        QStringLiteral("port-forwarding-enabled"),
+        native.value(QStringLiteral("upnp")).toBool()
+            || native.value(QStringLiteral("natpmp")).toBool());
+    copy("dht", "dht-enabled");
+    copy("utpex", "pex-enabled");
+    copy("lsd", "lpd-enabled");
+    copy("max_connections_global", "peer-limit-global");
+    copy("max_connections_per_torrent", "peer-limit-per-torrent");
+    copy("max_active_downloading", "download-queue-size");
+    copy("max_active_seeding", "seed-queue-size");
+    copy("dont_count_slow_torrents", "queue-stalled-enabled");
+    copy("inactive_down", "queue-stalled-minutes");
+    copy("download_location", "download-dir");
+    copy("stop_seed_at_ratio", "seedRatioLimited");
+    copy("stop_seed_ratio", "seedRatioLimit");
+    if (native.contains(QStringLiteral("add_paused"))) {
+        settings.insert(
+            QStringLiteral("start-added-torrents"),
+            !native.value(QStringLiteral("add_paused")).toBool());
+    }
+    settings.insert(
+        QStringLiteral("download-queue-enabled"),
+        native.value(QStringLiteral("max_active_downloading")).toInt(-1) >= 0);
+    settings.insert(
+        QStringLiteral("seed-queue-enabled"),
+        native.value(QStringLiteral("max_active_seeding")).toInt(-1) >= 0);
+
+    const auto normalizeRate = [&native, &settings](
+                                   const char *nativeKey,
+                                   const char *enabledKey,
+                                   const char *limitKey) {
+        const QJsonValue value =
+            native.value(QString::fromLatin1(nativeKey));
+        if (!value.isDouble())
+            return;
+        const double limit = value.toDouble();
+        settings.insert(QString::fromLatin1(enabledKey), limit >= 0.0);
+        settings.insert(QString::fromLatin1(limitKey),
+                        std::max(0.0, limit));
+    };
+    normalizeRate("max_download_speed", "speed-limit-down-enabled",
+                  "speed-limit-down");
+    normalizeRate("max_upload_speed", "speed-limit-up-enabled",
+                  "speed-limit-up");
+
+    const int incoming =
+        native.value(QStringLiteral("enc_in_policy")).toInt(1);
+    const int outgoing =
+        native.value(QStringLiteral("enc_out_policy")).toInt(1);
+    settings.insert(
+        QStringLiteral("encryption"),
+        incoming == 0 && outgoing == 0
+            ? QStringLiteral("required")
+            : (incoming == 2 && outgoing == 2
+                   ? QStringLiteral("disabled")
+                   : QStringLiteral("tolerated")));
+    return settings;
 }
 
 void DelugeBackend::setFilePriorities(const TorrentKey &torrentKey,
@@ -1379,11 +1535,157 @@ void DelugeBackend::queueMoveBottom(const QList<TorrentKey> &keys)
                     singleArrayParameter(ids),
                     QStringLiteral("queue-move-bottom"));
 }
-void DelugeBackend::getSessionSettings() {}
-void DelugeBackend::getSessionStatistics() {}
-void DelugeBackend::setSessionSettings(const QJsonObject &)
-{ emitUnsupported(tr("Set session settings")); }
-void DelugeBackend::getFreeSpace(const QString &) {}
-void DelugeBackend::testPortForwarding() {}
+void DelugeBackend::getSessionSettings()
+{
+    RequestContext context;
+    context.kind = RequestKind::SessionSettings;
+    context.method = QStringLiteral("core.get_config");
+    queueOrPostRpc(context);
+}
+void DelugeBackend::getSessionStatistics()
+{
+    RequestContext context;
+    context.kind = RequestKind::SessionStatistics;
+    context.method = QStringLiteral("core.get_session_status");
+    context.parameters = singleArrayParameter(
+        QJsonArray{
+            QStringLiteral("total_payload_download"),
+            QStringLiteral("total_payload_upload")
+        });
+    queueOrPostRpc(context);
+}
+void DelugeBackend::setSessionSettings(const QJsonObject &settings)
+{
+    QJsonObject native;
+    const auto copy = [&settings, &native](const char *source,
+                                           const char *destination) {
+        const QString sourceKey = QString::fromLatin1(source);
+        if (settings.contains(sourceKey)) {
+            native.insert(QString::fromLatin1(destination),
+                          settings.value(sourceKey));
+        }
+    };
+    copy("peer-port-random-on-start", "random_port");
+    copy("dht-enabled", "dht");
+    copy("pex-enabled", "utpex");
+    copy("lpd-enabled", "lsd");
+    copy("peer-limit-global", "max_connections_global");
+    copy("peer-limit-per-torrent", "max_connections_per_torrent");
+    copy("download-queue-size", "max_active_downloading");
+    copy("seed-queue-size", "max_active_seeding");
+    copy("queue-stalled-enabled", "dont_count_slow_torrents");
+    copy("queue-stalled-minutes", "inactive_down");
+    copy("download-dir", "download_location");
+    copy("seedRatioLimited", "stop_seed_at_ratio");
+    copy("seedRatioLimit", "stop_seed_ratio");
+
+    if (settings.contains(QStringLiteral("peer-port"))) {
+        const int port =
+            settings.value(QStringLiteral("peer-port")).toInt();
+        native.insert(QStringLiteral("listen_ports"),
+                      QJsonArray{port, port});
+    }
+    if (settings.contains(QStringLiteral("port-forwarding-enabled"))) {
+        const bool enabled =
+            settings.value(
+                QStringLiteral("port-forwarding-enabled")).toBool();
+        native.insert(QStringLiteral("upnp"), enabled);
+        native.insert(QStringLiteral("natpmp"), enabled);
+    }
+    if (settings.contains(QStringLiteral("start-added-torrents"))) {
+        native.insert(
+            QStringLiteral("add_paused"),
+            !settings.value(QStringLiteral("start-added-torrents")).toBool());
+    }
+    if (settings.contains(QStringLiteral("download-queue-enabled"))) {
+        const bool enabled =
+            settings.value(QStringLiteral("download-queue-enabled")).toBool();
+        const int limit =
+            settings.contains(QStringLiteral("download-queue-size"))
+                ? settings.value(QStringLiteral("download-queue-size")).toInt(5)
+                : m_sessionConfig
+                      .value(QStringLiteral("max_active_downloading"))
+                      .toInt(5);
+        native.insert(QStringLiteral("max_active_downloading"),
+                      enabled ? limit : -1);
+    }
+    if (settings.contains(QStringLiteral("seed-queue-enabled"))) {
+        const bool enabled =
+            settings.value(QStringLiteral("seed-queue-enabled")).toBool();
+        const int limit =
+            settings.contains(QStringLiteral("seed-queue-size"))
+                ? settings.value(QStringLiteral("seed-queue-size")).toInt(5)
+                : m_sessionConfig
+                      .value(QStringLiteral("max_active_seeding"))
+                      .toInt(5);
+        native.insert(QStringLiteral("max_active_seeding"),
+                      enabled ? limit : -1);
+    }
+    if (settings.contains(QStringLiteral("encryption"))) {
+        const QString encryption =
+            settings.value(QStringLiteral("encryption")).toString();
+        const int policy =
+            encryption == QStringLiteral("required")
+                ? 0
+                : (encryption == QStringLiteral("disabled") ? 2 : 1);
+        native.insert(QStringLiteral("enc_in_policy"), policy);
+        native.insert(QStringLiteral("enc_out_policy"), policy);
+    }
+
+    const auto denormalizeRate =
+        [this, &settings, &native](const char *enabledKey,
+                                   const char *limitKey,
+                                   const char *nativeKey) {
+            const QString enabled = QString::fromLatin1(enabledKey);
+            const QString limit = QString::fromLatin1(limitKey);
+            if (!settings.contains(enabled) && !settings.contains(limit))
+                return;
+
+            const bool isEnabled =
+                settings.contains(enabled)
+                    ? settings.value(enabled).toBool()
+                    : m_sessionConfig
+                              .value(QString::fromLatin1(nativeKey))
+                              .toDouble(-1.0) >= 0.0;
+            const double value =
+                settings.contains(limit)
+                    ? settings.value(limit).toDouble()
+                    : m_sessionConfig
+                          .value(QString::fromLatin1(nativeKey))
+                          .toDouble(-1.0);
+            native.insert(QString::fromLatin1(nativeKey),
+                          isEnabled ? std::max(0.0, value) : -1.0);
+        };
+    denormalizeRate("speed-limit-down-enabled", "speed-limit-down",
+                    "max_download_speed");
+    denormalizeRate("speed-limit-up-enabled", "speed-limit-up",
+                    "max_upload_speed");
+
+    if (native.isEmpty()) {
+        emit commandSucceeded(QStringLiteral("session-set"));
+        return;
+    }
+    postCommand(QStringLiteral("core.set_config"),
+                QJsonArray{native},
+                QStringLiteral("session-set"));
+}
+void DelugeBackend::getFreeSpace(const QString &path)
+{
+    if (path.trimmed().isEmpty())
+        return;
+    RequestContext context;
+    context.kind = RequestKind::FreeSpace;
+    context.method = QStringLiteral("core.get_free_space");
+    context.requestedPath = path.trimmed();
+    context.parameters = QJsonArray{context.requestedPath};
+    queueOrPostRpc(context);
+}
+void DelugeBackend::testPortForwarding()
+{
+    RequestContext context;
+    context.kind = RequestKind::PortTest;
+    context.method = QStringLiteral("core.test_listen_port");
+    queueOrPostRpc(context);
+}
 void DelugeBackend::updateBlocklist(const QJsonObject &)
 { emitUnsupported(tr("Update blocklist")); }

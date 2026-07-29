@@ -393,7 +393,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
 <context>
     <name>DelugeBackend</name>
     <message>
-        <location filename="../../delugebackend.cpp" line="+369"/>
+        <location filename="../../delugebackend.cpp" line="+375"/>
         <source>Deluge returned JSON-RPC error %1.</source>
         <translation>Deluge a renvoyé l&apos;erreur JSON-RPC %1.</translation>
     </message>
@@ -403,7 +403,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Échec de l&apos;authentification Deluge : %1</translation>
     </message>
     <message>
-        <location line="+78"/>
+        <location line="+92"/>
         <source>the server returned HTTP %1</source>
         <translation>le serveur a renvoyé HTTP %1</translation>
     </message>
@@ -413,12 +413,12 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Échec de la vérification de la connexion Deluge : %1</translation>
     </message>
     <message>
-        <location line="-24"/>
+        <location line="-38"/>
         <source>Deluge torrent request failed: %1</source>
         <translation>Échec de la requête de torrents Deluge : %1</translation>
     </message>
     <message>
-        <location line="+81"/>
+        <location line="+95"/>
         <source>the response was not a JSON object</source>
         <translation>la réponse n&apos;était pas un objet JSON</translation>
     </message>
@@ -444,6 +444,26 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
     </message>
     <message>
         <location line="+32"/>
+        <source>Deluge returned invalid session settings.</source>
+        <translation>Deluge a renvoyé des paramètres de session non valides.</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>Deluge returned invalid session statistics.</source>
+        <translation>Deluge a renvoyé des statistiques de session non valides.</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Deluge returned invalid free-space data.</source>
+        <translation>Deluge a renvoyé des données d’espace libre non valides.</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>Deluge returned an invalid port-test result.</source>
+        <translation>Deluge a renvoyé un résultat de test de port non valide.</translation>
+    </message>
+    <message>
+        <location line="+11"/>
         <source>Deluge returned an invalid torrent list.</source>
         <translation>Deluge a renvoyé une liste de torrents invalide.</translation>
     </message>
@@ -458,7 +478,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Deluge n&apos;a pas renvoyé d&apos;identifiant de torrent.</translation>
     </message>
     <message>
-        <location line="+194"/>
+        <location line="+269"/>
         <source>Refresh the file list before changing Deluge file priorities.</source>
         <translation>Actualisez la liste des fichiers avant de modifier les priorités de fichiers Deluge.</translation>
     </message>
@@ -478,12 +498,12 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Impossible d&apos;ouvrir le fichier torrent&#xa0;: %1</translation>
     </message>
     <message>
-        <location line="-497"/>
+        <location line="-572"/>
         <source>Deluge returned invalid torrent details.</source>
         <translation>Deluge a renvoyé des détails de torrent non valides.</translation>
     </message>
     <message>
-        <location line="+531"/>
+        <location line="+606"/>
         <source>No magnet link was specified.</source>
         <translation>Aucun lien magnet n’a été spécifié.</translation>
     </message>
@@ -549,12 +569,11 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation type="vanished">Déplacer à la fin de la file d&apos;attente</translation>
     </message>
     <message>
-        <location line="+36"/>
         <source>Set session settings</source>
-        <translation>Définir les paramètres de session</translation>
+        <translation type="vanished">Définir les paramètres de session</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+180"/>
         <source>Update blocklist</source>
         <translation>Mettre à jour la liste de blocage</translation>
     </message>
