@@ -85,6 +85,12 @@ add_planetary_test(test_serverprofile
     ${CMAKE_SOURCE_DIR}/serverprofile.h
 )
 
+add_planetary_test(test_windowlayoutcontroller
+    test_windowlayoutcontroller.cpp
+    ${CMAKE_SOURCE_DIR}/windowlayoutcontroller.cpp
+    ${CMAKE_SOURCE_DIR}/windowlayoutcontroller.h
+)
+
 add_planetary_test(test_torrentfiltercontroller
     test_torrentfiltercontroller.cpp
     ${CMAKE_SOURCE_DIR}/torrent.cpp

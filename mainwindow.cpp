@@ -79,6 +79,7 @@
 #include "diagnosticsdialog.h"
 #include "serverconfig.h"
 #include "serverselectioncontroller.h"
+#include "windowlayoutcontroller.h"
 #include "appsettings.h"
 #include "serversetupwizard.h"
 #include "torrentsortproxymodel.h"
@@ -96,65 +97,6 @@ constexpr int MinimumUpdateIntervalSeconds = 1;
 constexpr int MaximumUpdateIntervalSeconds = 3600;
 constexpr qint64 SlowRpcRefreshIntervalMs = 60 * 1000;
 constexpr int CommandRefreshDebounceMs = 200;
-constexpr int DefaultDetailsPaneHeight = 300;
-constexpr int DefaultFilterSidebarWidth = 220;
-constexpr Qt::ToolButtonStyle DefaultToolBarButtonStyle = Qt::ToolButtonIconOnly;
-
-bool isSupportedToolBarButtonStyle(Qt::ToolButtonStyle style)
-{
-    switch (style) {
-    case Qt::ToolButtonIconOnly:
-    case Qt::ToolButtonTextOnly:
-    case Qt::ToolButtonTextBesideIcon:
-        return true;
-    default:
-        return false;
-    }
-}
-
-Qt::ToolButtonStyle toolButtonStyleFromVariant(const QVariant &value, Qt::ToolButtonStyle fallback)
-{
-    bool ok = false;
-    const int styleValue = value.toInt(&ok);
-
-    if (!ok)
-        return fallback;
-
-    const auto style = static_cast<Qt::ToolButtonStyle>(styleValue);
-
-    return isSupportedToolBarButtonStyle(style) ? style : fallback;
-}
-
-
-void syncToolBarStyleActionGroup(QActionGroup *group, Qt::ToolButtonStyle style)
-{
-    if (!group)
-        return;
-
-    QAction *matchingAction = nullptr;
-    const QList<QAction *> actions = group->actions();
-
-    for (QAction *action : std::as_const(actions)) {
-        if (toolButtonStyleFromVariant(action->data(), DefaultToolBarButtonStyle) == style) {
-            matchingAction = action;
-            break;
-        }
-    }
-
-    const QSignalBlocker blocker(group);
-    const bool wasExclusive = group->isExclusive();
-
-    group->setExclusive(false);
-
-    for (QAction *action : std::as_const(actions))
-        action->setChecked(false);
-
-    group->setExclusive(wasExclusive);
-
-    if (matchingAction)
-        matchingAction->setChecked(true);
-}
-
 bool jsonBoolAny(const QJsonObject &object,
                  std::initializer_list<const char *> keys,
                  bool *found = nullptr)
@@ -384,51 +326,36 @@ void MainWindow::focusFileSearch()
 
 void MainWindow::setupViewMenu()
 {
-    ui->toolBar->setWindowTitle(tr("Toolbar"));
+    WindowLayoutController::Widgets widgets;
+    widgets.toolBar = ui->toolBar;
+    widgets.statusBar = ui->statusbar;
+    widgets.contentSplitter = ui->splitter_2;
+    widgets.mainSplitter = ui->splitter;
+    widgets.detailsPane = detailsPaneStack;
+    widgets.filterSidebar = ui->filterPanel;
+    windowLayoutController =
+        new WindowLayoutController(this, widgets, this);
+    windowLayoutController->setupViewMenu(
+        menuBar(), ui->menuHelp->menuAction());
+    viewMenu = windowLayoutController->viewMenu();
 
-    viewMenu = new QMenu(tr("View"), this);
-    menuBar()->insertMenu(ui->menuHelp->menuAction(), viewMenu);
+    connect(windowLayoutController,
+            &WindowLayoutController::detailsPaneVisibilityChanged,
+            this,
+            [this](bool visible) {
+                if (!visible) {
+                    client->cancelTorrentDetailRequests();
+                    return;
+                }
 
-    showToolBarAction = new QAction(tr("Toolbar"), this);
-    showToolBarAction->setCheckable(true);
-    showToolBarAction->setToolTip(tr("Show or hide the main toolbar"));
-
-    showStatusBarAction = new QAction(tr("Status Bar"), this);
-    showStatusBarAction->setCheckable(true);
-    showStatusBarAction->setToolTip(tr("Show or hide the status bar"));
-
-    showDetailsPaneAction = new QAction(tr("Details Pane"), this);
-    showDetailsPaneAction->setCheckable(true);
-    showDetailsPaneAction->setToolTip(
-        tr("Show or hide the selected torrent details pane"));
-
-    showFilterSidebarAction = new QAction(tr("Filter Sidebar"), this);
-    showFilterSidebarAction->setCheckable(true);
-    showFilterSidebarAction->setToolTip(
-        tr("Show or hide torrent status, tracker, folder, label, and group filters"));
-
-    viewMenu->addAction(showToolBarAction);
-    viewMenu->addAction(showStatusBarAction);
-    viewMenu->addAction(showDetailsPaneAction);
-    viewMenu->addAction(showFilterSidebarAction);
-    viewMenu->addSeparator();
-
-    auto *toolBarStyleMenu = viewMenu->addMenu(tr("Toolbar Display"));
-    toolBarStyleActionGroup = new QActionGroup(this);
-    toolBarStyleActionGroup->setExclusive(true);
-
-    auto addStyleAction = [this, toolBarStyleMenu](const QString &text,
-                                                   Qt::ToolButtonStyle style) {
-        QAction *action = toolBarStyleMenu->addAction(text);
-        action->setCheckable(true);
-        action->setData(static_cast<int>(style));
-        toolBarStyleActionGroup->addAction(action);
-        return action;
-    };
-
-    addStyleAction(tr("Icons Only"), Qt::ToolButtonIconOnly);
-    addStyleAction(tr("Icons and Text"), Qt::ToolButtonTextBesideIcon);
-    addStyleAction(tr("Text Only"), Qt::ToolButtonTextOnly);
+                // Hidden panes suspend detail RPCs. Rehydrate the selected
+                // torrent once when the layout controller exposes the pane.
+                const TorrentKey torrentKey = currentTorrentKey();
+                if (isValidTorrentKey(torrentKey)) {
+                    client->getTorrentDetails(torrentKey);
+                    refreshCurrentTorrentTabData();
+                }
+            });
 
     viewMenu->addSeparator();
     statisticsAction = viewMenu->addAction(tr("Statistics…"));
@@ -445,69 +372,6 @@ void MainWindow::setupViewMenu()
                         capabilities.sessionStatistics);
             });
 
-    connect(showToolBarAction, &QAction::toggled,
-            this, &MainWindow::setToolBarVisibleFromAction);
-    connect(showStatusBarAction, &QAction::toggled,
-            this, &MainWindow::setStatusBarVisibleFromAction);
-    connect(showDetailsPaneAction, &QAction::toggled,
-            this, &MainWindow::setDetailsPaneVisibleFromAction);
-    connect(showFilterSidebarAction, &QAction::toggled,
-            this, &MainWindow::setFilterSidebarVisibleFromAction);
-    connect(toolBarStyleActionGroup, &QActionGroup::triggered,
-            this, &MainWindow::setToolBarButtonStyleFromAction);
-
-    connect(ui->splitter_2, &QSplitter::splitterMoved,
-            this, [this](int, int index) {
-                if (index != 1)
-                    return;
-
-                const QList<int> sizes = ui->splitter_2->sizes();
-                const int paneSize = sizes.value(1);
-
-                if (paneSize > 0) {
-                    detailsPaneHeight = paneSize;
-                    return;
-                }
-
-                // A fully collapsed splitter handle is equivalent to using
-                // the View action and must also suspend hidden detail work.
-                if (showDetailsPaneAction && showDetailsPaneAction->isChecked())
-                    showDetailsPaneAction->setChecked(false);
-            });
-
-    connect(ui->splitter, &QSplitter::splitterMoved,
-            this, [this](int, int index) {
-                if (index != 1)
-                    return;
-
-                const int sidebarSize = ui->splitter->sizes().value(0);
-
-                if (sidebarSize > 0) {
-                    filterSidebarWidth = sidebarSize;
-                    return;
-                }
-
-                // Collapsing the horizontal handle is another route to the
-                // same state as the View action; keep persistence in sync.
-                if (showFilterSidebarAction
-                    && showFilterSidebarAction->isChecked()) {
-                    showFilterSidebarAction->setChecked(false);
-                }
-            });
-
-    connect(ui->toolBar, &QToolBar::visibilityChanged,
-            this, [this](bool visible) {
-                if (showToolBarAction && showToolBarAction->isChecked() != visible) {
-                    const QSignalBlocker blocker(showToolBarAction);
-                    showToolBarAction->setChecked(visible);
-                }
-
-                QSettings settings;
-                settings.setValue(SettingsKeys::MainWindowToolBarVisible, visible);
-                settings.sync();
-            });
-
-    restoreViewSettings();
 }
 
 void MainWindow::setupActivityDock()
@@ -573,11 +437,8 @@ void MainWindow::setupActivityDock()
                 }
             });
 
-    QSettings settings;
-    const QByteArray state = settings.value(SettingsKeys::MainWindowState).toByteArray();
-    if (!state.isEmpty()) {
-        restoreState(state, 2);
-    } else {
+    if (!windowLayoutController
+        || !windowLayoutController->restoreWindowState()) {
         activityDock->hide();
     }
 
@@ -601,237 +462,11 @@ void MainWindow::recordActivity(const QString &event, const QString &details,
         activityTable->scrollToBottom();
 }
 
-void MainWindow::restoreViewSettings()
-{
-    QSettings settings;
-
-    const bool toolBarVisible =
-        settings.value(SettingsKeys::MainWindowToolBarVisible, true).toBool();
-    const bool statusBarVisible =
-        settings.value(SettingsKeys::MainWindowStatusBarVisible, true).toBool();
-    const bool detailsPaneVisible =
-        settings.value(SettingsKeys::MainWindowDetailsPaneVisible, true).toBool();
-    const bool filterSidebarVisible =
-        settings.value(SettingsKeys::MainWindowFilterSidebarVisible, true).toBool();
-    detailsPaneHeight =
-        qMax(1, settings.value(SettingsKeys::MainWindowDetailsPaneHeight,
-                               DefaultDetailsPaneHeight).toInt());
-    filterSidebarWidth =
-        qMax(1, settings.value(SettingsKeys::MainWindowFilterSidebarWidth,
-                               DefaultFilterSidebarWidth).toInt());
-    const Qt::ToolButtonStyle toolBarStyle = toolButtonStyleFromVariant(
-        settings.value(SettingsKeys::MainWindowToolBarStyle,
-                       static_cast<int>(DefaultToolBarButtonStyle)),
-        DefaultToolBarButtonStyle);
-
-    {
-        const QSignalBlocker blocker(showToolBarAction);
-        showToolBarAction->setChecked(toolBarVisible);
-    }
-
-    {
-        const QSignalBlocker blocker(showStatusBarAction);
-        showStatusBarAction->setChecked(statusBarVisible);
-    }
-
-    {
-        const QSignalBlocker blocker(showDetailsPaneAction);
-        showDetailsPaneAction->setChecked(detailsPaneVisible);
-    }
-
-    {
-        const QSignalBlocker blocker(showFilterSidebarAction);
-        showFilterSidebarAction->setChecked(filterSidebarVisible);
-    }
-
-    ui->toolBar->setVisible(toolBarVisible);
-    ui->statusbar->setVisible(statusBarVisible);
-    if (detailsPaneStack)
-        detailsPaneStack->setVisible(detailsPaneVisible);
-    ui->filterPanel->setVisible(filterSidebarVisible);
-
-    if (detailsPaneVisible) {
-        // Defer sizing until the event loop has applied the restored main
-        // window geometry; both the filter and torrent list then share all
-        // space above the requested details height.
-        QTimer::singleShot(0, this, [this]() {
-            const int totalHeight = ui->splitter_2->height();
-            ui->splitter_2->setSizes(
-                { qMax(1, totalHeight - detailsPaneHeight), detailsPaneHeight });
-        });
-    }
-
-    if (filterSidebarVisible) {
-        QTimer::singleShot(0, this, [this]() {
-            const int totalWidth = ui->splitter->width();
-            ui->splitter->setSizes(
-                { filterSidebarWidth, qMax(1, totalWidth - filterSidebarWidth) });
-        });
-    }
-
-    applyToolBarButtonStyle(toolBarStyle);
-}
-
-void MainWindow::saveViewSettings() const
-{
-    QSettings settings;
-    // isVisible() also becomes false when the main window is hidden to the
-    // tray. Persist the child's explicit state so an application-level hide
-    // cannot silently disable these widgets for the next launch.
-    settings.setValue(SettingsKeys::MainWindowToolBarVisible, !ui->toolBar->isHidden());
-    settings.setValue(SettingsKeys::MainWindowStatusBarVisible, !ui->statusbar->isHidden());
-    settings.setValue(SettingsKeys::MainWindowDetailsPaneVisible,
-                      showDetailsPaneAction && showDetailsPaneAction->isChecked());
-    settings.setValue(SettingsKeys::MainWindowDetailsPaneHeight, detailsPaneHeight);
-    settings.setValue(SettingsKeys::MainWindowFilterSidebarVisible,
-                      showFilterSidebarAction && showFilterSidebarAction->isChecked());
-    settings.setValue(SettingsKeys::MainWindowFilterSidebarWidth, filterSidebarWidth);
-
-    const Qt::ToolButtonStyle toolBarStyle = toolButtonStyleFromVariant(
-        static_cast<int>(ui->toolBar->toolButtonStyle()),
-        DefaultToolBarButtonStyle);
-    settings.setValue(SettingsKeys::MainWindowToolBarStyle,
-                      static_cast<int>(toolBarStyle));
-    settings.setValue(SettingsKeys::MainWindowState, saveState(2));
-    settings.sync();
-}
-
-void MainWindow::setToolBarVisibleFromAction(bool visible)
-{
-    ui->toolBar->setVisible(visible);
-
-    QSettings settings;
-    settings.setValue(SettingsKeys::MainWindowToolBarVisible, visible);
-    settings.sync();
-}
-
-void MainWindow::setStatusBarVisibleFromAction(bool visible)
-{
-    ui->statusbar->setVisible(visible);
-
-    QSettings settings;
-    settings.setValue(SettingsKeys::MainWindowStatusBarVisible, visible);
-    settings.sync();
-}
-
-void MainWindow::setDetailsPaneVisibleFromAction(bool visible)
-{
-    if (!visible) {
-        const int currentHeight = ui->splitter_2->sizes().value(1);
-        if (currentHeight > 0)
-            detailsPaneHeight = currentHeight;
-
-        if (detailsPaneStack)
-            detailsPaneStack->hide();
-        client->cancelTorrentDetailRequests();
-    } else {
-        if (detailsPaneStack)
-            detailsPaneStack->show();
-
-        const int totalHeight = ui->splitter_2->height();
-        ui->splitter_2->setSizes(
-            { qMax(1, totalHeight - detailsPaneHeight), detailsPaneHeight });
-
-        // Hidden panes do not receive live detail updates. Rehydrate both the
-        // summary and the active tab once when the user exposes the pane.
-        const TorrentKey torrentKey = currentTorrentKey();
-        if (isValidTorrentKey(torrentKey)) {
-            client->getTorrentDetails(torrentKey);
-            refreshCurrentTorrentTabData();
-        }
-    }
-
-    QSettings settings;
-    settings.setValue(SettingsKeys::MainWindowDetailsPaneVisible, visible);
-    settings.setValue(SettingsKeys::MainWindowDetailsPaneHeight, detailsPaneHeight);
-    settings.sync();
-}
-
-void MainWindow::setFilterSidebarVisibleFromAction(bool visible)
-{
-    if (!visible) {
-        const int currentWidth = ui->splitter->sizes().value(0);
-        if (currentWidth > 0)
-            filterSidebarWidth = currentWidth;
-
-        // Filtering state belongs to the controller and intentionally remains
-        // active while its presentation sidebar is hidden.
-        ui->filterPanel->hide();
-    } else {
-        ui->filterPanel->show();
-
-        const int totalWidth = ui->splitter->width();
-        ui->splitter->setSizes(
-            { filterSidebarWidth, qMax(1, totalWidth - filterSidebarWidth) });
-    }
-
-    QSettings settings;
-    settings.setValue(SettingsKeys::MainWindowFilterSidebarVisible, visible);
-    settings.setValue(SettingsKeys::MainWindowFilterSidebarWidth, filterSidebarWidth);
-    settings.sync();
-}
-
-void MainWindow::setToolBarButtonStyleFromAction(QAction *action)
-{
-    if (!action)
-        return;
-
-    const Qt::ToolButtonStyle style = toolButtonStyleFromVariant(
-        action->data(),
-        ui->toolBar->toolButtonStyle());
-
-    applyToolBarButtonStyle(style);
-
-    QSettings settings;
-    settings.setValue(SettingsKeys::MainWindowToolBarStyle, static_cast<int>(style));
-    settings.sync();
-}
-
-void MainWindow::applyToolBarButtonStyle(Qt::ToolButtonStyle style)
-{
-    if (!isSupportedToolBarButtonStyle(style))
-        style = DefaultToolBarButtonStyle;
-
-    ui->toolBar->setToolButtonStyle(style);
-    syncToolBarStyleActionGroup(toolBarStyleActionGroup, style);
-}
-
 QMenu *MainWindow::createPopupMenu()
 {
-    auto *menu = new QMenu(this);
-
-    QAction *toolBarVisibilityAction = menu->addAction(
-        ui->toolBar->isVisible() ? tr("Hide Toolbar") : tr("Show Toolbar"));
-    connect(toolBarVisibilityAction, &QAction::triggered,
-            this, [this]() {
-                showToolBarAction->setChecked(!ui->toolBar->isVisible());
-            });
-
-    menu->addSeparator();
-
-    auto *toolBarStyleMenu = menu->addMenu(tr("Toolbar Display"));
-    auto *styleGroup = new QActionGroup(toolBarStyleMenu);
-    styleGroup->setExclusive(true);
-
-    auto addStyleAction = [this, toolBarStyleMenu, styleGroup](const QString &text,
-                                                               Qt::ToolButtonStyle style) {
-        QAction *action = toolBarStyleMenu->addAction(text);
-        action->setCheckable(true);
-        action->setChecked(ui->toolBar->toolButtonStyle() == style);
-        action->setData(static_cast<int>(style));
-        styleGroup->addAction(action);
-        return action;
-    };
-
-    addStyleAction(tr("Icons Only"), Qt::ToolButtonIconOnly);
-    addStyleAction(tr("Icons and Text"), Qt::ToolButtonTextBesideIcon);
-    addStyleAction(tr("Text Only"), Qt::ToolButtonTextOnly);
-    syncToolBarStyleActionGroup(styleGroup, ui->toolBar->toolButtonStyle());
-
-    connect(styleGroup, &QActionGroup::triggered,
-            this, &MainWindow::setToolBarButtonStyleFromAction);
-
-    return menu;
+    return windowLayoutController
+               ? windowLayoutController->createToolBarPopupMenu()
+               : QMainWindow::createPopupMenu();
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -1665,7 +1300,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
     // Persist layout before the tray controller potentially consumes the close
     // and converts it into a hide operation.
     saveTableViewState();
-    saveViewSettings();
+    if (windowLayoutController)
+        windowLayoutController->saveState();
 
     if (trayController && trayController->handleCloseEvent(event))
         return;
@@ -1930,10 +1566,8 @@ void MainWindow::applyUpdateInterval()
 
 bool MainWindow::currentTabWantsLiveTorrentDetails() const
 {
-    return showDetailsPaneAction
-           && showDetailsPaneAction->isChecked()
-           && detailsPaneStack
-           && !detailsPaneStack->isHidden()
+    return windowLayoutController
+           && windowLayoutController->detailsPaneVisible()
            && torrentGeneralController
            && torrentGeneralController->wantsLiveTorrentDetails(ui->tabWidget->currentWidget());
 }
@@ -1953,10 +1587,8 @@ void MainWindow::refreshCurrentTorrentLiveDetailsIfNeeded()
 
 void MainWindow::refreshCurrentTorrentTabData()
 {
-    if (!showDetailsPaneAction
-        || !showDetailsPaneAction->isChecked()
-        || !detailsPaneStack
-        || detailsPaneStack->isHidden()) {
+    if (!windowLayoutController
+        || !windowLayoutController->detailsPaneVisible()) {
         return;
     }
 

@@ -42,6 +42,7 @@ class StatusBarController;
 class NotificationController;
 class SessionOverviewWidget;
 class ServerSelectionController;
+class WindowLayoutController;
 
 /*
  * Application composition root for the desktop UI. MainWindow owns the RPC
@@ -92,11 +93,6 @@ private slots:
     void on_actionQuit_triggered();
     void exportSettings();
     void importSettings();
-    void setToolBarVisibleFromAction(bool visible);
-    void setStatusBarVisibleFromAction(bool visible);
-    void setDetailsPaneVisibleFromAction(bool visible);
-    void setFilterSidebarVisibleFromAction(bool visible);
-    void setToolBarButtonStyleFromAction(QAction *action);
 
 private:
     // Designer-owned widget tree and the shared polling/data pipeline.
@@ -142,9 +138,6 @@ private:
     void focusFileSearch();
     void recordActivity(const QString &event, const QString &details, const QString &server);
     void setupPlatformMenus();
-    void restoreViewSettings();
-    void saveViewSettings() const;
-    void applyToolBarButtonStyle(Qt::ToolButtonStyle style);
 
     // Session settings are fetched asynchronously. These flags identify which
     // user interaction, if any, should consume the next settings response.
@@ -175,15 +168,11 @@ private:
     StatusBarController *statusBarController = nullptr;
     NotificationController *notificationController = nullptr;
     ServerSelectionController *serverSelectionController = nullptr;
+    WindowLayoutController *windowLayoutController = nullptr;
     QStackedWidget *detailsPaneStack = nullptr;
     SessionOverviewWidget *sessionOverviewWidget = nullptr;
     QMenu *viewMenu = nullptr;
-    QAction *showToolBarAction = nullptr;
-    QAction *showStatusBarAction = nullptr;
-    QAction *showDetailsPaneAction = nullptr;
-    QAction *showFilterSidebarAction = nullptr;
     QAction *statisticsAction = nullptr;
-    QActionGroup *toolBarStyleActionGroup = nullptr;
     QDockWidget *activityDock = nullptr;
     QTableView *activityTable = nullptr;
     ActivityLogModel *activityLogModel = nullptr;
@@ -193,8 +182,6 @@ private:
     bool activityConnectionEstablished = false;
     bool activityConnectionFailed = false;
     QStringList pendingLaunchArguments;
-    int detailsPaneHeight = 300;
-    int filterSidebarWidth = 220;
 
 protected:
     void closeEvent(QCloseEvent *event) override;

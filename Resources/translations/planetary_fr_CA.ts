@@ -904,7 +904,7 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+23"/>
-        <location filename="../../mainwindow.cpp" line="+1811"/>
+        <location filename="../../mainwindow.cpp" line="+1447"/>
         <source>Magnet link:</source>
         <translation>Lien magnet :</translation>
     </message>
@@ -1000,7 +1000,7 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+93"/>
-        <location filename="../../mainwindow.cpp" line="+372"/>
+        <location filename="../../mainwindow.cpp" line="+368"/>
         <source>Server Settings...</source>
         <translation>Paramètres du serveur...</translation>
     </message>
@@ -1095,7 +1095,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Importer les paramètres...</translation>
     </message>
     <message>
-        <location filename="../../mainwindow.cpp" line="-1004"/>
+        <location filename="../../mainwindow.cpp" line="-1001"/>
         <source>Adding torrent...</source>
         <translation>Ajout du torrent...</translation>
     </message>
@@ -1105,7 +1105,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Ajout du torrent annulé.</translation>
     </message>
     <message>
-        <location line="+594"/>
+        <location line="+595"/>
         <source>Torrent Files (*.torrent);;All Files (*)</source>
         <translation>Fichiers torrent (*.torrent);;Tous les fichiers (*)</translation>
     </message>
@@ -1125,7 +1125,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Intervalle de mise à jour : %1 secondes</translation>
     </message>
     <message>
-        <location line="-1696"/>
+        <location line="-1390"/>
         <source>Settings…</source>
         <translation>Paramètres…</translation>
     </message>
@@ -1136,12 +1136,12 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+3"/>
-        <location line="+311"/>
+        <location line="+233"/>
         <source>Copy</source>
         <translation>Copie</translation>
     </message>
     <message>
-        <location line="-306"/>
+        <location line="-228"/>
         <source>Select All</source>
         <translation>Sélectionner tout</translation>
     </message>
@@ -1156,77 +1156,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Rechercher des fichiers</translation>
     </message>
     <message>
-        <location line="+127"/>
-        <location line="+5"/>
-        <source>Toolbar</source>
-        <translation>Barre d&apos;outils</translation>
-    </message>
-    <message>
-        <location line="-3"/>
-        <source>View</source>
-        <translation>Voir</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Show or hide the main toolbar</source>
-        <translation>Afficher ou masquer la barre d&apos;outils principale</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Status Bar</source>
-        <translation>Barre d&apos;état</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Show or hide the status bar</source>
-        <translation>Afficher ou masquer la barre d&apos;état</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Details Pane</source>
-        <translation>Volet Détails</translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <source>Show or hide the selected torrent details pane</source>
-        <translation>Afficher ou masquer le volet de détails du torrent sélectionné</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Filter Sidebar</source>
-        <translation>Filtrer la barre latérale</translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <source>Show or hide torrent status, tracker, folder, label, and group filters</source>
-        <translation>Afficher ou masquer les filtres d’état, de tracker, de dossier, d’étiquette et de groupe</translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <location line="+396"/>
-        <source>Toolbar Display</source>
-        <translation>Affichage de la barre d&apos;outils</translation>
-    </message>
-    <message>
-        <location line="-383"/>
-        <location line="+397"/>
-        <source>Icons Only</source>
-        <translation>Icônes uniquement</translation>
-    </message>
-    <message>
-        <location line="-396"/>
-        <location line="+397"/>
-        <source>Icons and Text</source>
-        <translation>Icônes et texte</translation>
-    </message>
-    <message>
-        <location line="-396"/>
-        <location line="+397"/>
-        <source>Text Only</source>
-        <translation>Texte uniquement</translation>
-    </message>
-    <message>
-        <location line="-394"/>
+        <location line="+159"/>
         <source>Statistics…</source>
         <translation>Statistiques…</translation>
     </message>
@@ -1236,7 +1166,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Afficher les statistiques de session</translation>
     </message>
     <message>
-        <location line="+80"/>
+        <location line="+17"/>
         <location line="+30"/>
         <source>Activity</source>
         <translation>Activité</translation>
@@ -1252,17 +1182,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Effacer l&apos;activité</translation>
     </message>
     <message>
-        <location line="+248"/>
-        <source>Hide Toolbar</source>
-        <translation>Masquer la barre d&apos;outils</translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>Show Toolbar</source>
-        <translation>Afficher la barre d&apos;outils</translation>
-    </message>
-    <message>
-        <location line="+417"/>
+        <location line="+436"/>
         <source>Server changed</source>
         <translation>Le serveur a changé</translation>
     </message>
@@ -1347,12 +1267,12 @@ Enregistrer ce mappage quand même?</translation>
         <translation>L&apos;historique d&apos;importation du dossier de surveillance a été effacé.</translation>
     </message>
     <message>
-        <location line="+172"/>
+        <location line="+173"/>
         <source>Add Torrent Files</source>
         <translation>Ajouter des fichiers torrent</translation>
     </message>
     <message>
-        <location line="+396"/>
+        <location line="+392"/>
         <source>%1 Settings...</source>
         <translation>Paramètres %1...</translation>
     </message>
@@ -1801,7 +1721,7 @@ Continuer?</translation>
     <message>
         <location filename="../../serverconfig.ui" line="+17"/>
         <location filename="../../serverconfig.cpp" line="+54"/>
-        <location line="+680"/>
+        <location line="+671"/>
         <location line="+9"/>
         <source>Server Configuration</source>
         <translation>Configuration du serveur</translation>
@@ -1937,26 +1857,26 @@ Continuer?</translation>
         <translation> (par défaut)</translation>
     </message>
     <message>
-        <location line="-138"/>
-        <location line="+257"/>
+        <location line="-129"/>
+        <location line="+248"/>
         <source>New Server</source>
         <translation>Nouveau serveur</translation>
     </message>
     <message>
-        <location line="-310"/>
-        <location line="+29"/>
+        <location line="-303"/>
+        <location line="+31"/>
         <source>qBittorrent</source>
         <translation>qBittorrent</translation>
     </message>
     <message>
-        <location line="-27"/>
-        <location line="+28"/>
+        <location line="-29"/>
+        <location line="+30"/>
         <source>Deluge</source>
         <translation>Deluge</translation>
     </message>
     <message>
-        <location line="-26"/>
-        <location line="+24"/>
+        <location line="-28"/>
+        <location line="+26"/>
         <source>Transmission</source>
         <translation>Transmission</translation>
     </message>
@@ -1966,7 +1886,7 @@ Continuer?</translation>
         <translation>À partir du fichier…</translation>
     </message>
     <message>
-        <location line="+137"/>
+        <location line="+128"/>
         <source>%1 — %2</source>
         <translation>%1 — %2</translation>
     </message>
@@ -2186,7 +2106,7 @@ Continuer?</translation>
 <context>
     <name>ServerSetupWizard</name>
     <message>
-        <location filename="../../serversetupwizard.cpp" line="+52"/>
+        <location filename="../../serversetupwizard.cpp" line="+50"/>
         <source>Set Up Planetary</source>
         <translation>Configurer Planetary</translation>
     </message>
@@ -2281,7 +2201,7 @@ Continuer?</translation>
         <translation>Saisissez un nom et une URL de serveur HTTP ou HTTPS valide.</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+46"/>
         <source>Enter a valid HTTP or HTTPS server URL.</source>
         <translation>Saisissez une URL de serveur HTTP ou HTTPS valide.</translation>
     </message>
@@ -3991,7 +3911,7 @@ Dossier local&#xa0;:
 <context>
     <name>TorrentFilterController</name>
     <message>
-        <location filename="../../torrentfiltercontroller.cpp" line="+63"/>
+        <location filename="../../torrentfiltercontroller.cpp" line="+64"/>
         <source>Search torrents...</source>
         <translation>Rechercher des torrents...</translation>
     </message>
@@ -4002,93 +3922,93 @@ Dossier local&#xa0;:
     </message>
     <message>
         <location line="+1"/>
-        <location line="+433"/>
+        <location line="+465"/>
         <source>All</source>
         <translation>Tous</translation>
     </message>
     <message>
-        <location line="-432"/>
-        <location line="+434"/>
+        <location line="-464"/>
+        <location line="+466"/>
         <source>Downloading</source>
         <translation>Téléchargement</translation>
     </message>
     <message>
-        <location line="-433"/>
-        <location line="+435"/>
+        <location line="-465"/>
+        <location line="+467"/>
         <source>Waiting</source>
         <translation>En attente</translation>
     </message>
     <message>
-        <location line="-434"/>
-        <location line="+436"/>
+        <location line="-466"/>
+        <location line="+468"/>
         <source>Complete</source>
         <translation>Complet</translation>
     </message>
     <message>
-        <location line="-435"/>
-        <location line="+437"/>
+        <location line="-467"/>
+        <location line="+469"/>
         <source>Active</source>
         <translation>Actifs</translation>
     </message>
     <message>
-        <location line="-436"/>
-        <location line="+438"/>
+        <location line="-468"/>
+        <location line="+470"/>
         <source>Inactive</source>
         <translation>Inactifs</translation>
     </message>
     <message>
-        <location line="-437"/>
-        <location line="+439"/>
+        <location line="-469"/>
+        <location line="+471"/>
         <source>Stopped</source>
         <translation>Arrêtés</translation>
     </message>
     <message>
-        <location line="-438"/>
-        <location line="+440"/>
+        <location line="-470"/>
+        <location line="+472"/>
         <source>Error</source>
         <translation>Erreur</translation>
     </message>
     <message>
-        <location line="-432"/>
-        <location line="+504"/>
+        <location line="-464"/>
+        <location line="+536"/>
         <source>Trackers</source>
         <translation>Trackers</translation>
     </message>
     <message>
-        <location line="-503"/>
+        <location line="-535"/>
         <source>All Trackers</source>
         <translation>Tous les trackers</translation>
     </message>
     <message>
         <location line="+11"/>
-        <location line="+496"/>
+        <location line="+528"/>
         <source>Folders</source>
         <translation>Dossiers</translation>
     </message>
     <message>
-        <location line="-495"/>
+        <location line="-527"/>
         <source>All Folders</source>
         <translation>Tous les dossiers</translation>
     </message>
     <message>
         <location line="+12"/>
-        <location line="+487"/>
+        <location line="+519"/>
         <source>Labels</source>
         <translation>Étiquettes</translation>
     </message>
     <message>
-        <location line="-485"/>
+        <location line="-517"/>
         <source>Unlabelled</source>
         <translation>Sans étiquette</translation>
     </message>
     <message>
         <location line="+12"/>
-        <location line="+477"/>
+        <location line="+509"/>
         <source>Groups</source>
         <translation>Groupes</translation>
     </message>
     <message>
-        <location line="-475"/>
+        <location line="-507"/>
         <source>No Group</source>
         <translation>Aucun groupe</translation>
     </message>
@@ -4098,7 +4018,7 @@ Dossier local&#xa0;:
         <translation>Cliquez pour réduire ou développer cette section.</translation>
     </message>
     <message>
-        <location line="+330"/>
+        <location line="+362"/>
         <source>Filtered by label: Unlabelled</source>
         <translation>Filtré par étiquette&#xa0;: Sans étiquette</translation>
     </message>
@@ -5319,6 +5239,89 @@ Dernière version&#xa0;: %2</translation>
         <location line="+48"/>
         <source>Watch folder found torrent: %1</source>
         <translation>Le dossier de surveillance a trouvé un torrent : %1</translation>
+    </message>
+</context>
+<context>
+    <name>WindowLayoutController</name>
+    <message>
+        <location filename="../../windowlayoutcontroller.cpp" line="+74"/>
+        <location line="+5"/>
+        <source>Toolbar</source>
+        <translation>Barre d&apos;outils</translation>
+    </message>
+    <message>
+        <location line="-3"/>
+        <source>View</source>
+        <translation>Voir</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Show or hide the main toolbar</source>
+        <translation>Afficher ou masquer la barre d&apos;outils principale</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Status Bar</source>
+        <translation>Barre d&apos;état</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Show or hide the status bar</source>
+        <translation>Afficher ou masquer la barre d&apos;état</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Details Pane</source>
+        <translation>Volet Détails</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Show or hide the selected torrent details pane</source>
+        <translation>Afficher ou masquer le volet de détails du torrent sélectionné</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Filter Sidebar</source>
+        <translation>Filtrer la barre latérale</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Show or hide torrent status, tracker, folder, label, and group filters</source>
+        <translation>Afficher ou masquer les filtres d’état, de tracker, de dossier, d’étiquette et de groupe</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <location line="+277"/>
+        <source>Toolbar Display</source>
+        <translation>Affichage de la barre d&apos;outils</translation>
+    </message>
+    <message>
+        <location line="-266"/>
+        <location line="+280"/>
+        <source>Icons Only</source>
+        <translation>Icônes uniquement</translation>
+    </message>
+    <message>
+        <location line="-279"/>
+        <location line="+280"/>
+        <source>Icons and Text</source>
+        <translation>Icônes et texte</translation>
+    </message>
+    <message>
+        <location line="-279"/>
+        <location line="+280"/>
+        <source>Text Only</source>
+        <translation>Texte uniquement</translation>
+    </message>
+    <message>
+        <location line="-25"/>
+        <source>Hide Toolbar</source>
+        <translation>Masquer la barre d&apos;outils</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Show Toolbar</source>
+        <translation>Afficher la barre d&apos;outils</translation>
     </message>
 </context>
 </TS>
