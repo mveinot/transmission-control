@@ -393,32 +393,32 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
 <context>
     <name>DelugeBackend</name>
     <message>
-        <location filename="../../delugebackend.cpp" line="+275"/>
+        <location filename="../../delugebackend.cpp" line="+320"/>
         <source>Deluge returned JSON-RPC error %1.</source>
         <translation>Deluge a renvoyé l&apos;erreur JSON-RPC %1.</translation>
     </message>
     <message>
-        <location line="+24"/>
+        <location line="+27"/>
         <source>Deluge authentication failed: %1</source>
         <translation>Échec de l&apos;authentification Deluge : %1</translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="+70"/>
         <source>the server returned HTTP %1</source>
         <translation>le serveur a renvoyé HTTP %1</translation>
     </message>
     <message>
-        <location line="-29"/>
+        <location line="-37"/>
         <source>Deluge connection check failed: %1</source>
         <translation>Échec de la vérification de la connexion Deluge : %1</translation>
     </message>
     <message>
-        <location line="-6"/>
+        <location line="-16"/>
         <source>Deluge torrent request failed: %1</source>
         <translation>Échec de la requête de torrents Deluge : %1</translation>
     </message>
     <message>
-        <location line="+55"/>
+        <location line="+73"/>
         <source>the response was not a JSON object</source>
         <translation>la réponse n&apos;était pas un objet JSON</translation>
     </message>
@@ -448,60 +448,37 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Deluge a renvoyé une liste de torrents invalide.</translation>
     </message>
     <message>
-        <location line="+152"/>
+        <location line="+27"/>
+        <source>Deluge could not remove %1 torrent(s).</source>
+        <translation>Deluge n&apos;a pas pu supprimer %1 torrent(s).</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Deluge did not return a torrent ID.</source>
+        <translation>Deluge n&apos;a pas renvoyé d&apos;identifiant de torrent.</translation>
+    </message>
+    <message>
+        <location line="+146"/>
         <source>%1 is not implemented for Deluge yet.</source>
         <translation>%1 n&apos;est pas encore implémenté pour Deluge.</translation>
     </message>
     <message>
-        <location line="+12"/>
-        <location line="+2"/>
-        <location line="+4"/>
-        <location line="+2"/>
-        <source>Add torrent</source>
-        <translation>Ajouter un torrent</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Start torrents</source>
-        <translation>Démarrer les torrents</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Start all torrents</source>
-        <translation>Démarrer tous les torrents</translation>
-    </message>
-    <message>
-        <location line="+2"/>
+        <location line="+102"/>
         <source>Force start torrents</source>
         <translation>Forcer le démarrage des torrents</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>Stop torrents</source>
-        <translation>Arrêter les torrents</translation>
+        <location line="-68"/>
+        <source>Could not open torrent file: %1</source>
+        <translation>Impossible d&apos;ouvrir le fichier torrent&#xa0;: %1</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>Stop all torrents</source>
-        <translation>Arrêter tous les torrents</translation>
+        <location line="+34"/>
+        <source>No magnet link was specified.</source>
+        <translation>Aucun lien magnet n’a été spécifié.</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>Remove torrents</source>
-        <translation>Supprimer les torrents</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Verify torrents</source>
-        <translation>Vérifier les torrents</translation>
-    </message>
-    <message>
-        <location line="+2"/>
-        <source>Reannounce torrents</source>
-        <translation>Réannoncer les torrents</translation>
-    </message>
-    <message>
-        <location line="+3"/>
+        <location line="+79"/>
         <source>Set location</source>
         <translation>Définir l&apos;emplacement</translation>
     </message>
@@ -5376,7 +5353,7 @@ Dernière version&#xa0;: %2</translation>
         <translation>Surveillance du dossier pour les torrents : %1</translation>
     </message>
     <message>
-        <location line="+92"/>
+        <location line="+101"/>
         <source>Watch folder is no longer available: %1</source>
         <translation>Le dossier de surveillance n’est plus disponible : %1</translation>
     </message>

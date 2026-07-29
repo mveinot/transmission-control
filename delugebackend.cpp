@@ -2,6 +2,8 @@
 
 #include "settingskeys.h"
 
+#include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
@@ -65,6 +67,23 @@ int normalizedStatus(const QString &state, bool finished)
     return static_cast<int>(torrent::Status::Paused);
 }
 
+QJsonArray keysToJson(const QList<TorrentKey> &keys)
+{
+    QJsonArray result;
+    for (const TorrentKey &key : keys) {
+        if (isValidTorrentKey(key))
+            result.append(key);
+    }
+    return result;
+}
+
+QJsonArray singleArrayParameter(const QJsonArray &value)
+{
+    QJsonArray parameters;
+    parameters.append(value);
+    return parameters;
+}
+
 } // namespace
 
 DelugeBackend::DelugeBackend(QObject *parent)
@@ -91,8 +110,8 @@ QString DelugeBackend::endpointUrl() const
 
 TorrentBackendCapabilities DelugeBackend::capabilities() const
 {
-    // Capabilities are enabled only when their normalized implementation is
-    // present; authentication alone must not expose non-functional controls.
+    // Core pause/resume/remove/recheck/reannounce/add operations are baseline
+    // actions and do not require explicit capability flags.
     return {};
 }
 
@@ -208,6 +227,32 @@ void DelugeBackend::postRpc(RequestContext context)
     m_requests.insert(reply, context);
 }
 
+void DelugeBackend::queueOrPostRpc(RequestContext context)
+{
+    if (m_ready) {
+        postRpc(context);
+        return;
+    }
+
+    m_requestsPendingAfterAuthentication.append(context);
+    if (!m_authenticated)
+        authenticate();
+    else
+        checkDaemonConnection();
+}
+
+void DelugeBackend::postCommand(const QString &rpcMethod,
+                                const QJsonArray &parameters,
+                                const QString &commandMethod)
+{
+    RequestContext context;
+    context.kind = RequestKind::Command;
+    context.method = rpcMethod;
+    context.commandMethod = commandMethod;
+    context.parameters = parameters;
+    queueOrPostRpc(context);
+}
+
 void DelugeBackend::authenticate(bool preserveConnectionRetry)
 {
     if (m_rpcUrl.isEmpty() || m_authenticationPending)
@@ -295,7 +340,10 @@ void DelugeBackend::handleAuthenticationFailure(const QString &reason)
     m_listPendingAfterReady = false;
     m_listInProgress = false;
     m_listRequestedWhileInProgress = false;
-    m_requestsPendingAfterAuthentication.clear();
+    const QList<RequestContext> pending =
+        std::exchange(m_requestsPendingAfterAuthentication, {});
+    for (const RequestContext &request : pending)
+        failRequest(request, reason);
     emit updateFailed(tr("Deluge authentication failed: %1").arg(reason));
 }
 
@@ -319,7 +367,25 @@ void DelugeBackend::failRequest(const RequestContext &context,
         return;
     }
 
+    if (context.kind == RequestKind::AddTorrent) {
+        failAdd(context, reason);
+        return;
+    }
+
+    if (context.kind == RequestKind::Command) {
+        emit commandFailed(context.commandMethod, reason);
+        return;
+    }
+
     emit updateFailed(tr("Deluge connection check failed: %1").arg(reason));
+}
+
+void DelugeBackend::failAdd(const RequestContext &context,
+                            const QString &reason)
+{
+    if (!context.torrentFilePath.isEmpty())
+        emit torrentFileAddFailed(context.torrentFilePath, reason);
+    emit commandFailed(QStringLiteral("torrent-add"), reason);
 }
 
 void DelugeBackend::handleReply(QNetworkReply *reply)
@@ -468,6 +534,41 @@ void DelugeBackend::handleReply(QNetworkReply *reply)
 
         emit torrentsReceived(torrents);
         finishTorrentListRequest();
+        return;
+    }
+
+    if (context.kind == RequestKind::Command) {
+        if (context.method == QStringLiteral("core.remove_torrents")) {
+            const QJsonArray errors =
+                response.value(QStringLiteral("result")).toArray();
+            if (!errors.isEmpty()) {
+                emit commandFailed(
+                    context.commandMethod,
+                    tr("Deluge could not remove %1 torrent(s).")
+                        .arg(errors.size()));
+                return;
+            }
+        }
+
+        emit commandSucceeded(context.commandMethod);
+        return;
+    }
+
+    if (context.kind == RequestKind::AddTorrent) {
+        const QString torrentKey =
+            response.value(QStringLiteral("result")).toString().trimmed();
+        if (!isValidTorrentKey(torrentKey)) {
+            failAdd(context, tr("Deluge did not return a torrent ID."));
+            return;
+        }
+
+        if (!context.torrentFilePath.isEmpty()) {
+            if (context.deleteTorrentFileOnSuccess)
+                QFile::remove(context.torrentFilePath);
+            emit torrentFileAddSucceeded(context.torrentFilePath);
+        }
+        emit torrentAdded(torrentKey, context.torrentName);
+        emit commandSucceeded(QStringLiteral("torrent-add"));
     }
 }
 
@@ -614,32 +715,140 @@ void DelugeBackend::getTorrentTrackers(const TorrentKey &) {}
 void DelugeBackend::getTorrentPieces(const TorrentKey &) {}
 void DelugeBackend::getTorrentProperties(const TorrentKey &) {}
 void DelugeBackend::cancelTorrentDetailRequests() {}
-void DelugeBackend::addTorrentFromFile(const QString &, bool)
-{ emitUnsupported(tr("Add torrent")); }
-void DelugeBackend::addTorrentFromMagnet(const QString &)
-{ emitUnsupported(tr("Add torrent")); }
-void DelugeBackend::addTorrentFile(const QString &, const QString &, bool,
-                                   const QList<int> &, const QList<int> &,
-                                   const QList<int> &, bool)
-{ emitUnsupported(tr("Add torrent")); }
-void DelugeBackend::addMagnetLink(const QString &, const QString &, bool)
-{ emitUnsupported(tr("Add torrent")); }
-void DelugeBackend::startTorrents(const QList<TorrentKey> &)
-{ emitUnsupported(tr("Start torrents")); }
+void DelugeBackend::addTorrentFromFile(const QString &filePath,
+                                       bool deleteFileOnSuccess)
+{
+    addTorrentFile(filePath, QString(), false, {}, {}, {},
+                   deleteFileOnSuccess);
+}
+void DelugeBackend::addTorrentFromMagnet(const QString &magnetLink)
+{
+    addMagnetLink(magnetLink, QString(), false);
+}
+void DelugeBackend::addTorrentFile(const QString &filePath,
+                                   const QString &downloadDir,
+                                   bool paused,
+                                   const QList<int> &,
+                                   const QList<int> &,
+                                   const QList<int> &,
+                                   bool deleteFileOnSuccess)
+{
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        RequestContext context;
+        context.torrentFilePath = filePath;
+        failAdd(context,
+                tr("Could not open torrent file: %1")
+                    .arg(file.errorString()));
+        return;
+    }
+
+    QJsonObject options{
+        {QStringLiteral("add_paused"), paused}
+    };
+    if (!downloadDir.trimmed().isEmpty()) {
+        options.insert(QStringLiteral("download_location"),
+                       downloadDir.trimmed());
+    }
+
+    RequestContext context;
+    context.kind = RequestKind::AddTorrent;
+    context.method = QStringLiteral("core.add_torrent_file_async");
+    context.commandMethod = QStringLiteral("torrent-add");
+    context.torrentFilePath = filePath;
+    context.torrentName = QFileInfo(filePath).completeBaseName();
+    context.deleteTorrentFileOnSuccess = deleteFileOnSuccess;
+    context.parameters = QJsonArray{
+        QFileInfo(filePath).fileName(),
+        QString::fromLatin1(file.readAll().toBase64()),
+        options
+    };
+    queueOrPostRpc(context);
+}
+void DelugeBackend::addMagnetLink(const QString &magnetLink,
+                                  const QString &downloadDir,
+                                  bool paused)
+{
+    const QString normalized = magnetLink.trimmed();
+    if (normalized.isEmpty()) {
+        RequestContext context;
+        failAdd(context, tr("No magnet link was specified."));
+        return;
+    }
+
+    QJsonObject options{
+        {QStringLiteral("add_paused"), paused}
+    };
+    if (!downloadDir.trimmed().isEmpty()) {
+        options.insert(QStringLiteral("download_location"),
+                       downloadDir.trimmed());
+    }
+
+    RequestContext context;
+    context.kind = RequestKind::AddTorrent;
+    context.method = QStringLiteral("core.add_torrent_magnet");
+    context.commandMethod = QStringLiteral("torrent-add");
+    context.parameters = QJsonArray{normalized, options};
+    queueOrPostRpc(context);
+}
+void DelugeBackend::startTorrents(const QList<TorrentKey> &keys)
+{
+    const QJsonArray ids = keysToJson(keys);
+    if (!ids.isEmpty()) {
+        postCommand(QStringLiteral("core.resume_torrents"),
+                    singleArrayParameter(ids),
+                    QStringLiteral("torrent-start"));
+    }
+}
 void DelugeBackend::startAllTorrents()
-{ emitUnsupported(tr("Start all torrents")); }
+{
+    postCommand(QStringLiteral("core.resume_torrents"), {},
+                QStringLiteral("torrent-start"));
+}
 void DelugeBackend::startTorrentsNow(const QList<TorrentKey> &)
 { emitUnsupported(tr("Force start torrents")); }
-void DelugeBackend::stopTorrents(const QList<TorrentKey> &)
-{ emitUnsupported(tr("Stop torrents")); }
+void DelugeBackend::stopTorrents(const QList<TorrentKey> &keys)
+{
+    const QJsonArray ids = keysToJson(keys);
+    if (!ids.isEmpty()) {
+        postCommand(QStringLiteral("core.pause_torrents"),
+                    singleArrayParameter(ids),
+                    QStringLiteral("torrent-stop"));
+    }
+}
 void DelugeBackend::stopAllTorrents()
-{ emitUnsupported(tr("Stop all torrents")); }
-void DelugeBackend::removeTorrents(const QList<TorrentKey> &, bool)
-{ emitUnsupported(tr("Remove torrents")); }
-void DelugeBackend::verifyTorrents(const QList<TorrentKey> &)
-{ emitUnsupported(tr("Verify torrents")); }
-void DelugeBackend::reannounceTorrents(const QList<TorrentKey> &)
-{ emitUnsupported(tr("Reannounce torrents")); }
+{
+    postCommand(QStringLiteral("core.pause_torrents"), {},
+                QStringLiteral("torrent-stop"));
+}
+void DelugeBackend::removeTorrents(const QList<TorrentKey> &keys,
+                                   bool deleteLocalData)
+{
+    const QJsonArray ids = keysToJson(keys);
+    if (!ids.isEmpty()) {
+        postCommand(QStringLiteral("core.remove_torrents"),
+                    QJsonArray{ids, deleteLocalData},
+                    QStringLiteral("torrent-remove"));
+    }
+}
+void DelugeBackend::verifyTorrents(const QList<TorrentKey> &keys)
+{
+    const QJsonArray ids = keysToJson(keys);
+    if (!ids.isEmpty()) {
+        postCommand(QStringLiteral("core.force_recheck"),
+                    singleArrayParameter(ids),
+                    QStringLiteral("torrent-verify"));
+    }
+}
+void DelugeBackend::reannounceTorrents(const QList<TorrentKey> &keys)
+{
+    const QJsonArray ids = keysToJson(keys);
+    if (!ids.isEmpty()) {
+        postCommand(QStringLiteral("core.force_reannounce"),
+                    singleArrayParameter(ids),
+                    QStringLiteral("torrent-reannounce"));
+    }
+}
 void DelugeBackend::setTorrentLocation(const QList<TorrentKey> &,
                                        const QString &, bool)
 { emitUnsupported(tr("Set location")); }

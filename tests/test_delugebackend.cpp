@@ -44,7 +44,9 @@ public:
     bool expireFirstConnectionCheck = false;
     bool expireFirstTorrentRequest = false;
     QJsonObject torrents;
+    QString addedTorrentId = QStringLiteral("added-torrent-id");
     QStringList methods;
+    QHash<QString, QJsonArray> parametersByMethod;
     bool connectionCheckHadCookie = false;
 
 private:
@@ -73,6 +75,8 @@ private:
                 .object();
         const QString method = request.value(QStringLiteral("method")).toString();
         methods.append(method);
+        parametersByMethod.insert(
+            method, request.value(QStringLiteral("params")).toArray());
         const bool expireThisRequest =
             (method == QStringLiteral("web.connected")
              && expireFirstConnectionCheck
@@ -104,6 +108,13 @@ private:
                 response.insert(QStringLiteral("result"), acceptPassword);
             else if (method == QStringLiteral("core.get_torrents_status"))
                 response.insert(QStringLiteral("result"), torrents);
+            else if (method == QStringLiteral("core.add_torrent_magnet")
+                     || method
+                            == QStringLiteral("core.add_torrent_file_async")) {
+                response.insert(QStringLiteral("result"), addedTorrentId);
+            } else if (method == QStringLiteral("core.remove_torrents")) {
+                response.insert(QStringLiteral("result"), QJsonArray{});
+            }
             else
                 response.insert(QStringLiteral("result"), daemonConnected);
         }
@@ -136,6 +147,8 @@ private slots:
     void torrentListIsNormalized();
     void expiredAuthenticationIsRetriedOnce();
     void expiredAuthenticationDuringTorrentListIsRetriedOnce();
+    void coreTorrentControlsUseExpectedRpcMethods();
+    void magnetAndFileAddsSendOptionsAndReportSuccess();
     void rejectedPasswordReportsAuthenticationFailure();
     void disconnectedDaemonHasDistinctFailure();
 
@@ -339,6 +352,100 @@ void TestDelugeBackend::expiredAuthenticationDuringTorrentListIsRetriedOnce()
                           QStringLiteral("auth.login"),
                           QStringLiteral("web.connected"),
                           QStringLiteral("core.get_torrents_status")}));
+}
+
+void TestDelugeBackend::coreTorrentControlsUseExpectedRpcMethods()
+{
+    FakeDelugeWeb server;
+    configureServer(server.url(), QStringLiteral("correct"));
+    DelugeBackend backend;
+    QVERIFY(backend.loadCurrentServerFromSettings());
+    QSignalSpy ready(&backend, &TorrentBackend::updateFinished);
+    QSignalSpy succeeded(&backend, &TorrentBackend::commandSucceeded);
+    backend.init();
+    QVERIFY(ready.wait());
+
+    const QList<TorrentKey> keys{
+        QStringLiteral("first-id"),
+        QStringLiteral("second-id")
+    };
+    backend.startTorrents(keys);
+    backend.stopTorrents(keys);
+    backend.removeTorrents(keys, true);
+    backend.verifyTorrents(keys);
+    backend.reannounceTorrents(keys);
+
+    QTRY_COMPARE(succeeded.count(), 5);
+    QVERIFY(server.methods.contains(QStringLiteral("core.resume_torrents")));
+    QVERIFY(server.methods.contains(QStringLiteral("core.pause_torrents")));
+    QVERIFY(server.methods.contains(QStringLiteral("core.remove_torrents")));
+    QVERIFY(server.methods.contains(QStringLiteral("core.force_recheck")));
+    QVERIFY(server.methods.contains(QStringLiteral("core.force_reannounce")));
+    QCOMPARE(
+        server.parametersByMethod.value(
+            QStringLiteral("core.resume_torrents")).first().toArray(),
+        QJsonArray({QStringLiteral("first-id"),
+                    QStringLiteral("second-id")}));
+    const QJsonArray removeParameters =
+        server.parametersByMethod.value(
+            QStringLiteral("core.remove_torrents"));
+    QVERIFY(removeParameters.at(1).toBool());
+}
+
+void TestDelugeBackend::magnetAndFileAddsSendOptionsAndReportSuccess()
+{
+    FakeDelugeWeb server;
+    configureServer(server.url(), QStringLiteral("correct"));
+    DelugeBackend backend;
+    QVERIFY(backend.loadCurrentServerFromSettings());
+    QSignalSpy ready(&backend, &TorrentBackend::updateFinished);
+    QSignalSpy added(&backend, &TorrentBackend::torrentAdded);
+    QSignalSpy fileAdded(&backend,
+                         &TorrentBackend::torrentFileAddSucceeded);
+    backend.init();
+    QVERIFY(ready.wait());
+
+    const QString magnet =
+        QStringLiteral("magnet:?xt=urn:btih:0123456789abcdef");
+    backend.addMagnetLink(magnet, QStringLiteral("/remote/downloads"), true);
+    QTRY_COMPARE(added.count(), 1);
+
+    const QJsonArray magnetParameters =
+        server.parametersByMethod.value(
+            QStringLiteral("core.add_torrent_magnet"));
+    QCOMPARE(magnetParameters.at(0).toString(), magnet);
+    const QJsonObject magnetOptions = magnetParameters.at(1).toObject();
+    QVERIFY(magnetOptions.value(QStringLiteral("add_paused")).toBool());
+    QCOMPARE(magnetOptions.value(QStringLiteral("download_location")).toString(),
+             QStringLiteral("/remote/downloads"));
+
+    QTemporaryDir sourceDirectory;
+    QVERIFY(sourceDirectory.isValid());
+    const QString torrentPath =
+        sourceDirectory.filePath(QStringLiteral("sample.torrent"));
+    QFile torrentFile(torrentPath);
+    QVERIFY(torrentFile.open(QIODevice::WriteOnly));
+    const QByteArray torrentBytes("test torrent payload");
+    QCOMPARE(torrentFile.write(torrentBytes), torrentBytes.size());
+    torrentFile.close();
+
+    backend.addTorrentFile(torrentPath, QStringLiteral("/remote/files"),
+                           false, {}, {}, {}, true);
+    QTRY_COMPARE(fileAdded.count(), 1);
+    QTRY_COMPARE(added.count(), 2);
+    QVERIFY(!QFileInfo::exists(torrentPath));
+
+    const QJsonArray fileParameters =
+        server.parametersByMethod.value(
+            QStringLiteral("core.add_torrent_file_async"));
+    QCOMPARE(fileParameters.at(0).toString(),
+             QStringLiteral("sample.torrent"));
+    QCOMPARE(QByteArray::fromBase64(
+                 fileParameters.at(1).toString().toLatin1()),
+             torrentBytes);
+    QCOMPARE(fileParameters.at(2).toObject()
+                 .value(QStringLiteral("download_location")).toString(),
+             QStringLiteral("/remote/files"));
 }
 
 void TestDelugeBackend::disconnectedDaemonHasDistinctFailure()

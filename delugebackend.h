@@ -84,15 +84,21 @@ private:
     enum class RequestKind {
         Login,
         DaemonConnectionCheck,
-        TorrentList
+        TorrentList,
+        Command,
+        AddTorrent
     };
 
     struct RequestContext {
         RequestKind kind = RequestKind::Login;
         qint64 id = 0;
         QString method;
+        QString commandMethod;
+        QString torrentFilePath;
+        QString torrentName;
         QJsonArray parameters;
         quint64 generation = 0;
+        bool deleteTorrentFileOnSuccess = false;
         bool retriedAuthentication = false;
     };
 
@@ -119,9 +125,13 @@ private:
     void authenticate(bool preserveConnectionRetry = false);
     void checkDaemonConnection();
     void postRpc(RequestContext context);
+    void queueOrPostRpc(RequestContext context);
     void sendTorrentListRequest();
     void finishTorrentListRequest();
     void failRequest(const RequestContext &context, const QString &reason);
+    void failAdd(const RequestContext &context, const QString &reason);
+    void postCommand(const QString &rpcMethod, const QJsonArray &parameters,
+                     const QString &commandMethod);
     QNetworkRequest makeRequest() const;
     void handleReply(QNetworkReply *reply);
     void handleAuthenticationFailure(const QString &reason);
