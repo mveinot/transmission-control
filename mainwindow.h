@@ -172,6 +172,7 @@ private:
     QStackedWidget *detailsPaneStack = nullptr;
     SessionOverviewWidget *sessionOverviewWidget = nullptr;
     QMenu *viewMenu = nullptr;
+    QAction *showBandwidthGraphAction = nullptr;
     QAction *statisticsAction = nullptr;
     QDockWidget *activityDock = nullptr;
     QTableView *activityTable = nullptr;

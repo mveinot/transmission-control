@@ -904,7 +904,7 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+23"/>
-        <location filename="../../mainwindow.cpp" line="+1447"/>
+        <location filename="../../mainwindow.cpp" line="+1461"/>
         <source>Magnet link:</source>
         <translation>Lien magnet :</translation>
     </message>
@@ -1000,7 +1000,7 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+93"/>
-        <location filename="../../mainwindow.cpp" line="+368"/>
+        <location filename="../../mainwindow.cpp" line="+372"/>
         <source>Server Settings...</source>
         <translation>Paramètres du serveur...</translation>
     </message>
@@ -1095,7 +1095,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Importer les paramètres...</translation>
     </message>
     <message>
-        <location filename="../../mainwindow.cpp" line="-1001"/>
+        <location filename="../../mainwindow.cpp" line="-1005"/>
         <source>Adding torrent...</source>
         <translation>Ajout du torrent...</translation>
     </message>
@@ -1125,7 +1125,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Intervalle de mise à jour : %1 secondes</translation>
     </message>
     <message>
-        <location line="-1390"/>
+        <location line="-1404"/>
         <source>Settings…</source>
         <translation>Paramètres…</translation>
     </message>
@@ -1136,12 +1136,12 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+3"/>
-        <location line="+233"/>
+        <location line="+247"/>
         <source>Copy</source>
         <translation>Copie</translation>
     </message>
     <message>
-        <location line="-228"/>
+        <location line="-242"/>
         <source>Select All</source>
         <translation>Sélectionner tout</translation>
     </message>
@@ -1157,6 +1157,16 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+159"/>
+        <source>Bandwidth Graph</source>
+        <translation>Graphique de bande passante</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Show bandwidth activity when no torrent is selected</source>
+        <translation>Afficher l’activité de la bande passante lorsqu’aucun torrent n’est sélectionné</translation>
+    </message>
+    <message>
+        <location line="+9"/>
         <source>Statistics…</source>
         <translation>Statistiques…</translation>
     </message>
@@ -1272,7 +1282,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Ajouter des fichiers torrent</translation>
     </message>
     <message>
-        <location line="+392"/>
+        <location line="+396"/>
         <source>%1 Settings...</source>
         <translation>Paramètres %1...</translation>
     </message>

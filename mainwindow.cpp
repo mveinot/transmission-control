@@ -358,6 +358,20 @@ void MainWindow::setupViewMenu()
             });
 
     viewMenu->addSeparator();
+    showBandwidthGraphAction = viewMenu->addAction(tr("Bandwidth Graph"));
+    showBandwidthGraphAction->setCheckable(true);
+    showBandwidthGraphAction->setChecked(
+        QSettings().value(SettingsKeys::ShowSessionOverview, false).toBool());
+    showBandwidthGraphAction->setToolTip(
+        tr("Show bandwidth activity when no torrent is selected"));
+    connect(showBandwidthGraphAction, &QAction::toggled,
+            this, [this](bool enabled) {
+                QSettings().setValue(SettingsKeys::ShowSessionOverview,
+                                     enabled);
+                sessionOverviewEnabled = enabled;
+                showTorrentDetails(isValidTorrentKey(currentTorrentKey()));
+            });
+
     statisticsAction = viewMenu->addAction(tr("Statistics…"));
     statisticsAction->setToolTip(tr("Show session statistics"));
     statisticsAction->setVisible(client->capabilities().sessionStatistics);
@@ -1728,6 +1742,10 @@ void MainWindow::applyAppSettings()
     QSettings settings;
     sessionOverviewEnabled =
         settings.value(SettingsKeys::ShowSessionOverview, false).toBool();
+    if (showBandwidthGraphAction) {
+        const QSignalBlocker blocker(showBandwidthGraphAction);
+        showBandwidthGraphAction->setChecked(sessionOverviewEnabled);
+    }
     showTorrentDetails(isValidTorrentKey(currentTorrentKey()));
 
     if (trayController)
