@@ -89,8 +89,10 @@ QByteArray completedPieceBitfield(const QJsonArray &nativePieces)
     QByteArray result((nativePieces.size() + 7) / 8, '\0');
     for (int index = 0; index < nativePieces.size(); ++index) {
         const QJsonValue value = nativePieces.at(index);
+        // Deluge reports 0=missing, 1=available, 2=downloading, 3=complete.
+        // Availability must not be projected as local completion.
         const bool complete =
-            value.isBool() ? value.toBool() : value.toInt() > 0;
+            value.isBool() ? value.toBool() : value.toInt() == 3;
         if (!complete)
             continue;
         const int byteIndex = index / 8;

@@ -481,7 +481,7 @@ void TestDelugeBackend::selectedTorrentDetailsAreNormalized()
         {QStringLiteral("total_size"), 3000},
         {QStringLiteral("time_created"), 12345},
         {QStringLiteral("progress"), 50.0},
-        {QStringLiteral("pieces"), QJsonArray{true, false, true}},
+        {QStringLiteral("pieces"), QJsonArray{3, 1, 2, 0, 3}},
         {QStringLiteral("files"),
          QJsonArray{
              QJsonObject{
@@ -570,9 +570,9 @@ void TestDelugeBackend::selectedTorrentDetailsAreNormalized()
 
     const TorrentPieces pieces =
         qvariant_cast<TorrentPieces>(piecesSpy.first().first());
-    QCOMPARE(pieces.pieceCount, 3);
+    QCOMPARE(pieces.pieceCount, 5);
     QCOMPARE(static_cast<uchar>(pieces.completedPieces.at(0)),
-             static_cast<uchar>(0xa0));
+             static_cast<uchar>(0x88));
     QCOMPARE(pieces.percentDone, 0.5);
 
     const TorrentProperties properties =
