@@ -144,9 +144,11 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
 
     const QVector<torrent> torrents = makeTorrentList({
         makeTorrentValue(1, QStringLiteral("Ubuntu"), 4, 0.25,
-                         { QStringLiteral("tracker.example.com") },
+                         { QStringLiteral("tracker.example.com"),
+                           QStringLiteral("TRACKER.EXAMPLE.COM") },
                          QStringLiteral("/downloads/linux"),
-                         { QStringLiteral("ISO"), QStringLiteral("Linux") },
+                         { QStringLiteral("ISO"), QStringLiteral("Linux"),
+                           QStringLiteral("linux") },
                          QStringLiteral("Desktop")),
         makeTorrentValue(2, QStringLiteral("Debian"), 6, 1.0,
                          { QStringLiteral("other.example.com") },
@@ -166,6 +168,10 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
     QVERIFY(findItemByText(list, QStringLiteral("Downloading (1)")) != nullptr);
     QVERIFY(findItemByText(list, QStringLiteral("Waiting (1)")) != nullptr);
     QVERIFY(findItemByText(list, QStringLiteral("Inactive (1)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("All Trackers (3)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("All Folders (3)")) != nullptr);
+    QVERIFY(findItemByText(
+                list, QStringLiteral("tracker.example.com (1)")) != nullptr);
     QVERIFY(findItemByText(list, QStringLiteral("Linux (2)")) != nullptr);
     QVERIFY(findItemByText(list, QStringLiteral("Unlabelled (1)")) != nullptr);
     QVERIFY(findItemByText(list, QStringLiteral("Desktop (2)")) != nullptr);
@@ -244,6 +250,11 @@ void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelecti
     QVERIFY(findItemByText(list, QStringLiteral("All (1)")) != nullptr);
     QVERIFY(findItemByText(list, QStringLiteral("Downloading (1)")) != nullptr);
     QVERIFY(findItemByText(list, QStringLiteral("Complete (0)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("All Trackers (1)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("All Folders (1)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("Linux (1)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("Unlabelled (0)")) != nullptr);
+    QVERIFY(findItemByText(list, QStringLiteral("Desktop (1)")) != nullptr);
 }
 
 void TestTorrentFilterController::restoresCollapsedSectionState()

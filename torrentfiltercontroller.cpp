@@ -19,6 +19,7 @@
 #include <QSize>
 
 #include <algorithm>
+#include <array>
 #include <utility>
 
 namespace {
@@ -581,6 +582,66 @@ void TorrentFilterController::updateFilterItemCounts()
     if (!m_filterList)
         return;
 
+    using StateFilter = TorrentSortProxyModel::StateFilter;
+    static constexpr std::array<StateFilter, 8> stateFilters {
+        StateFilter::All,
+        StateFilter::Downloading,
+        StateFilter::Waiting,
+        StateFilter::Completed,
+        StateFilter::Active,
+        StateFilter::Inactive,
+        StateFilter::Stopped,
+        StateFilter::Error
+    };
+
+    QHash<int, int> stateCounts;
+    QHash<QString, int> trackerCounts;
+    QHash<QString, int> folderCounts;
+    QHash<QString, int> labelCounts;
+    QHash<QString, int> groupCounts;
+    int matchedTorrentCount = 0;
+    int unlabelledCount = 0;
+    int ungroupedCount = 0;
+
+    // Aggregate every count domain in one torrent pass. A torrent contributes
+    // once per distinct tracker/label even if a backend returns duplicates.
+    for (const torrent &torrentItem : std::as_const(m_torrents)) {
+        if (!torrentMatchesSearch(torrentItem))
+            continue;
+
+        ++matchedTorrentCount;
+
+        for (StateFilter filter : stateFilters) {
+            if (torrentMatchesState(torrentItem, filter))
+                ++stateCounts[static_cast<int>(filter)];
+        }
+
+        QSet<QString> torrentTrackers;
+        for (const QString &tracker : torrentItem.getTrackerHosts())
+            torrentTrackers.insert(tracker.toCaseFolded());
+        for (const QString &tracker : std::as_const(torrentTrackers))
+            ++trackerCounts[tracker];
+
+        ++folderCounts[torrentItem.getDownloadDir()];
+
+        const QStringList labels = torrentItem.getLabels();
+        if (labels.isEmpty()) {
+            ++unlabelledCount;
+        } else {
+            QSet<QString> torrentLabels;
+            for (const QString &label : labels)
+                torrentLabels.insert(label.toCaseFolded());
+            for (const QString &label : std::as_const(torrentLabels))
+                ++labelCounts[label];
+        }
+
+        const QString group = torrentItem.getGroup();
+        if (group.isEmpty())
+            ++ungroupedCount;
+        else
+            ++groupCounts[group.toCaseFolded()];
+    }
+
     for (int row = 0; row < m_filterList->count(); ++row) {
         QListWidgetItem *item = m_filterList->item(row);
 
@@ -598,52 +659,24 @@ void TorrentFilterController::updateFilterItemCounts()
         const QString value = item->data(FilterValueRole).toString();
         int count = 0;
 
-        for (const torrent &torrentItem : std::as_const(m_torrents)) {
-            if (!torrentMatchesSearch(torrentItem))
-                continue;
-
-            if (type == ItemType::Status) {
-                const auto filter = static_cast<TorrentSortProxyModel::StateFilter>(
-                    value.toInt()
-                    );
-
-                if (torrentMatchesState(torrentItem, filter))
-                    ++count;
-
-                continue;
-            }
-
-            if (type == ItemType::Tracker) {
-                if (value.isEmpty() || torrentItem.getTrackerHosts().contains(value, Qt::CaseInsensitive))
-                    ++count;
-
-                continue;
-            }
-
-            if (type == ItemType::Folder) {
-                if (value.isEmpty() || torrentItem.getDownloadDir().compare(value, Qt::CaseSensitive) == 0)
-                    ++count;
-                continue;
-            }
-
-            if (type == ItemType::Label) {
-                const QStringList labels = torrentItem.getLabels();
-                if ((value.isEmpty() && labels.isEmpty())
-                    || (!value.isEmpty() && labels.contains(value, Qt::CaseInsensitive))) {
-                    ++count;
-                }
-                continue;
-            }
-
-            if (type == ItemType::Group) {
-                const QString group = torrentItem.getGroup();
-                if ((value.isEmpty() && group.isEmpty())
-                    || (!value.isEmpty()
-                        && group.compare(value, Qt::CaseInsensitive) == 0)) {
-                    ++count;
-                }
-            }
-        }
+        if (type == ItemType::Status)
+            count = stateCounts.value(value.toInt());
+        else if (type == ItemType::Tracker)
+            count = value.isEmpty()
+                        ? matchedTorrentCount
+                        : trackerCounts.value(value.toCaseFolded());
+        else if (type == ItemType::Folder)
+            count = value.isEmpty()
+                        ? matchedTorrentCount
+                        : folderCounts.value(value);
+        else if (type == ItemType::Label)
+            count = value.isEmpty()
+                        ? unlabelledCount
+                        : labelCounts.value(value.toCaseFolded());
+        else if (type == ItemType::Group)
+            count = value.isEmpty()
+                        ? ungroupedCount
+                        : groupCounts.value(value.toCaseFolded());
 
         item->setText(displayLabelWithCount(baseLabel, count));
     }
