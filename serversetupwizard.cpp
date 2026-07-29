@@ -47,6 +47,12 @@ ServerSetupWizard::ServerSetupWizard(bool appendToExisting, QWidget *parent)
     , m_appendToExisting(appendToExisting)
 {
     setWindowTitle(tr("Set Up Planetary"));
+#ifdef Q_OS_WIN
+    // AeroStyle bypasses the active widget style on composited Windows
+    // desktops and can paint light page/button surfaces under a forced dark
+    // palette. ModernStyle follows the Qt widget palette consistently.
+    setWizardStyle(QWizard::ModernStyle);
+#endif
     setOption(QWizard::NoBackButtonOnStartPage);
     resize(620, 390);
 
