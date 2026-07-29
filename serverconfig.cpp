@@ -47,7 +47,9 @@ ServerConfig::ServerConfig(QWidget *parent)
     , serverListModel(new QStringListModel(this))
 {
     ui->setupUi(this);
-    setFixedSize(size());
+    // Retain the Designer opening size while allowing long names, endpoints,
+    // and localized labels to benefit from additional available space.
+    setMinimumSize(720, 420);
 
     setWindowTitle(tr("Server Configuration"));
 
