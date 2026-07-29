@@ -112,6 +112,10 @@ private:
     QNetworkAccessManager m_network;
     QHash<QNetworkReply *, RequestContext> m_requests;
     QList<RequestContext> m_requestsPendingAfterAuthentication;
+    QHash<TorrentKey, QVector<int>> m_filePrioritiesByKey;
+    QHash<TorrentKey, QHash<QString, int>> m_fileIndicesByKey;
+    QHash<TorrentKey, QJsonArray> m_trackersByKey;
+    QHash<TorrentKey, TorrentProperties> m_propertiesByKey;
     QString m_serverName;
     QString m_baseUrl;
     QString m_rpcUrl;
@@ -143,6 +147,11 @@ private:
                            const QJsonArray &fields);
     void handleTorrentStatus(const RequestContext &context,
                              const QJsonObject &status);
+    void setFilePriorities(const TorrentKey &torrentKey,
+                           const QList<int> &fileIndices, bool wanted,
+                           int priority, bool changePriority);
+    void setTrackers(const TorrentKey &torrentKey,
+                     const QJsonArray &trackers);
     QNetworkRequest makeRequest() const;
     void handleReply(QNetworkReply *reply);
     void handleAuthenticationFailure(const QString &reason);

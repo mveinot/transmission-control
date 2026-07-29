@@ -48,6 +48,7 @@ public:
     QString addedTorrentId = QStringLiteral("added-torrent-id");
     QStringList methods;
     QHash<QString, QJsonArray> parametersByMethod;
+    QHash<QString, QList<QJsonArray>> parameterHistory;
     bool connectionCheckHadCookie = false;
 
 private:
@@ -76,8 +77,10 @@ private:
                 .object();
         const QString method = request.value(QStringLiteral("method")).toString();
         methods.append(method);
-        parametersByMethod.insert(
-            method, request.value(QStringLiteral("params")).toArray());
+        const QJsonArray parameters =
+            request.value(QStringLiteral("params")).toArray();
+        parametersByMethod.insert(method, parameters);
+        parameterHistory[method].append(parameters);
         const bool expireThisRequest =
             (method == QStringLiteral("web.connected")
              && expireFirstConnectionCheck
@@ -153,6 +156,7 @@ private slots:
     void coreTorrentControlsUseExpectedRpcMethods();
     void magnetAndFileAddsSendOptionsAndReportSuccess();
     void selectedTorrentDetailsAreNormalized();
+    void torrentMutationsUseDelugeCoreMethods();
     void rejectedPasswordReportsAuthenticationFailure();
     void disconnectedDaemonHasDistinctFailure();
 
@@ -564,6 +568,115 @@ void TestDelugeBackend::selectedTorrentDetailsAreNormalized()
     QVERIFY(properties.downloadLimited);
     QVERIFY(!properties.uploadLimited);
     QCOMPARE(properties.labels, QStringList{QStringLiteral("Linux")});
+}
+
+void TestDelugeBackend::torrentMutationsUseDelugeCoreMethods()
+{
+    FakeDelugeWeb server;
+    server.torrentStatus = QJsonObject{
+        {QStringLiteral("files"),
+         QJsonArray{
+             QJsonObject{
+                 {QStringLiteral("index"), 0},
+                 {QStringLiteral("path"), QStringLiteral("folder/a.bin")},
+                 {QStringLiteral("size"), 100}
+             },
+             QJsonObject{
+                 {QStringLiteral("index"), 1},
+                 {QStringLiteral("path"), QStringLiteral("folder/b.bin")},
+                 {QStringLiteral("size"), 200}
+             }
+         }},
+        {QStringLiteral("file_progress"), QJsonArray{1.0, 0.5}},
+        {QStringLiteral("file_priorities"), QJsonArray{4, 4}},
+        {QStringLiteral("trackers"),
+         QJsonArray{
+             QJsonObject{
+                 {QStringLiteral("tier"), 0},
+                 {QStringLiteral("url"),
+                  QStringLiteral("https://old.example/announce")}
+             }
+         }},
+        {QStringLiteral("name"), QStringLiteral("Test")},
+        {QStringLiteral("hash"), QStringLiteral("torrent-hash")},
+        {QStringLiteral("max_connections"), 50},
+        {QStringLiteral("max_download_speed"), -1},
+        {QStringLiteral("max_upload_speed"), -1},
+        {QStringLiteral("stop_ratio"), -1}
+    };
+    configureServer(server.url(), QStringLiteral("correct"));
+    DelugeBackend backend;
+    QVERIFY(backend.loadCurrentServerFromSettings());
+    QSignalSpy filesSpy(&backend, &TorrentBackend::torrentFilesReceived);
+    QSignalSpy trackersSpy(&backend, &TorrentBackend::torrentTrackersReceived);
+    QSignalSpy propertiesSpy(
+        &backend, &TorrentBackend::torrentPropertiesReceived);
+    QSignalSpy succeeded(&backend, &TorrentBackend::commandSucceeded);
+
+    backend.getTorrentFiles(QStringLiteral("torrent-hash"));
+    backend.getTorrentTrackers(QStringLiteral("torrent-hash"));
+    backend.getTorrentProperties(QStringLiteral("torrent-hash"));
+    QTRY_COMPARE(filesSpy.size(), 1);
+    QTRY_COMPARE(trackersSpy.size(), 1);
+    QTRY_COMPARE(propertiesSpy.size(), 1);
+
+    backend.setTorrentFilesWanted(QStringLiteral("torrent-hash"), {1}, false);
+    backend.setTorrentFilesPriority(QStringLiteral("torrent-hash"), {0}, 1);
+    backend.setTorrentLocation({QStringLiteral("torrent-hash")},
+                               QStringLiteral("/new/location"), true);
+    backend.editTorrentTracker(QStringLiteral("torrent-hash"), 0,
+                               QStringLiteral("https://new.example/announce"));
+    backend.renameTorrentPath(QStringLiteral("torrent-hash"),
+                              QStringLiteral("folder/a.bin"),
+                              QStringLiteral("renamed.bin"));
+    backend.setTorrentsSequentialDownload(
+        {QStringLiteral("torrent-hash")}, true);
+    backend.queueMoveTop({QStringLiteral("torrent-hash")});
+
+    TorrentPropertyChanges changes;
+    changes.peerLimit = 75;
+    changes.downloadLimited = true;
+    changes.downloadLimit = 500;
+    changes.uploadLimited = false;
+    changes.seedRatioMode = 1;
+    changes.seedRatioLimit = 2.5;
+    backend.setTorrentProperties(QStringLiteral("torrent-hash"), changes);
+
+    QTRY_COMPARE(succeeded.size(), 8);
+    QVERIFY(server.methods.contains(QStringLiteral("core.move_storage")));
+    QVERIFY(server.methods.contains(
+        QStringLiteral("core.set_torrent_trackers")));
+    QVERIFY(server.methods.contains(QStringLiteral("core.rename_files")));
+    QVERIFY(server.methods.contains(QStringLiteral("core.queue_top")));
+
+    const QList<QJsonArray> optionCalls =
+        server.parameterHistory.value(
+            QStringLiteral("core.set_torrent_options"));
+    QCOMPARE(optionCalls.size(), 4);
+    bool sawUnwanted = false;
+    bool sawHighPriority = false;
+    bool sawSequential = false;
+    bool sawProperties = false;
+    for (const QJsonArray &call : optionCalls) {
+        const QJsonObject options = call.at(1).toObject();
+        const QJsonArray priorities =
+            options.value(QStringLiteral("file_priorities")).toArray();
+        sawUnwanted |= priorities == QJsonArray({4, 0});
+        sawHighPriority |= priorities == QJsonArray({7, 0});
+        sawSequential |=
+            options.value(QStringLiteral("sequential_download")).toBool();
+        sawProperties |=
+            options.value(QStringLiteral("max_connections")).toInt() == 75;
+    }
+    QVERIFY(sawUnwanted);
+    QVERIFY(sawHighPriority);
+    QVERIFY(sawSequential);
+    QVERIFY(sawProperties);
+
+    const QJsonArray renameParameters =
+        server.parametersByMethod.value(QStringLiteral("core.rename_files"));
+    QCOMPARE(renameParameters.at(1).toArray().first().toArray(),
+             QJsonArray({0, QStringLiteral("folder/renamed.bin")}));
 }
 
 void TestDelugeBackend::disconnectedDaemonHasDistinctFailure()

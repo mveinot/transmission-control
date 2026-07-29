@@ -393,7 +393,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
 <context>
     <name>DelugeBackend</name>
     <message>
-        <location filename="../../delugebackend.cpp" line="+355"/>
+        <location filename="../../delugebackend.cpp" line="+369"/>
         <source>Deluge returned JSON-RPC error %1.</source>
         <translation>Deluge a renvoyé l&apos;erreur JSON-RPC %1.</translation>
     </message>
@@ -458,7 +458,12 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Deluge n&apos;a pas renvoyé d&apos;identifiant de torrent.</translation>
     </message>
     <message>
-        <location line="+305"/>
+        <location line="+194"/>
+        <source>Refresh the file list before changing Deluge file priorities.</source>
+        <translation>Actualisez la liste des fichiers avant de modifier les priorités de fichiers Deluge.</translation>
+    </message>
+    <message>
+        <location line="+173"/>
         <source>%1 is not implemented for Deluge yet.</source>
         <translation>%1 n&apos;est pas encore implémenté pour Deluge.</translation>
     </message>
@@ -473,92 +478,78 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Impossible d&apos;ouvrir le fichier torrent&#xa0;: %1</translation>
     </message>
     <message>
-        <location line="-435"/>
+        <location line="-497"/>
         <source>Deluge returned invalid torrent details.</source>
         <translation>Deluge a renvoyé des détails de torrent non valides.</translation>
     </message>
     <message>
-        <location line="+469"/>
+        <location line="+531"/>
         <source>No magnet link was specified.</source>
         <translation>Aucun lien magnet n’a été spécifié.</translation>
     </message>
     <message>
-        <location line="+79"/>
         <source>Set location</source>
-        <translation>Définir l&apos;emplacement</translation>
+        <translation type="vanished">Définir l&apos;emplacement</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Set file selection</source>
-        <translation>Définir la sélection des fichiers</translation>
+        <translation type="vanished">Définir la sélection des fichiers</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Set file priority</source>
-        <translation>Définir la priorité des fichiers</translation>
+        <translation type="vanished">Définir la priorité des fichiers</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Set file selection and priority</source>
-        <translation>Définir la sélection et la priorité des fichiers</translation>
+        <translation type="vanished">Définir la sélection et la priorité des fichiers</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Add tracker</source>
-        <translation>Ajouter un traceur</translation>
+        <translation type="vanished">Ajouter un traceur</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Edit tracker</source>
-        <translation>Modifier le traceur</translation>
+        <translation type="vanished">Modifier le traceur</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Remove tracker</source>
-        <translation>Supprimer le traceur</translation>
+        <translation type="vanished">Supprimer le traceur</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Rename path</source>
-        <translation>Renommer le chemin</translation>
+        <translation type="vanished">Renommer le chemin</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Set torrent properties</source>
-        <translation>Définir les propriétés du torrent</translation>
+        <translation type="vanished">Définir les propriétés du torrent</translation>
     </message>
     <message>
-        <location line="+3"/>
         <source>Set sequential download</source>
-        <translation>Définir le téléchargement séquentiel</translation>
+        <translation type="vanished">Définir le téléchargement séquentiel</translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+216"/>
         <source>Set priority</source>
         <translation>Définir la priorité</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Move to top of queue</source>
-        <translation>Déplacer au début de la file d&apos;attente</translation>
+        <translation type="vanished">Déplacer au début de la file d&apos;attente</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Move up in queue</source>
-        <translation>Monter dans la file d&apos;attente</translation>
+        <translation type="vanished">Monter dans la file d&apos;attente</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Move down in queue</source>
-        <translation>Descendre dans la file d&apos;attente</translation>
+        <translation type="vanished">Descendre dans la file d&apos;attente</translation>
     </message>
     <message>
-        <location line="+2"/>
         <source>Move to bottom of queue</source>
-        <translation>Déplacer à la fin de la file d&apos;attente</translation>
+        <translation type="vanished">Déplacer à la fin de la file d&apos;attente</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+36"/>
         <source>Set session settings</source>
         <translation>Définir les paramètres de session</translation>
     </message>

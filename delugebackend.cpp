@@ -129,9 +129,20 @@ QString DelugeBackend::endpointUrl() const
 
 TorrentBackendCapabilities DelugeBackend::capabilities() const
 {
-    // Core pause/resume/remove/recheck/reannounce/add operations are baseline
-    // actions and do not require explicit capability flags.
-    return {};
+    TorrentBackendCapabilities result;
+    result.queueManagement = true;
+    result.sequentialDownload = true;
+    result.torrentProperties = true;
+    result.torrentSpeedLimits = true;
+    result.torrentPeerLimit = true;
+    result.filePriorities = true;
+    result.fileLowPriority = true;
+    result.trackerEditing = true;
+    result.pathRenaming = true;
+    result.torrentLocation = true;
+    // Deluge's move_storage operation always moves existing payload data.
+    result.torrentLocationModeSelection = false;
+    return result;
 }
 
 bool DelugeBackend::loadCurrentServerFromSettings()
@@ -199,6 +210,10 @@ void DelugeBackend::setServer(const QString &name, const QString &url,
                    ? m_baseUrl
                    : m_baseUrl + QStringLiteral("/json");
     m_password = password;
+    m_filePrioritiesByKey.clear();
+    m_fileIndicesByKey.clear();
+    m_trackersByKey.clear();
+    m_propertiesByKey.clear();
     m_authenticated = false;
     m_ready = false;
     m_authenticationPending = false;
@@ -667,6 +682,9 @@ void DelugeBackend::handleTorrentStatus(const RequestContext &context,
         const QJsonArray priorities =
             status.value(QStringLiteral("file_priorities")).toArray();
         files.files.reserve(nativeFiles.size());
+        QVector<int> cachedPriorities;
+        cachedPriorities.reserve(nativeFiles.size());
+        QHash<QString, int> cachedIndices;
         for (int index = 0; index < nativeFiles.size(); ++index) {
             const QJsonObject source = nativeFiles.at(index).toObject();
             TorrentFile file;
@@ -684,7 +702,11 @@ void DelugeBackend::handleTorrentStatus(const RequestContext &context,
             file.priority =
                 nativePriority >= 7 ? 1 : (nativePriority == 1 ? -1 : 0);
             files.files.append(file);
+            cachedPriorities.append(nativePriority);
+            cachedIndices.insert(file.path, file.index);
         }
+        m_filePrioritiesByKey.insert(context.torrentKey, cachedPriorities);
+        m_fileIndicesByKey.insert(context.torrentKey, cachedIndices);
         emit torrentFilesReceived(files);
         return;
     }
@@ -739,6 +761,7 @@ void DelugeBackend::handleTorrentStatus(const RequestContext &context,
             tracker.host = QUrl(tracker.announceUrl).host();
             trackers.trackers.append(tracker);
         }
+        m_trackersByKey.insert(context.torrentKey, nativeTrackers);
         emit torrentTrackersReceived(trackers);
         return;
     }
@@ -782,7 +805,61 @@ void DelugeBackend::handleTorrentStatus(const RequestContext &context,
     if (!label.isEmpty())
         properties.labels.append(label);
     properties.fields = status.toVariantMap();
+    m_propertiesByKey.insert(context.torrentKey, properties);
     emit torrentPropertiesReceived(properties);
+}
+
+void DelugeBackend::setFilePriorities(const TorrentKey &torrentKey,
+                                      const QList<int> &fileIndices,
+                                      bool wanted, int priority,
+                                      bool changePriority)
+{
+    if (!isValidTorrentKey(torrentKey) || fileIndices.isEmpty())
+        return;
+
+    QVector<int> priorities = m_filePrioritiesByKey.value(torrentKey);
+    if (priorities.isEmpty()) {
+        emit commandFailed(
+            QStringLiteral("torrent-set"),
+            tr("Refresh the file list before changing Deluge file priorities."));
+        return;
+    }
+
+    const int requestedPriority =
+        !wanted ? 0 : (changePriority
+                           ? (priority > 0 ? 7 : (priority < 0 ? 1 : 4))
+                           : 4);
+    for (int index : fileIndices) {
+        if (index < 0 || index >= priorities.size())
+            continue;
+        if (!wanted)
+            priorities[index] = 0;
+        else if (changePriority)
+            priorities[index] = requestedPriority;
+        else if (priorities.at(index) == 0)
+            priorities[index] = requestedPriority;
+    }
+
+    QJsonArray native;
+    for (int value : priorities)
+        native.append(value);
+    m_filePrioritiesByKey.insert(torrentKey, priorities);
+    postCommand(
+        QStringLiteral("core.set_torrent_options"),
+        QJsonArray{
+            QJsonArray{torrentKey},
+            QJsonObject{{QStringLiteral("file_priorities"), native}}
+        },
+        QStringLiteral("torrent-set"));
+}
+
+void DelugeBackend::setTrackers(const TorrentKey &torrentKey,
+                                const QJsonArray &trackers)
+{
+    m_trackersByKey.insert(torrentKey, trackers);
+    postCommand(QStringLiteral("core.set_torrent_trackers"),
+                QJsonArray{torrentKey, trackers},
+                QStringLiteral("torrent-set"));
 }
 
 void DelugeBackend::abortRequests()
@@ -1130,45 +1207,178 @@ void DelugeBackend::reannounceTorrents(const QList<TorrentKey> &keys)
                     QStringLiteral("torrent-reannounce"));
     }
 }
-void DelugeBackend::setTorrentLocation(const QList<TorrentKey> &,
-                                       const QString &, bool)
-{ emitUnsupported(tr("Set location")); }
-void DelugeBackend::setTorrentFilesWanted(const TorrentKey &,
-                                          const QList<int> &, bool)
-{ emitUnsupported(tr("Set file selection")); }
-void DelugeBackend::setTorrentFilesPriority(const TorrentKey &,
-                                            const QList<int> &, int)
-{ emitUnsupported(tr("Set file priority")); }
+void DelugeBackend::setTorrentLocation(const QList<TorrentKey> &keys,
+                                       const QString &location, bool)
+{
+    const QJsonArray ids = keysToJson(keys);
+    if (!ids.isEmpty() && !location.trimmed().isEmpty()) {
+        postCommand(QStringLiteral("core.move_storage"),
+                    QJsonArray{ids, location.trimmed()},
+                    QStringLiteral("torrent-set-location"));
+    }
+}
+void DelugeBackend::setTorrentFilesWanted(const TorrentKey &key,
+                                          const QList<int> &indices,
+                                          bool wanted)
+{
+    setFilePriorities(key, indices, wanted, 0, false);
+}
+void DelugeBackend::setTorrentFilesPriority(const TorrentKey &key,
+                                            const QList<int> &indices,
+                                            int priority)
+{
+    setFilePriorities(key, indices, true, priority, true);
+}
 void DelugeBackend::setTorrentFilesWantedAndPriority(
-    const TorrentKey &, const QList<int> &, bool, int)
-{ emitUnsupported(tr("Set file selection and priority")); }
-void DelugeBackend::addTorrentTracker(const TorrentKey &, const QString &)
-{ emitUnsupported(tr("Add tracker")); }
-void DelugeBackend::editTorrentTracker(const TorrentKey &, int,
-                                       const QString &)
-{ emitUnsupported(tr("Edit tracker")); }
-void DelugeBackend::removeTorrentTracker(const TorrentKey &, int)
-{ emitUnsupported(tr("Remove tracker")); }
-void DelugeBackend::renameTorrentPath(const TorrentKey &, const QString &,
-                                      const QString &)
-{ emitUnsupported(tr("Rename path")); }
-void DelugeBackend::setTorrentProperties(const TorrentKey &,
-                                         const TorrentPropertyChanges &)
-{ emitUnsupported(tr("Set torrent properties")); }
+    const TorrentKey &key, const QList<int> &indices, bool wanted, int priority)
+{
+    setFilePriorities(key, indices, wanted, priority, true);
+}
+void DelugeBackend::addTorrentTracker(const TorrentKey &key,
+                                      const QString &announceUrl)
+{
+    if (!isValidTorrentKey(key) || announceUrl.trimmed().isEmpty())
+        return;
+    QJsonArray trackers = m_trackersByKey.value(key);
+    int highestTier = -1;
+    for (const QJsonValue &value : trackers)
+        highestTier = std::max(highestTier,
+                               value.toObject().value(QStringLiteral("tier"))
+                                   .toInt(-1));
+    trackers.append(
+        QJsonObject{{QStringLiteral("url"), announceUrl.trimmed()},
+                    {QStringLiteral("tier"), highestTier + 1}});
+    setTrackers(key, trackers);
+}
+void DelugeBackend::editTorrentTracker(const TorrentKey &key, int trackerId,
+                                       const QString &announceUrl)
+{
+    QJsonArray trackers = m_trackersByKey.value(key);
+    if (!isValidTorrentKey(key) || trackerId < 0
+        || trackerId >= trackers.size() || announceUrl.trimmed().isEmpty()) {
+        return;
+    }
+    QJsonObject tracker = trackers.at(trackerId).toObject();
+    tracker.insert(QStringLiteral("url"), announceUrl.trimmed());
+    trackers.replace(trackerId, tracker);
+    setTrackers(key, trackers);
+}
+void DelugeBackend::removeTorrentTracker(const TorrentKey &key, int trackerId)
+{
+    QJsonArray trackers = m_trackersByKey.value(key);
+    if (!isValidTorrentKey(key) || trackerId < 0
+        || trackerId >= trackers.size()) {
+        return;
+    }
+    trackers.removeAt(trackerId);
+    setTrackers(key, trackers);
+}
+void DelugeBackend::renameTorrentPath(const TorrentKey &key,
+                                      const QString &path,
+                                      const QString &newName)
+{
+    if (!isValidTorrentKey(key) || path.isEmpty() || newName.isEmpty())
+        return;
+    const QHash<QString, int> indices = m_fileIndicesByKey.value(key);
+    if (indices.contains(path)) {
+        const int separator = path.lastIndexOf(QLatin1Char('/'));
+        const QString parent =
+            separator >= 0 ? path.left(separator + 1) : QString();
+        QJsonArray renamePairs;
+        renamePairs.append(
+            QJsonArray{indices.value(path), parent + newName});
+        postCommand(QStringLiteral("core.rename_files"),
+                    QJsonArray{key, renamePairs},
+                    QStringLiteral("torrent-set"));
+        return;
+    }
+    postCommand(QStringLiteral("core.rename_folder"),
+                QJsonArray{key, path, newName},
+                QStringLiteral("torrent-set"));
+}
+void DelugeBackend::setTorrentProperties(
+    const TorrentKey &key, const TorrentPropertyChanges &changes)
+{
+    if (!isValidTorrentKey(key))
+        return;
+    const TorrentProperties current = m_propertiesByKey.value(key);
+    QJsonObject options;
+    if (changes.peerLimit != current.peerLimit)
+        options.insert(QStringLiteral("max_connections"), changes.peerLimit);
+    if (changes.downloadLimited != current.downloadLimited
+        || changes.downloadLimit != current.downloadLimit) {
+        options.insert(QStringLiteral("max_download_speed"),
+                       changes.downloadLimited ? changes.downloadLimit : -1);
+    }
+    if (changes.uploadLimited != current.uploadLimited
+        || changes.uploadLimit != current.uploadLimit) {
+        options.insert(QStringLiteral("max_upload_speed"),
+                       changes.uploadLimited ? changes.uploadLimit : -1);
+    }
+    if (changes.seedRatioMode != current.seedRatioMode
+        || changes.seedRatioLimit != current.seedRatioLimit) {
+        options.insert(QStringLiteral("stop_at_ratio"),
+                       changes.seedRatioMode == 1);
+        options.insert(QStringLiteral("stop_ratio"),
+                       changes.seedRatioLimit);
+    }
+    if (options.isEmpty()) {
+        emit commandSucceeded(QStringLiteral("torrent-set"));
+        return;
+    }
+    postCommand(QStringLiteral("core.set_torrent_options"),
+                QJsonArray{QJsonArray{key}, options},
+                QStringLiteral("torrent-set"));
+}
 void DelugeBackend::setTorrentsSequentialDownload(
-    const QList<TorrentKey> &, bool)
-{ emitUnsupported(tr("Set sequential download")); }
+    const QList<TorrentKey> &keys, bool enabled)
+{
+    const QJsonArray ids = keysToJson(keys);
+    if (!ids.isEmpty()) {
+        postCommand(
+            QStringLiteral("core.set_torrent_options"),
+            QJsonArray{
+                ids,
+                QJsonObject{{QStringLiteral("sequential_download"), enabled}}
+            },
+            QStringLiteral("torrent-set"));
+    }
+}
 void DelugeBackend::setTorrentsBandwidthPriority(
     const QList<TorrentKey> &, int)
 { emitUnsupported(tr("Set priority")); }
-void DelugeBackend::queueMoveTop(const QList<TorrentKey> &)
-{ emitUnsupported(tr("Move to top of queue")); }
-void DelugeBackend::queueMoveUp(const QList<TorrentKey> &)
-{ emitUnsupported(tr("Move up in queue")); }
-void DelugeBackend::queueMoveDown(const QList<TorrentKey> &)
-{ emitUnsupported(tr("Move down in queue")); }
-void DelugeBackend::queueMoveBottom(const QList<TorrentKey> &)
-{ emitUnsupported(tr("Move to bottom of queue")); }
+void DelugeBackend::queueMoveTop(const QList<TorrentKey> &keys)
+{
+    const QJsonArray ids = keysToJson(keys);
+    if (!ids.isEmpty())
+        postCommand(QStringLiteral("core.queue_top"),
+                    singleArrayParameter(ids),
+                    QStringLiteral("queue-move-top"));
+}
+void DelugeBackend::queueMoveUp(const QList<TorrentKey> &keys)
+{
+    const QJsonArray ids = keysToJson(keys);
+    if (!ids.isEmpty())
+        postCommand(QStringLiteral("core.queue_up"),
+                    singleArrayParameter(ids),
+                    QStringLiteral("queue-move-up"));
+}
+void DelugeBackend::queueMoveDown(const QList<TorrentKey> &keys)
+{
+    const QJsonArray ids = keysToJson(keys);
+    if (!ids.isEmpty())
+        postCommand(QStringLiteral("core.queue_down"),
+                    singleArrayParameter(ids),
+                    QStringLiteral("queue-move-down"));
+}
+void DelugeBackend::queueMoveBottom(const QList<TorrentKey> &keys)
+{
+    const QJsonArray ids = keysToJson(keys);
+    if (!ids.isEmpty())
+        postCommand(QStringLiteral("core.queue_bottom"),
+                    singleArrayParameter(ids),
+                    QStringLiteral("queue-move-bottom"));
+}
 void DelugeBackend::getSessionSettings() {}
 void DelugeBackend::getSessionStatistics() {}
 void DelugeBackend::setSessionSettings(const QJsonObject &)
