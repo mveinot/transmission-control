@@ -123,6 +123,18 @@ void SessionOverviewWidget::paintEvent(QPaintEvent *)
     const QRect panelRect =
         rect().adjusted(PanelLeftMargin, 0, -PanelRightMargin, 0);
     painter.fillRect(panelRect, palette().brush(QPalette::Base));
+
+    // Some Linux styles fill PE_Frame's interior. Draw the native frame before
+    // all chart content so that platform-specific fills cannot obscure it.
+    QStyleOptionFrame frame;
+    frame.initFrom(this);
+    frame.rect = panelRect;
+    frame.lineWidth =
+        style()->pixelMetric(QStyle::PM_DefaultFrameWidth, &frame, this);
+    frame.midLineWidth = 0;
+    frame.state |= QStyle::State_Sunken;
+    style()->drawPrimitive(QStyle::PE_Frame, &frame, &painter, this);
+
     const int contentLeft = PanelLeftMargin + PanelContentMargin;
     const int contentWidth =
         qMax(1, width() - contentLeft -
@@ -224,17 +236,6 @@ void SessionOverviewWidget::paintEvent(QPaintEvent *)
                              QPointF(marker.x(), plot.bottom()));
         }
     }
-
-    // Frame the complete empty-selection surface, matching the native list and
-    // table boundaries without visually boxing the graph inside it.
-    QStyleOptionFrame frame;
-    frame.initFrom(this);
-    frame.rect = panelRect;
-    frame.lineWidth =
-        style()->pixelMetric(QStyle::PM_DefaultFrameWidth, &frame, this);
-    frame.midLineWidth = 0;
-    frame.state |= QStyle::State_Sunken;
-    style()->drawPrimitive(QStyle::PE_Frame, &frame, &painter, this);
 
     const double currentDownload =
         m_samples.isEmpty() ? 0.0 : m_samples.constLast().downloadRate;
