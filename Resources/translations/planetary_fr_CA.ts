@@ -391,6 +391,197 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
     </message>
 </context>
 <context>
+    <name>DelugeBackend</name>
+    <message>
+        <location filename="../../delugebackend.cpp" line="+187"/>
+        <source>Deluge returned JSON-RPC error %1.</source>
+        <translation>Deluge a renvoyé l&apos;erreur JSON-RPC %1.</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <source>Deluge authentication failed: %1</source>
+        <translation>Échec de l&apos;authentification Deluge : %1</translation>
+    </message>
+    <message>
+        <location line="+38"/>
+        <source>the server returned HTTP %1</source>
+        <translation>le serveur a renvoyé HTTP %1</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Deluge connection check failed: %1</source>
+        <translation>Échec de la vérification de la connexion Deluge : %1</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>the response was not a JSON object</source>
+        <translation>la réponse n&apos;était pas un objet JSON</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Invalid response from Deluge: %1</source>
+        <translation>Réponse invalide de Deluge : %1</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Deluge returned a mismatched JSON-RPC response.</source>
+        <translation>Deluge a renvoyé une réponse JSON-RPC non concordante.</translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Deluge request failed: %1</source>
+        <translation>Échec de la requête Deluge : %1</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>the Web UI rejected the password</source>
+        <translation>l&apos;interface Web a rejeté le mot de passe</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Deluge Web is authenticated, but it is not connected to a daemon.</source>
+        <translation>Deluge Web est authentifié, mais n&apos;est pas connecté à un démon.</translation>
+    </message>
+    <message>
+        <location line="+36"/>
+        <source>%1 is not implemented for Deluge yet.</source>
+        <translation>%1 n&apos;est pas encore implémenté pour Deluge.</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <location line="+2"/>
+        <location line="+4"/>
+        <location line="+2"/>
+        <source>Add torrent</source>
+        <translation>Ajouter un torrent</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Start torrents</source>
+        <translation>Démarrer les torrents</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Start all torrents</source>
+        <translation>Démarrer tous les torrents</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Force start torrents</source>
+        <translation>Forcer le démarrage des torrents</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Stop torrents</source>
+        <translation>Arrêter les torrents</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Stop all torrents</source>
+        <translation>Arrêter tous les torrents</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Remove torrents</source>
+        <translation>Supprimer les torrents</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Verify torrents</source>
+        <translation>Vérifier les torrents</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Reannounce torrents</source>
+        <translation>Réannoncer les torrents</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Set location</source>
+        <translation>Définir l&apos;emplacement</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Set file selection</source>
+        <translation>Définir la sélection des fichiers</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Set file priority</source>
+        <translation>Définir la priorité des fichiers</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Set file selection and priority</source>
+        <translation>Définir la sélection et la priorité des fichiers</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Add tracker</source>
+        <translation>Ajouter un traceur</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Edit tracker</source>
+        <translation>Modifier le traceur</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Remove tracker</source>
+        <translation>Supprimer le traceur</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Rename path</source>
+        <translation>Renommer le chemin</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Set torrent properties</source>
+        <translation>Définir les propriétés du torrent</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Set sequential download</source>
+        <translation>Définir le téléchargement séquentiel</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Set priority</source>
+        <translation>Définir la priorité</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Move to top of queue</source>
+        <translation>Déplacer au début de la file d&apos;attente</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Move up in queue</source>
+        <translation>Monter dans la file d&apos;attente</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Move down in queue</source>
+        <translation>Descendre dans la file d&apos;attente</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Move to bottom of queue</source>
+        <translation>Déplacer à la fin de la file d&apos;attente</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Set session settings</source>
+        <translation>Définir les paramètres de session</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Update blocklist</source>
+        <translation>Mettre à jour la liste de blocage</translation>
+    </message>
+</context>
+<context>
     <name>DiagnosticsDialog</name>
     <message>
         <location filename="../../diagnosticsdialog.cpp" line="+50"/>
@@ -3095,7 +3286,7 @@ Continuer?</translation>
 <context>
     <name>TorrentBackendRouter</name>
     <message>
-        <location filename="../../torrentbackendrouter.cpp" line="+141"/>
+        <location filename="../../torrentbackendrouter.cpp" line="+146"/>
         <source>No server configured</source>
         <translation>Aucun serveur configuré</translation>
     </message>

@@ -114,6 +114,13 @@ add_planetary_test(test_sessionoverviewwidget
     ${CMAKE_SOURCE_DIR}/sessionoverviewwidget.h
 )
 
+add_planetary_test(test_delugebackend
+    test_delugebackend.cpp
+    ${CMAKE_SOURCE_DIR}/delugebackend.cpp
+    ${CMAKE_SOURCE_DIR}/delugebackend.h
+    ${CMAKE_SOURCE_DIR}/torrentbackend.h
+)
+
 if(APPLE)
     target_sources(test_notificationcontroller PRIVATE
         ${CMAKE_SOURCE_DIR}/macnotificationbackend.h
