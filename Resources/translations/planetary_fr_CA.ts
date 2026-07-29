@@ -872,7 +872,7 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+93"/>
-        <location filename="../../mainwindow.cpp" line="+515"/>
+        <location filename="../../mainwindow.cpp" line="+516"/>
         <source>Server Settings...</source>
         <translation>Paramètres du serveur...</translation>
     </message>
@@ -967,7 +967,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Importer les paramètres...</translation>
     </message>
     <message>
-        <location filename="../../mainwindow.cpp" line="-1156"/>
+        <location filename="../../mainwindow.cpp" line="-1157"/>
         <source>Adding torrent...</source>
         <translation>Ajout du torrent...</translation>
     </message>
@@ -987,7 +987,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Ajouter un lien magnet</translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="+53"/>
         <source>(unnamed server)</source>
         <translation>(serveur sans nom)</translation>
     </message>
@@ -1017,7 +1017,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Intervalle de mise à jour : %1 secondes</translation>
     </message>
     <message>
-        <location line="-1800"/>
+        <location line="-1801"/>
         <source>Settings…</source>
         <translation>Paramètres…</translation>
     </message>
@@ -1249,9 +1249,14 @@ Enregistrer ce mappage quand même?</translation>
         <translation>qBittorrent</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="-2"/>
         <source>Transmission</source>
         <translation>Transmission</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Deluge</source>
+        <translation>Deluge</translation>
     </message>
     <message>
         <location line="+12"/>
@@ -1707,8 +1712,8 @@ Continuer?</translation>
     <name>ServerConfig</name>
     <message>
         <location filename="../../serverconfig.ui" line="+17"/>
-        <location filename="../../serverconfig.cpp" line="+51"/>
-        <location line="+734"/>
+        <location filename="../../serverconfig.cpp" line="+54"/>
+        <location line="+750"/>
         <location line="+9"/>
         <source>Server Configuration</source>
         <translation>Configuration du serveur</translation>
@@ -1780,7 +1785,7 @@ Continuer?</translation>
     </message>
     <message>
         <location line="+7"/>
-        <location filename="../../serverconfig.cpp" line="-432"/>
+        <location filename="../../serverconfig.cpp" line="-446"/>
         <source>RPC URL:</source>
         <translation>URL RPC :</translation>
     </message>
@@ -1797,6 +1802,7 @@ Continuer?</translation>
     <message>
         <location line="+13"/>
         <location line="+23"/>
+        <location filename="../../serverconfig.cpp" line="+16"/>
         <source>Optional</source>
         <translation>Facultatif</translation>
     </message>
@@ -1822,7 +1828,7 @@ Continuer?</translation>
     </message>
     <message>
         <location line="+12"/>
-        <location filename="../../serverconfig.cpp" line="+457"/>
+        <location filename="../../serverconfig.cpp" line="+455"/>
         <source>No folder mappings configured</source>
         <translation>Aucun mappage de dossier configuré</translation>
     </message>
@@ -1832,36 +1838,42 @@ Continuer?</translation>
         <translation>Configurer…</translation>
     </message>
     <message>
-        <location filename="../../serverconfig.cpp" line="-535"/>
-        <location line="+444"/>
+        <location filename="../../serverconfig.cpp" line="-550"/>
+        <location line="+459"/>
         <source>(unnamed server)</source>
         <translation>(serveur sans nom)</translation>
     </message>
     <message>
-        <location line="-441"/>
+        <location line="-456"/>
         <source> (default)</source>
         <translation> (par défaut)</translation>
     </message>
     <message>
         <location line="-208"/>
-        <location line="+312"/>
+        <location line="+327"/>
         <source>New Server</source>
         <translation>Nouveau serveur</translation>
     </message>
     <message>
-        <location line="-361"/>
-        <location line="+26"/>
+        <location line="-380"/>
+        <location line="+29"/>
         <source>qBittorrent</source>
         <translation>qBittorrent</translation>
     </message>
     <message>
-        <location line="-24"/>
-        <location line="+23"/>
+        <location line="-27"/>
+        <location line="+28"/>
+        <source>Deluge</source>
+        <translation>Deluge</translation>
+    </message>
+    <message>
+        <location line="-26"/>
+        <location line="+24"/>
         <source>Transmission</source>
         <translation>Transmission</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+28"/>
         <source>From File…</source>
         <translation>À partir du fichier…</translation>
     </message>
@@ -1871,12 +1883,22 @@ Continuer?</translation>
         <translation>%1 — %2</translation>
     </message>
     <message>
-        <location line="+73"/>
+        <location line="+77"/>
         <source>WebUI URL:</source>
         <translation>URL WebUI&#xa0;:</translation>
     </message>
     <message>
-        <location line="+95"/>
+        <location line="+3"/>
+        <source>Web UI URL:</source>
+        <translation>URL de l&apos;interface utilisateur Web&#xa0;:</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Required</source>
+        <translation>Requis</translation>
+    </message>
+    <message>
+        <location line="+93"/>
         <source>The server file uses an unsupported server type.</source>
         <translation>Le fichier serveur utilise un type de serveur non pris en charge.</translation>
     </message>
@@ -2038,7 +2060,7 @@ Continuer?</translation>
         <translation>Configurer Planetary</translation>
     </message>
     <message>
-        <location line="+5"/>
+        <location line="+11"/>
         <source>Welcome to Planetary</source>
         <translation>Bienvenue à Planetary</translation>
     </message>
@@ -2161,7 +2183,7 @@ Continuer?</translation>
 <context>
     <name>SessionOverviewWidget</name>
     <message>
-        <location filename="../../sessionoverviewwidget.cpp" line="+96"/>
+        <location filename="../../sessionoverviewwidget.cpp" line="+102"/>
         <source>B/s</source>
         <translation>o/s</translation>
     </message>
@@ -2186,7 +2208,7 @@ Continuer?</translation>
         <translation>%1 %2</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="+41"/>
         <source>Bandwidth Activity</source>
         <translation>Activité de la bande passante</translation>
     </message>
@@ -2201,7 +2223,7 @@ Continuer?</translation>
         <translation>En attente des données de bande passante…</translation>
     </message>
     <message>
-        <location line="+67"/>
+        <location line="+70"/>
         <source>Download %1</source>
         <translation>Téléchargement %1</translation>
     </message>

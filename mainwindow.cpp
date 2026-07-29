@@ -1853,10 +1853,11 @@ void MainWindow::loadServerCombo()
             settings.value(SettingsKeys::ServerBackendType,
                            QStringLiteral("transmission"))
                 .toString().trimmed().toLower();
-        const QString backendName =
-            backendType == QStringLiteral("qbittorrent")
-                ? tr("qBittorrent")
-                : tr("Transmission");
+        QString backendName = tr("Transmission");
+        if (backendType == QStringLiteral("qbittorrent"))
+            backendName = tr("qBittorrent");
+        else if (backendType == QStringLiteral("deluge"))
+            backendName = tr("Deluge");
 
         if (name.isEmpty()) {
             name = rpcUrl.isEmpty()
