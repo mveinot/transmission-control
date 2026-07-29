@@ -393,32 +393,37 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
 <context>
     <name>DelugeBackend</name>
     <message>
-        <location filename="../../delugebackend.cpp" line="+187"/>
+        <location filename="../../delugebackend.cpp" line="+275"/>
         <source>Deluge returned JSON-RPC error %1.</source>
         <translation>Deluge a renvoyé l&apos;erreur JSON-RPC %1.</translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+24"/>
         <source>Deluge authentication failed: %1</source>
         <translation>Échec de l&apos;authentification Deluge : %1</translation>
     </message>
     <message>
-        <location line="+38"/>
+        <location line="+52"/>
         <source>the server returned HTTP %1</source>
         <translation>le serveur a renvoyé HTTP %1</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="-29"/>
         <source>Deluge connection check failed: %1</source>
         <translation>Échec de la vérification de la connexion Deluge : %1</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="-6"/>
+        <source>Deluge torrent request failed: %1</source>
+        <translation>Échec de la requête de torrents Deluge : %1</translation>
+    </message>
+    <message>
+        <location line="+55"/>
         <source>the response was not a JSON object</source>
         <translation>la réponse n&apos;était pas un objet JSON</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="+5"/>
         <source>Invalid response from Deluge: %1</source>
         <translation>Réponse invalide de Deluge : %1</translation>
     </message>
@@ -428,22 +433,22 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Deluge a renvoyé une réponse JSON-RPC non concordante.</translation>
     </message>
     <message>
-        <location line="+15"/>
-        <source>Deluge request failed: %1</source>
-        <translation>Échec de la requête Deluge : %1</translation>
-    </message>
-    <message>
-        <location line="+8"/>
+        <location line="+27"/>
         <source>the Web UI rejected the password</source>
         <translation>l&apos;interface Web a rejeté le mot de passe</translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="+12"/>
         <source>Deluge Web is authenticated, but it is not connected to a daemon.</source>
         <translation>Deluge Web est authentifié, mais n&apos;est pas connecté à un démon.</translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+32"/>
+        <source>Deluge returned an invalid torrent list.</source>
+        <translation>Deluge a renvoyé une liste de torrents invalide.</translation>
+    </message>
+    <message>
+        <location line="+152"/>
         <source>%1 is not implemented for Deluge yet.</source>
         <translation>%1 n&apos;est pas encore implémenté pour Deluge.</translation>
     </message>

@@ -83,7 +83,8 @@ public:
 private:
     enum class RequestKind {
         Login,
-        DaemonConnectionCheck
+        DaemonConnectionCheck,
+        TorrentList
     };
 
     struct RequestContext {
@@ -97,6 +98,7 @@ private:
 
     QNetworkAccessManager m_network;
     QHash<QNetworkReply *, RequestContext> m_requests;
+    QList<RequestContext> m_requestsPendingAfterAuthentication;
     QString m_serverName;
     QString m_baseUrl;
     QString m_rpcUrl;
@@ -108,21 +110,29 @@ private:
     bool m_authenticationPending = false;
     bool m_connectionCheckPending = false;
     bool m_connectionCheckRetriedAuthentication = false;
+    bool m_listPendingAfterReady = false;
+    bool m_listInProgress = false;
+    bool m_listRequestedWhileInProgress = false;
 
     void setServer(const QString &name, const QString &url,
                    const QString &password);
     void authenticate(bool preserveConnectionRetry = false);
     void checkDaemonConnection();
     void postRpc(RequestContext context);
+    void sendTorrentListRequest();
+    void finishTorrentListRequest();
+    void failRequest(const RequestContext &context, const QString &reason);
     QNetworkRequest makeRequest() const;
     void handleReply(QNetworkReply *reply);
     void handleAuthenticationFailure(const QString &reason);
-    void retryAfterAuthentication();
+    void retryAfterAuthentication(RequestContext context);
     void abortRequests();
     void emitUnsupported(const QString &operation);
 
     static bool isAuthenticationError(const QJsonObject &error);
     static QString rpcErrorMessage(const QJsonObject &error);
+    static QJsonObject normalizeTorrent(const QString &key,
+                                        const QJsonObject &source);
 };
 
 #endif // DELUGEBACKEND_H

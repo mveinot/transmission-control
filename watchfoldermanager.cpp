@@ -195,6 +195,15 @@ void WatchFolderManager::restartWatcher()
      * persistent fingerprint history.
      */
     scanWatchFolder();
+
+    // Existing files need another short-interval sample to establish that
+    // their size and modification time are stable. Native reconciliation can
+    // remain slow after this initial candidate set has been resolved.
+    if (!m_candidates.isEmpty()) {
+        QTimer::singleShot(m_scanIntervalMs,
+                           this,
+                           &WatchFolderManager::scanWatchFolder);
+    }
 }
 
 void WatchFolderManager::stopWatcher()

@@ -119,6 +119,8 @@ add_planetary_test(test_delugebackend
     ${CMAKE_SOURCE_DIR}/delugebackend.cpp
     ${CMAKE_SOURCE_DIR}/delugebackend.h
     ${CMAKE_SOURCE_DIR}/torrentbackend.h
+    ${CMAKE_SOURCE_DIR}/torrent.cpp
+    ${CMAKE_SOURCE_DIR}/torrent.h
 )
 
 if(APPLE)

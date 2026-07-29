@@ -9,6 +9,64 @@
 #include <QSettings>
 #include <QUrl>
 
+#include <algorithm>
+#include <utility>
+
+namespace {
+
+const QJsonArray TorrentListFields{
+    QStringLiteral("name"),
+    QStringLiteral("state"),
+    QStringLiteral("progress"),
+    QStringLiteral("total_wanted"),
+    QStringLiteral("total_remaining"),
+    QStringLiteral("total_done"),
+    QStringLiteral("all_time_download"),
+    QStringLiteral("total_uploaded"),
+    QStringLiteral("download_payload_rate"),
+    QStringLiteral("upload_payload_rate"),
+    QStringLiteral("ratio"),
+    QStringLiteral("eta"),
+    QStringLiteral("num_seeds"),
+    QStringLiteral("total_seeds"),
+    QStringLiteral("num_peers"),
+    QStringLiteral("total_peers"),
+    QStringLiteral("time_added"),
+    QStringLiteral("completed_time"),
+    QStringLiteral("download_location"),
+    QStringLiteral("queue"),
+    QStringLiteral("tracker"),
+    QStringLiteral("tracker_host"),
+    QStringLiteral("label"),
+    QStringLiteral("message"),
+    QStringLiteral("is_finished"),
+    QStringLiteral("paused"),
+    QStringLiteral("auto_managed")
+};
+
+int normalizedStatus(const QString &state, bool finished)
+{
+    const QString value = state.trimmed().toLower();
+    if (value == QStringLiteral("checking"))
+        return static_cast<int>(torrent::Status::Verifying);
+    if (value == QStringLiteral("queued")) {
+        return static_cast<int>(finished
+                                    ? torrent::Status::WaitingToSeed
+                                    : torrent::Status::Queued);
+    }
+    if (value == QStringLiteral("downloading")
+        || value == QStringLiteral("allocating")
+        || value == QStringLiteral("moving")) {
+        return static_cast<int>(torrent::Status::Downloading);
+    }
+    if (value == QStringLiteral("seeding"))
+        return static_cast<int>(torrent::Status::Seeding);
+
+    return static_cast<int>(torrent::Status::Paused);
+}
+
+} // namespace
+
 DelugeBackend::DelugeBackend(QObject *parent)
     : TorrentBackend(parent)
 {
@@ -108,14 +166,17 @@ void DelugeBackend::setServer(const QString &name, const QString &url,
     m_authenticationPending = false;
     m_connectionCheckPending = false;
     m_connectionCheckRetriedAuthentication = false;
+    m_listPendingAfterReady = false;
+    m_listInProgress = false;
+    m_listRequestedWhileInProgress = false;
+    m_requestsPendingAfterAuthentication.clear();
     emit serverChanged();
     emit capabilitiesChanged(capabilities());
 }
 
 void DelugeBackend::init()
 {
-    emit updateStarted();
-    authenticate();
+    getTorrentList();
 }
 
 QNetworkRequest DelugeBackend::makeRequest() const
@@ -178,6 +239,33 @@ void DelugeBackend::checkDaemonConnection()
     postRpc(context);
 }
 
+void DelugeBackend::sendTorrentListRequest()
+{
+    if (m_listInProgress)
+        return;
+
+    m_listPendingAfterReady = false;
+    m_listInProgress = true;
+    emit updateStarted();
+
+    RequestContext context;
+    context.kind = RequestKind::TorrentList;
+    context.method = QStringLiteral("core.get_torrents_status");
+    context.parameters = QJsonArray{QJsonObject{}, TorrentListFields};
+    postRpc(context);
+}
+
+void DelugeBackend::finishTorrentListRequest()
+{
+    m_listInProgress = false;
+    emit updateFinished();
+
+    if (m_listRequestedWhileInProgress) {
+        m_listRequestedWhileInProgress = false;
+        sendTorrentListRequest();
+    }
+}
+
 QString DelugeBackend::rpcErrorMessage(const QJsonObject &error)
 {
     const QString message = error.value(QStringLiteral("message")).toString();
@@ -204,16 +292,34 @@ void DelugeBackend::handleAuthenticationFailure(const QString &reason)
     m_authenticationPending = false;
     m_connectionCheckPending = false;
     m_connectionCheckRetriedAuthentication = false;
+    m_listPendingAfterReady = false;
+    m_listInProgress = false;
+    m_listRequestedWhileInProgress = false;
+    m_requestsPendingAfterAuthentication.clear();
     emit updateFailed(tr("Deluge authentication failed: %1").arg(reason));
 }
 
-void DelugeBackend::retryAfterAuthentication()
+void DelugeBackend::retryAfterAuthentication(RequestContext context)
 {
-    // Stage one has only the readiness check, so re-authentication can safely
-    // resume it after login without maintaining a general pending RPC queue.
+    context.retriedAuthentication = true;
+    if (context.kind != RequestKind::DaemonConnectionCheck)
+        m_requestsPendingAfterAuthentication.append(context);
     m_connectionCheckRetriedAuthentication = true;
     m_connectionCheckPending = false;
     authenticate(true);
+}
+
+void DelugeBackend::failRequest(const RequestContext &context,
+                                const QString &reason)
+{
+    if (context.kind == RequestKind::TorrentList) {
+        emit updateFailed(tr("Deluge torrent request failed: %1").arg(reason));
+        m_listInProgress = false;
+        m_listRequestedWhileInProgress = false;
+        return;
+    }
+
+    emit updateFailed(tr("Deluge connection check failed: %1").arg(reason));
 }
 
 void DelugeBackend::handleReply(QNetworkReply *reply)
@@ -248,10 +354,9 @@ void DelugeBackend::handleReply(QNetworkReply *reply)
             handleAuthenticationFailure(reason);
         } else if ((httpStatus == 401 || httpStatus == 403)
                    && !context.retriedAuthentication) {
-            retryAfterAuthentication();
+            retryAfterAuthentication(context);
         } else {
-            emit updateFailed(
-                tr("Deluge connection check failed: %1").arg(reason));
+            failRequest(context, reason);
         }
         return;
     }
@@ -267,7 +372,8 @@ void DelugeBackend::handleReply(QNetworkReply *reply)
         if (context.kind == RequestKind::Login)
             handleAuthenticationFailure(reason);
         else
-            emit updateFailed(tr("Invalid response from Deluge: %1").arg(reason));
+            failRequest(context,
+                        tr("Invalid response from Deluge: %1").arg(reason));
         return;
     }
 
@@ -275,6 +381,10 @@ void DelugeBackend::handleReply(QNetworkReply *reply)
     if (response.value(QStringLiteral("id")).toVariant().toLongLong()
         != context.id) {
         emit updateFailed(tr("Deluge returned a mismatched JSON-RPC response."));
+        if (context.kind == RequestKind::TorrentList) {
+            m_listInProgress = false;
+            m_listRequestedWhileInProgress = false;
+        }
         return;
     }
 
@@ -285,11 +395,11 @@ void DelugeBackend::handleReply(QNetworkReply *reply)
         if (context.kind != RequestKind::Login
             && isAuthenticationError(error)
             && !context.retriedAuthentication) {
-            retryAfterAuthentication();
+            retryAfterAuthentication(context);
         } else if (context.kind == RequestKind::Login) {
             handleAuthenticationFailure(reason);
         } else {
-            emit updateFailed(tr("Deluge request failed: %1").arg(reason));
+            failRequest(context, reason);
         }
         return;
     }
@@ -306,17 +416,59 @@ void DelugeBackend::handleReply(QNetworkReply *reply)
         return;
     }
 
-    if (!response.value(QStringLiteral("result")).toBool()) {
+    if (context.kind == RequestKind::DaemonConnectionCheck
+        && !response.value(QStringLiteral("result")).toBool()) {
         emit updateFailed(
             tr("Deluge Web is authenticated, but it is not connected to a daemon."));
+        m_listPendingAfterReady = false;
+        m_listInProgress = false;
+        m_listRequestedWhileInProgress = false;
         return;
     }
 
-    // Authentication and daemon reachability form the stage-one readiness
-    // boundary. The torrent-list request is intentionally deferred to stage 2.
-    m_ready = true;
-    m_connectionCheckRetriedAuthentication = false;
-    emit updateFinished();
+    if (context.kind == RequestKind::DaemonConnectionCheck) {
+        m_ready = true;
+        m_connectionCheckRetriedAuthentication = false;
+
+        const QList<RequestContext> pending =
+            std::exchange(m_requestsPendingAfterAuthentication, {});
+        for (RequestContext request : pending)
+            postRpc(request);
+
+        if (m_listPendingAfterReady
+            && std::none_of(pending.cbegin(), pending.cend(),
+                            [](const RequestContext &request) {
+                                return request.kind == RequestKind::TorrentList;
+                            })) {
+            sendTorrentListRequest();
+        } else if (pending.isEmpty()) {
+            emit updateFinished();
+        }
+        return;
+    }
+
+    if (context.kind == RequestKind::TorrentList) {
+        const QJsonValue result = response.value(QStringLiteral("result"));
+        if (!result.isObject()) {
+            failRequest(context,
+                        tr("Deluge returned an invalid torrent list."));
+            return;
+        }
+
+        const QJsonObject nativeTorrents = result.toObject();
+        QVector<torrent> torrents;
+        torrents.reserve(nativeTorrents.size());
+        for (auto it = nativeTorrents.constBegin();
+             it != nativeTorrents.constEnd(); ++it) {
+            if (!it.value().isObject())
+                continue;
+            torrents.append(
+                torrent(normalizeTorrent(it.key(), it.value().toObject())));
+        }
+
+        emit torrentsReceived(torrents);
+        finishTorrentListRequest();
+    }
 }
 
 void DelugeBackend::abortRequests()
@@ -331,13 +483,120 @@ void DelugeBackend::abortRequests()
 
 void DelugeBackend::getTorrentList()
 {
-    if (m_ready)
+    if (m_listInProgress) {
+        m_listRequestedWhileInProgress = true;
         return;
+    }
+    if (m_ready) {
+        sendTorrentListRequest();
+        return;
+    }
+
+    m_listPendingAfterReady = true;
     if (!m_authenticated) {
         authenticate();
         return;
     }
     checkDaemonConnection();
+}
+
+QJsonObject DelugeBackend::normalizeTorrent(const QString &key,
+                                            const QJsonObject &source)
+{
+    const QString hash =
+        source.value(QStringLiteral("hash")).toString(key).trimmed();
+    const QString state = source.value(QStringLiteral("state")).toString();
+    const double progress =
+        source.value(QStringLiteral("progress")).toDouble();
+    const bool finished =
+        source.value(QStringLiteral("is_finished")).toBool()
+        || progress >= 100.0
+        || state.compare(QStringLiteral("Seeding"),
+                         Qt::CaseInsensitive) == 0;
+    const qint64 totalWanted =
+        source.value(QStringLiteral("total_wanted")).toVariant().toLongLong();
+    const qint64 remaining =
+        source.value(QStringLiteral("total_remaining")).toVariant().toLongLong();
+    const int connectedSeeds =
+        source.value(QStringLiteral("num_seeds")).toInt();
+    const int connectedPeers =
+        source.value(QStringLiteral("num_peers")).toInt();
+    const int totalSeeds =
+        source.value(QStringLiteral("total_seeds")).toInt(-1);
+    const int totalPeers =
+        source.value(QStringLiteral("total_peers")).toInt(-1);
+    const QString tracker =
+        source.value(QStringLiteral("tracker")).toString();
+    const QString trackerHost =
+        source.value(QStringLiteral("tracker_host")).toString();
+
+    QJsonObject normalized{
+        {QStringLiteral("hashString"), hash},
+        {QStringLiteral("name"), source.value(QStringLiteral("name"))},
+        {QStringLiteral("status"), normalizedStatus(state, finished)},
+        {QStringLiteral("percentDone"), progress / 100.0},
+        {QStringLiteral("eta"), source.value(QStringLiteral("eta"))},
+        {QStringLiteral("rateDownload"),
+         source.value(QStringLiteral("download_payload_rate"))},
+        {QStringLiteral("rateUpload"),
+         source.value(QStringLiteral("upload_payload_rate"))},
+        {QStringLiteral("uploadRatio"), source.value(QStringLiteral("ratio"))},
+        {QStringLiteral("sizeWhenDone"), totalWanted},
+        {QStringLiteral("totalSize"), totalWanted},
+        {QStringLiteral("addedDate"), source.value(QStringLiteral("time_added"))},
+        {QStringLiteral("doneDate"),
+         source.value(QStringLiteral("completed_time"))},
+        {QStringLiteral("downloadedEver"),
+         source.value(QStringLiteral("all_time_download"))},
+        {QStringLiteral("uploadedEver"),
+         source.value(QStringLiteral("total_uploaded"))},
+        {QStringLiteral("downloadDir"),
+         source.value(QStringLiteral("download_location"))},
+        {QStringLiteral("peersConnected"),
+         connectedSeeds + connectedPeers},
+        {QStringLiteral("peersSendingToUs"), connectedSeeds},
+        {QStringLiteral("peersGettingFromUs"), connectedPeers},
+        {QStringLiteral("queuePosition"),
+         source.value(QStringLiteral("queue"))},
+        {QStringLiteral("leftUntilDone"), remaining},
+        {QStringLiteral("desiredAvailable"), remaining}
+    };
+
+    if (!tracker.isEmpty()) {
+        normalized.insert(
+            QStringLiteral("trackers"),
+            QJsonArray{QJsonObject{{QStringLiteral("announce"), tracker}}});
+    }
+    normalized.insert(
+        QStringLiteral("trackerStats"),
+        QJsonArray{QJsonObject{
+            {QStringLiteral("host"), trackerHost},
+            {QStringLiteral("announce"), tracker},
+            {QStringLiteral("seederCount"), totalSeeds},
+            {QStringLiteral("leecherCount"), totalPeers}
+        }});
+
+    if (source.contains(QStringLiteral("label"))) {
+        QJsonArray labels;
+        const QString label =
+            source.value(QStringLiteral("label")).toString().trimmed();
+        if (!label.isEmpty())
+            labels.append(label);
+        normalized.insert(QStringLiteral("labels"), labels);
+    }
+
+    const QString message =
+        source.value(QStringLiteral("message")).toString().trimmed();
+    if (state.compare(QStringLiteral("Error"), Qt::CaseInsensitive) == 0
+        || (!message.isEmpty()
+            && message.compare(QStringLiteral("OK"),
+                               Qt::CaseInsensitive) != 0)) {
+        normalized.insert(QStringLiteral("error"), 1);
+        normalized.insert(QStringLiteral("errorString"),
+                          message.isEmpty() ? state : message);
+    }
+
+    return normalized;
 }
 
 void DelugeBackend::emitUnsupported(const QString &operation)
