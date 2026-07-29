@@ -123,6 +123,26 @@ add_planetary_test(test_delugebackend
     ${CMAKE_SOURCE_DIR}/torrent.h
 )
 
+add_planetary_test(test_transmissionbackend
+    test_transmissionbackend.cpp
+    fakehttpserver.h
+    ${CMAKE_SOURCE_DIR}/transmissionbackend.cpp
+    ${CMAKE_SOURCE_DIR}/transmissionbackend.h
+    ${CMAKE_SOURCE_DIR}/torrentbackend.h
+    ${CMAKE_SOURCE_DIR}/torrent.cpp
+    ${CMAKE_SOURCE_DIR}/torrent.h
+)
+
+add_planetary_test(test_qbittorrentbackend
+    test_qbittorrentbackend.cpp
+    fakehttpserver.h
+    ${CMAKE_SOURCE_DIR}/qbittorrentbackend.cpp
+    ${CMAKE_SOURCE_DIR}/qbittorrentbackend.h
+    ${CMAKE_SOURCE_DIR}/torrentbackend.h
+    ${CMAKE_SOURCE_DIR}/torrent.cpp
+    ${CMAKE_SOURCE_DIR}/torrent.h
+)
+
 if(APPLE)
     target_sources(test_notificationcontroller PRIVATE
         ${CMAKE_SOURCE_DIR}/macnotificationbackend.h

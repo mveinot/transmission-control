@@ -39,6 +39,10 @@ set(PLANETARY_GENERATED_TRANSLATIONS_QRC
     "${PLANETARY_GENERATED_DIR}/planetary_translations.qrc"
 )
 
+set(PLANETARY_GENERATED_TRANSLATIONS_CPP
+    "${PLANETARY_GENERATED_DIR}/qrc_planetary_translations.cpp"
+)
+
 set(PLANETARY_QM_FILES)
 set(PLANETARY_TRANSLATION_QRC_ENTRIES "")
 
@@ -81,6 +85,29 @@ set_source_files_properties(
     ${PLANETARY_QM_FILES}
     "${PLANETARY_GENERATED_TRANSLATIONS_QRC}"
     PROPERTIES GENERATED TRUE
+)
+
+# Drive rcc explicitly so its generated C++ output has a direct file-level
+# dependency on every lrelease output. AutoRCC's generated helper target can
+# otherwise race lrelease after a fresh configure in parallel builds.
+add_custom_command(
+    OUTPUT "${PLANETARY_GENERATED_TRANSLATIONS_CPP}"
+    COMMAND Qt${QT_VERSION_MAJOR}::rcc
+            --name planetary_translations
+            --output "${PLANETARY_GENERATED_TRANSLATIONS_CPP}"
+            "${PLANETARY_GENERATED_TRANSLATIONS_QRC}"
+    DEPENDS
+        "${PLANETARY_GENERATED_TRANSLATIONS_QRC}"
+        ${PLANETARY_QM_FILES}
+    COMMENT "Compiling Planetary translations"
+    VERBATIM
+)
+
+set_source_files_properties(
+    "${PLANETARY_GENERATED_TRANSLATIONS_CPP}"
+    PROPERTIES
+        GENERATED TRUE
+        SKIP_AUTOGEN TRUE
 )
 
 set(PROJECT_SOURCES
@@ -170,7 +197,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         ${PROJECT_SOURCES}
         Resources/resources.qrc
         Resources/flags.qrc
-        ${PLANETARY_GENERATED_TRANSLATIONS_QRC}
         ${app_icon_macos}
         appsettings.ui
         appsettings.h
@@ -255,6 +281,9 @@ else()
 
 endif()
 
+target_sources(Planetary PRIVATE
+    "${PLANETARY_GENERATED_TRANSLATIONS_CPP}"
+)
 
 if(APPLE)
     target_sources(Planetary PRIVATE
@@ -304,11 +333,6 @@ if(PLANETARY_QM_FILES)
 
     add_dependencies(Planetary PlanetaryTranslations)
 
-    # AutoRCC creates a separate target for the generated translation .qrc.
-    # Make sure lrelease creates the .qm files before rcc tries to embed them.
-    if(TARGET Planetary_arcc_planetary_translations)
-        add_dependencies(Planetary_arcc_planetary_translations PlanetaryTranslations)
-    endif()
 endif()
 
 if(WIN32)
