@@ -85,6 +85,12 @@ private:
         Login,
         DaemonConnectionCheck,
         TorrentList,
+        TorrentDetails,
+        TorrentFiles,
+        TorrentPeers,
+        TorrentTrackers,
+        TorrentPieces,
+        TorrentProperties,
         Command,
         AddTorrent
     };
@@ -96,6 +102,7 @@ private:
         QString commandMethod;
         QString torrentFilePath;
         QString torrentName;
+        TorrentKey torrentKey;
         QJsonArray parameters;
         quint64 generation = 0;
         bool deleteTorrentFileOnSuccess = false;
@@ -132,6 +139,10 @@ private:
     void failAdd(const RequestContext &context, const QString &reason);
     void postCommand(const QString &rpcMethod, const QJsonArray &parameters,
                      const QString &commandMethod);
+    void postTorrentStatus(RequestKind kind, const TorrentKey &torrentKey,
+                           const QJsonArray &fields);
+    void handleTorrentStatus(const RequestContext &context,
+                             const QJsonObject &status);
     QNetworkRequest makeRequest() const;
     void handleReply(QNetworkReply *reply);
     void handleAuthenticationFailure(const QString &reason);

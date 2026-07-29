@@ -44,6 +44,7 @@ public:
     bool expireFirstConnectionCheck = false;
     bool expireFirstTorrentRequest = false;
     QJsonObject torrents;
+    QJsonObject torrentStatus;
     QString addedTorrentId = QStringLiteral("added-torrent-id");
     QStringList methods;
     QHash<QString, QJsonArray> parametersByMethod;
@@ -108,6 +109,8 @@ private:
                 response.insert(QStringLiteral("result"), acceptPassword);
             else if (method == QStringLiteral("core.get_torrents_status"))
                 response.insert(QStringLiteral("result"), torrents);
+            else if (method == QStringLiteral("core.get_torrent_status"))
+                response.insert(QStringLiteral("result"), torrentStatus);
             else if (method == QStringLiteral("core.add_torrent_magnet")
                      || method
                             == QStringLiteral("core.add_torrent_file_async")) {
@@ -149,6 +152,7 @@ private slots:
     void expiredAuthenticationDuringTorrentListIsRetriedOnce();
     void coreTorrentControlsUseExpectedRpcMethods();
     void magnetAndFileAddsSendOptionsAndReportSuccess();
+    void selectedTorrentDetailsAreNormalized();
     void rejectedPasswordReportsAuthenticationFailure();
     void disconnectedDaemonHasDistinctFailure();
 
@@ -446,6 +450,120 @@ void TestDelugeBackend::magnetAndFileAddsSendOptionsAndReportSuccess()
     QCOMPARE(fileParameters.at(2).toObject()
                  .value(QStringLiteral("download_location")).toString(),
              QStringLiteral("/remote/files"));
+}
+
+void TestDelugeBackend::selectedTorrentDetailsAreNormalized()
+{
+    FakeDelugeWeb server;
+    server.torrentStatus = QJsonObject{
+        {QStringLiteral("name"), QStringLiteral("Linux ISO")},
+        {QStringLiteral("hash"), QStringLiteral("torrent-hash")},
+        {QStringLiteral("comment"), QStringLiteral("Release image")},
+        {QStringLiteral("creator"), QStringLiteral("mktool")},
+        {QStringLiteral("download_location"), QStringLiteral("/srv/downloads")},
+        {QStringLiteral("total_size"), 3000},
+        {QStringLiteral("time_created"), 12345},
+        {QStringLiteral("progress"), 50.0},
+        {QStringLiteral("pieces"), QJsonArray{true, false, true}},
+        {QStringLiteral("files"),
+         QJsonArray{
+             QJsonObject{
+                 {QStringLiteral("index"), 0},
+                 {QStringLiteral("path"), QStringLiteral("image.iso")},
+                 {QStringLiteral("size"), 3000}
+             }
+         }},
+        {QStringLiteral("file_progress"), QJsonArray{0.5}},
+        {QStringLiteral("file_priorities"), QJsonArray{7}},
+        {QStringLiteral("peers"),
+         QJsonArray{
+             QJsonObject{
+                 {QStringLiteral("ip"), QStringLiteral("192.0.2.4:51413")},
+                 {QStringLiteral("client"), QStringLiteral("Peer Client")},
+                 {QStringLiteral("progress"), 75.0},
+                 {QStringLiteral("down_speed"), 1200},
+                 {QStringLiteral("up_speed"), 300}
+             }
+         }},
+        {QStringLiteral("trackers"),
+         QJsonArray{
+             QJsonObject{
+                 {QStringLiteral("tier"), 0},
+                 {QStringLiteral("url"),
+                  QStringLiteral("https://tracker.example/announce")}
+             }
+         }},
+        {QStringLiteral("queue"), 4},
+        {QStringLiteral("max_connections"), 80},
+        {QStringLiteral("max_download_speed"), 250},
+        {QStringLiteral("max_upload_speed"), -1},
+        {QStringLiteral("stop_ratio"), 2.0},
+        {QStringLiteral("label"), QStringLiteral("Linux")}
+    };
+    configureServer(server.url(), QStringLiteral("correct"));
+
+    DelugeBackend backend;
+    QVERIFY(backend.loadCurrentServerFromSettings());
+    QSignalSpy detailsSpy(&backend, &TorrentBackend::torrentDetailsReceived);
+    QSignalSpy filesSpy(&backend, &TorrentBackend::torrentFilesReceived);
+    QSignalSpy peersSpy(&backend, &TorrentBackend::torrentPeersReceived);
+    QSignalSpy trackersSpy(&backend, &TorrentBackend::torrentTrackersReceived);
+    QSignalSpy piecesSpy(&backend, &TorrentBackend::torrentPiecesReceived);
+    QSignalSpy propertiesSpy(
+        &backend, &TorrentBackend::torrentPropertiesReceived);
+
+    backend.getTorrentDetails(QStringLiteral("torrent-hash"));
+    backend.getTorrentFiles(QStringLiteral("torrent-hash"));
+    backend.getTorrentPeers(QStringLiteral("torrent-hash"));
+    backend.getTorrentTrackers(QStringLiteral("torrent-hash"));
+    backend.getTorrentPieces(QStringLiteral("torrent-hash"));
+    backend.getTorrentProperties(QStringLiteral("torrent-hash"));
+
+    QTRY_COMPARE(detailsSpy.size(), 1);
+    QTRY_COMPARE(filesSpy.size(), 1);
+    QTRY_COMPARE(peersSpy.size(), 1);
+    QTRY_COMPARE(trackersSpy.size(), 1);
+    QTRY_COMPARE(piecesSpy.size(), 1);
+    QTRY_COMPARE(propertiesSpy.size(), 1);
+
+    const TorrentDetails details =
+        qvariant_cast<TorrentDetails>(detailsSpy.first().first());
+    QCOMPARE(details.key, QStringLiteral("torrent-hash"));
+    QCOMPARE(details.name, QStringLiteral("Linux ISO"));
+    QCOMPARE(details.downloadDirectory, QStringLiteral("/srv/downloads"));
+    QCOMPARE(details.totalSize, 3000);
+
+    const TorrentFiles files =
+        qvariant_cast<TorrentFiles>(filesSpy.first().first());
+    QCOMPARE(files.files.size(), 1);
+    QCOMPARE(files.files.first().bytesCompleted, 1500);
+    QCOMPARE(files.files.first().priority, 1);
+
+    const TorrentPeers peers =
+        qvariant_cast<TorrentPeers>(peersSpy.first().first());
+    QCOMPARE(peers.peers.size(), 1);
+    QCOMPARE(peers.peers.first().address, QStringLiteral("192.0.2.4"));
+    QCOMPARE(peers.peers.first().port, 51413);
+    QCOMPARE(peers.peers.first().progress, 0.75);
+
+    const TorrentTrackers trackers =
+        qvariant_cast<TorrentTrackers>(trackersSpy.first().first());
+    QCOMPARE(trackers.trackers.first().host,
+             QStringLiteral("tracker.example"));
+
+    const TorrentPieces pieces =
+        qvariant_cast<TorrentPieces>(piecesSpy.first().first());
+    QCOMPARE(pieces.pieceCount, 3);
+    QCOMPARE(static_cast<uchar>(pieces.completedPieces.at(0)),
+             static_cast<uchar>(0xa0));
+    QCOMPARE(pieces.percentDone, 0.5);
+
+    const TorrentProperties properties =
+        qvariant_cast<TorrentProperties>(propertiesSpy.first().first());
+    QCOMPARE(properties.peerLimit, 80);
+    QVERIFY(properties.downloadLimited);
+    QVERIFY(!properties.uploadLimited);
+    QCOMPARE(properties.labels, QStringList{QStringLiteral("Linux")});
 }
 
 void TestDelugeBackend::disconnectedDaemonHasDistinctFailure()

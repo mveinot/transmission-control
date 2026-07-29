@@ -84,6 +84,25 @@ QJsonArray singleArrayParameter(const QJsonArray &value)
     return parameters;
 }
 
+QByteArray completedPieceBitfield(const QJsonArray &nativePieces)
+{
+    QByteArray result((nativePieces.size() + 7) / 8, '\0');
+    for (int index = 0; index < nativePieces.size(); ++index) {
+        const QJsonValue value = nativePieces.at(index);
+        const bool complete =
+            value.isBool() ? value.toBool() : value.toInt() > 0;
+        if (!complete)
+            continue;
+        const int byteIndex = index / 8;
+        const int bitIndex = 7 - (index % 8);
+        result[byteIndex] =
+            static_cast<char>(
+                static_cast<uchar>(result.at(byteIndex))
+                | static_cast<uchar>(1u << bitIndex));
+    }
+    return result;
+}
+
 } // namespace
 
 DelugeBackend::DelugeBackend(QObject *parent)
@@ -253,6 +272,21 @@ void DelugeBackend::postCommand(const QString &rpcMethod,
     queueOrPostRpc(context);
 }
 
+void DelugeBackend::postTorrentStatus(RequestKind kind,
+                                      const TorrentKey &torrentKey,
+                                      const QJsonArray &fields)
+{
+    if (!isValidTorrentKey(torrentKey))
+        return;
+
+    RequestContext context;
+    context.kind = kind;
+    context.method = QStringLiteral("core.get_torrent_status");
+    context.torrentKey = torrentKey;
+    context.parameters = QJsonArray{torrentKey, fields};
+    queueOrPostRpc(context);
+}
+
 void DelugeBackend::authenticate(bool preserveConnectionRetry)
 {
     if (m_rpcUrl.isEmpty() || m_authenticationPending)
@@ -374,6 +408,14 @@ void DelugeBackend::failRequest(const RequestContext &context,
 
     if (context.kind == RequestKind::Command) {
         emit commandFailed(context.commandMethod, reason);
+        return;
+    }
+
+    if (context.kind >= RequestKind::TorrentDetails
+        && context.kind <= RequestKind::TorrentProperties) {
+        // Detail failures are deliberately non-fatal to the list poll. The
+        // selected pane will retry on its next normal refresh.
+        emit commandFailed(QStringLiteral("torrent-get"), reason);
         return;
     }
 
@@ -537,6 +579,18 @@ void DelugeBackend::handleReply(QNetworkReply *reply)
         return;
     }
 
+    if (context.kind >= RequestKind::TorrentDetails
+        && context.kind <= RequestKind::TorrentProperties) {
+        const QJsonValue result = response.value(QStringLiteral("result"));
+        if (!result.isObject()) {
+            failRequest(context,
+                        tr("Deluge returned invalid torrent details."));
+            return;
+        }
+        handleTorrentStatus(context, result.toObject());
+        return;
+    }
+
     if (context.kind == RequestKind::Command) {
         if (context.method == QStringLiteral("core.remove_torrents")) {
             const QJsonArray errors =
@@ -570,6 +624,165 @@ void DelugeBackend::handleReply(QNetworkReply *reply)
         emit torrentAdded(torrentKey, context.torrentName);
         emit commandSucceeded(QStringLiteral("torrent-add"));
     }
+}
+
+void DelugeBackend::handleTorrentStatus(const RequestContext &context,
+                                        const QJsonObject &status)
+{
+    if (context.kind == RequestKind::TorrentDetails) {
+        TorrentDetails details;
+        details.key = context.torrentKey;
+        details.name = status.value(QStringLiteral("name")).toString();
+        details.comment = status.value(QStringLiteral("comment")).toString();
+        details.creator = status.value(QStringLiteral("creator")).toString();
+        details.downloadDirectory =
+            status.value(QStringLiteral("download_location")).toString();
+        details.hashString =
+            status.value(QStringLiteral("hash")).toString(context.torrentKey);
+        details.magnetLink =
+            status.value(QStringLiteral("magnet_uri")).toString();
+        details.totalSize =
+            status.value(QStringLiteral("total_size")).toVariant().toLongLong();
+        details.creationTime =
+            status.value(QStringLiteral("time_created"))
+                .toVariant().toLongLong();
+        details.hasSequentialDownload =
+            status.contains(QStringLiteral("sequential_download"));
+        details.sequentialDownload =
+            status.value(QStringLiteral("sequential_download")).toBool();
+        details.fields = status.toVariantMap();
+        emit torrentDetailsReceived(details);
+        return;
+    }
+
+    if (context.kind == RequestKind::TorrentFiles) {
+        TorrentFiles files;
+        files.key = context.torrentKey;
+        files.downloadDirectory =
+            status.value(QStringLiteral("download_location")).toString();
+        const QJsonArray nativeFiles =
+            status.value(QStringLiteral("files")).toArray();
+        const QJsonArray progress =
+            status.value(QStringLiteral("file_progress")).toArray();
+        const QJsonArray priorities =
+            status.value(QStringLiteral("file_priorities")).toArray();
+        files.files.reserve(nativeFiles.size());
+        for (int index = 0; index < nativeFiles.size(); ++index) {
+            const QJsonObject source = nativeFiles.at(index).toObject();
+            TorrentFile file;
+            file.index = source.value(QStringLiteral("index")).toInt(index);
+            file.path = source.value(QStringLiteral("path")).toString();
+            file.length =
+                source.value(QStringLiteral("size")).toVariant().toLongLong();
+            const double fraction =
+                index < progress.size() ? progress.at(index).toDouble() : 0.0;
+            file.bytesCompleted = qRound64(file.length * fraction);
+            const int nativePriority =
+                index < priorities.size() ? priorities.at(index).toInt() : 1;
+            // Deluge/libtorrent uses 0=unwanted, 1=low, 4=normal, 7=high.
+            file.wanted = nativePriority > 0;
+            file.priority =
+                nativePriority >= 7 ? 1 : (nativePriority == 1 ? -1 : 0);
+            files.files.append(file);
+        }
+        emit torrentFilesReceived(files);
+        return;
+    }
+
+    if (context.kind == RequestKind::TorrentPeers) {
+        TorrentPeers peers;
+        peers.key = context.torrentKey;
+        const QJsonArray nativePeers =
+            status.value(QStringLiteral("peers")).toArray();
+        peers.peers.reserve(nativePeers.size());
+        for (const QJsonValue &value : nativePeers) {
+            const QJsonObject source = value.toObject();
+            TorrentPeer peer;
+            const QString endpoint =
+                source.value(QStringLiteral("ip")).toString();
+            const QUrl parsed(QStringLiteral("tcp://") + endpoint);
+            peer.address = parsed.host();
+            peer.port = parsed.port();
+            if (peer.address.isEmpty())
+                peer.address = endpoint;
+            peer.clientName =
+                source.value(QStringLiteral("client")).toString();
+            peer.progress =
+                source.value(QStringLiteral("progress")).toDouble();
+            if (peer.progress > 1.0)
+                peer.progress /= 100.0;
+            peer.downloadRate =
+                source.value(QStringLiteral("down_speed"))
+                    .toVariant().toLongLong();
+            peer.uploadRate =
+                source.value(QStringLiteral("up_speed"))
+                    .toVariant().toLongLong();
+            peers.peers.append(peer);
+        }
+        emit torrentPeersReceived(peers);
+        return;
+    }
+
+    if (context.kind == RequestKind::TorrentTrackers) {
+        TorrentTrackers trackers;
+        trackers.key = context.torrentKey;
+        const QJsonArray nativeTrackers =
+            status.value(QStringLiteral("trackers")).toArray();
+        trackers.trackers.reserve(nativeTrackers.size());
+        for (int index = 0; index < nativeTrackers.size(); ++index) {
+            const QJsonObject source = nativeTrackers.at(index).toObject();
+            TorrentTracker tracker;
+            tracker.id = index;
+            tracker.tier = source.value(QStringLiteral("tier")).toInt(-1);
+            tracker.announceUrl =
+                source.value(QStringLiteral("url")).toString();
+            tracker.host = QUrl(tracker.announceUrl).host();
+            trackers.trackers.append(tracker);
+        }
+        emit torrentTrackersReceived(trackers);
+        return;
+    }
+
+    if (context.kind == RequestKind::TorrentPieces) {
+        TorrentPieces pieces;
+        pieces.key = context.torrentKey;
+        const QJsonArray nativePieces =
+            status.value(QStringLiteral("pieces")).toArray();
+        pieces.pieceCount = nativePieces.size();
+        pieces.completedPieces = completedPieceBitfield(nativePieces);
+        pieces.percentDone =
+            status.value(QStringLiteral("progress")).toDouble() / 100.0;
+        emit torrentPiecesReceived(pieces);
+        return;
+    }
+
+    TorrentProperties properties;
+    properties.key = context.torrentKey;
+    properties.name = status.value(QStringLiteral("name")).toString();
+    properties.hashString =
+        status.value(QStringLiteral("hash")).toString(context.torrentKey);
+    properties.queuePosition =
+        status.value(QStringLiteral("queue")).toInt();
+    properties.peerLimit =
+        status.value(QStringLiteral("max_connections")).toInt(-1);
+    const int downloadLimit =
+        status.value(QStringLiteral("max_download_speed")).toInt(-1);
+    const int uploadLimit =
+        status.value(QStringLiteral("max_upload_speed")).toInt(-1);
+    properties.downloadLimited = downloadLimit >= 0;
+    properties.downloadLimit = std::max(0, downloadLimit);
+    properties.uploadLimited = uploadLimit >= 0;
+    properties.uploadLimit = std::max(0, uploadLimit);
+    const double ratioLimit =
+        status.value(QStringLiteral("stop_ratio")).toDouble(-1.0);
+    properties.seedRatioMode = ratioLimit < 0.0 ? 0 : 1;
+    properties.seedRatioLimit = std::max(0.0, ratioLimit);
+    const QString label =
+        status.value(QStringLiteral("label")).toString().trimmed();
+    if (!label.isEmpty())
+        properties.labels.append(label);
+    properties.fields = status.toVariantMap();
+    emit torrentPropertiesReceived(properties);
 }
 
 void DelugeBackend::abortRequests()
@@ -708,13 +921,81 @@ void DelugeBackend::emitUnsupported(const QString &operation)
 }
 
 void DelugeBackend::getTorrentTrackerMetadata() {}
-void DelugeBackend::getTorrentDetails(const TorrentKey &) {}
-void DelugeBackend::getTorrentFiles(const TorrentKey &) {}
-void DelugeBackend::getTorrentPeers(const TorrentKey &) {}
-void DelugeBackend::getTorrentTrackers(const TorrentKey &) {}
-void DelugeBackend::getTorrentPieces(const TorrentKey &) {}
-void DelugeBackend::getTorrentProperties(const TorrentKey &) {}
-void DelugeBackend::cancelTorrentDetailRequests() {}
+void DelugeBackend::getTorrentDetails(const TorrentKey &key)
+{
+    postTorrentStatus(
+        RequestKind::TorrentDetails, key,
+        QJsonArray{
+            QStringLiteral("name"), QStringLiteral("comment"),
+            QStringLiteral("creator"), QStringLiteral("download_location"),
+            QStringLiteral("hash"), QStringLiteral("magnet_uri"),
+            QStringLiteral("total_size"), QStringLiteral("time_created"),
+            QStringLiteral("sequential_download"), QStringLiteral("state"),
+            QStringLiteral("progress"), QStringLiteral("ratio"),
+            QStringLiteral("eta"), QStringLiteral("tracker_status")
+        });
+}
+void DelugeBackend::getTorrentFiles(const TorrentKey &key)
+{
+    postTorrentStatus(
+        RequestKind::TorrentFiles, key,
+        QJsonArray{
+            QStringLiteral("download_location"), QStringLiteral("files"),
+            QStringLiteral("file_progress"), QStringLiteral("file_priorities")
+        });
+}
+void DelugeBackend::getTorrentPeers(const TorrentKey &key)
+{
+    postTorrentStatus(RequestKind::TorrentPeers, key,
+                      QJsonArray{QStringLiteral("peers")});
+}
+void DelugeBackend::getTorrentTrackers(const TorrentKey &key)
+{
+    postTorrentStatus(RequestKind::TorrentTrackers, key,
+                      QJsonArray{QStringLiteral("trackers")});
+}
+void DelugeBackend::getTorrentPieces(const TorrentKey &key)
+{
+    postTorrentStatus(
+        RequestKind::TorrentPieces, key,
+        QJsonArray{QStringLiteral("pieces"), QStringLiteral("progress")});
+}
+void DelugeBackend::getTorrentProperties(const TorrentKey &key)
+{
+    postTorrentStatus(
+        RequestKind::TorrentProperties, key,
+        QJsonArray{
+            QStringLiteral("name"), QStringLiteral("hash"),
+            QStringLiteral("queue"), QStringLiteral("max_connections"),
+            QStringLiteral("max_download_speed"),
+            QStringLiteral("max_upload_speed"), QStringLiteral("stop_ratio"),
+            QStringLiteral("label")
+        });
+}
+void DelugeBackend::cancelTorrentDetailRequests()
+{
+    const QList<QNetworkReply *> replies = m_requests.keys();
+    for (QNetworkReply *reply : replies) {
+        const RequestContext context = m_requests.value(reply);
+        if (context.kind < RequestKind::TorrentDetails
+            || context.kind > RequestKind::TorrentProperties) {
+            continue;
+        }
+        m_requests.remove(reply);
+        reply->abort();
+        reply->deleteLater();
+    }
+
+    m_requestsPendingAfterAuthentication.erase(
+        std::remove_if(
+            m_requestsPendingAfterAuthentication.begin(),
+            m_requestsPendingAfterAuthentication.end(),
+            [](const RequestContext &context) {
+                return context.kind >= RequestKind::TorrentDetails
+                       && context.kind <= RequestKind::TorrentProperties;
+            }),
+        m_requestsPendingAfterAuthentication.end());
+}
 void DelugeBackend::addTorrentFromFile(const QString &filePath,
                                        bool deleteFileOnSuccess)
 {

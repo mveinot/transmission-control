@@ -393,7 +393,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
 <context>
     <name>DelugeBackend</name>
     <message>
-        <location filename="../../delugebackend.cpp" line="+320"/>
+        <location filename="../../delugebackend.cpp" line="+355"/>
         <source>Deluge returned JSON-RPC error %1.</source>
         <translation>Deluge a renvoyé l&apos;erreur JSON-RPC %1.</translation>
     </message>
@@ -403,7 +403,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Échec de l&apos;authentification Deluge : %1</translation>
     </message>
     <message>
-        <location line="+70"/>
+        <location line="+78"/>
         <source>the server returned HTTP %1</source>
         <translation>le serveur a renvoyé HTTP %1</translation>
     </message>
@@ -413,12 +413,12 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Échec de la vérification de la connexion Deluge : %1</translation>
     </message>
     <message>
-        <location line="-16"/>
+        <location line="-24"/>
         <source>Deluge torrent request failed: %1</source>
         <translation>Échec de la requête de torrents Deluge : %1</translation>
     </message>
     <message>
-        <location line="+73"/>
+        <location line="+81"/>
         <source>the response was not a JSON object</source>
         <translation>la réponse n&apos;était pas un objet JSON</translation>
     </message>
@@ -448,7 +448,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Deluge a renvoyé une liste de torrents invalide.</translation>
     </message>
     <message>
-        <location line="+27"/>
+        <location line="+39"/>
         <source>Deluge could not remove %1 torrent(s).</source>
         <translation>Deluge n&apos;a pas pu supprimer %1 torrent(s).</translation>
     </message>
@@ -458,12 +458,12 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Deluge n&apos;a pas renvoyé d&apos;identifiant de torrent.</translation>
     </message>
     <message>
-        <location line="+146"/>
+        <location line="+305"/>
         <source>%1 is not implemented for Deluge yet.</source>
         <translation>%1 n&apos;est pas encore implémenté pour Deluge.</translation>
     </message>
     <message>
-        <location line="+102"/>
+        <location line="+170"/>
         <source>Force start torrents</source>
         <translation>Forcer le démarrage des torrents</translation>
     </message>
@@ -473,7 +473,12 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Impossible d&apos;ouvrir le fichier torrent&#xa0;: %1</translation>
     </message>
     <message>
-        <location line="+34"/>
+        <location line="-435"/>
+        <source>Deluge returned invalid torrent details.</source>
+        <translation>Deluge a renvoyé des détails de torrent non valides.</translation>
+    </message>
+    <message>
+        <location line="+469"/>
         <source>No magnet link was specified.</source>
         <translation>Aucun lien magnet n’a été spécifié.</translation>
     </message>
@@ -5333,7 +5338,7 @@ Dernière version&#xa0;: %2</translation>
 <context>
     <name>WatchFolderManager</name>
     <message>
-        <location filename="../../watchfoldermanager.cpp" line="+158"/>
+        <location filename="../../watchfoldermanager.cpp" line="+169"/>
         <source>Watch folder is enabled but no folder is configured.</source>
         <translation>Le dossier de surveillance est activé, mais aucun dossier n’est configuré.</translation>
     </message>
