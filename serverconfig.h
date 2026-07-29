@@ -2,6 +2,7 @@
 #define SERVERCONFIG_H
 
 #include "foldermapping.h"
+#include "serverprofile.h"
 
 #include <QDialog>
 #include <QList>
@@ -25,15 +26,7 @@ public:
     bool importServerFromFile();
 
 private:
-    struct ServerDefinition
-    {
-        QString backendType = QStringLiteral("transmission");
-        QString name;
-        QString rpcUrl;
-        QString username;
-        QString password;
-        QList<FolderMapping> folderMappings;
-    };
+    using ServerDefinition = ServerProfile;
 
     Ui::ServerConfig *ui;
 

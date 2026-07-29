@@ -41,6 +41,7 @@ class TorrentFilterController;
 class StatusBarController;
 class NotificationController;
 class SessionOverviewWidget;
+class ServerSelectionController;
 
 /*
  * Application composition root for the desktop UI. MainWindow owns the RPC
@@ -57,8 +58,6 @@ public:
 
     void showAbout();
     void showDiagnostics();
-    void loadServerCombo();
-    void saveSelectedServerFromCombo();
     void showMainWindow();
     void quitApplication();
     void handleLaunchArguments(const QStringList &arguments);
@@ -130,7 +129,7 @@ private:
     void setupDetailsPane();
     void showTorrentDetails(bool torrentSelected);
     void clearGeneralTab();
-    QList<FolderMapping> currentServerFolderMappings() const;
+    void handleServerActivated();
     void applyAppSettings();
     void updateAlternativeSpeedAction(bool enabled, bool available);
     void updateServerSettingsAction();
@@ -175,6 +174,7 @@ private:
     TrayController *trayController = nullptr;
     StatusBarController *statusBarController = nullptr;
     NotificationController *notificationController = nullptr;
+    ServerSelectionController *serverSelectionController = nullptr;
     QStackedWidget *detailsPaneStack = nullptr;
     SessionOverviewWidget *sessionOverviewWidget = nullptr;
     QMenu *viewMenu = nullptr;

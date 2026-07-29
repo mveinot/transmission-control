@@ -2,7 +2,6 @@
 #include "ui_serverconfig.h"
 
 #include "foldermappingsdialog.h"
-#include "settingskeys.h"
 
 #include <QComboBox>
 #include <QCoreApplication>
@@ -19,7 +18,6 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRegularExpression>
-#include <QSettings>
 #include <QSignalBlocker>
 
 namespace {
@@ -178,54 +176,9 @@ void ServerConfig::loadServers()
 {
     // Work on an in-memory copy so canceling leaves persistent definitions
     // unchanged.
-    servers.clear();
-
-    QSettings settings;
-
-    const int count = settings.beginReadArray(SettingsKeys::ServersArray);
-
-    for (int i = 0; i < count; ++i) {
-        settings.setArrayIndex(i);
-
-        ServerDefinition server;
-        server.backendType =
-            settings.value(SettingsKeys::ServerBackendType,
-                           QStringLiteral("transmission"))
-                .toString().trimmed().toLower();
-        if (!isConfigurableServerType(server.backendType))
-            server.backendType = QStringLiteral("transmission");
-        server.name = settings.value(SettingsKeys::ServerName).toString();
-        server.rpcUrl = settings.value(SettingsKeys::ServerRpcUrl).toString();
-        server.username = settings.value(SettingsKeys::ServerUsername).toString();
-        server.password = settings.value(SettingsKeys::ServerPassword).toString();
-
-        const int mappingCount =
-            settings.beginReadArray(SettingsKeys::ServerFolderMappingsArray);
-
-        for (int mappingIndex = 0; mappingIndex < mappingCount; ++mappingIndex) {
-            settings.setArrayIndex(mappingIndex);
-
-            FolderMapping mapping;
-            mapping.remotePath =
-                settings.value(SettingsKeys::FolderMappingRemotePath).toString().trimmed();
-            mapping.localPath =
-                settings.value(SettingsKeys::FolderMappingLocalPath).toString().trimmed();
-
-            if (!mapping.remotePath.isEmpty() || !mapping.localPath.isEmpty())
-                server.folderMappings.append(mapping);
-        }
-
-        settings.endArray();
-
-        if (!server.name.trimmed().isEmpty() ||
-            !server.rpcUrl.trimmed().isEmpty()) {
-            servers.append(server);
-        }
-    }
-
-    settings.endArray();
-
-    defaultServerIndex = settings.value(SettingsKeys::ServersDefaultIndex, -1).toInt();
+    ServerProfileRepository repository;
+    servers = repository.loadProfiles();
+    defaultServerIndex = repository.defaultIndex();
 
     if (defaultServerIndex >= servers.size())
         defaultServerIndex = servers.isEmpty() ? -1 : 0;
@@ -233,48 +186,14 @@ void ServerConfig::loadServers()
 
 void ServerConfig::saveServers()
 {
-    QSettings settings;
+    for (int index = 0; index < servers.size(); ++index)
+        servers[index].settingsIndex = index;
 
-    settings.beginWriteArray(SettingsKeys::ServersArray);
-
-    for (int i = 0; i < servers.size(); ++i) {
-        settings.setArrayIndex(i);
-
-        settings.setValue(SettingsKeys::ServerName, servers.at(i).name);
-        settings.setValue(SettingsKeys::ServerBackendType,
-                          servers.at(i).backendType);
-        settings.setValue(SettingsKeys::ServerRpcUrl, servers.at(i).rpcUrl);
-        settings.setValue(SettingsKeys::ServerUsername, servers.at(i).username);
-        settings.setValue(SettingsKeys::ServerPassword, servers.at(i).password);
-
-        settings.beginWriteArray(SettingsKeys::ServerFolderMappingsArray);
-
-        const QList<FolderMapping> mappings = servers.at(i).folderMappings;
-
-        for (int mappingIndex = 0; mappingIndex < mappings.size(); ++mappingIndex) {
-            settings.setArrayIndex(mappingIndex);
-            settings.setValue(SettingsKeys::FolderMappingRemotePath,
-                              mappings.at(mappingIndex).remotePath);
-            settings.setValue(SettingsKeys::FolderMappingLocalPath,
-                              mappings.at(mappingIndex).localPath);
-        }
-
-        settings.endArray();
-    }
-
-    settings.endArray();
-
-    /*
-    const int current = currentServerIndex();
-    if (current >= 0)
-        settings.setValue(SettingsKeys::ServersCurrentIndex, current);
-*/
-
-    settings.setValue(SettingsKeys::ServersDefaultIndex, defaultServerIndex);
+    ServerProfileRepository repository;
+    repository.saveProfiles(servers);
+    repository.setDefaultIndex(defaultServerIndex);
     if (servers.isEmpty())
-        settings.setValue(SettingsKeys::ServersCurrentIndex, -1);
-
-    settings.sync();
+        repository.setCurrentIndex(-1);
 }
 
 void ServerConfig::refreshServerList()

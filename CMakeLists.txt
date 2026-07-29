@@ -126,6 +126,10 @@ set(PROJECT_SOURCES
         torrentbackend.h
         torrentbackendfactory.h
         torrentbackendfactory.cpp
+        serverprofile.h
+        serverprofile.cpp
+        serverselectioncontroller.h
+        serverselectioncontroller.cpp
     torrentkey.h
     torrentdomain.h
         torrent.h

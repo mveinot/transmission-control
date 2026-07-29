@@ -16,22 +16,7 @@ class TransmissionBackend : public TorrentBackend
     Q_OBJECT
 
 public:
-    struct TransmissionServer
-    {
-        QString name;
-        QString rpcUrl;
-        QString username;
-        QString password;
-
-        bool isValid() const
-        {
-            return !rpcUrl.trimmed().isEmpty();
-        }
-    };
-
-    bool loadCurrentServerFromSettings() override;
-    bool setServerFromSettingsIndex(int index) override;
-    void setServer(const TransmissionServer &server);
+    bool setServerProfile(const ServerProfile &profile) override;
     explicit TransmissionBackend(QObject *parent = nullptr);
     QString backendName() const override;
     QString serverDisplayName() const override;
@@ -159,8 +144,6 @@ private:
     QString rpcUrl;
 
     void setSessionToken(QByteArray token);
-
-    static TransmissionServer readServerFromSettings(int index, bool *ok = nullptr);
 
     QByteArray makeRpcPayload(const QString &method,
                               const QJsonObject &arguments = {}) const;

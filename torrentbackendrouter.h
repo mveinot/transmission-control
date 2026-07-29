@@ -15,8 +15,7 @@ public:
   QString serverDisplayName() const override;
   QString endpointUrl() const override;
   TorrentBackendCapabilities capabilities() const override;
-  bool loadCurrentServerFromSettings() override;
-  bool setServerFromSettingsIndex(int index) override;
+  bool setServerProfile(const ServerProfile &profile) override;
   void init() override;
   void getTorrentList() override;
   void getTorrentTrackerMetadata() override;
@@ -72,7 +71,6 @@ public:
 private:
   TorrentBackend *m_backend = nullptr;
 
-  QString backendTypeForServer(int index) const;
   TorrentBackend *createBackend(const QString &type);
   void replaceBackend(TorrentBackend *backend);
   void forwardSignals(TorrentBackend *backend);

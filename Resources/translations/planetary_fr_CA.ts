@@ -393,7 +393,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
 <context>
     <name>DelugeBackend</name>
     <message>
-        <location filename="../../delugebackend.cpp" line="+391"/>
+        <location filename="../../delugebackend.cpp" line="+352"/>
         <source>Deluge returned JSON-RPC error %1.</source>
         <translation>Deluge a renvoyé l&apos;erreur JSON-RPC %1.</translation>
     </message>
@@ -508,69 +508,9 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Aucun lien magnet n’a été spécifié.</translation>
     </message>
     <message>
-        <source>Set location</source>
-        <translation type="vanished">Définir l&apos;emplacement</translation>
-    </message>
-    <message>
-        <source>Set file selection</source>
-        <translation type="vanished">Définir la sélection des fichiers</translation>
-    </message>
-    <message>
-        <source>Set file priority</source>
-        <translation type="vanished">Définir la priorité des fichiers</translation>
-    </message>
-    <message>
-        <source>Set file selection and priority</source>
-        <translation type="vanished">Définir la sélection et la priorité des fichiers</translation>
-    </message>
-    <message>
-        <source>Add tracker</source>
-        <translation type="vanished">Ajouter un traceur</translation>
-    </message>
-    <message>
-        <source>Edit tracker</source>
-        <translation type="vanished">Modifier le traceur</translation>
-    </message>
-    <message>
-        <source>Remove tracker</source>
-        <translation type="vanished">Supprimer le traceur</translation>
-    </message>
-    <message>
-        <source>Rename path</source>
-        <translation type="vanished">Renommer le chemin</translation>
-    </message>
-    <message>
-        <source>Set torrent properties</source>
-        <translation type="vanished">Définir les propriétés du torrent</translation>
-    </message>
-    <message>
-        <source>Set sequential download</source>
-        <translation type="vanished">Définir le téléchargement séquentiel</translation>
-    </message>
-    <message>
         <location line="+216"/>
         <source>Set priority</source>
         <translation>Définir la priorité</translation>
-    </message>
-    <message>
-        <source>Move to top of queue</source>
-        <translation type="vanished">Déplacer au début de la file d&apos;attente</translation>
-    </message>
-    <message>
-        <source>Move up in queue</source>
-        <translation type="vanished">Monter dans la file d&apos;attente</translation>
-    </message>
-    <message>
-        <source>Move down in queue</source>
-        <translation type="vanished">Descendre dans la file d&apos;attente</translation>
-    </message>
-    <message>
-        <source>Move to bottom of queue</source>
-        <translation type="vanished">Déplacer à la fin de la file d&apos;attente</translation>
-    </message>
-    <message>
-        <source>Set session settings</source>
-        <translation type="vanished">Définir les paramètres de session</translation>
     </message>
     <message>
         <location line="+186"/>
@@ -964,7 +904,7 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+23"/>
-        <location filename="../../mainwindow.cpp" line="+1812"/>
+        <location filename="../../mainwindow.cpp" line="+1811"/>
         <source>Magnet link:</source>
         <translation>Lien magnet :</translation>
     </message>
@@ -1060,7 +1000,7 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+93"/>
-        <location filename="../../mainwindow.cpp" line="+516"/>
+        <location filename="../../mainwindow.cpp" line="+372"/>
         <source>Server Settings...</source>
         <translation>Paramètres du serveur...</translation>
     </message>
@@ -1155,7 +1095,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Importer les paramètres...</translation>
     </message>
     <message>
-        <location filename="../../mainwindow.cpp" line="-1157"/>
+        <location filename="../../mainwindow.cpp" line="-1004"/>
         <source>Adding torrent...</source>
         <translation>Ajout du torrent...</translation>
     </message>
@@ -1165,7 +1105,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Ajout du torrent annulé.</translation>
     </message>
     <message>
-        <location line="+603"/>
+        <location line="+594"/>
         <source>Torrent Files (*.torrent);;All Files (*)</source>
         <translation>Fichiers torrent (*.torrent);;Tous les fichiers (*)</translation>
     </message>
@@ -1175,27 +1115,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Ajouter un lien magnet</translation>
     </message>
     <message>
-        <location line="+53"/>
-        <source>(unnamed server)</source>
-        <translation>(serveur sans nom)</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source> (default)</source>
-        <translation> (par défaut)</translation>
-    </message>
-    <message>
-        <location line="+14"/>
-        <source>No servers configured</source>
-        <translation>Aucun serveur configuré</translation>
-    </message>
-    <message>
-        <location line="+40"/>
-        <source>Could not switch server.</source>
-        <translation>Impossible de changer de serveur.</translation>
-    </message>
-    <message>
-        <location line="+24"/>
+        <location line="+33"/>
         <source>Selected server: %1</source>
         <translation>Serveur sélectionné : %1</translation>
     </message>
@@ -1205,7 +1125,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Intervalle de mise à jour : %1 secondes</translation>
     </message>
     <message>
-        <location line="-1801"/>
+        <location line="-1696"/>
         <source>Settings…</source>
         <translation>Paramètres…</translation>
     </message>
@@ -1342,7 +1262,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Afficher la barre d&apos;outils</translation>
     </message>
     <message>
-        <location line="+410"/>
+        <location line="+417"/>
         <source>Server changed</source>
         <translation>Le serveur a changé</translation>
     </message>
@@ -1402,7 +1322,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Diagnostic...</translation>
     </message>
     <message>
-        <location line="+114"/>
+        <location line="+121"/>
         <source>Torrent location updated.</source>
         <translation>Emplacement du torrent mis à jour.</translation>
     </message>
@@ -1412,7 +1332,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Chemin du torrent renommé.</translation>
     </message>
     <message>
-        <location line="+108"/>
+        <location line="+110"/>
         <source>Starting all torrents...</source>
         <translation>Démarrage de tous les torrents...</translation>
     </message>
@@ -1427,32 +1347,12 @@ Enregistrer ce mappage quand même?</translation>
         <translation>L&apos;historique d&apos;importation du dossier de surveillance a été effacé.</translation>
     </message>
     <message>
-        <location line="+190"/>
+        <location line="+172"/>
         <source>Add Torrent Files</source>
         <translation>Ajouter des fichiers torrent</translation>
     </message>
     <message>
-        <location line="+71"/>
-        <source>qBittorrent</source>
-        <translation>qBittorrent</translation>
-    </message>
-    <message>
-        <location line="-2"/>
-        <source>Transmission</source>
-        <translation>Transmission</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <source>Deluge</source>
-        <translation>Deluge</translation>
-    </message>
-    <message>
-        <location line="+12"/>
-        <source>%1 — %2</source>
-        <translation>%1 — %2</translation>
-    </message>
-    <message>
-        <location line="+455"/>
+        <location line="+396"/>
         <source>%1 Settings...</source>
         <translation>Paramètres %1...</translation>
     </message>
@@ -1679,7 +1579,7 @@ Redémarrez Planetary pour que tous les changements prennent effet.</translation
 <context>
     <name>QBittorrentBackend</name>
     <message>
-        <location filename="../../qbittorrentbackend.cpp" line="+344"/>
+        <location filename="../../qbittorrentbackend.cpp" line="+303"/>
         <source>Could not open torrent file: %1</source>
         <translation>Impossible d&apos;ouvrir le fichier torrent&#xa0;: %1</translation>
     </message>
@@ -1901,7 +1801,7 @@ Continuer?</translation>
     <message>
         <location filename="../../serverconfig.ui" line="+17"/>
         <location filename="../../serverconfig.cpp" line="+54"/>
-        <location line="+750"/>
+        <location line="+680"/>
         <location line="+9"/>
         <source>Server Configuration</source>
         <translation>Configuration du serveur</translation>
@@ -2037,13 +1937,13 @@ Continuer?</translation>
         <translation> (par défaut)</translation>
     </message>
     <message>
-        <location line="-208"/>
-        <location line="+327"/>
+        <location line="-138"/>
+        <location line="+257"/>
         <source>New Server</source>
         <translation>Nouveau serveur</translation>
     </message>
     <message>
-        <location line="-380"/>
+        <location line="-310"/>
         <location line="+29"/>
         <source>qBittorrent</source>
         <translation>qBittorrent</translation>
@@ -2066,7 +1966,7 @@ Continuer?</translation>
         <translation>À partir du fichier…</translation>
     </message>
     <message>
-        <location line="+207"/>
+        <location line="+137"/>
         <source>%1 — %2</source>
         <translation>%1 — %2</translation>
     </message>
@@ -2241,9 +2141,52 @@ Continuer?</translation>
     </message>
 </context>
 <context>
+    <name>ServerSelectionController</name>
+    <message>
+        <location filename="../../serverselectioncontroller.cpp" line="+48"/>
+        <source>No servers configured</source>
+        <translation>Aucun serveur configuré</translation>
+    </message>
+    <message>
+        <location line="+24"/>
+        <source>Could not switch server.</source>
+        <translation>Impossible de changer de serveur.</translation>
+    </message>
+    <message>
+        <location line="+64"/>
+        <source>(unnamed server)</source>
+        <translation>(serveur sans nom)</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Transmission</source>
+        <translation>Transmission</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>qBittorrent</source>
+        <translation>qBittorrent</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Deluge</source>
+        <translation>Deluge</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source> (default)</source>
+        <translation> (par défaut)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>%1 — %2</source>
+        <translation>%1 — %2</translation>
+    </message>
+</context>
+<context>
     <name>ServerSetupWizard</name>
     <message>
-        <location filename="../../serversetupwizard.cpp" line="+49"/>
+        <location filename="../../serversetupwizard.cpp" line="+52"/>
         <source>Set Up Planetary</source>
         <translation>Configurer Planetary</translation>
     </message>
@@ -2323,7 +2266,7 @@ Continuer?</translation>
         <translation>Tester la connexion</translation>
     </message>
     <message>
-        <location line="+63"/>
+        <location line="+57"/>
         <source>Web UI URL:</source>
         <translation>URL de l&apos;interface utilisateur Web&#xa0;:</translation>
     </message>
@@ -2338,7 +2281,7 @@ Continuer?</translation>
         <translation>Saisissez un nom et une URL de serveur HTTP ou HTTPS valide.</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+47"/>
         <source>Enter a valid HTTP or HTTPS server URL.</source>
         <translation>Saisissez une URL de serveur HTTP ou HTTPS valide.</translation>
     </message>
@@ -3283,7 +3226,7 @@ Continuer?</translation>
 <context>
     <name>TorrentBackendRouter</name>
     <message>
-        <location filename="../../torrentbackendrouter.cpp" line="+146"/>
+        <location filename="../../torrentbackendrouter.cpp" line="+111"/>
         <source>No server configured</source>
         <translation>Aucun serveur configuré</translation>
     </message>
@@ -5198,7 +5141,7 @@ Niveau&#xa0;: %4</translation>
 <context>
     <name>TransmissionBackend</name>
     <message>
-        <location filename="../../transmissionbackend.cpp" line="+334"/>
+        <location filename="../../transmissionbackend.cpp" line="+332"/>
         <source>No valid Transmission server configured.</source>
         <translation>Aucun serveur de transmission valide configuré.</translation>
     </message>
@@ -5228,7 +5171,7 @@ Niveau&#xa0;: %4</translation>
         <translation>La réponse torrent ne contenait pas de torrents.</translation>
     </message>
     <message>
-        <location line="+256"/>
+        <location line="+178"/>
         <source>No server configured</source>
         <translation>Aucun serveur configuré</translation>
     </message>

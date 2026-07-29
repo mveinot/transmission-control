@@ -86,7 +86,8 @@ void TestQBittorrentBackend::login204IsAcceptedAndListIsNormalized()
     configureServer(server.url());
 
     QBittorrentBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy received(&backend, &TorrentBackend::torrentsReceived);
     backend.getTorrentList();
 
@@ -130,7 +131,8 @@ void TestQBittorrentBackend::expiredReadAuthenticationIsRecovered()
     configureServer(server.url());
 
     QBittorrentBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy received(&backend, &TorrentBackend::torrentsReceived);
     backend.getTorrentList();
 
@@ -154,7 +156,8 @@ void TestQBittorrentBackend::commandsUseFormEncodedHashes()
     configureServer(server.url());
 
     QBittorrentBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy succeeded(&backend, &TorrentBackend::commandSucceeded);
     backend.startTorrents({QStringLiteral("alpha"),
                            QStringLiteral("beta")});
@@ -235,7 +238,8 @@ void TestQBittorrentBackend::selectedTorrentEndpointsAreProjected()
     configureServer(server.url());
 
     QBittorrentBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy list(&backend, &TorrentBackend::torrentsReceived);
     QSignalSpy details(&backend, &TorrentBackend::torrentDetailsReceived);
     QSignalSpy files(&backend, &TorrentBackend::torrentFilesReceived);

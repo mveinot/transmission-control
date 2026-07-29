@@ -1,7 +1,5 @@
 #include "qbittorrentbackend.h"
 
-#include "settingskeys.h"
-
 #include <QFile>
 #include <QFileInfo>
 #include <QHttpMultiPart>
@@ -9,7 +7,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkRequest>
-#include <QSettings>
 #include <QUrl>
 #include <QUrlQuery>
 
@@ -132,50 +129,12 @@ TorrentBackendCapabilities QBittorrentBackend::capabilities() const {
   return result;
 }
 
-bool QBittorrentBackend::loadCurrentServerFromSettings() {
-  QSettings settings;
-  const int defaultIndex =
-      settings.value(SettingsKeys::ServersDefaultIndex, -1).toInt();
-  if (setServerFromSettingsIndex(defaultIndex))
-    return true;
-
-  const int currentIndex =
-      settings.value(SettingsKeys::ServersCurrentIndex, -1).toInt();
-  if (currentIndex != defaultIndex && setServerFromSettingsIndex(currentIndex))
-    return true;
-
-  return setServerFromSettingsIndex(0);
-}
-
-bool QBittorrentBackend::setServerFromSettingsIndex(int index) {
-  QSettings settings;
-  const int count = settings.beginReadArray(SettingsKeys::ServersArray);
-  if (index < 0 || index >= count) {
-    settings.endArray();
-    return false;
-  }
-
-  settings.setArrayIndex(index);
-  const QString type = settings
-                           .value(SettingsKeys::ServerBackendType,
-                                  QStringLiteral("transmission"))
-                           .toString()
-                           .trimmed()
-                           .toLower();
-  const QString name =
-      settings.value(SettingsKeys::ServerName).toString().trimmed();
-  const QString url =
-      settings.value(SettingsKeys::ServerRpcUrl).toString().trimmed();
-  const QString username =
-      settings.value(SettingsKeys::ServerUsername).toString();
-  const QString password =
-      settings.value(SettingsKeys::ServerPassword).toString();
-  settings.endArray();
-
-  if (type != QStringLiteral("qbittorrent") || !QUrl(url).isValid())
+bool QBittorrentBackend::setServerProfile(const ServerProfile &profile) {
+  if (profile.backendType != QStringLiteral("qbittorrent") ||
+      !QUrl(profile.rpcUrl).isValid())
     return false;
 
-  setServer(name, url, username, password);
+  setServer(profile.name, profile.rpcUrl, profile.username, profile.password);
   return true;
 }
 

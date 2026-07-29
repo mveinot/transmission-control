@@ -1,14 +1,11 @@
 #include "delugebackend.h"
 
-#include "settingskeys.h"
-
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QNetworkRequest>
-#include <QSettings>
 #include <QUrl>
 
 #include <algorithm>
@@ -152,53 +149,17 @@ TorrentBackendCapabilities DelugeBackend::capabilities() const
     return result;
 }
 
-bool DelugeBackend::loadCurrentServerFromSettings()
+bool DelugeBackend::setServerProfile(const ServerProfile &profile)
 {
-    QSettings settings;
-    const int defaultIndex =
-        settings.value(SettingsKeys::ServersDefaultIndex, -1).toInt();
-    if (setServerFromSettingsIndex(defaultIndex))
-        return true;
-
-    const int currentIndex =
-        settings.value(SettingsKeys::ServersCurrentIndex, -1).toInt();
-    if (currentIndex != defaultIndex && setServerFromSettingsIndex(currentIndex))
-        return true;
-
-    return setServerFromSettingsIndex(0);
-}
-
-bool DelugeBackend::setServerFromSettingsIndex(int index)
-{
-    QSettings settings;
-    const int count = settings.beginReadArray(SettingsKeys::ServersArray);
-    if (index < 0 || index >= count) {
-        settings.endArray();
-        return false;
-    }
-
-    settings.setArrayIndex(index);
-    const QString type =
-        settings.value(SettingsKeys::ServerBackendType,
-                       QStringLiteral("transmission"))
-            .toString().trimmed().toLower();
-    const QString name =
-        settings.value(SettingsKeys::ServerName).toString().trimmed();
-    const QString url =
-        settings.value(SettingsKeys::ServerRpcUrl).toString().trimmed();
-    const QString password =
-        settings.value(SettingsKeys::ServerPassword).toString();
-    settings.endArray();
-
-    const QUrl parsedUrl(url);
-    if (type != QStringLiteral("deluge")
+    const QUrl parsedUrl(profile.rpcUrl);
+    if (profile.backendType != QStringLiteral("deluge")
         || !parsedUrl.isValid()
         || parsedUrl.scheme().isEmpty()
         || parsedUrl.host().isEmpty()) {
         return false;
     }
 
-    setServer(name, url, password);
+    setServer(profile.name, profile.rpcUrl, profile.password);
     return true;
 }
 

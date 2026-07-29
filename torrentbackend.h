@@ -4,6 +4,7 @@
 #include "torrent.h"
 #include "torrentdomain.h"
 #include "torrentkey.h"
+#include "serverprofile.h"
 
 #include <QJsonObject>
 #include <QList>
@@ -63,8 +64,7 @@ public:
     virtual QString endpointUrl() const = 0;
     virtual TorrentBackendCapabilities capabilities() const = 0;
 
-    virtual bool loadCurrentServerFromSettings() = 0;
-    virtual bool setServerFromSettingsIndex(int index) = 0;
+    virtual bool setServerProfile(const ServerProfile &profile) = 0;
     virtual void init() = 0;
 
     virtual void getTorrentList() = 0;

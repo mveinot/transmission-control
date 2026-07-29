@@ -2,12 +2,10 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QJsonParseError>
-#include <QSettings>
 #include <QSet>
 #include <QFile>
 #include <QFileInfo>
 #include "transmissionbackend.h"
-#include "settingskeys.h"
 
 namespace {
 constexpr QNetworkRequest::Attribute RpcRequestTypeAttribute =
@@ -329,7 +327,7 @@ TransmissionBackend::TransmissionBackend(QObject *parent)
 
 void TransmissionBackend::init()
 {
-    if (!loadCurrentServerFromSettings()) {
+    if (rpcUrl.trimmed().isEmpty()) {
         qWarning() << "No valid Transmission server configured.";
         emit updateFailed(tr("No valid Transmission server configured."));
         return;
@@ -864,91 +862,12 @@ void TransmissionBackend::setSessionToken(QByteArray token)
     _clientReady = true;
 }
 
-TransmissionBackend::TransmissionServer TransmissionBackend::readServerFromSettings(int index, bool *ok)
+bool TransmissionBackend::setServerProfile(const ServerProfile &profile)
 {
-    if (ok)
-        *ok = false;
-
-    QSettings settings;
-
-    const int count = settings.beginReadArray(SettingsKeys::ServersArray);
-
-    if (index < 0 || index >= count) {
-        settings.endArray();
-        return {};
-    }
-
-    settings.setArrayIndex(index);
-
-    const QString backendType =
-        settings.value(SettingsKeys::ServerBackendType,
-                       QStringLiteral("transmission"))
-            .toString().trimmed().toLower();
-
-    // Never send Transmission RPC traffic to a profile owned by another
-    // backend implementation.
-    if (backendType != QStringLiteral("transmission")) {
-        settings.endArray();
-        return {};
-    }
-
-    TransmissionServer server;
-    server.name = settings.value(SettingsKeys::ServerName).toString().trimmed();
-    server.rpcUrl = settings.value(SettingsKeys::ServerRpcUrl).toString().trimmed();
-    server.username = settings.value(SettingsKeys::ServerUsername).toString();
-    server.password = settings.value(SettingsKeys::ServerPassword).toString();
-
-    settings.endArray();
-
-    if (ok)
-        *ok = server.isValid();
-
-    return server;
-}
-
-bool TransmissionBackend::loadCurrentServerFromSettings()
-{
-    QSettings settings;
-
-    const int defaultIndex =
-        settings.value(SettingsKeys::ServersDefaultIndex, -1).toInt();
-
-    if (setServerFromSettingsIndex(defaultIndex))
-        return true;
-
-    /*
-     * Backward-compatible fallback:
-     * If no valid default exists, try the old currentIndex setting.
-     * This is only for older preferences, not normal startup behavior.
-     */
-    const int legacyCurrentIndex =
-        settings.value(SettingsKeys::ServersCurrentIndex, -1).toInt();
-
-    if (legacyCurrentIndex != defaultIndex &&
-        setServerFromSettingsIndex(legacyCurrentIndex)) {
-        return true;
-    }
-
-    /*
-     * Last fallback: first valid configured server.
-     */
-    return setServerFromSettingsIndex(0);
-}
-
-bool TransmissionBackend::setServerFromSettingsIndex(int index)
-{
-    bool ok = false;
-    const TransmissionServer server = readServerFromSettings(index, &ok);
-
-    if (!ok)
+    if (profile.backendType != QStringLiteral("transmission")
+        || !profile.isValid()) {
         return false;
-
-    setServer(server);
-    return true;
-}
-
-void TransmissionBackend::setServer(const TransmissionServer &server)
-{
+    }
     /*
      * Do not allow responses from the previous server to update the new
      * server's session token, torrent data, or command state.  Clear the
@@ -966,10 +885,10 @@ void TransmissionBackend::setServer(const TransmissionServer &server)
         reply->deleteLater();
     }
 
-    serverName = server.name;
-    rpcUrl = server.rpcUrl;
-    username = server.username;
-    password = server.password;
+    serverName = profile.name;
+    rpcUrl = profile.rpcUrl;
+    username = profile.username;
+    password = profile.password;
 
     _session_token.clear();
     _clientReady = false;
@@ -980,6 +899,7 @@ void TransmissionBackend::setServer(const TransmissionServer &server)
     m_torrentGroupsSupported = false;
 
     emit serverChanged();
+    return true;
 }
 
 QString TransmissionBackend::backendName() const

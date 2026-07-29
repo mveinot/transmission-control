@@ -79,6 +79,12 @@ add_planetary_test(test_watchfoldermanager
     ${CMAKE_SOURCE_DIR}/watchfoldermanager.h
 )
 
+add_planetary_test(test_serverprofile
+    test_serverprofile.cpp
+    ${CMAKE_SOURCE_DIR}/serverprofile.cpp
+    ${CMAKE_SOURCE_DIR}/serverprofile.h
+)
+
 add_planetary_test(test_torrentfiltercontroller
     test_torrentfiltercontroller.cpp
     ${CMAKE_SOURCE_DIR}/torrent.cpp
@@ -121,6 +127,8 @@ add_planetary_test(test_delugebackend
     ${CMAKE_SOURCE_DIR}/torrentbackend.h
     ${CMAKE_SOURCE_DIR}/torrent.cpp
     ${CMAKE_SOURCE_DIR}/torrent.h
+    ${CMAKE_SOURCE_DIR}/serverprofile.cpp
+    ${CMAKE_SOURCE_DIR}/serverprofile.h
 )
 
 add_planetary_test(test_transmissionbackend
@@ -131,6 +139,8 @@ add_planetary_test(test_transmissionbackend
     ${CMAKE_SOURCE_DIR}/torrentbackend.h
     ${CMAKE_SOURCE_DIR}/torrent.cpp
     ${CMAKE_SOURCE_DIR}/torrent.h
+    ${CMAKE_SOURCE_DIR}/serverprofile.cpp
+    ${CMAKE_SOURCE_DIR}/serverprofile.h
 )
 
 add_planetary_test(test_qbittorrentbackend
@@ -141,6 +151,8 @@ add_planetary_test(test_qbittorrentbackend
     ${CMAKE_SOURCE_DIR}/torrentbackend.h
     ${CMAKE_SOURCE_DIR}/torrent.cpp
     ${CMAKE_SOURCE_DIR}/torrent.h
+    ${CMAKE_SOURCE_DIR}/serverprofile.cpp
+    ${CMAKE_SOURCE_DIR}/serverprofile.h
 )
 
 if(APPLE)

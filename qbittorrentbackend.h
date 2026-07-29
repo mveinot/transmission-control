@@ -21,8 +21,7 @@ public:
   QString serverDisplayName() const override;
   QString endpointUrl() const override;
   TorrentBackendCapabilities capabilities() const override;
-  bool loadCurrentServerFromSettings() override;
-  bool setServerFromSettingsIndex(int index) override;
+  bool setServerProfile(const ServerProfile &profile) override;
   void init() override;
 
   void getTorrentList() override;

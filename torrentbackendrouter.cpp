@@ -2,31 +2,10 @@
 
 #include "delugebackend.h"
 #include "qbittorrentbackend.h"
-#include "settingskeys.h"
 #include "transmissionbackend.h"
-
-#include <QSettings>
 
 TorrentBackendRouter::TorrentBackendRouter(QObject *parent)
     : TorrentBackend(parent) {}
-
-QString TorrentBackendRouter::backendTypeForServer(int index) const {
-  QSettings settings;
-  const int count = settings.beginReadArray(SettingsKeys::ServersArray);
-  if (index < 0 || index >= count) {
-    settings.endArray();
-    return {};
-  }
-  settings.setArrayIndex(index);
-  const QString type = settings
-                           .value(SettingsKeys::ServerBackendType,
-                                  QStringLiteral("transmission"))
-                           .toString()
-                           .trimmed()
-                           .toLower();
-  settings.endArray();
-  return type;
-}
 
 TorrentBackend *TorrentBackendRouter::createBackend(const QString &type) {
   if (type == QStringLiteral("qbittorrent"))
@@ -107,35 +86,21 @@ void TorrentBackendRouter::forwardSignals(TorrentBackend *backend) {
           &TorrentBackend::blocklistUpdateFailed);
 }
 
-bool TorrentBackendRouter::setServerFromSettingsIndex(int index) {
-  const QString type = backendTypeForServer(index);
-  if (type.isEmpty())
+bool TorrentBackendRouter::setServerProfile(const ServerProfile &profile) {
+  if (!profile.isValid())
     return false;
 
   if (!m_backend ||
-      (type == QStringLiteral("qbittorrent") &&
+      (profile.backendType == QStringLiteral("qbittorrent") &&
        m_backend->backendName() != QStringLiteral("qBittorrent")) ||
-      (type == QStringLiteral("deluge") &&
+      (profile.backendType == QStringLiteral("deluge") &&
        m_backend->backendName() != QStringLiteral("Deluge")) ||
-      (type == QStringLiteral("transmission") &&
+      (profile.backendType == QStringLiteral("transmission") &&
        m_backend->backendName() != QStringLiteral("Transmission"))) {
-    replaceBackend(createBackend(type));
+    replaceBackend(createBackend(profile.backendType));
   }
 
-  return m_backend && m_backend->setServerFromSettingsIndex(index);
-}
-
-bool TorrentBackendRouter::loadCurrentServerFromSettings() {
-  QSettings settings;
-  const int defaultIndex =
-      settings.value(SettingsKeys::ServersDefaultIndex, -1).toInt();
-  if (setServerFromSettingsIndex(defaultIndex))
-    return true;
-  const int currentIndex =
-      settings.value(SettingsKeys::ServersCurrentIndex, -1).toInt();
-  if (currentIndex != defaultIndex && setServerFromSettingsIndex(currentIndex))
-    return true;
-  return setServerFromSettingsIndex(0);
+  return m_backend && m_backend->setServerProfile(profile);
 }
 
 QString TorrentBackendRouter::backendName() const {
@@ -152,7 +117,7 @@ TorrentBackendCapabilities TorrentBackendRouter::capabilities() const {
   return m_backend ? m_backend->capabilities() : TorrentBackendCapabilities();
 }
 void TorrentBackendRouter::init() {
-  if (!loadCurrentServerFromSettings()) {
+  if (!m_backend) {
     emit updateFailed(tr("No valid torrent server configured."));
     return;
   }

@@ -78,6 +78,7 @@
 #include "dialogabout.h"
 #include "diagnosticsdialog.h"
 #include "serverconfig.h"
+#include "serverselectioncontroller.h"
 #include "appsettings.h"
 #include "serversetupwizard.h"
 #include "torrentsortproxymodel.h"
@@ -930,7 +931,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Platform chrome and passive services can be initialized before the RPC
     // client starts producing responses.
-    loadServerCombo();
+    serverSelectionController =
+        new ServerSelectionController(ui->comboServers, client, this);
+    serverSelectionController->reloadProfiles();
     setupConnectionStatusIndicator();
     updateCheckController = new UpdateCheckController(this, this);
     updateCheckController->setup();
@@ -976,7 +979,8 @@ MainWindow::MainWindow(QWidget *parent)
 #else
     notificationController = new NotificationController(this);
 #endif
-    notificationController->setServerName(ui->comboServers->currentText());
+    notificationController->setServerName(
+        serverSelectionController->currentDisplayText());
 
     connect(notificationController, &NotificationController::statusMessageRequested,
             this, [this](const QString &message, int timeoutMs) {
@@ -998,7 +1002,11 @@ MainWindow::MainWindow(QWidget *parent)
         this
         );
     torrentFilesController->setFolderMappingsProvider(
-        [this]() { return currentServerFolderMappings(); }
+        [this]() {
+            return serverSelectionController
+                       ? serverSelectionController->currentFolderMappings()
+                       : QList<FolderMapping>{};
+        }
         );
     torrentFilesController->setup();
 
@@ -1369,11 +1377,18 @@ MainWindow::MainWindow(QWidget *parent)
                     torrentListController->markTorrentListLoadFailed(message);
             });
 
-    connect(ui->comboServers,
-            QOverload<int>::of(&QComboBox::currentIndexChanged),
+    connect(serverSelectionController,
+            &ServerSelectionController::serverActivated,
             this,
-            [this](int) {
-                saveSelectedServerFromCombo();
+            [this](const ServerProfile &) {
+                handleServerActivated();
+            });
+    connect(serverSelectionController,
+            &ServerSelectionController::activationFailed,
+            this,
+            [this](const QString &message) {
+                if (statusBarController)
+                    statusBarController->showMessage(message, 5000);
             });
 
     connect(client, &TorrentBackend::freeSpaceReceived,
@@ -1465,8 +1480,10 @@ MainWindow::MainWindow(QWidget *parent)
     // A first-run window has no backend to initialize; the setup assistant
     // activates the saved definition before requesting list/session data.
     if (ServerSetupWizard::hasConfiguredServer()) {
-        client->init();
-        client->getSessionSettings();
+        if (serverSelectionController->activateCurrent(false)) {
+            client->init();
+            client->getSessionSettings();
+        }
     }
 }
 
@@ -1661,23 +1678,8 @@ void MainWindow::onServerSetupTriggered()
     ServerConfig sc(this);
 
     if (sc.exec() == QDialog::Accepted) {
-        loadServerCombo();
-
-        const int serverIndex =
-            ui->comboServers->currentData().toInt();
-
-        if (serverIndex >= 0) {
-            client->setServerFromSettingsIndex(serverIndex);
-            if (notificationController) {
-                notificationController->setServerName(ui->comboServers->currentText());
-                notificationController->resetBaseline();
-            }
-            if (statusBarController)
-                statusBarController->showMessage(client->serverDisplayName());
-            if (torrentListController)
-                torrentListController->beginTorrentListRefresh(true);
-            client->getTorrentList();
-
+        serverSelectionController->reloadProfiles();
+        if (serverSelectionController->activateCurrent()) {
             if (!pendingLaunchArguments.isEmpty()) {
                 const QStringList arguments = pendingLaunchArguments;
                 pendingLaunchArguments.clear();
@@ -1702,12 +1704,9 @@ void MainWindow::runFirstTimeServerSetup(const QStringList &launchArguments,
 
         // Rebuild the selector and route the stable backend facade to the new
         // definition before consuming any launch-time torrent arguments.
-        loadServerCombo();
-        const int comboIndex =
-            ui->comboServers->findData(wizard.savedServerIndex());
-        if (comboIndex >= 0)
-            ui->comboServers->setCurrentIndex(comboIndex);
-        saveSelectedServerFromCombo();
+        serverSelectionController->reloadProfiles();
+        serverSelectionController->selectSettingsIndex(
+            wizard.savedServerIndex());
     }
 
     if (pendingLaunchArguments.isEmpty())
@@ -1821,116 +1820,13 @@ void MainWindow::addTorrentFromMagnet()
     torrentAddController->addMagnetLink(magnetLink);
 }
 
-void MainWindow::loadServerCombo()
+void MainWindow::handleServerActivated()
 {
-    QSettings settings;
-
-    const int previouslySelectedServerIndex =
-        ui->comboServers->currentData().toInt();
-
-    const bool hadPreviousSelection =
-        ui->comboServers->currentIndex() >= 0 &&
-        previouslySelectedServerIndex >= 0;
-
-    const int defaultIndex =
-        settings.value(SettingsKeys::ServersDefaultIndex, -1).toInt();
-
-    const int savedCurrentIndex =
-        settings.value(SettingsKeys::ServersCurrentIndex, defaultIndex).toInt();
-
-    QSignalBlocker blocker(ui->comboServers);
-
-    ui->comboServers->clear();
-
-    const int count = settings.beginReadArray(SettingsKeys::ServersArray);
-
-    for (int i = 0; i < count; ++i) {
-        settings.setArrayIndex(i);
-
-        QString name = settings.value(SettingsKeys::ServerName).toString().trimmed();
-        const QString rpcUrl = settings.value(SettingsKeys::ServerRpcUrl).toString().trimmed();
-        const QString backendType =
-            settings.value(SettingsKeys::ServerBackendType,
-                           QStringLiteral("transmission"))
-                .toString().trimmed().toLower();
-        QString backendName = tr("Transmission");
-        if (backendType == QStringLiteral("qbittorrent"))
-            backendName = tr("qBittorrent");
-        else if (backendType == QStringLiteral("deluge"))
-            backendName = tr("Deluge");
-
-        if (name.isEmpty()) {
-            name = rpcUrl.isEmpty()
-            ? tr("(unnamed server)")
-            : rpcUrl;
-        }
-
-        if (i == defaultIndex)
-            name += tr(" (default)");
-
-        ui->comboServers->addItem(
-            tr("%1 — %2").arg(name, backendName),
-            i);
-        ui->comboServers->setItemData(
-            ui->comboServers->count() - 1,
-            backendType,
-            Qt::UserRole + 1);
-    }
-
-    settings.endArray();
-
-    if (ui->comboServers->count() == 0) {
-        ui->comboServers->addItem(tr("No servers configured"), -1);
-        ui->comboServers->setEnabled(false);
-        return;
-    }
-
-    ui->comboServers->setEnabled(true);
-
-    int comboIndex = -1;
-
-    // First preference: keep whatever the combo was already showing.
-    if (hadPreviousSelection)
-        comboIndex = ui->comboServers->findData(previouslySelectedServerIndex);
-
-    // Next fallback: default server.
-    if (comboIndex < 0)
-        comboIndex = ui->comboServers->findData(defaultIndex);
-
-    // First-load fallback: saved current server.
-    if (comboIndex < 0)
-        comboIndex = ui->comboServers->findData(savedCurrentIndex);
-
-    // Last fallback: first server.
-    if (comboIndex < 0)
-        comboIndex = 0;
-
-    ui->comboServers->setCurrentIndex(comboIndex);
-}
-
-void MainWindow::saveSelectedServerFromCombo()
-{
-    const int serverIndex =
-        ui->comboServers->currentData().toInt();
-
-    if (serverIndex < 0)
-        return;
-
-    QSettings settings;
-
-    if (!client->setServerFromSettingsIndex(serverIndex)) {
-        if (statusBarController)
-            statusBarController->showMessage(tr("Could not switch server."), 5000);
-        return;
-    }
-
-    settings.setValue(SettingsKeys::ServersCurrentIndex, serverIndex);
-    settings.sync();
-
     // A server switch defines a new notification baseline; otherwise torrents
     // on the new server would be reported as newly added or completed.
     if (notificationController) {
-        notificationController->setServerName(ui->comboServers->currentText());
+        notificationController->setServerName(
+            serverSelectionController->currentDisplayText());
         notificationController->resetBaseline();
     }
 
@@ -2260,47 +2156,6 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
     refreshSlowRpcData();
 
     refreshCurrentTorrentTabData();
-}
-
-QList<FolderMapping> MainWindow::currentServerFolderMappings() const
-{
-    QList<FolderMapping> mappings;
-
-    const int serverIndex = ui->comboServers->currentData().toInt();
-
-    if (serverIndex < 0)
-        return mappings;
-
-    QSettings settings;
-    const int serverCount = settings.beginReadArray(SettingsKeys::ServersArray);
-
-    if (serverIndex >= serverCount) {
-        settings.endArray();
-        return mappings;
-    }
-
-    settings.setArrayIndex(serverIndex);
-
-    const int mappingCount =
-        settings.beginReadArray(SettingsKeys::ServerFolderMappingsArray);
-
-    for (int i = 0; i < mappingCount; ++i) {
-        settings.setArrayIndex(i);
-
-        FolderMapping mapping;
-        mapping.remotePath =
-            settings.value(SettingsKeys::FolderMappingRemotePath).toString().trimmed();
-        mapping.localPath =
-            settings.value(SettingsKeys::FolderMappingLocalPath).toString().trimmed();
-
-        if (!mapping.remotePath.isEmpty() && !mapping.localPath.isEmpty())
-            mappings.append(mapping);
-    }
-
-    settings.endArray(); // folderMappings
-    settings.endArray(); // servers
-
-    return mappings;
 }
 
 void MainWindow::updateAlternativeSpeedAction(bool enabled, bool available)

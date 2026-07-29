@@ -220,7 +220,8 @@ void TestDelugeBackend::authenticationChecksDaemonAndReusesCookie()
     FakeDelugeWeb server;
     configureServer(server.url(), QStringLiteral("correct"));
     DelugeBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy completed(&backend, &TorrentBackend::updateFinished);
     QSignalSpy failed(&backend, &TorrentBackend::updateFailed);
 
@@ -281,7 +282,8 @@ void TestDelugeBackend::torrentListIsNormalized()
 
     configureServer(server.url(), QStringLiteral("correct"));
     DelugeBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QVector<torrent> snapshot;
     connect(&backend, &TorrentBackend::torrentsReceived,
             this, [&snapshot](const QVector<torrent> &torrents) {
@@ -326,7 +328,8 @@ void TestDelugeBackend::rejectedPasswordReportsAuthenticationFailure()
     server.acceptPassword = false;
     configureServer(server.url(), QStringLiteral("wrong"));
     DelugeBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy failed(&backend, &TorrentBackend::updateFailed);
     QSignalSpy completed(&backend, &TorrentBackend::updateFinished);
 
@@ -345,7 +348,8 @@ void TestDelugeBackend::expiredAuthenticationIsRetriedOnce()
     server.expireFirstConnectionCheck = true;
     configureServer(server.url(), QStringLiteral("correct"));
     DelugeBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy completed(&backend, &TorrentBackend::updateFinished);
     QSignalSpy failed(&backend, &TorrentBackend::updateFailed);
 
@@ -367,7 +371,8 @@ void TestDelugeBackend::expiredAuthenticationDuringTorrentListIsRetriedOnce()
     server.expireFirstTorrentRequest = true;
     configureServer(server.url(), QStringLiteral("correct"));
     DelugeBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy completed(&backend, &TorrentBackend::updateFinished);
     QSignalSpy failed(&backend, &TorrentBackend::updateFailed);
 
@@ -389,7 +394,8 @@ void TestDelugeBackend::coreTorrentControlsUseExpectedRpcMethods()
     FakeDelugeWeb server;
     configureServer(server.url(), QStringLiteral("correct"));
     DelugeBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy ready(&backend, &TorrentBackend::updateFinished);
     QSignalSpy succeeded(&backend, &TorrentBackend::commandSucceeded);
     backend.init();
@@ -427,7 +433,8 @@ void TestDelugeBackend::magnetAndFileAddsSendOptionsAndReportSuccess()
     FakeDelugeWeb server;
     configureServer(server.url(), QStringLiteral("correct"));
     DelugeBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy ready(&backend, &TorrentBackend::updateFinished);
     QSignalSpy added(&backend, &TorrentBackend::torrentAdded);
     QSignalSpy fileAdded(&backend,
@@ -529,7 +536,8 @@ void TestDelugeBackend::selectedTorrentDetailsAreNormalized()
     configureServer(server.url(), QStringLiteral("correct"));
 
     DelugeBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy detailsSpy(&backend, &TorrentBackend::torrentDetailsReceived);
     QSignalSpy filesSpy(&backend, &TorrentBackend::torrentFilesReceived);
     QSignalSpy peersSpy(&backend, &TorrentBackend::torrentPeersReceived);
@@ -628,7 +636,8 @@ void TestDelugeBackend::torrentMutationsUseDelugeCoreMethods()
     };
     configureServer(server.url(), QStringLiteral("correct"));
     DelugeBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy filesSpy(&backend, &TorrentBackend::torrentFilesReceived);
     QSignalSpy trackersSpy(&backend, &TorrentBackend::torrentTrackersReceived);
     QSignalSpy propertiesSpy(
@@ -731,7 +740,8 @@ void TestDelugeBackend::sessionOperationsAreNormalized()
     configureServer(server.url(), QStringLiteral("correct"));
 
     DelugeBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy settingsSpy(
         &backend, &TorrentBackend::sessionSettingsReceived);
     QSignalSpy statisticsSpy(
@@ -805,7 +815,8 @@ void TestDelugeBackend::duplicateDetailRequestsAreCoalesced()
     };
     configureServer(server.url(), QStringLiteral("correct"));
     DelugeBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy piecesSpy(&backend, &TorrentBackend::torrentPiecesReceived);
 
     backend.getTorrentPieces(QStringLiteral("torrent-hash"));
@@ -823,7 +834,8 @@ void TestDelugeBackend::disconnectedDaemonRejectsQueuedCommands()
     server.daemonConnected = false;
     configureServer(server.url(), QStringLiteral("correct"));
     DelugeBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy failed(&backend, &TorrentBackend::commandFailed);
 
     backend.startTorrents({QStringLiteral("torrent-hash")});
@@ -840,7 +852,8 @@ void TestDelugeBackend::mismatchedCommandReplyReportsFailure()
     FakeDelugeWeb server;
     configureServer(server.url(), QStringLiteral("correct"));
     DelugeBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy ready(&backend, &TorrentBackend::updateFinished);
     QSignalSpy failed(&backend, &TorrentBackend::commandFailed);
     backend.init();
@@ -860,7 +873,8 @@ void TestDelugeBackend::disconnectedDaemonHasDistinctFailure()
     server.daemonConnected = false;
     configureServer(server.url(), QStringLiteral("correct"));
     DelugeBackend backend;
-    QVERIFY(backend.loadCurrentServerFromSettings());
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
     QSignalSpy failed(&backend, &TorrentBackend::updateFailed);
     QSignalSpy completed(&backend, &TorrentBackend::updateFinished);
 

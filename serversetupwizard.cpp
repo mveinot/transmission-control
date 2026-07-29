@@ -1,7 +1,7 @@
 #include "serversetupwizard.h"
 
 #include "serverconfig.h"
-#include "settingskeys.h"
+#include "serverprofile.h"
 
 #include <QColor>
 #include <QComboBox>
@@ -16,11 +16,12 @@
 #include <QNetworkRequest>
 #include <QPushButton>
 #include <QPalette>
-#include <QSettings>
 #include <QUrl>
 #include <QUrlQuery>
 #include <QVBoxLayout>
 #include <QWizardPage>
+
+#include <algorithm>
 
 namespace {
 constexpr int ConnectionTestTimeoutMs = 10000;
@@ -151,18 +152,12 @@ int ServerSetupWizard::savedServerIndex() const
 
 bool ServerSetupWizard::hasConfiguredServer()
 {
-    QSettings settings;
-    const int count = settings.beginReadArray(SettingsKeys::ServersArray);
-    bool found = false;
-
-    for (int index = 0; index < count && !found; ++index) {
-        settings.setArrayIndex(index);
-        found = !settings.value(SettingsKeys::ServerRpcUrl)
-                     .toString().trimmed().isEmpty();
-    }
-
-    settings.endArray();
-    return found;
+    const QVector<ServerProfile> profiles =
+        ServerProfileRepository().loadProfiles();
+    return std::any_of(profiles.cbegin(), profiles.cend(),
+                       [](const ServerProfile &profile) {
+                           return profile.isValid();
+                       });
 }
 
 QString ServerSetupWizard::backendType() const
@@ -195,29 +190,25 @@ void ServerSetupWizard::accept()
         return;
     }
 
-    QSettings settings;
-    int serverIndex = 0;
+    ServerProfileRepository repository;
+    QVector<ServerProfile> profiles =
+        m_appendToExisting ? repository.loadProfiles()
+                           : QVector<ServerProfile>{};
+    const int serverIndex = profiles.size();
 
-    if (m_appendToExisting) {
-        serverIndex = settings.beginReadArray(SettingsKeys::ServersArray);
-        settings.endArray();
-    } else {
-        settings.remove(SettingsKeys::ServersArray);
-    }
+    ServerProfile profile;
+    profile.settingsIndex = serverIndex;
+    profile.name = name;
+    profile.backendType = backendType();
+    profile.rpcUrl = endpoint;
+    profile.username = m_usernameEdit->text().trimmed();
+    profile.password = m_passwordEdit->text();
+    profiles.append(profile);
+    repository.saveProfiles(profiles);
 
-    settings.beginWriteArray(SettingsKeys::ServersArray, serverIndex + 1);
-    settings.setArrayIndex(serverIndex);
-    settings.setValue(SettingsKeys::ServerName, name);
-    settings.setValue(SettingsKeys::ServerBackendType, backendType());
-    settings.setValue(SettingsKeys::ServerRpcUrl, endpoint);
-    settings.setValue(SettingsKeys::ServerUsername,
-                      m_usernameEdit->text().trimmed());
-    settings.setValue(SettingsKeys::ServerPassword, m_passwordEdit->text());
-    settings.endArray();
     if (!m_appendToExisting)
-        settings.setValue(SettingsKeys::ServersDefaultIndex, serverIndex);
-    settings.setValue(SettingsKeys::ServersCurrentIndex, serverIndex);
-    settings.sync();
+        repository.setDefaultIndex(serverIndex);
+    repository.setCurrentIndex(serverIndex);
 
     m_savedServerIndex = serverIndex;
     QWizard::accept();
@@ -229,9 +220,8 @@ void ServerSetupWizard::importServer()
     if (!importer.importServerFromFile())
         return;
 
-    QSettings settings;
-    m_savedServerIndex = settings.beginReadArray(SettingsKeys::ServersArray) - 1;
-    settings.endArray();
+    m_savedServerIndex =
+        ServerProfileRepository().loadProfiles().size() - 1;
     QWizard::accept();
 }
 

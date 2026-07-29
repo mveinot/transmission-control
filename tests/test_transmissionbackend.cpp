@@ -46,9 +46,11 @@ void TestTransmissionBackend::sessionChallengeIsRetriedAndListIsNormalized()
     QVERIFY(server.isListening());
 
     TransmissionBackend backend;
-    backend.setServer({QStringLiteral("Test Transmission"),
-                       server.url(QStringLiteral("/transmission/rpc")).toString(),
-                       {}, {}});
+    ServerProfile profile;
+    profile.name = QStringLiteral("Test Transmission");
+    profile.rpcUrl =
+        server.url(QStringLiteral("/transmission/rpc")).toString();
+    QVERIFY(backend.setServerProfile(profile));
     QSignalSpy received(&backend, &TorrentBackend::torrentsReceived);
     QSignalSpy finished(&backend, &TorrentBackend::updateFinished);
     backend.getTorrentList();
@@ -85,8 +87,10 @@ void TestTransmissionBackend::commandsUseBackendNeutralKeys()
     QVERIFY(server.isListening());
 
     TransmissionBackend backend;
-    backend.setServer({QStringLiteral("Test"), server.url("/rpc").toString(),
-                       {}, {}});
+    ServerProfile profile;
+    profile.name = QStringLiteral("Test");
+    profile.rpcUrl = server.url("/rpc").toString();
+    QVERIFY(backend.setServerProfile(profile));
     QSignalSpy succeeded(&backend, &TorrentBackend::commandSucceeded);
     backend.startTorrents({QStringLiteral("alpha"), QStringLiteral("beta")});
     backend.removeTorrents({QStringLiteral("alpha")}, true);
@@ -135,8 +139,10 @@ void TestTransmissionBackend::sessionDataIsProjected()
     QVERIFY(server.isListening());
 
     TransmissionBackend backend;
-    backend.setServer({QStringLiteral("Test"), server.url("/rpc").toString(),
-                       {}, {}});
+    ServerProfile profile;
+    profile.name = QStringLiteral("Test");
+    profile.rpcUrl = server.url("/rpc").toString();
+    QVERIFY(backend.setServerProfile(profile));
     QSignalSpy settings(&backend, &TorrentBackend::sessionSettingsReceived);
     QSignalSpy statistics(&backend,
                           &TorrentBackend::sessionStatisticsReceived);
