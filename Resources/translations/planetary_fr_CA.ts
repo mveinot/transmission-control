@@ -393,7 +393,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
 <context>
     <name>DelugeBackend</name>
     <message>
-        <location filename="../../delugebackend.cpp" line="+375"/>
+        <location filename="../../delugebackend.cpp" line="+391"/>
         <source>Deluge returned JSON-RPC error %1.</source>
         <translation>Deluge a renvoyé l&apos;erreur JSON-RPC %1.</translation>
     </message>
@@ -403,7 +403,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Échec de l&apos;authentification Deluge : %1</translation>
     </message>
     <message>
-        <location line="+92"/>
+        <location line="+106"/>
         <source>the server returned HTTP %1</source>
         <translation>le serveur a renvoyé HTTP %1</translation>
     </message>
@@ -428,7 +428,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Réponse invalide de Deluge : %1</translation>
     </message>
     <message>
-        <location line="+7"/>
+        <location line="+8"/>
         <source>Deluge returned a mismatched JSON-RPC response.</source>
         <translation>Deluge a renvoyé une réponse JSON-RPC non concordante.</translation>
     </message>
@@ -443,7 +443,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Deluge Web est authentifié, mais n&apos;est pas connecté à un démon.</translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+30"/>
         <source>Deluge returned invalid session settings.</source>
         <translation>Deluge a renvoyé des paramètres de session non valides.</translation>
     </message>
@@ -478,7 +478,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Deluge n&apos;a pas renvoyé d&apos;identifiant de torrent.</translation>
     </message>
     <message>
-        <location line="+269"/>
+        <location line="+272"/>
         <source>Refresh the file list before changing Deluge file priorities.</source>
         <translation>Actualisez la liste des fichiers avant de modifier les priorités de fichiers Deluge.</translation>
     </message>
@@ -498,12 +498,12 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation>Impossible d&apos;ouvrir le fichier torrent&#xa0;: %1</translation>
     </message>
     <message>
-        <location line="-572"/>
+        <location line="-575"/>
         <source>Deluge returned invalid torrent details.</source>
         <translation>Deluge a renvoyé des détails de torrent non valides.</translation>
     </message>
     <message>
-        <location line="+606"/>
+        <location line="+609"/>
         <source>No magnet link was specified.</source>
         <translation>Aucun lien magnet n’a été spécifié.</translation>
     </message>
@@ -573,7 +573,7 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <translation type="vanished">Définir les paramètres de session</translation>
     </message>
     <message>
-        <location line="+180"/>
+        <location line="+186"/>
         <source>Update blocklist</source>
         <translation>Mettre à jour la liste de blocage</translation>
     </message>

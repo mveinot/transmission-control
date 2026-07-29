@@ -49,6 +49,7 @@ public:
     QJsonObject sessionStatus;
     qint64 freeSpace = 0;
     bool portOpen = false;
+    QString mismatchMethod;
     QString addedTorrentId = QStringLiteral("added-torrent-id");
     QStringList methods;
     QHash<QString, QJsonArray> parametersByMethod;
@@ -101,6 +102,11 @@ private:
         QJsonObject response{
             {QStringLiteral("id"), request.value(QStringLiteral("id"))}
         };
+        if (method == mismatchMethod) {
+            response.insert(
+                QStringLiteral("id"),
+                request.value(QStringLiteral("id")).toInt() + 1);
+        }
         if (expireThisRequest) {
             response.insert(
                 QStringLiteral("error"),
@@ -170,6 +176,9 @@ private slots:
     void selectedTorrentDetailsAreNormalized();
     void torrentMutationsUseDelugeCoreMethods();
     void sessionOperationsAreNormalized();
+    void duplicateDetailRequestsAreCoalesced();
+    void disconnectedDaemonRejectsQueuedCommands();
+    void mismatchedCommandReplyReportsFailure();
     void rejectedPasswordReportsAuthenticationFailure();
     void disconnectedDaemonHasDistinctFailure();
 
@@ -785,6 +794,64 @@ void TestDelugeBackend::sessionOperationsAreNormalized()
     QCOMPARE(native.value(QStringLiteral("max_active_downloading")).toInt(),
              -1);
     QCOMPARE(native.value(QStringLiteral("enc_in_policy")).toInt(), 2);
+}
+
+void TestDelugeBackend::duplicateDetailRequestsAreCoalesced()
+{
+    FakeDelugeWeb server;
+    server.torrentStatus = QJsonObject{
+        {QStringLiteral("pieces"), QJsonArray{3, 0}},
+        {QStringLiteral("progress"), 50.0}
+    };
+    configureServer(server.url(), QStringLiteral("correct"));
+    DelugeBackend backend;
+    QVERIFY(backend.loadCurrentServerFromSettings());
+    QSignalSpy piecesSpy(&backend, &TorrentBackend::torrentPiecesReceived);
+
+    backend.getTorrentPieces(QStringLiteral("torrent-hash"));
+    backend.getTorrentPieces(QStringLiteral("torrent-hash"));
+
+    QTRY_COMPARE(piecesSpy.size(), 1);
+    QCOMPARE(server.methods.count(
+                 QStringLiteral("core.get_torrent_status")),
+             1);
+}
+
+void TestDelugeBackend::disconnectedDaemonRejectsQueuedCommands()
+{
+    FakeDelugeWeb server;
+    server.daemonConnected = false;
+    configureServer(server.url(), QStringLiteral("correct"));
+    DelugeBackend backend;
+    QVERIFY(backend.loadCurrentServerFromSettings());
+    QSignalSpy failed(&backend, &TorrentBackend::commandFailed);
+
+    backend.startTorrents({QStringLiteral("torrent-hash")});
+
+    QTRY_COMPARE(failed.size(), 1);
+    QCOMPARE(failed.first().at(0).toString(),
+             QStringLiteral("torrent-start"));
+    QVERIFY(!server.methods.contains(
+        QStringLiteral("core.resume_torrents")));
+}
+
+void TestDelugeBackend::mismatchedCommandReplyReportsFailure()
+{
+    FakeDelugeWeb server;
+    configureServer(server.url(), QStringLiteral("correct"));
+    DelugeBackend backend;
+    QVERIFY(backend.loadCurrentServerFromSettings());
+    QSignalSpy ready(&backend, &TorrentBackend::updateFinished);
+    QSignalSpy failed(&backend, &TorrentBackend::commandFailed);
+    backend.init();
+    QVERIFY(ready.wait());
+
+    server.mismatchMethod = QStringLiteral("core.resume_torrents");
+    backend.startTorrents({QStringLiteral("torrent-hash")});
+
+    QTRY_COMPARE(failed.size(), 1);
+    QCOMPARE(failed.first().at(0).toString(),
+             QStringLiteral("torrent-start"));
 }
 
 void TestDelugeBackend::disconnectedDaemonHasDistinctFailure()

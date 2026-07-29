@@ -302,6 +302,20 @@ void DelugeBackend::postTorrentStatus(RequestKind kind,
     if (!isValidTorrentKey(torrentKey))
         return;
 
+    // Detail timers can tick again while a slow daemon is still answering the
+    // previous poll. A second identical snapshot adds load but no information.
+    for (auto it = m_requests.cbegin(); it != m_requests.cend(); ++it) {
+        if (it.value().kind == kind
+            && it.value().torrentKey == torrentKey) {
+            return;
+        }
+    }
+    for (const RequestContext &pending :
+         std::as_const(m_requestsPendingAfterAuthentication)) {
+        if (pending.kind == kind && pending.torrentKey == torrentKey)
+            return;
+    }
+
     RequestContext context;
     context.kind = kind;
     context.method = QStringLiteral("core.get_torrent_status");
@@ -417,6 +431,20 @@ void DelugeBackend::retryAfterAuthentication(RequestContext context)
 void DelugeBackend::failRequest(const RequestContext &context,
                                 const QString &reason)
 {
+    if (context.kind == RequestKind::DaemonConnectionCheck) {
+        m_ready = false;
+        m_connectionCheckPending = false;
+        m_listPendingAfterReady = false;
+        m_listInProgress = false;
+        m_listRequestedWhileInProgress = false;
+        const QList<RequestContext> pending =
+            std::exchange(m_requestsPendingAfterAuthentication, {});
+        for (const RequestContext &request : pending)
+            failRequest(request, reason);
+        emit updateFailed(reason);
+        return;
+    }
+
     if (context.kind == RequestKind::TorrentList) {
         emit updateFailed(tr("Deluge torrent request failed: %1").arg(reason));
         m_listInProgress = false;
@@ -525,11 +553,12 @@ void DelugeBackend::handleReply(QNetworkReply *reply)
     const QJsonObject response = document.object();
     if (response.value(QStringLiteral("id")).toVariant().toLongLong()
         != context.id) {
-        emit updateFailed(tr("Deluge returned a mismatched JSON-RPC response."));
-        if (context.kind == RequestKind::TorrentList) {
-            m_listInProgress = false;
-            m_listRequestedWhileInProgress = false;
-        }
+        const QString reason =
+            tr("Deluge returned a mismatched JSON-RPC response.");
+        if (context.kind == RequestKind::Login)
+            handleAuthenticationFailure(reason);
+        else
+            failRequest(context, reason);
         return;
     }
 
@@ -563,11 +592,9 @@ void DelugeBackend::handleReply(QNetworkReply *reply)
 
     if (context.kind == RequestKind::DaemonConnectionCheck
         && !response.value(QStringLiteral("result")).toBool()) {
-        emit updateFailed(
-            tr("Deluge Web is authenticated, but it is not connected to a daemon."));
-        m_listPendingAfterReady = false;
-        m_listInProgress = false;
-        m_listRequestedWhileInProgress = false;
+        const QString reason =
+            tr("Deluge Web is authenticated, but it is not connected to a daemon.");
+        failRequest(context, reason);
         return;
     }
 
