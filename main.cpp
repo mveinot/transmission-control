@@ -12,8 +12,6 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QLibraryInfo>
-#include <QLocale>
-#include <QTranslator>
 
 static QString translationsPath()
 {
