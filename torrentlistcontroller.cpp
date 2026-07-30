@@ -149,6 +149,10 @@ void TorrentListController::setup(const ActionSet &actions)
         " background-color: palette(highlight);"
         " color: palette(highlighted-text);"
         " border: none;"
+        "}"
+        "QTableView::item:focus {"
+        " border: none;"
+        " outline: none;"
         "}"));
 #endif
 
