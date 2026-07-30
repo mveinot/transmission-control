@@ -15,7 +15,7 @@
 #include "sessionoverviewwidget.h"
 #include "notificationcontroller.h"
 #include "activitylogmodel.h"
-#include "appicons.h"
+#include "applicationcommandcontroller.h"
 #include <QActionGroup>
 #include <QAbstractItemView>
 #include <QApplication>
@@ -26,7 +26,6 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
-#include <QDesktopServices>
 #include <QDateTime>
 #include <QDockWidget>
 #include <QDir>
@@ -45,7 +44,6 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
-#include <QKeySequence>
 #include <QLineEdit>
 #include <QLocale>
 #include <QMenu>
@@ -117,23 +115,6 @@ bool jsonBoolAny(const QJsonObject &object,
     return false;
 }
 
-void applyCustomActionIcons(Ui::MainWindow *ui)
-{
-    ui->action_Open_Torrent->setIcon(AppIcons::icon(AppIcons::Icon::ActionAddTorrent));
-    ui->actionAdd_Torrent_from_Magnet_Link->setIcon(AppIcons::icon(AppIcons::Icon::ActionAddMagnet));
-    ui->actionStart_Torrent->setIcon(AppIcons::icon(AppIcons::Icon::ActionStart));
-    ui->actionStop_Torrent->setIcon(AppIcons::icon(AppIcons::Icon::ActionStop));
-    ui->actionStart_All_Torrents->setIcon(AppIcons::icon(AppIcons::Icon::ActionStartAll));
-    ui->actionStop_All_Torrents->setIcon(AppIcons::icon(AppIcons::Icon::ActionStopAll));
-    ui->actionForce_Start_Torrent->setIcon(AppIcons::icon(AppIcons::Icon::ActionForceStart));
-    ui->actionVerify_Torrent->setIcon(AppIcons::icon(AppIcons::Icon::ActionVerify));
-    ui->actionReannounce->setIcon(AppIcons::icon(AppIcons::Icon::ActionReannounce));
-    ui->actionDelete_Torrent->setIcon(AppIcons::icon(AppIcons::Icon::ActionDelete));
-    ui->moveTopAction->setIcon(AppIcons::icon(AppIcons::Icon::QueueTop));
-    ui->moveUpAction->setIcon(AppIcons::icon(AppIcons::Icon::QueueUp));
-    ui->moveDownAction->setIcon(AppIcons::icon(AppIcons::Icon::QueueDown));
-    ui->moveBottomAction->setIcon(AppIcons::icon(AppIcons::Icon::QueueBottom));
-}
 }
 
 void MainWindow::clearGeneralTab()
@@ -153,68 +134,6 @@ void MainWindow::clearGeneralTab()
 
     if (torrentPeersController)
         torrentPeersController->clear();
-}
-
-void MainWindow::setupPlatformMenus()
-{
-    ui->actionClose_Window->setShortcut(QKeySequence::Close);
-    ui->actionClose_Window->setMenuRole(QAction::NoRole);
-
-#ifdef Q_OS_MACOS
-    // Let Qt merge these actions into the standard macOS application menu.
-    // Keeping the actions in File in the .ui preserves the existing layout on
-    // Windows and Linux, while their menu roles relocate them on macOS.
-    ui->actionAbout->setMenuRole(QAction::AboutRole);
-    ui->actionQuit->setMenuRole(QAction::QuitRole);
-
-    ui->actionSettings->setText(tr("Settings…"));
-    ui->actionSettings->setMenuRole(QAction::PreferencesRole);
-    ui->actionSettings->setShortcut(QKeySequence::Preferences);
-
-    ui->actionServer_Setup->setMenuRole(QAction::ApplicationSpecificRole);
-    ui->actionTransmission_Settings->setMenuRole(QAction::ApplicationSpecificRole);
-#endif
-}
-
-void MainWindow::setupEditMenu()
-{
-    auto *editMenu = new QMenu(tr("Edit"), this);
-    menuBar()->insertMenu(ui->menuTransfers->menuAction(), editMenu);
-
-    QAction *copyAction = editMenu->addAction(tr("Copy"));
-    copyAction->setShortcut(QKeySequence::Copy);
-    copyAction->setShortcutContext(Qt::WindowShortcut);
-    connect(copyAction, &QAction::triggered, this, &MainWindow::copyFromFocusedWidget);
-
-    QAction *selectAllAction = editMenu->addAction(tr("Select All"));
-    selectAllAction->setShortcut(QKeySequence::SelectAll);
-    selectAllAction->setShortcutContext(Qt::WindowShortcut);
-    connect(selectAllAction, &QAction::triggered, this, &MainWindow::selectAllInFocusedWidget);
-
-    editMenu->addSeparator();
-
-    QAction *findAction = editMenu->addAction(tr("Find Torrents"));
-    findAction->setShortcut(QKeySequence::Find);
-    findAction->setShortcutContext(Qt::WindowShortcut);
-    connect(findAction, &QAction::triggered, this, &MainWindow::focusTorrentSearch);
-
-    QAction *findFilesAction = editMenu->addAction(tr("Find Files"));
-#ifdef Q_OS_MACOS
-    findFilesAction->setShortcut(QKeySequence(QStringLiteral("Meta+Alt+F")));
-#else
-    findFilesAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Alt+F")));
-#endif
-    findFilesAction->setShortcutContext(Qt::WindowShortcut);
-    connect(findFilesAction, &QAction::triggered, this, &MainWindow::focusFileSearch);
-
-    ui->action_Open_Torrent->setShortcut(QKeySequence::Open);
-#ifdef Q_OS_MACOS
-    ui->actionAdd_Torrent_from_Magnet_Link->setShortcut(
-        QKeySequence(QStringLiteral("Meta+Shift+O")));
-#else
-    ui->actionAdd_Torrent_from_Magnet_Link->setShortcut(
-        QKeySequence(QStringLiteral("Ctrl+Shift+O")));
-#endif
 }
 
 void MainWindow::copyFromFocusedWidget()
@@ -323,6 +242,109 @@ void MainWindow::focusFileSearch()
     ui->editFileFilter->selectAll();
 }
 
+void MainWindow::setupApplicationCommands()
+{
+    ApplicationCommandController::Actions actions;
+    actions.openTorrent = ui->action_Open_Torrent;
+    actions.addMagnet = ui->actionAdd_Torrent_from_Magnet_Link;
+    actions.startSelected = ui->actionStart_Torrent;
+    actions.stopSelected = ui->actionStop_Torrent;
+    actions.startAll = ui->actionStart_All_Torrents;
+    actions.stopAll = ui->actionStop_All_Torrents;
+    actions.forceStart = ui->actionForce_Start_Torrent;
+    actions.verify = ui->actionVerify_Torrent;
+    actions.reannounce = ui->actionReannounce;
+    actions.deleteTorrent = ui->actionDelete_Torrent;
+    actions.queueTop = ui->moveTopAction;
+    actions.queueUp = ui->moveUpAction;
+    actions.queueDown = ui->moveDownAction;
+    actions.queueBottom = ui->moveBottomAction;
+    actions.closeWindow = ui->actionClose_Window;
+    actions.applicationSettings = ui->actionSettings;
+    actions.manageServers = ui->actionServer_Setup;
+    actions.serverSettings = ui->actionTransmission_Settings;
+    actions.alternativeSpeed = ui->actionAlternative_Speed_Mode;
+    actions.statistics = statisticsAction;
+    actions.about = ui->actionAbout;
+    actions.quit = ui->actionQuit;
+    actions.checkForUpdates = ui->actionCheckForUpdates;
+    actions.exportSettings = ui->actionExport_Settings;
+    actions.importSettings = ui->actionImport_Settings;
+
+    ApplicationCommandController::Menus menus;
+    menus.menuBar = menuBar();
+    menus.transfers = ui->menuTransfers;
+    menus.help = ui->menuHelp;
+
+    ApplicationCommandController::Handlers handlers;
+    handlers.copy = [this]() { copyFromFocusedWidget(); };
+    handlers.selectAll = [this]() { selectAllInFocusedWidget(); };
+    handlers.findTorrents = [this]() { focusTorrentSearch(); };
+    handlers.findFiles = [this]() { focusFileSearch(); };
+    handlers.openTorrent = [this]() { addTorrentFromFile(); };
+    handlers.addMagnet = [this]() { addTorrentFromMagnet(); };
+    handlers.startSelected = [this]() {
+        if (torrentListController)
+            torrentListController->startSelectedTorrents();
+    };
+    handlers.stopSelected = [this]() {
+        if (torrentListController)
+            torrentListController->stopSelectedTorrents();
+    };
+    handlers.startAll = [this]() {
+        if (statusBarController) {
+            statusBarController->showMessage(
+                tr("Starting all torrents..."), 3000);
+        }
+        client->startAllTorrents();
+    };
+    handlers.stopAll = [this]() {
+        if (statusBarController) {
+            statusBarController->showMessage(
+                tr("Stopping all torrents..."), 3000);
+        }
+        client->stopAllTorrents();
+    };
+    handlers.verify = [this]() {
+        if (torrentListController)
+            torrentListController->verifySelectedTorrents();
+    };
+    handlers.reannounce = [this]() {
+        if (torrentListController)
+            torrentListController->reannounceSelectedTorrents();
+    };
+    handlers.deleteTorrent = [this]() {
+        if (torrentListController)
+            torrentListController->deleteSelectedTorrents();
+    };
+    handlers.applicationSettings =
+        [this]() { showApplicationSettings(); };
+    handlers.manageServers = [this]() { onServerSetupTriggered(); };
+    handlers.serverSettings = [this]() { showSessionSettings(); };
+    handlers.alternativeSpeed =
+        [this](bool enabled) { toggleAlternativeSpeedMode(enabled); };
+    handlers.statistics = [this]() { showStatistics(); };
+    handlers.closeWindow = [this]() { close(); };
+    handlers.about = [this]() { showAbout(); };
+    handlers.quit = [this]() { quitApplication(); };
+    handlers.diagnostics = [this]() { showDiagnostics(); };
+    handlers.checkForUpdates = [this]() {
+        if (updateCheckController)
+            updateCheckController->checkNow();
+    };
+    handlers.exportSettings = [this]() { exportSettings(); };
+    handlers.importSettings = [this]() { importSettings(); };
+    handlers.statusMessage =
+        [this](const QString &message, int timeoutMs) {
+            if (statusBarController)
+                statusBarController->showMessage(message, timeoutMs);
+        };
+
+    applicationCommandController = new ApplicationCommandController(
+        this, actions, menus, std::move(handlers), this);
+    applicationCommandController->setup();
+}
+
 void MainWindow::setupViewMenu()
 {
     WindowLayoutController::Widgets widgets;
@@ -373,18 +395,6 @@ void MainWindow::setupViewMenu()
 
     statisticsAction = viewMenu->addAction(tr("Statistics…"));
     statisticsAction->setToolTip(tr("Show session statistics"));
-    statisticsAction->setVisible(client->capabilities().sessionStatistics);
-
-    connect(statisticsAction, &QAction::triggered,
-            this, &MainWindow::showStatistics);
-    connect(client, &TorrentBackend::capabilitiesChanged,
-            statisticsAction,
-            [this](const TorrentBackendCapabilities &capabilities) {
-                if (statisticsAction)
-                    statisticsAction->setVisible(
-                        capabilities.sessionStatistics);
-            });
-
 }
 
 void MainWindow::setupActivityDock()
@@ -548,11 +558,9 @@ MainWindow::MainWindow(QWidget *parent)
              ui->editTorrentFilter->sizeHint().height()));
     ui->labelTorrentStatus->setFixedHeight(torrentControlsHeight);
 
-    setupPlatformMenus();
-    setupEditMenu();
     setupViewMenu();
     setupActivityDock();
-    applyCustomActionIcons(ui);
+    setupApplicationCommands();
     TorrentGeneralController::Widgets generalWidgets;
     generalWidgets.generalTab = ui->general;
     generalWidgets.generalLayout = ui->verticalLayoutGeneral;
@@ -857,13 +865,6 @@ MainWindow::MainWindow(QWidget *parent)
                     statusBarController->showMessage(tr("Torrent add cancelled."), 3000);
             });
 
-
-    connect(ui->actionCheckForUpdates, &QAction::triggered,
-            this, [this]() {
-                if (updateCheckController)
-                    updateCheckController->checkNow();
-            });
-
     connect(ui->tabWidget, &QTabWidget::currentChanged,
             this, [this](int) {
                 updatePollingDetailView();
@@ -880,15 +881,17 @@ MainWindow::MainWindow(QWidget *parent)
         showTorrentDetails(false);
         if (sessionOverviewWidget)
             sessionOverviewWidget->clearHistory();
-        updateServerSettingsAction();
+        applicationCommandController->setBackendState(
+            client->backendName(), client->capabilities());
         recordActivity(tr("Server changed"),
                        tr("Switched active %1 server.").arg(client->backendName()),
                        ui->comboServers->currentText());
     });
 
     connect(client, &TorrentBackend::capabilitiesChanged,
-            this, [this](const TorrentBackendCapabilities &) {
-                updateServerSettingsAction();
+            this, [this](const TorrentBackendCapabilities &capabilities) {
+                applicationCommandController->setBackendState(
+                    client->backendName(), capabilities);
             });
 
     connect(client, &TorrentBackend::updateFailed, this, [this](const QString &message) {
@@ -918,49 +921,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(client, &TorrentBackend::sessionSettingsReceived,
             this, &MainWindow::handleSessionSettingsReceived);
 
-    connect(ui->actionTransmission_Settings, &QAction::triggered,
-            this, &MainWindow::showSessionSettings);
-
-    updateServerSettingsAction();
-    updateAlternativeSpeedAction(false, false);
-
-    connect(ui->actionAlternative_Speed_Mode, &QAction::triggered,
-            this, &MainWindow::toggleAlternativeSpeedMode);
-
-    connect(ui->actionClose_Window, &QAction::triggered,
-            this, &QWidget::close);
-
-    connect(ui->actionServer_Setup, &QAction::triggered, this, &MainWindow::onServerSetupTriggered);
-
-    QAction *projectWebsiteAction = new QAction(tr("Planetary Website..."), this);
-    ui->menuHelp->insertAction(ui->actionCheckForUpdates, projectWebsiteAction);
-    connect(projectWebsiteAction, &QAction::triggered, this, [this]() {
-        const QUrl projectUrl(QStringLiteral("https://planetary.mvgrafx.net/"));
-        if (!QDesktopServices::openUrl(projectUrl) && statusBarController) {
-            statusBarController->showMessage(
-                tr("Could not open the Planetary website."),
-                5000
-                );
-        }
-    });
-
-    QAction *contactSupportAction = new QAction(tr("Contact Support..."), this);
-    ui->menuHelp->insertAction(ui->actionAbout, contactSupportAction);
-    connect(contactSupportAction, &QAction::triggered, this, [this]() {
-        const QUrl supportUrl(QStringLiteral("mailto:planetary@mvgrafx.net"));
-        if (!QDesktopServices::openUrl(supportUrl) && statusBarController) {
-            statusBarController->showMessage(
-                tr("Could not open the default email application. "
-                   "Contact planetary@mvgrafx.net directly."),
-                8000
-                );
-        }
-    });
-
-    QAction *diagnosticsAction = new QAction(tr("Diagnostics..."), this);
-    ui->menuHelp->insertAction(ui->actionAbout, diagnosticsAction);
-    ui->menuHelp->insertSeparator(ui->actionAbout);
-    connect(diagnosticsAction, &QAction::triggered, this, &MainWindow::showDiagnostics);
+    applicationCommandController->setBackendState(
+        client->backendName(), client->capabilities());
+    applicationCommandController->setAlternativeSpeedState(false, false);
 
     connect(client, &TorrentBackend::torrentDetailsReceived,
             this,
@@ -1127,8 +1090,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(client, &TorrentBackend::commandFailed,
             this, [this](const QString &method, const QString &message) {
                 if (method == QStringLiteral("session-set"))
-                    updateAlternativeSpeedAction(confirmedAlternativeSpeedEnabled,
-                                                 alternativeSpeedSettingsAvailable);
+                    applicationCommandController->setAlternativeSpeedState(
+                        alternativeSpeedSettingsAvailable,
+                        confirmedAlternativeSpeedEnabled);
 
                 if (statusBarController)
                     statusBarController->showMessage(message, 5000);
@@ -1177,73 +1141,7 @@ void MainWindow::on_tableView_clicked(const QModelIndex &proxyIndex)
         torrentListController->handleTableClicked(proxyIndex);
 }
 
-void MainWindow::on_actionStart_Torrent_triggered()
-{
-    if (torrentListController)
-        torrentListController->startSelectedTorrents();
-}
-
-void MainWindow::on_actionStop_Torrent_triggered()
-{
-    if (torrentListController)
-        torrentListController->stopSelectedTorrents();
-}
-
-void MainWindow::on_actionStart_All_Torrents_triggered()
-{
-    if (statusBarController)
-        statusBarController->showMessage(tr("Starting all torrents..."), 3000);
-
-    client->startAllTorrents();
-}
-
-void MainWindow::on_actionStop_All_Torrents_triggered()
-{
-    if (statusBarController)
-        statusBarController->showMessage(tr("Stopping all torrents..."), 3000);
-
-    client->stopAllTorrents();
-}
-
-void MainWindow::on_action_Open_Torrent_triggered()
-{
-    addTorrentFromFile();
-}
-
-void MainWindow::on_actionAdd_Torrent_from_Magnet_Link_triggered()
-{
-    addTorrentFromMagnet();
-}
-
-void MainWindow::on_actionReannounce_triggered()
-{
-    if (torrentListController)
-        torrentListController->reannounceSelectedTorrents();
-}
-
-void MainWindow::on_actionVerify_Torrent_triggered()
-{
-    if (torrentListController)
-        torrentListController->verifySelectedTorrents();
-}
-
-void MainWindow::on_actionAbout_triggered()
-{
-    showAbout();
-}
-
-void MainWindow::on_actionQuit_triggered()
-{
-    quitApplication();
-}
-
-void MainWindow::on_actionDelete_Torrent_triggered()
-{
-    if (torrentListController)
-        torrentListController->deleteSelectedTorrents();
-}
-
-void MainWindow::on_actionSettings_triggered()
+void MainWindow::showApplicationSettings()
 {
     AppSettings dialog(this);
 
@@ -1631,7 +1529,7 @@ void MainWindow::setupConnectionStatusIndicator()
             this, &MainWindow::showQuickSpeedLimitsDialog);
 
     connect(statusBarController, &StatusBarController::appSettingsRequested,
-            this, &MainWindow::on_actionSettings_triggered);
+            this, &MainWindow::showApplicationSettings);
 }
 
 void MainWindow::setupDetailsPane()
@@ -1765,34 +1663,6 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
     pollingCoordinator->handleTorrentListReceived();
 }
 
-void MainWindow::updateAlternativeSpeedAction(bool enabled, bool available)
-{
-    if (!ui || !ui->actionAlternative_Speed_Mode)
-        return;
-
-    // Programmatic reconciliation must not issue another session-set request.
-    const QSignalBlocker blocker(ui->actionAlternative_Speed_Mode);
-    ui->actionAlternative_Speed_Mode->setEnabled(available);
-    ui->actionAlternative_Speed_Mode->setChecked(enabled);
-}
-
-void MainWindow::updateServerSettingsAction()
-{
-    const QString backendName = client->backendName().trimmed();
-    const bool available =
-        !backendName.isEmpty() && client->capabilities().sessionSettings;
-
-    // Backend names distinguish remote daemon settings from Planetary's
-    // connection-profile manager and naturally accommodate future backends.
-    ui->actionTransmission_Settings->setText(
-        available
-            ? tr("%1 Settings...").arg(backendName)
-            : tr("Server Settings...")
-        );
-    ui->actionTransmission_Settings->setEnabled(available);
-}
-
-
 void MainWindow::refreshRemoteFreeSpace()
 {
     if (!client->capabilities().freeSpaceQuery)
@@ -1922,13 +1792,14 @@ void MainWindow::showQuickSpeedLimitsDialog()
 void MainWindow::toggleAlternativeSpeedMode(bool enabled)
 {
     if (!alternativeSpeedSettingsAvailable) {
-        updateAlternativeSpeedAction(confirmedAlternativeSpeedEnabled, false);
+        applicationCommandController->setAlternativeSpeedState(
+            false, confirmedAlternativeSpeedEnabled);
         return;
     }
 
     // Reflect the requested state optimistically. commandFailed restores the
     // last value confirmed by session-get.
-    updateAlternativeSpeedAction(enabled, true);
+    applicationCommandController->setAlternativeSpeedState(true, enabled);
 
     QJsonObject changes;
     changes[QStringLiteral("alt-speed-enabled")] = enabled;
@@ -1981,8 +1852,9 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
         sessionSettings.value(QStringLiteral("alt-speed-enabled")).toBool(false);
     alternativeSpeedSettingsAvailable =
         sessionSettings.contains(QStringLiteral("alt-speed-enabled"));
-    updateAlternativeSpeedAction(confirmedAlternativeSpeedEnabled,
-                                 alternativeSpeedSettingsAvailable);
+    applicationCommandController->setAlternativeSpeedState(
+        alternativeSpeedSettingsAvailable,
+        confirmedAlternativeSpeedEnabled);
 
     if (torrentListController)
         torrentListController->setSequentialDownloadSupported(

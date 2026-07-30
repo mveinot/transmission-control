@@ -43,6 +43,7 @@ class NotificationController;
 class SessionOverviewWidget;
 class ServerSelectionController;
 class PollingCoordinator;
+class ApplicationCommandController;
 class WindowLayoutController;
 
 /*
@@ -71,17 +72,7 @@ public slots:
 
 private slots:
     void on_tableView_clicked(const QModelIndex &index);
-    void on_actionDelete_Torrent_triggered();
     void onServerSetupTriggered();
-    void on_actionStart_Torrent_triggered();
-    void on_actionStop_Torrent_triggered();
-    void on_actionStart_All_Torrents_triggered();
-    void on_actionStop_All_Torrents_triggered();
-    void on_action_Open_Torrent_triggered();
-    void on_actionAdd_Torrent_from_Magnet_Link_triggered();
-    void on_actionReannounce_triggered();
-    void on_actionVerify_Torrent_triggered();
-    void on_actionSettings_triggered();
     void handleTorrentsReceived(const QVector<torrent> &torrents);
     void showSessionSettings();
     void showStatistics();
@@ -89,8 +80,6 @@ private slots:
     void toggleAlternativeSpeedMode(bool enabled);
     void refreshRemoteFreeSpace();
     void showQuickSpeedLimitsDialog();
-    void on_actionAbout_triggered();
-    void on_actionQuit_triggered();
     void exportSettings();
     void importSettings();
 
@@ -122,17 +111,15 @@ private:
     void clearGeneralTab();
     void handleServerActivated();
     void applyAppSettings();
-    void updateAlternativeSpeedAction(bool enabled, bool available);
-    void updateServerSettingsAction();
+    void showApplicationSettings();
+    void setupApplicationCommands();
     void setupViewMenu();
-    void setupEditMenu();
     void setupActivityDock();
     void copyFromFocusedWidget();
     void selectAllInFocusedWidget();
     void focusTorrentSearch();
     void focusFileSearch();
     void recordActivity(const QString &event, const QString &details, const QString &server);
-    void setupPlatformMenus();
 
     // Session settings are fetched asynchronously. These flags identify which
     // user interaction, if any, should consume the next settings response.
@@ -160,6 +147,7 @@ private:
     NotificationController *notificationController = nullptr;
     ServerSelectionController *serverSelectionController = nullptr;
     PollingCoordinator *pollingCoordinator = nullptr;
+    ApplicationCommandController *applicationCommandController = nullptr;
     WindowLayoutController *windowLayoutController = nullptr;
     QStackedWidget *detailsPaneStack = nullptr;
     SessionOverviewWidget *sessionOverviewWidget = nullptr;

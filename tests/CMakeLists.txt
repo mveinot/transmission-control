@@ -97,6 +97,15 @@ add_planetary_test(test_pollingcoordinator
     ${CMAKE_SOURCE_DIR}/pollingcoordinator.h
 )
 
+add_planetary_test(test_applicationcommandcontroller
+    test_applicationcommandcontroller.cpp
+    ${CMAKE_SOURCE_DIR}/applicationcommandcontroller.cpp
+    ${CMAKE_SOURCE_DIR}/applicationcommandcontroller.h
+    ${CMAKE_SOURCE_DIR}/appicons.cpp
+    ${CMAKE_SOURCE_DIR}/appicons.h
+    ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
+)
+
 add_planetary_test(test_torrentfiltercontroller
     test_torrentfiltercontroller.cpp
     ${CMAKE_SOURCE_DIR}/torrent.cpp

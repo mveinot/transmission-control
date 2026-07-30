@@ -391,6 +391,74 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
     </message>
 </context>
 <context>
+    <name>ApplicationCommandController</name>
+    <message>
+        <location filename="../../applicationcommandcontroller.cpp" line="+98"/>
+        <source>Settings…</source>
+        <translation>Paramètres…</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <source>Edit</source>
+        <translation>Modifier</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Copy</source>
+        <translation>Copie</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Select All</source>
+        <translation>Sélectionner tout</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Find Torrents</source>
+        <translation>Trouver des torrents</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Find Files</source>
+        <translation>Rechercher des fichiers</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Planetary Website...</source>
+        <translation>Site Web Planetary...</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Could not open the Planetary website.</source>
+        <translation>Impossible d&apos;ouvrir le site Web Planetary.</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Contact Support...</source>
+        <translation>Contacter l&apos;assistance...</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Could not open the default email application. Contact planetary@mvgrafx.net directly.</source>
+        <translation>Impossible d&apos;ouvrir l&apos;application de messagerie par défaut. Contactez directement planetary@mvgrafx.net.</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Diagnostics...</source>
+        <translation>Diagnostic...</translation>
+    </message>
+    <message>
+        <location line="+58"/>
+        <source>%1 Settings...</source>
+        <translation>Paramètres %1...</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Server Settings...</source>
+        <translation>Paramètres du serveur...</translation>
+    </message>
+</context>
+<context>
     <name>DelugeBackend</name>
     <message>
         <location filename="../../delugebackend.cpp" line="+352"/>
@@ -904,7 +972,7 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+23"/>
-        <location filename="../../mainwindow.cpp" line="+1466"/>
+        <location filename="../../mainwindow.cpp" line="+1364"/>
         <source>Magnet link:</source>
         <translation>Lien magnet :</translation>
     </message>
@@ -1000,7 +1068,6 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+93"/>
-        <location filename="../../mainwindow.cpp" line="+323"/>
         <source>Server Settings...</source>
         <translation>Paramètres du serveur...</translation>
     </message>
@@ -1095,7 +1162,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Importer les paramètres...</translation>
     </message>
     <message>
-        <location filename="../../mainwindow.cpp" line="-947"/>
+        <location filename="../../mainwindow.cpp" line="-514"/>
         <source>Adding torrent...</source>
         <translation>Ajout du torrent...</translation>
     </message>
@@ -1105,7 +1172,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Ajout du torrent annulé.</translation>
     </message>
     <message>
-        <location line="+586"/>
+        <location line="+476"/>
         <source>Torrent Files (*.torrent);;All Files (*)</source>
         <translation>Fichiers torrent (*.torrent);;Tous les fichiers (*)</translation>
     </message>
@@ -1120,43 +1187,17 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Serveur sélectionné : %1</translation>
     </message>
     <message>
-        <location line="+79"/>
+        <location line="+80"/>
         <source>Update interval: %1 seconds</source>
         <translation>Intervalle de mise à jour : %1 secondes</translation>
     </message>
     <message>
-        <location line="-1407"/>
-        <source>Settings…</source>
-        <translation>Paramètres…</translation>
-    </message>
-    <message>
-        <location line="+11"/>
-        <source>Edit</source>
-        <translation>Modifier</translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <location line="+247"/>
+        <location line="-1035"/>
         <source>Copy</source>
         <translation>Copie</translation>
     </message>
     <message>
-        <location line="-242"/>
-        <source>Select All</source>
-        <translation>Sélectionner tout</translation>
-    </message>
-    <message>
-        <location line="+7"/>
-        <source>Find Torrents</source>
-        <translation>Trouver des torrents</translation>
-    </message>
-    <message>
-        <location line="+5"/>
-        <source>Find Files</source>
-        <translation>Rechercher des fichiers</translation>
-    </message>
-    <message>
-        <location line="+159"/>
+        <location line="-59"/>
         <source>Bandwidth Graph</source>
         <translation>Graphique de bande passante</translation>
     </message>
@@ -1176,7 +1217,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Afficher les statistiques de session</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+5"/>
         <location line="+30"/>
         <source>Activity</source>
         <translation>Activité</translation>
@@ -1192,7 +1233,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Effacer l&apos;activité</translation>
     </message>
     <message>
-        <location line="+451"/>
+        <location line="+443"/>
         <source>Server changed</source>
         <translation>Le serveur a changé</translation>
     </message>
@@ -1202,7 +1243,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Serveur %1 actif commuté.</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+14"/>
         <source>Connection lost</source>
         <translation>Connexion perdue</translation>
     </message>
@@ -1227,32 +1268,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Connecté à %1.</translation>
     </message>
     <message>
-        <location line="+24"/>
-        <source>Planetary Website...</source>
-        <translation>Site Web Planetary...</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>Could not open the Planetary website.</source>
-        <translation>Impossible d&apos;ouvrir le site Web Planetary.</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>Contact Support...</source>
-        <translation>Contacter l&apos;assistance...</translation>
-    </message>
-    <message>
-        <location line="+6"/>
-        <source>Could not open the default email application. Contact planetary@mvgrafx.net directly.</source>
-        <translation>Impossible d&apos;ouvrir l&apos;application de messagerie par défaut. Contactez directement planetary@mvgrafx.net.</translation>
-    </message>
-    <message>
-        <location line="+7"/>
-        <source>Diagnostics...</source>
-        <translation>Diagnostic...</translation>
-    </message>
-    <message>
-        <location line="+121"/>
+        <location line="+130"/>
         <source>Torrent location updated.</source>
         <translation>Emplacement du torrent mis à jour.</translation>
     </message>
@@ -1262,17 +1278,17 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Chemin du torrent renommé.</translation>
     </message>
     <message>
-        <location line="+102"/>
+        <location line="-759"/>
         <source>Starting all torrents...</source>
         <translation>Démarrage de tous les torrents...</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+7"/>
         <source>Stopping all torrents...</source>
         <translation>Arrêt de tous les torrents...</translation>
     </message>
     <message>
-        <location line="+65"/>
+        <location line="+862"/>
         <source>Watch folder import history cleared.</source>
         <translation>L&apos;historique d&apos;importation du dossier de surveillance a été effacé.</translation>
     </message>
@@ -1282,12 +1298,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Ajouter des fichiers torrent</translation>
     </message>
     <message>
-        <location line="+347"/>
-        <source>%1 Settings...</source>
-        <translation>Paramètres %1...</translation>
-    </message>
-    <message>
-        <location line="+15"/>
+        <location line="+335"/>
         <source>No remote download directory is available yet.</source>
         <translation>Aucun répertoire de téléchargement à distance n&apos;est encore disponible.</translation>
     </message>
@@ -1345,7 +1356,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Mise à jour des limitations de vitesse...</translation>
     </message>
     <message>
-        <location line="+25"/>
+        <location line="+26"/>
         <source>Enabling alternative speed mode...</source>
         <translation>Activation du mode vitesse alternative...</translation>
     </message>
@@ -1360,7 +1371,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Chargement des paramètres du serveur...</translation>
     </message>
     <message>
-        <location line="+83"/>
+        <location line="+84"/>
         <source>No server settings changed</source>
         <translation>Aucun paramètre du serveur n&apos;a été modifié</translation>
     </message>

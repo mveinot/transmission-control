@@ -132,6 +132,8 @@ set(PROJECT_SOURCES
         serverselectioncontroller.cpp
         pollingcoordinator.h
         pollingcoordinator.cpp
+        applicationcommandcontroller.h
+        applicationcommandcontroller.cpp
         windowlayoutcontroller.h
         windowlayoutcontroller.cpp
     torrentkey.h
