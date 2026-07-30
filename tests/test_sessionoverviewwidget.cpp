@@ -12,6 +12,7 @@ private slots:
     void keepsFiveMinutesOfHistory();
     void clearsHistory();
     void rendersEmptyAndPopulatedStates();
+    void exposesCurrentSummaryToAssistiveClients();
 };
 
 void TestSessionOverviewWidget::keepsFiveMinutesOfHistory()
@@ -52,6 +53,25 @@ void TestSessionOverviewWidget::rendersEmptyAndPopulatedStates()
     widget.render(&populatedImage);
 
     QVERIFY(emptyImage != populatedImage);
+}
+
+void TestSessionOverviewWidget::exposesCurrentSummaryToAssistiveClients()
+{
+    SessionOverviewWidget widget;
+    QCOMPARE(widget.focusPolicy(), Qt::NoFocus);
+    QVERIFY(!widget.accessibleName().isEmpty());
+    QVERIFY(!widget.accessibleDescription().isEmpty());
+
+    widget.addSample(1000, 2048.0, 1024.0, 3, 2, 1);
+    const QString summary = widget.accessibleDescription();
+    QVERIFY(summary.contains(QStringLiteral("2.0 KiB/s")));
+    QVERIFY(summary.contains(QStringLiteral("1.0 KiB/s")));
+    QVERIFY(summary.contains(QStringLiteral("3")));
+    QVERIFY(summary.contains(QStringLiteral("2")));
+    QVERIFY(summary.contains(QStringLiteral("1")));
+
+    widget.clearHistory();
+    QVERIFY(!widget.accessibleDescription().isEmpty());
 }
 
 QTEST_MAIN(TestSessionOverviewWidget)

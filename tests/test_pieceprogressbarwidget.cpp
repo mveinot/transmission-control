@@ -13,6 +13,7 @@ private slots:
     void partitionsPiecesAcrossAvailableColumns();
     void clampsOverallProgress();
     void usesFixedHighContrastColors();
+    void exposesProgressToAssistiveClients();
 };
 
 void TestPieceProgressBarWidget::decodesTransmissionBitOrder()
@@ -68,6 +69,22 @@ void TestPieceProgressBarWidget::usesFixedHighContrastColors()
     QCOMPARE(image.pixelColor(75, 4), background);
     QCOMPARE(image.pixelColor(25, 16), foreground);
     QCOMPARE(image.pixelColor(75, 16), background);
+}
+
+void TestPieceProgressBarWidget::exposesProgressToAssistiveClients()
+{
+    PieceProgressBarWidget widget;
+    QCOMPARE(widget.focusPolicy(), Qt::NoFocus);
+    QVERIFY(!widget.accessibleName().isEmpty());
+    QVERIFY(!widget.accessibleDescription().isEmpty());
+
+    widget.setProgress(4, QByteArray::fromHex("a0"), 0.5);
+    QVERIFY(widget.accessibleDescription().contains(QStringLiteral("50.0%")));
+    QVERIFY(widget.accessibleDescription().contains(QStringLiteral("2 of 4")));
+    QCOMPARE(widget.accessibleDescription(), widget.toolTip());
+
+    widget.clear();
+    QVERIFY(!widget.accessibleDescription().isEmpty());
 }
 
 QTEST_MAIN(TestPieceProgressBarWidget)

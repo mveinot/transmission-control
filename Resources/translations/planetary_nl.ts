@@ -1511,6 +1511,14 @@ Start Planetary opnieuw om alle wijzigingen toe te passen.</translation>
     <context>
         <name>PieceProgressBarWidget</name>
         <message>
+            <source>Torrent piece completion</source>
+            <translation>Voortgang van torrentstukken</translation>
+        </message>
+        <message>
+            <source>No piece completion data available.</source>
+            <translation>Geen voortgangsgegevens voor stukken beschikbaar.</translation>
+        </message>
+        <message>
             <location filename="../../pieceprogressbarwidget.cpp" line="54" />
             <source>%1% downloaded · %2 of %3 pieces complete</source>
             <translation>%1% gedownload · %2 van %3 stukken voltooid</translation>
@@ -1738,6 +1746,14 @@ Doorgaan?</translation>
     </context>
     <context>
         <name>ServerConfig</name>
+        <message>
+            <source>Create a new server profile or import one from a file.</source>
+            <translation>Maak een nieuw serverprofiel of importeer er een uit een bestand.</translation>
+        </message>
+        <message>
+            <source>Remove the selected server profile.</source>
+            <translation>Verwijder het geselecteerde serverprofiel.</translation>
+        </message>
         <message>
             <location filename="../../serverconfig.ui" line="17" />
             <location filename="../../serverconfig.cpp" line="54" />
@@ -2253,6 +2269,18 @@ Doorgaan?</translation>
     </context>
     <context>
         <name>SessionOverviewWidget</name>
+        <message>
+            <source>Bandwidth activity</source>
+            <translation>Bandbreedteactiviteit</translation>
+        </message>
+        <message>
+            <source>Waiting for bandwidth data.</source>
+            <translation>Wachten op bandbreedtegegevens.</translation>
+        </message>
+        <message>
+            <source>Current download %1. Current upload %2. Downloading %3, seeding %4, waiting %5.</source>
+            <translation>Huidige download %1. Huidige upload %2. Downloaden %3, seeden %4, wachten %5.</translation>
+        </message>
         <message>
             <location filename="../../sessionoverviewwidget.cpp" line="102" />
             <source>B/s</source>

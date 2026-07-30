@@ -37,6 +37,8 @@ SessionOverviewWidget::SessionOverviewWidget(QWidget *parent)
     setMouseTracking(true);
     setMinimumHeight(120);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    setAccessibleName(tr("Bandwidth activity"));
+    updateAccessibleSummary();
 }
 
 void SessionOverviewWidget::addSample(qint64 timestampMs,
@@ -62,6 +64,7 @@ void SessionOverviewWidget::addSample(qint64 timestampMs,
     m_seedingCount = seedingCount;
     m_waitingCount = waitingCount;
     m_hoveredSample = -1;
+    updateAccessibleSummary();
     update();
 }
 
@@ -78,6 +81,7 @@ void SessionOverviewWidget::clearHistory()
     m_waitingCount = 0;
     m_breakBeforeNextSample = false;
     m_hoveredSample = -1;
+    updateAccessibleSummary();
     update();
 }
 
@@ -112,6 +116,24 @@ QString SessionOverviewWidget::rateText(double bytesPerSecond) const
     const int precision = value >= 100.0 || unit == 0 ? 0 : 1;
     return tr("%1 %2").arg(QLocale().toString(value, 'f', precision),
                            units.at(unit));
+}
+
+void SessionOverviewWidget::updateAccessibleSummary()
+{
+    if (m_samples.isEmpty()) {
+        setAccessibleDescription(tr("Waiting for bandwidth data."));
+        return;
+    }
+
+    const Sample &current = m_samples.constLast();
+    setAccessibleDescription(
+        tr("Current download %1. Current upload %2. "
+           "Downloading %3, seeding %4, waiting %5.")
+            .arg(rateText(current.downloadRate),
+                 rateText(current.uploadRate))
+            .arg(m_downloadingCount)
+            .arg(m_seedingCount)
+            .arg(m_waitingCount));
 }
 
 void SessionOverviewWidget::paintEvent(QPaintEvent *)

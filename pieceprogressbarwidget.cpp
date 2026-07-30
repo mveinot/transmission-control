@@ -33,6 +33,8 @@ PieceProgressBarWidget::PieceProgressBarWidget(QWidget *parent)
 {
     setFixedHeight(22);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    setAccessibleName(tr("Torrent piece completion"));
+    setAccessibleDescription(tr("No piece completion data available."));
 }
 
 void PieceProgressBarWidget::clear()
@@ -41,6 +43,7 @@ void PieceProgressBarWidget::clear()
     m_pieceBitfield.clear();
     m_percentDone = 0.0;
     setToolTip(QString());
+    setAccessibleDescription(tr("No piece completion data available."));
     update();
 }
 
@@ -51,10 +54,14 @@ void PieceProgressBarWidget::setProgress(int pieceCount,
     m_pieceCount = qMax(0, pieceCount);
     m_pieceBitfield = pieceBitfield;
     m_percentDone = qBound(0.0, percentDone, 1.0);
-    setToolTip(tr("%1% downloaded · %2 of %3 pieces complete")
-                   .arg(m_percentDone * 100.0, 0, 'f', 1)
-                   .arg(completedPieceCount())
-                   .arg(m_pieceCount));
+    const QString progressSummary =
+        tr("%1% downloaded · %2 of %3 pieces complete")
+            .arg(m_percentDone * 100.0, 0, 'f', 1)
+            .arg(completedPieceCount())
+            .arg(m_pieceCount);
+    setToolTip(progressSummary);
+    // Keep assistive output synchronized with the visual and hover summaries.
+    setAccessibleDescription(progressSummary);
     update();
 }
 

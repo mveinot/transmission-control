@@ -76,6 +76,15 @@ ServerConfig::ServerConfig(QWidget *parent)
     ui->buttonConfigureFolderMappings->setEnabled(false);
     updateFolderMappingsSummary();
 
+    // Symbol-only controls retain compact visuals while exposing their purpose
+    // to screen readers and other assistive clients.
+    ui->buttonAddServer->setAccessibleName(tr("Add server"));
+    ui->buttonAddServer->setAccessibleDescription(
+        tr("Create a new server profile or import one from a file."));
+    ui->buttonRemoveServer->setAccessibleName(tr("Remove selected server"));
+    ui->buttonRemoveServer->setAccessibleDescription(
+        tr("Remove the selected server profile."));
+
     loadServers();
     refreshServerList();
 

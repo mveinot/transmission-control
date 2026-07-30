@@ -49,6 +49,7 @@ private:
     QRectF graphRect() const;
     int sampleIndexAt(qreal x) const;
     QString rateText(double bytesPerSecond) const;
+    void updateAccessibleSummary();
 };
 
 #endif // SESSIONOVERVIEWWIDGET_H
