@@ -42,6 +42,7 @@ class StatusBarController;
 class NotificationController;
 class SessionOverviewWidget;
 class ServerSelectionController;
+class PollingCoordinator;
 class WindowLayoutController;
 
 /*
@@ -69,7 +70,6 @@ public slots:
     void bringToFront();
 
 private slots:
-    void updateTorrentList();
     void on_tableView_clicked(const QModelIndex &index);
     void on_actionDelete_Torrent_triggered();
     void onServerSetupTriggered();
@@ -95,10 +95,8 @@ private slots:
     void importSettings();
 
 private:
-    // Designer-owned widget tree and the shared polling/data pipeline.
+    // Designer-owned widget tree and shared application services.
     Ui::MainWindow *ui;
-    QTimer *timer;
-    QTimer *commandRefreshTimer = nullptr;
     TorrentModel *torrentModel = nullptr;
     TorrentBackend *client = nullptr;
     TorrentSortProxyModel *proxy = nullptr;
@@ -109,11 +107,8 @@ private:
     // Selection and detail refresh helpers operate in source torrent-id space,
     // never proxy row space.
     TorrentKey currentTorrentKey() const;
-    bool currentTabWantsLiveTorrentDetails() const;
-    void refreshCurrentTorrentLiveDetailsIfNeeded();
     void refreshCurrentTorrentTabData();
-    void scheduleTorrentRefresh(bool refreshDetails);
-    void refreshSlowRpcData(bool force = false);
+    void updatePollingDetailView();
     TorrentAddController *torrentAddController = nullptr;
     void addTorrentFromFile();
     void addTorrentFromMagnet();
@@ -148,11 +143,7 @@ private:
     // back to these values if the corresponding RPC command fails.
     bool alternativeSpeedSettingsAvailable = false;
     bool confirmedAlternativeSpeedEnabled = false;
-    QString remoteDownloadDir;
     QJsonObject cachedSessionSettings;
-    qint64 lastFreeSpaceRefreshMs = 0;
-    qint64 lastTrackerMetadataRefreshMs = 0;
-    bool pendingCommandDetailsRefresh = false;
     bool sessionOverviewEnabled = false;
 
     // Feature controllers are QObject children of MainWindow unless their
@@ -168,6 +159,7 @@ private:
     StatusBarController *statusBarController = nullptr;
     NotificationController *notificationController = nullptr;
     ServerSelectionController *serverSelectionController = nullptr;
+    PollingCoordinator *pollingCoordinator = nullptr;
     WindowLayoutController *windowLayoutController = nullptr;
     QStackedWidget *detailsPaneStack = nullptr;
     SessionOverviewWidget *sessionOverviewWidget = nullptr;

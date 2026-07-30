@@ -79,6 +79,7 @@
 #include "diagnosticsdialog.h"
 #include "serverconfig.h"
 #include "serverselectioncontroller.h"
+#include "pollingcoordinator.h"
 #include "windowlayoutcontroller.h"
 #include "appsettings.h"
 #include "serversetupwizard.h"
@@ -95,8 +96,6 @@ namespace {
 constexpr int DefaultUpdateIntervalSeconds = 10;
 constexpr int MinimumUpdateIntervalSeconds = 1;
 constexpr int MaximumUpdateIntervalSeconds = 3600;
-constexpr qint64 SlowRpcRefreshIntervalMs = 60 * 1000;
-constexpr int CommandRefreshDebounceMs = 200;
 bool jsonBoolAny(const QJsonObject &object,
                  std::initializer_list<const char *> keys,
                  bool *found = nullptr)
@@ -344,18 +343,18 @@ void MainWindow::setupViewMenu()
             this,
             [this](bool visible) {
                 if (!visible) {
-                    client->cancelTorrentDetailRequests();
+                    pollingCoordinator->setDetailsPaneVisible(false);
                     return;
                 }
 
                 // Hidden panes suspend detail RPCs. Rehydrate the selected
                 // torrent once when the layout controller exposes the pane.
-                const TorrentKey torrentKey = currentTorrentKey();
-                if (isValidTorrentKey(torrentKey)) {
-                    client->getTorrentDetails(torrentKey);
-                    refreshCurrentTorrentTabData();
-                }
+                pollingCoordinator->setDetailsPaneVisible(true);
+                updatePollingDetailView();
+                pollingCoordinator->requestSelectedTorrent(true);
             });
+    pollingCoordinator->setDetailsPaneVisible(
+        windowLayoutController->detailsPaneVisible());
 
     viewMenu->addSeparator();
     showBandwidthGraphAction = viewMenu->addAction(tr("Bandwidth Graph"));
@@ -487,24 +486,39 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
-    timer = new QTimer(this);
-    commandRefreshTimer = new QTimer(this);
-    commandRefreshTimer->setSingleShot(true);
-    commandRefreshTimer->setInterval(CommandRefreshDebounceMs);
     client = createConfiguredTorrentBackend(this);
+    PollingCoordinator::Requests pollingRequests;
+    pollingRequests.torrentList = [this]() { client->getTorrentList(); };
+    pollingRequests.trackerMetadata =
+        [this]() { client->getTorrentTrackerMetadata(); };
+    pollingRequests.torrentDetails =
+        [this](const TorrentKey &key) { client->getTorrentDetails(key); };
+    pollingRequests.torrentFiles =
+        [this](const TorrentKey &key) { client->getTorrentFiles(key); };
+    pollingRequests.torrentPeers =
+        [this](const TorrentKey &key) { client->getTorrentPeers(key); };
+    pollingRequests.torrentTrackers =
+        [this](const TorrentKey &key) { client->getTorrentTrackers(key); };
+    pollingRequests.torrentPieces =
+        [this](const TorrentKey &key) { client->getTorrentPieces(key); };
+    pollingRequests.cancelTorrentDetails =
+        [this]() { client->cancelTorrentDetailRequests(); };
+    pollingRequests.freeSpace =
+        [this](const QString &path) { client->getFreeSpace(path); };
+    pollingRequests.freeSpaceSupported =
+        [this]() { return client->capabilities().freeSpaceQuery; };
+    pollingCoordinator =
+        new PollingCoordinator(std::move(pollingRequests), this);
     torrentModel = new TorrentModel(this);
 
-    connect(commandRefreshTimer, &QTimer::timeout, this, [this]() {
-        client->getTorrentList();
-
-        if (pendingCommandDetailsRefresh) {
-            const TorrentKey torrentKey = currentTorrentKey();
-            if (isValidTorrentKey(torrentKey))
-                client->getTorrentDetails(torrentKey);
-        }
-
-        pendingCommandDetailsRefresh = false;
-    });
+    connect(pollingCoordinator,
+            &PollingCoordinator::torrentListRefreshStarted,
+            this,
+            [this](bool serverChanged) {
+                if (torrentListController)
+                    torrentListController->beginTorrentListRefresh(
+                        serverChanged);
+            });
 
     // Keep the canonical torrent collection independent of view ordering and
     // filtering; controllers translate proxy selections back to torrent IDs.
@@ -610,7 +624,7 @@ MainWindow::MainWindow(QWidget *parent)
             });
 
     connect(watchFolderController, &WatchFolderController::torrentListRefreshRequested,
-            client, &TorrentBackend::getTorrentList);
+            this, [this]() { pollingCoordinator->requestTorrentList(); });
 
     watchFolderController->loadSettings();
     trayController = new TrayController(this, this);
@@ -794,7 +808,7 @@ MainWindow::MainWindow(QWidget *parent)
                 showTorrentDetails(true);
                 // Selection defines a new detail generation. Cancel every
                 // category still associated with the previous torrent.
-                client->cancelTorrentDetailRequests();
+                pollingCoordinator->setSelectedTorrent(torrentKey);
                 clearGeneralTab();
                 torrentPeersController->clear();
                 torrentTrackersController->clear();
@@ -804,19 +818,19 @@ MainWindow::MainWindow(QWidget *parent)
                 torrentPeersController->setLoading();
                 torrentTrackersController->setLoading();
                 torrentFilesController->setLoading();
-                client->getTorrentDetails(torrentKey);
-                refreshCurrentTorrentTabData();
+                updatePollingDetailView();
+                pollingCoordinator->requestSelectedTorrent(true);
             });
 
     connect(torrentListController, &TorrentListController::torrentSelectionCleared,
             this, [this]() {
                 showTorrentDetails(false);
-                client->cancelTorrentDetailRequests();
+                pollingCoordinator->setSelectedTorrent({});
                 clearGeneralTab();
             });
 
     connect(torrentListController, &TorrentListController::torrentListRefreshRequested,
-            client, &TorrentBackend::getTorrentList);
+            this, [this]() { pollingCoordinator->requestTorrentList(); });
 
     connect(torrentListController, &TorrentListController::torrentDetailsRefreshRequested,
             client, &TorrentBackend::getTorrentDetails);
@@ -852,6 +866,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->tabWidget, &QTabWidget::currentChanged,
             this, [this](int) {
+                updatePollingDetailView();
                 refreshCurrentTorrentTabData();
             });
 
@@ -859,8 +874,7 @@ MainWindow::MainWindow(QWidget *parent)
             torrentModel, &TorrentModel::clear);
 
     connect(client, &TorrentBackend::serverChanged, this, [this]() {
-        lastFreeSpaceRefreshMs = 0;
-        lastTrackerMetadataRefreshMs = 0;
+        pollingCoordinator->resetForServerChange();
         activityConnectionEstablished = false;
         activityConnectionFailed = false;
         showTorrentDetails(false);
@@ -918,7 +932,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->actionServer_Setup, &QAction::triggered, this, &MainWindow::onServerSetupTriggered);
 
-    connect(timer, &QTimer::timeout, this, &MainWindow::updateTorrentList);
     QAction *projectWebsiteAction = new QAction(tr("Planetary Website..."), this);
     ui->menuHelp->insertAction(ui->actionCheckForUpdates, projectWebsiteAction);
     connect(projectWebsiteAction, &QAction::triggered, this, [this]() {
@@ -1047,7 +1060,7 @@ MainWindow::MainWindow(QWidget *parent)
             });
 
     connect(client, &TorrentBackend::torrentTrackerMetadataUpdated,
-            client, &TorrentBackend::getTorrentList);
+            this, [this]() { pollingCoordinator->requestTorrentList(); });
 
     connect(client, &TorrentBackend::commandSucceeded,
             this, [this](const QString &method) {
@@ -1059,7 +1072,7 @@ MainWindow::MainWindow(QWidget *parent)
                 }
 
                 const auto refreshTorrentState = [this](bool refreshDetails) {
-                    scheduleTorrentRefresh(refreshDetails);
+                    pollingCoordinator->scheduleCommandRefresh(refreshDetails);
                 };
 
                 if (method == QStringLiteral("torrent-set-location")) {
@@ -1139,14 +1152,6 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
-}
-
-void MainWindow::updateTorrentList()
-{
-    if (torrentListController)
-        torrentListController->beginTorrentListRefresh();
-
-    client->getTorrentList();
 }
 
 void MainWindow::showDiagnostics()
@@ -1495,17 +1500,16 @@ void MainWindow::handleServerActivated()
             );
     }
 
-    if (torrentListController)
-        torrentListController->beginTorrentListRefresh(true);
-    client->getTorrentList();
+    pollingCoordinator->requestTorrentList(
+        PollingCoordinator::ListRefreshMode::ServerChanged);
 
     // Session-derived state is server-specific and remains unknown until the
     // new session-get response arrives.
-    remoteDownloadDir.clear();
+    pollingCoordinator->setRemoteDownloadDirectory({}, false);
 
     if (torrentListController) {
         torrentListController->clearCurrentTorrentDetails();
-        torrentListController->setDefaultDownloadDir(remoteDownloadDir);
+        torrentListController->setDefaultDownloadDir({});
     }
 
     if (statusBarController) {
@@ -1564,91 +1568,46 @@ void MainWindow::applyUpdateInterval()
 {
     // Restart is unnecessary when changing an active QTimer interval; Qt
     // reschedules it using the new value.
-    timer->setInterval(updateIntervalMs());
-
-    if (!timer->isActive())
-        timer->start();
+    pollingCoordinator->setPollingInterval(updateIntervalMs());
+    pollingCoordinator->startPolling();
 
     if (statusBarController) {
-        statusBarController->setUpdateIntervalSeconds(timer->interval() / 1000);
+        statusBarController->setUpdateIntervalSeconds(
+            pollingCoordinator->pollingInterval() / 1000);
         statusBarController->showMessage(
-            tr("Update interval: %1 seconds").arg(timer->interval() / 1000),
+            tr("Update interval: %1 seconds")
+                .arg(pollingCoordinator->pollingInterval() / 1000),
             3000
             );
     }
 }
 
-bool MainWindow::currentTabWantsLiveTorrentDetails() const
+void MainWindow::updatePollingDetailView()
 {
-    return windowLayoutController
-           && windowLayoutController->detailsPaneVisible()
-           && torrentGeneralController
-           && torrentGeneralController->wantsLiveTorrentDetails(ui->tabWidget->currentWidget());
-}
-
-void MainWindow::refreshCurrentTorrentLiveDetailsIfNeeded()
-{
-    if (!torrentGeneralController || !currentTabWantsLiveTorrentDetails())
+    if (!pollingCoordinator)
         return;
 
-    const TorrentKey torrentKey = torrentGeneralController->currentTorrentKey();
-
-    if (!isValidTorrentKey(torrentKey))
-        return;
-
-    client->getTorrentPieces(torrentKey);
+    PollingCoordinator::DetailView detailView =
+        PollingCoordinator::DetailView::None;
+    QWidget *currentTab = ui->tabWidget->currentWidget();
+    if (currentTab == ui->fileList)
+        detailView = PollingCoordinator::DetailView::Files;
+    else if (currentTab == ui->trackers)
+        detailView = PollingCoordinator::DetailView::Trackers;
+    else if (currentTab == ui->peers)
+        detailView = PollingCoordinator::DetailView::Peers;
+    else if (torrentGeneralController
+             && torrentGeneralController->wantsLiveTorrentDetails(
+                 currentTab)) {
+        detailView = PollingCoordinator::DetailView::GeneralLive;
+    }
+    pollingCoordinator->setDetailView(detailView);
 }
 
 void MainWindow::refreshCurrentTorrentTabData()
 {
-    if (!windowLayoutController
-        || !windowLayoutController->detailsPaneVisible()) {
-        return;
-    }
-
-    const TorrentKey torrentKey = currentTorrentKey();
-
-    if (!isValidTorrentKey(torrentKey))
-        return;
-
-    // Large collection fields are requested only for the visible consumer.
-    // The summary request is independent and remains available to all tabs.
-    QWidget *currentTab = ui->tabWidget->currentWidget();
-
-    if (currentTab == ui->fileList)
-        client->getTorrentFiles(torrentKey);
-    else if (currentTab == ui->trackers)
-        client->getTorrentTrackers(torrentKey);
-    else if (currentTab == ui->peers)
-        client->getTorrentPeers(torrentKey);
-    else if (torrentGeneralController->currentTorrentKey() == torrentKey)
-        refreshCurrentTorrentLiveDetailsIfNeeded();
-}
-
-void MainWindow::scheduleTorrentRefresh(bool refreshDetails)
-{
-    // Multiple command completions often arrive in a burst (for example file
-    // wanted/priority changes). Collapse them into one list/detail generation.
-    pendingCommandDetailsRefresh |= refreshDetails;
-    commandRefreshTimer->start();
-}
-
-void MainWindow::refreshSlowRpcData(bool force)
-{
-    const qint64 now = QDateTime::currentMSecsSinceEpoch();
-    const TorrentBackendCapabilities capabilities = client->capabilities();
-
-    if (force || now - lastTrackerMetadataRefreshMs >= SlowRpcRefreshIntervalMs) {
-        lastTrackerMetadataRefreshMs = now;
-        client->getTorrentTrackerMetadata();
-    }
-
-    if (capabilities.freeSpaceQuery
-        && !remoteDownloadDir.isEmpty()
-        && (force || now - lastFreeSpaceRefreshMs >= SlowRpcRefreshIntervalMs)) {
-        lastFreeSpaceRefreshMs = now;
-        client->getFreeSpace(remoteDownloadDir);
-    }
+    updatePollingDetailView();
+    pollingCoordinator->requestSelectedTorrent(false);
 }
 
 void MainWindow::setupConnectionStatusIndicator()
@@ -1803,9 +1762,7 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
             waitingCount);
     }
 
-    refreshSlowRpcData();
-
-    refreshCurrentTorrentTabData();
+    pollingCoordinator->handleTorrentListReceived();
 }
 
 void MainWindow::updateAlternativeSpeedAction(bool enabled, bool available)
@@ -1841,7 +1798,7 @@ void MainWindow::refreshRemoteFreeSpace()
     if (!client->capabilities().freeSpaceQuery)
         return;
 
-    if (remoteDownloadDir.trimmed().isEmpty()) {
+    if (pollingCoordinator->remoteDownloadDirectory().trimmed().isEmpty()) {
         if (statusBarController) {
             statusBarController->showMessage(
                 tr("No remote download directory is available yet."),
@@ -1860,8 +1817,7 @@ void MainWindow::refreshRemoteFreeSpace()
             );
     }
 
-    lastFreeSpaceRefreshMs = QDateTime::currentMSecsSinceEpoch();
-    client->getFreeSpace(remoteDownloadDir);
+    pollingCoordinator->requestFreeSpaceNow();
 }
 
 void MainWindow::showQuickSpeedLimitsDialog()
@@ -2017,8 +1973,9 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     // pending UI flows that requested the snapshot.
     cachedSessionSettings = sessionSettings;
 
-    remoteDownloadDir =
+    const QString remoteDownloadDir =
         sessionSettings.value(QStringLiteral("download-dir")).toString();
+    pollingCoordinator->setRemoteDownloadDirectory(remoteDownloadDir, false);
 
     confirmedAlternativeSpeedEnabled =
         sessionSettings.value(QStringLiteral("alt-speed-enabled")).toBool(false);
@@ -2041,11 +1998,7 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     if (statusBarController)
         statusBarController->setSessionSettings(sessionSettings);
 
-    if (client->capabilities().freeSpaceQuery
-        && !remoteDownloadDir.isEmpty()) {
-        lastFreeSpaceRefreshMs = QDateTime::currentMSecsSinceEpoch();
-        client->getFreeSpace(remoteDownloadDir);
-    } else if (statusBarController) {
+    if (!pollingCoordinator->requestFreeSpaceNow() && statusBarController) {
         statusBarController->clearFreeSpace();
     }
 
@@ -2099,8 +2052,10 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     client->setSessionSettings(changes);
 
     if (changes.contains(QStringLiteral("download-dir"))) {
-        remoteDownloadDir =
+        const QString remoteDownloadDir =
             changes.value(QStringLiteral("download-dir")).toString();
+        pollingCoordinator->setRemoteDownloadDirectory(remoteDownloadDir,
+                                                       false);
 
         if (torrentAddController)
             torrentAddController->setDefaultDownloadDir(remoteDownloadDir);
@@ -2108,11 +2063,7 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
         if (torrentListController)
             torrentListController->setDefaultDownloadDir(remoteDownloadDir);
 
-        if (client->capabilities().freeSpaceQuery
-            && !remoteDownloadDir.isEmpty()) {
-            lastFreeSpaceRefreshMs = QDateTime::currentMSecsSinceEpoch();
-            client->getFreeSpace(remoteDownloadDir);
-        }
+        pollingCoordinator->requestFreeSpaceNow();
     }
 
     if (statusBarController) {

@@ -130,6 +130,8 @@ set(PROJECT_SOURCES
         serverprofile.cpp
         serverselectioncontroller.h
         serverselectioncontroller.cpp
+        pollingcoordinator.h
+        pollingcoordinator.cpp
         windowlayoutcontroller.h
         windowlayoutcontroller.cpp
     torrentkey.h

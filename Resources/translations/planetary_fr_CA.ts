@@ -904,7 +904,7 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+23"/>
-        <location filename="../../mainwindow.cpp" line="+1461"/>
+        <location filename="../../mainwindow.cpp" line="+1466"/>
         <source>Magnet link:</source>
         <translation>Lien magnet :</translation>
     </message>
@@ -1000,7 +1000,7 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+93"/>
-        <location filename="../../mainwindow.cpp" line="+372"/>
+        <location filename="../../mainwindow.cpp" line="+323"/>
         <source>Server Settings...</source>
         <translation>Paramètres du serveur...</translation>
     </message>
@@ -1095,7 +1095,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Importer les paramètres...</translation>
     </message>
     <message>
-        <location filename="../../mainwindow.cpp" line="-1005"/>
+        <location filename="../../mainwindow.cpp" line="-947"/>
         <source>Adding torrent...</source>
         <translation>Ajout du torrent...</translation>
     </message>
@@ -1105,7 +1105,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Ajout du torrent annulé.</translation>
     </message>
     <message>
-        <location line="+595"/>
+        <location line="+586"/>
         <source>Torrent Files (*.torrent);;All Files (*)</source>
         <translation>Fichiers torrent (*.torrent);;Tous les fichiers (*)</translation>
     </message>
@@ -1120,12 +1120,12 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Serveur sélectionné : %1</translation>
     </message>
     <message>
-        <location line="+82"/>
+        <location line="+79"/>
         <source>Update interval: %1 seconds</source>
         <translation>Intervalle de mise à jour : %1 secondes</translation>
     </message>
     <message>
-        <location line="-1404"/>
+        <location line="-1407"/>
         <source>Settings…</source>
         <translation>Paramètres…</translation>
     </message>
@@ -1192,7 +1192,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Effacer l&apos;activité</translation>
     </message>
     <message>
-        <location line="+436"/>
+        <location line="+451"/>
         <source>Server changed</source>
         <translation>Le serveur a changé</translation>
     </message>
@@ -1227,7 +1227,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Connecté à %1.</translation>
     </message>
     <message>
-        <location line="+25"/>
+        <location line="+24"/>
         <source>Planetary Website...</source>
         <translation>Site Web Planetary...</translation>
     </message>
@@ -1262,7 +1262,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Chemin du torrent renommé.</translation>
     </message>
     <message>
-        <location line="+110"/>
+        <location line="+102"/>
         <source>Starting all torrents...</source>
         <translation>Démarrage de tous les torrents...</translation>
     </message>
@@ -1282,7 +1282,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Ajouter des fichiers torrent</translation>
     </message>
     <message>
-        <location line="+396"/>
+        <location line="+347"/>
         <source>%1 Settings...</source>
         <translation>Paramètres %1...</translation>
     </message>
@@ -1297,7 +1297,7 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Actualisation des informations sur l&apos;espace libre...</translation>
     </message>
     <message>
-        <location line="+16"/>
+        <location line="+15"/>
         <source>Loading Transmission speed settings...</source>
         <translation>Chargement des paramètres de vitesse de Transmission...</translation>
     </message>
@@ -1360,12 +1360,12 @@ Enregistrer ce mappage quand même?</translation>
         <translation>Chargement des paramètres du serveur...</translation>
     </message>
     <message>
-        <location line="+86"/>
+        <location line="+83"/>
         <source>No server settings changed</source>
         <translation>Aucun paramètre du serveur n&apos;a été modifié</translation>
     </message>
     <message>
-        <location line="+28"/>
+        <location line="+26"/>
         <source>Saving server settings...</source>
         <translation>Enregistrement des paramètres du serveur...</translation>
     </message>
