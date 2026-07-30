@@ -28,6 +28,9 @@
 #include <QPair>
 #include <QSettings>
 #include <QSize>
+#include <QStyledItemDelegate>
+#include <QStyle>
+#include <QStyleOptionViewItem>
 #include <QTableView>
 #include <QtGlobal>
 #include <QVBoxLayout>
@@ -35,6 +38,26 @@
 
 
 namespace {
+
+#ifdef Q_OS_WIN
+// Planetary operates on torrent rows rather than editable cells. Suppress the
+// Windows-only current-cell frame while retaining the row selection fill and
+// all normal keyboard/current-index behavior.
+class WindowsTorrentItemDelegate final : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    void paint(QPainter *painter,
+               const QStyleOptionViewItem &option,
+               const QModelIndex &index) const override
+    {
+        QStyleOptionViewItem rowOption(option);
+        rowOption.state &= ~QStyle::State_HasFocus;
+        QStyledItemDelegate::paint(painter, rowOption, index);
+    }
+};
+#endif
 
 struct TorrentColumnDefinition
 {
@@ -149,11 +172,9 @@ void TorrentListController::setup(const ActionSet &actions)
         " background-color: palette(highlight);"
         " color: palette(highlighted-text);"
         " border: none;"
-        "}"
-        "QTableView::item:focus {"
-        " border: none;"
-        " outline: none;"
         "}"));
+    m_tableView->setItemDelegate(
+        new WindowsTorrentItemDelegate(m_tableView));
 #endif
 
     connect(m_tableView,

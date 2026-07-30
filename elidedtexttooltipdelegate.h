@@ -12,6 +12,10 @@ class ElidedTextTooltipDelegate : public QStyledItemDelegate
 public:
     explicit ElidedTextTooltipDelegate(QObject *parent = nullptr);
 
+    void paint(QPainter *painter,
+               const QStyleOptionViewItem &option,
+               const QModelIndex &index) const override;
+
     bool helpEvent(QHelpEvent *event,
                    QAbstractItemView *view,
                    const QStyleOptionViewItem &option,

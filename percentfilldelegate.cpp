@@ -72,6 +72,12 @@ void PercentFillDelegate::paint(QPainter *painter,
     QStyleOptionViewItem opt(option);
     initStyleOption(&opt, index);
 
+#ifdef Q_OS_WIN
+    // The torrent view already communicates selection across the full row;
+    // avoid adding the native Windows current-cell frame on top of it.
+    opt.state &= ~QStyle::State_HasFocus;
+#endif
+
     // Draw the normal item background first, including selection.
     opt.text.clear();
 

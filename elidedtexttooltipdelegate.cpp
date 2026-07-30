@@ -11,6 +11,20 @@ ElidedTextTooltipDelegate::ElidedTextTooltipDelegate(QObject *parent)
 {
 }
 
+void ElidedTextTooltipDelegate::paint(
+    QPainter *painter,
+    const QStyleOptionViewItem &option,
+    const QModelIndex &index) const
+{
+#ifdef Q_OS_WIN
+    QStyleOptionViewItem rowOption(option);
+    rowOption.state &= ~QStyle::State_HasFocus;
+    QStyledItemDelegate::paint(painter, rowOption, index);
+#else
+    QStyledItemDelegate::paint(painter, option, index);
+#endif
+}
+
 bool ElidedTextTooltipDelegate::helpEvent(
     QHelpEvent *event,
     QAbstractItemView *view,

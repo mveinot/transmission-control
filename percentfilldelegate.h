@@ -6,7 +6,8 @@
 #include <QPalette>
 
 // Paints a palette-aware progress fill while preserving the platform style's
-// normal item background, focus, and selection rendering.
+// normal item background and selection rendering. The Windows torrent table
+// intentionally suppresses its redundant current-cell focus frame.
 class PercentFillDelegate : public QStyledItemDelegate
 {
     Q_OBJECT
