@@ -135,6 +135,20 @@ add_planetary_test(test_pieceprogressbarwidget
     ${CMAKE_SOURCE_DIR}/pieceprogressbarwidget.h
 )
 
+add_planetary_test(test_peerreconciler
+    test_peerreconciler.cpp
+    ${CMAKE_SOURCE_DIR}/peerreconciler.cpp
+    ${CMAKE_SOURCE_DIR}/peerreconciler.h
+    ${CMAKE_SOURCE_DIR}/torrentpeerscontroller.cpp
+    ${CMAKE_SOURCE_DIR}/torrentpeerscontroller.h
+    ${CMAKE_SOURCE_DIR}/geoipservice.cpp
+    ${CMAKE_SOURCE_DIR}/geoipservice.h
+    ${CMAKE_SOURCE_DIR}/tablecolumncontroller.cpp
+    ${CMAKE_SOURCE_DIR}/tablecolumncontroller.h
+    ${CMAKE_SOURCE_DIR}/tableplaceholdercontroller.cpp
+    ${CMAKE_SOURCE_DIR}/tableplaceholdercontroller.h
+)
+
 add_planetary_test(test_sessionoverviewwidget
     test_sessionoverviewwidget.cpp
     ${CMAKE_SOURCE_DIR}/sessionoverviewwidget.cpp

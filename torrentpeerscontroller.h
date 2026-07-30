@@ -7,16 +7,18 @@
 #include <QStringList>
 #include <memory>
 
+#include "peerreconciler.h"
 #include "torrentdomain.h"
 
 class GeoIpService;
 class QHostInfo;
 class QTableWidget;
+class QTableWidgetItem;
 class TableColumnController;
 class TablePlaceholderController;
 
-// Rebuilds the peer snapshot table and enriches addresses with cached local
-// GeoIP results and asynchronous reverse-DNS names.
+// Applies endpoint-keyed peer snapshot changes to the table and enriches new
+// addresses with cached local GeoIP results and asynchronous reverse DNS.
 class TorrentPeersController : public QObject
 {
     Q_OBJECT
@@ -52,6 +54,16 @@ private:
         PeerColumnCount
     };
 
+    void resetRows();
+    void insertPeerRow(const PeerRowKey &key, const TorrentPeer &peer);
+    void updatePeerRow(const PeerRowChange &change);
+    void removePeerRow(const PeerRowKey &key);
+    int rowForKey(const PeerRowKey &key) const;
+    bool changeAffectsColumn(const PeerRowChange &change, int column) const;
+    void setClientItem(int row, const QString &clientName);
+    void setProgressItem(int row, double progress);
+    void setRateItem(int row, int column, qint64 rate);
+    void setBooleanItem(int row, int column, bool value);
     void updateHostnameItem(int row, const QString &address);
     void startHostnameLookupIfNeeded(const QString &address);
     void startQueuedHostnameLookups();
@@ -62,6 +74,8 @@ private:
 
     QTableWidget *peerTableWidget = nullptr;
     GeoIpService *geoIpService = nullptr;
+    PeerSnapshotReconciler reconciler;
+    QHash<PeerRowKey, QTableWidgetItem *> rowAnchors;
     QHash<QString, QString> hostnameCache;
     QSet<QString> pendingHostnameLookups;
     QHash<int, QString> hostnameLookupIds;

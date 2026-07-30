@@ -125,8 +125,7 @@ void TorrentPeersController::clear()
     if (!peerTableWidget)
         return;
 
-    peerTableWidget->clearContents();
-    peerTableWidget->setRowCount(0);
+    resetRows();
 
     if (placeholderController)
         placeholderController->setMessage(tr("No torrent selected."));
@@ -137,8 +136,7 @@ void TorrentPeersController::setLoading()
     if (!peerTableWidget)
         return;
 
-    peerTableWidget->clearContents();
-    peerTableWidget->setRowCount(0);
+    resetRows();
 
     if (placeholderController)
         placeholderController->setMessage(tr("Loading peers…"));
@@ -152,102 +150,213 @@ void TorrentPeersController::populate(const TorrentPeers &snapshot)
     if (placeholderController)
         placeholderController->setMessage(snapshot.peers.isEmpty() ? tr("No peers connected.") : QString());
 
-    peerTableWidget->setSortingEnabled(false);
-    peerTableWidget->clearContents();
-    peerTableWidget->setRowCount(snapshot.peers.size());
+    const QVector<PeerRowChange> changes = reconciler.reconcile(snapshot.peers);
+    if (changes.isEmpty())
+        return;
 
-    int row = 0;
-
-    for (const TorrentPeer &peer : snapshot.peers) {
-        const QString address = normalizedAddress(peer.address);
-
-        const GeoIpResult geoIp =
-            geoIpService ? geoIpService->lookup(address) : GeoIpResult {};
-
-        const int port = peer.port;
-
-        const QString clientName =
-            peer.clientName.isEmpty()
-                ? QStringLiteral("(unknown)")
-                : peer.clientName;
-
-        const double progress = peer.progress * 100.0;
-        const qint64 rateToClient = peer.downloadRate;
-        const qint64 rateToPeer = peer.uploadRate;
-        const bool isEncrypted = peer.encrypted;
-        const bool isIncoming = peer.incoming;
-
-        auto *countryItem = new QTableWidgetItem(geoIp.displayText());
-        countryItem->setIcon(flagIconForCountryCode(geoIp.countryCode));
-        countryItem->setToolTip(
-            geoIp.found
-                ? QString("%1 (%2) - %3").arg(geoIp.countryName, geoIp.countryCode, address)
-                : QString("%1").arg(address)
-            );
-        countryItem->setData(Qt::UserRole, geoIp.countryCode);
-
-        auto *addressItem = new QTableWidgetItem(address);
-        addressItem->setToolTip(address);
-
-        startHostnameLookupIfNeeded(address);
-
-        const QString hostnameText = hostnameDisplayText(address);
-        auto *hostnameItem = new QTableWidgetItem(hostnameText);
-        hostnameItem->setToolTip(hostnameToolTip(address));
-        hostnameItem->setData(Qt::UserRole, hostnameText.toCaseFolded());
-
-        auto *portItem = new QTableWidgetItem(QString::number(port));
-        portItem->setData(Qt::UserRole, port);
-
-        auto *clientItem = new QTableWidgetItem(clientName);
-
-        auto *progressItem =
-            new QTableWidgetItem(QString("%1%").arg(progress, 0, 'f', 1));
-        progressItem->setData(Qt::UserRole, progress);
-
-        auto *downloadItem =
-            new QTableWidgetItem(
-                QLocale().formattedDataSize(
-                    rateToClient,
-                    1,
-                    QLocale::DataSizeIecFormat
-                    ) + "/s"
-                );
-        downloadItem->setData(Qt::UserRole, rateToClient);
-
-        auto *uploadItem =
-            new QTableWidgetItem(
-                QLocale().formattedDataSize(
-                    rateToPeer,
-                    1,
-                    QLocale::DataSizeIecFormat
-                    ) + "/s"
-                );
-        uploadItem->setData(Qt::UserRole, rateToPeer);
-
-        auto *encryptedItem =
-            new QTableWidgetItem(isEncrypted ? tr("Yes") : tr("No"));
-        encryptedItem->setData(Qt::UserRole, isEncrypted);
-
-        auto *incomingItem =
-            new QTableWidgetItem(isIncoming ? tr("Yes") : tr("No"));
-        incomingItem->setData(Qt::UserRole, isIncoming);
-
-        peerTableWidget->setItem(row, CountryColumn, countryItem);
-        peerTableWidget->setItem(row, AddressColumn, addressItem);
-        peerTableWidget->setItem(row, HostnameColumn, hostnameItem);
-        peerTableWidget->setItem(row, PortColumn, portItem);
-        peerTableWidget->setItem(row, ClientColumn, clientItem);
-        peerTableWidget->setItem(row, ProgressColumn, progressItem);
-        peerTableWidget->setItem(row, DownloadColumn, downloadItem);
-        peerTableWidget->setItem(row, UploadColumn, uploadItem);
-        peerTableWidget->setItem(row, EncryptedColumn, encryptedItem);
-        peerTableWidget->setItem(row, IncomingColumn, incomingItem);
-
-        ++row;
+    PeerRowKey selectedKey;
+    bool hasSelectedKey = false;
+    const int selectedRow = peerTableWidget->currentRow();
+    if (selectedRow >= 0) {
+        QTableWidgetItem *selectedAnchor =
+            peerTableWidget->item(selectedRow, AddressColumn);
+        for (auto it = rowAnchors.cbegin(); it != rowAnchors.cend(); ++it) {
+            if (it.value() == selectedAnchor) {
+                selectedKey = it.key();
+                hasSelectedKey = true;
+                break;
+            }
+        }
     }
 
-    peerTableWidget->setSortingEnabled(true);
+    const bool sortingWasEnabled = peerTableWidget->isSortingEnabled();
+    const int sortedColumn =
+        peerTableWidget->horizontalHeader()->sortIndicatorSection();
+    bool suspendSorting = false;
+
+    for (const PeerRowChange &change : changes) {
+        if (change.kind != PeerRowChange::Kind::Update
+            || changeAffectsColumn(change, sortedColumn)) {
+            suspendSorting = sortingWasEnabled;
+            break;
+        }
+    }
+
+    if (suspendSorting)
+        peerTableWidget->setSortingEnabled(false);
+
+    // Reconciler output orders removals before inserts and updates. Removing
+    // first avoids transient duplicate rows when an endpoint disappears and
+    // another peer is added in the same snapshot.
+    for (const PeerRowChange &change : changes) {
+        switch (change.kind) {
+        case PeerRowChange::Kind::Remove:
+            removePeerRow(change.key);
+            break;
+        case PeerRowChange::Kind::Insert:
+            insertPeerRow(change.key, change.peer);
+            break;
+        case PeerRowChange::Kind::Update:
+            updatePeerRow(change);
+            break;
+        }
+    }
+
+    if (suspendSorting)
+        peerTableWidget->setSortingEnabled(true);
+
+    if (hasSelectedKey) {
+        const int row = rowForKey(selectedKey);
+        if (row >= 0)
+            peerTableWidget->selectRow(row);
+    }
+}
+
+void TorrentPeersController::resetRows()
+{
+    reconciler.clear();
+    rowAnchors.clear();
+    peerTableWidget->clearContents();
+    peerTableWidget->setRowCount(0);
+}
+
+void TorrentPeersController::insertPeerRow(const PeerRowKey &key,
+                                           const TorrentPeer &peer)
+{
+    const QString address = key.address;
+    const GeoIpResult geoIp =
+        geoIpService ? geoIpService->lookup(address) : GeoIpResult {};
+    const int row = peerTableWidget->rowCount();
+    peerTableWidget->insertRow(row);
+
+    auto *countryItem = new QTableWidgetItem(geoIp.displayText());
+    countryItem->setIcon(flagIconForCountryCode(geoIp.countryCode));
+    countryItem->setToolTip(
+        geoIp.found
+            ? QStringLiteral("%1 (%2) - %3")
+                  .arg(geoIp.countryName, geoIp.countryCode, address)
+            : address);
+    countryItem->setData(Qt::UserRole, geoIp.countryCode);
+
+    auto *addressItem = new QTableWidgetItem(address);
+    addressItem->setToolTip(address);
+
+    startHostnameLookupIfNeeded(address);
+    const QString hostnameText = hostnameDisplayText(address);
+    auto *hostnameItem = new QTableWidgetItem(hostnameText);
+    hostnameItem->setToolTip(hostnameToolTip(address));
+    hostnameItem->setData(Qt::UserRole, hostnameText.toCaseFolded());
+
+    auto *portItem = new QTableWidgetItem(QString::number(peer.port));
+    portItem->setData(Qt::UserRole, peer.port);
+
+    peerTableWidget->setItem(row, CountryColumn, countryItem);
+    peerTableWidget->setItem(row, AddressColumn, addressItem);
+    peerTableWidget->setItem(row, HostnameColumn, hostnameItem);
+    peerTableWidget->setItem(row, PortColumn, portItem);
+    peerTableWidget->setItem(row, ClientColumn, new QTableWidgetItem);
+    peerTableWidget->setItem(row, ProgressColumn, new QTableWidgetItem);
+    peerTableWidget->setItem(row, DownloadColumn, new QTableWidgetItem);
+    peerTableWidget->setItem(row, UploadColumn, new QTableWidgetItem);
+    peerTableWidget->setItem(row, EncryptedColumn, new QTableWidgetItem);
+    peerTableWidget->setItem(row, IncomingColumn, new QTableWidgetItem);
+    rowAnchors.insert(key, addressItem);
+
+    setClientItem(row, peer.clientName);
+    setProgressItem(row, peer.progress);
+    setRateItem(row, DownloadColumn, peer.downloadRate);
+    setRateItem(row, UploadColumn, peer.uploadRate);
+    setBooleanItem(row, EncryptedColumn, peer.encrypted);
+    setBooleanItem(row, IncomingColumn, peer.incoming);
+}
+
+void TorrentPeersController::updatePeerRow(const PeerRowChange &change)
+{
+    const int row = rowForKey(change.key);
+    if (row < 0)
+        return;
+
+    if (change.fields.testFlag(PeerField::Client))
+        setClientItem(row, change.peer.clientName);
+    if (change.fields.testFlag(PeerField::Progress))
+        setProgressItem(row, change.peer.progress);
+    if (change.fields.testFlag(PeerField::DownloadRate))
+        setRateItem(row, DownloadColumn, change.peer.downloadRate);
+    if (change.fields.testFlag(PeerField::UploadRate))
+        setRateItem(row, UploadColumn, change.peer.uploadRate);
+    if (change.fields.testFlag(PeerField::Encrypted))
+        setBooleanItem(row, EncryptedColumn, change.peer.encrypted);
+    if (change.fields.testFlag(PeerField::Incoming))
+        setBooleanItem(row, IncomingColumn, change.peer.incoming);
+}
+
+void TorrentPeersController::removePeerRow(const PeerRowKey &key)
+{
+    const int row = rowForKey(key);
+    rowAnchors.remove(key);
+    if (row >= 0)
+        peerTableWidget->removeRow(row);
+}
+
+int TorrentPeersController::rowForKey(const PeerRowKey &key) const
+{
+    QTableWidgetItem *anchor = rowAnchors.value(key, nullptr);
+    return anchor ? peerTableWidget->row(anchor) : -1;
+}
+
+bool TorrentPeersController::changeAffectsColumn(
+    const PeerRowChange &change,
+    int column) const
+{
+    if (change.kind != PeerRowChange::Kind::Update)
+        return true;
+
+    switch (column) {
+    case ClientColumn:
+        return change.fields.testFlag(PeerField::Client);
+    case ProgressColumn:
+        return change.fields.testFlag(PeerField::Progress);
+    case DownloadColumn:
+        return change.fields.testFlag(PeerField::DownloadRate);
+    case UploadColumn:
+        return change.fields.testFlag(PeerField::UploadRate);
+    case EncryptedColumn:
+        return change.fields.testFlag(PeerField::Encrypted);
+    case IncomingColumn:
+        return change.fields.testFlag(PeerField::Incoming);
+    default:
+        return false;
+    }
+}
+
+void TorrentPeersController::setClientItem(int row, const QString &clientName)
+{
+    peerTableWidget->item(row, ClientColumn)->setText(
+        clientName.isEmpty() ? QStringLiteral("(unknown)") : clientName);
+}
+
+void TorrentPeersController::setProgressItem(int row, double progress)
+{
+    const double percent = progress * 100.0;
+    QTableWidgetItem *item = peerTableWidget->item(row, ProgressColumn);
+    item->setText(QStringLiteral("%1%").arg(percent, 0, 'f', 1));
+    item->setData(Qt::UserRole, percent);
+}
+
+void TorrentPeersController::setRateItem(int row, int column, qint64 rate)
+{
+    QTableWidgetItem *item = peerTableWidget->item(row, column);
+    item->setText(
+        QLocale().formattedDataSize(rate, 1, QLocale::DataSizeIecFormat)
+        + QStringLiteral("/s"));
+    item->setData(Qt::UserRole, rate);
+}
+
+void TorrentPeersController::setBooleanItem(int row, int column, bool value)
+{
+    QTableWidgetItem *item = peerTableWidget->item(row, column);
+    item->setText(value ? tr("Yes") : tr("No"));
+    item->setData(Qt::UserRole, value);
 }
 
 void TorrentPeersController::handleHostLookup(const QHostInfo &hostInfo)
@@ -346,19 +455,24 @@ void TorrentPeersController::applyHostnameLookupResult(const QString &address,
     if (!peerTableWidget)
         return;
 
-    const bool sortingWasEnabled = peerTableWidget->isSortingEnabled();
-    peerTableWidget->setSortingEnabled(false);
+    const bool suspendSorting =
+        peerTableWidget->isSortingEnabled()
+        && peerTableWidget->horizontalHeader()->sortIndicatorSection()
+               == HostnameColumn;
+    if (suspendSorting)
+        peerTableWidget->setSortingEnabled(false);
 
-    for (int row = 0; row < peerTableWidget->rowCount(); ++row) {
-        const QTableWidgetItem *addressItem = peerTableWidget->item(row, AddressColumn);
-
-        if (!addressItem || addressItem->text() != address)
+    for (auto it = rowAnchors.cbegin(); it != rowAnchors.cend(); ++it) {
+        if (it.key().address != address)
             continue;
 
-        updateHostnameItem(row, address);
+        const int row = peerTableWidget->row(it.value());
+        if (row >= 0)
+            updateHostnameItem(row, address);
     }
 
-    peerTableWidget->setSortingEnabled(sortingWasEnabled);
+    if (suspendSorting)
+        peerTableWidget->setSortingEnabled(true);
 }
 
 QString TorrentPeersController::hostnameDisplayText(const QString &address) const
