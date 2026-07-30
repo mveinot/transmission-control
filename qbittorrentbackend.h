@@ -152,6 +152,7 @@ private:
   void abortRequests();
   void emitUnsupported(const QString &operation);
 
+  static bool isTorrentDetailRequest(RequestKind kind);
   static QJsonObject normalizeTorrent(const QJsonObject &source);
   static TorrentDetails normalizeDetails(const QVariantMap &info,
                                          const QVariantMap &properties);

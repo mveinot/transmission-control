@@ -166,6 +166,7 @@ private:
     void abortRequests();
     void emitUnsupported(const QString &operation);
 
+    static bool isTorrentDetailRequest(RequestKind kind);
     static bool isAuthenticationError(const QJsonObject &error);
     static QString rpcErrorMessage(const QJsonObject &error);
     static QJsonObject normalizeTorrent(const QString &key,

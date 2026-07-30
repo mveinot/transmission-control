@@ -207,13 +207,7 @@ void QBittorrentBackend::authenticate() {
 void QBittorrentBackend::sendGet(RequestKind kind, const QString &path,
                                  const QUrlQuery &query,
                                  const TorrentKey &key) {
-  if (kind == RequestKind::TorrentInfo ||
-      kind == RequestKind::TorrentProperties ||
-      kind == RequestKind::TorrentPieces ||
-      kind == RequestKind::TorrentFiles ||
-      kind == RequestKind::TorrentPeers ||
-      kind == RequestKind::TorrentTrackers ||
-      kind == RequestKind::TorrentPropertyEditor) {
+  if (isTorrentDetailRequest(kind)) {
     // Live detail polling may tick again before a remote daemon responds.
     // Retain one in-flight projection of each type for the selected torrent.
     for (auto it = m_requests.cbegin(); it != m_requests.cend(); ++it) {
@@ -1131,17 +1125,26 @@ void QBittorrentBackend::cancelTorrentDetailRequests() {
   const QList<QNetworkReply *> replies = m_requests.keys();
   for (QNetworkReply *reply : replies) {
     const RequestKind kind = m_requests.value(reply).kind;
-    if (kind == RequestKind::TorrentInfo ||
-        kind == RequestKind::TorrentProperties ||
-        kind == RequestKind::TorrentPieces ||
-        kind == RequestKind::TorrentFiles ||
-        kind == RequestKind::TorrentPeers ||
-        kind == RequestKind::TorrentTrackers ||
-        kind == RequestKind::TorrentPropertyEditor) {
+    if (isTorrentDetailRequest(kind)) {
       m_requests.remove(reply);
       reply->abort();
       reply->deleteLater();
     }
+  }
+}
+
+bool QBittorrentBackend::isTorrentDetailRequest(RequestKind kind) {
+  switch (kind) {
+  case RequestKind::TorrentInfo:
+  case RequestKind::TorrentProperties:
+  case RequestKind::TorrentPieces:
+  case RequestKind::TorrentFiles:
+  case RequestKind::TorrentPeers:
+  case RequestKind::TorrentTrackers:
+  case RequestKind::TorrentPropertyEditor:
+    return true;
+  default:
+    return false;
   }
 }
 

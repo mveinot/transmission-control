@@ -437,8 +437,7 @@ void DelugeBackend::failRequest(const RequestContext &context,
         return;
     }
 
-    if (context.kind >= RequestKind::TorrentDetails
-        && context.kind <= RequestKind::TorrentProperties) {
+    if (isTorrentDetailRequest(context.kind)) {
         // Detail failures are deliberately non-fatal to the list poll. The
         // selected pane will retry on its next normal refresh.
         emit commandFailed(QStringLiteral("torrent-get"), reason);
@@ -662,8 +661,7 @@ void DelugeBackend::handleReply(QNetworkReply *reply)
         return;
     }
 
-    if (context.kind >= RequestKind::TorrentDetails
-        && context.kind <= RequestKind::TorrentProperties) {
+    if (isTorrentDetailRequest(context.kind)) {
         const QJsonValue result = response.value(QStringLiteral("result"));
         if (!result.isObject()) {
             failRequest(context,
@@ -1200,10 +1198,8 @@ void DelugeBackend::cancelTorrentDetailRequests()
     const QList<QNetworkReply *> replies = m_requests.keys();
     for (QNetworkReply *reply : replies) {
         const RequestContext context = m_requests.value(reply);
-        if (context.kind < RequestKind::TorrentDetails
-            || context.kind > RequestKind::TorrentProperties) {
+        if (!isTorrentDetailRequest(context.kind))
             continue;
-        }
         m_requests.remove(reply);
         reply->abort();
         reply->deleteLater();
@@ -1214,10 +1210,24 @@ void DelugeBackend::cancelTorrentDetailRequests()
             m_requestsPendingAfterAuthentication.begin(),
             m_requestsPendingAfterAuthentication.end(),
             [](const RequestContext &context) {
-                return context.kind >= RequestKind::TorrentDetails
-                       && context.kind <= RequestKind::TorrentProperties;
+                return isTorrentDetailRequest(context.kind);
             }),
         m_requestsPendingAfterAuthentication.end());
+}
+
+bool DelugeBackend::isTorrentDetailRequest(RequestKind kind)
+{
+    switch (kind) {
+    case RequestKind::TorrentDetails:
+    case RequestKind::TorrentFiles:
+    case RequestKind::TorrentPeers:
+    case RequestKind::TorrentTrackers:
+    case RequestKind::TorrentPieces:
+    case RequestKind::TorrentProperties:
+        return true;
+    default:
+        return false;
+    }
 }
 void DelugeBackend::addTorrentFromFile(const QString &filePath,
                                        bool deleteFileOnSuccess)
