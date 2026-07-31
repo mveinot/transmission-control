@@ -6,6 +6,7 @@
 #include <QList>
 #include <QPoint>
 #include <QString>
+#include <QStringList>
 #include <QVector>
 #include <functional>
 #include <memory>
@@ -45,10 +46,11 @@ public:
     void saveViewState() const;
     void restoreViewState();
     void setLoading();
+    bool hasSelection() const;
 
 signals:
     void statusMessageRequested(const QString &message, int timeoutMs);
-    void torrentDetailsRefreshRequested(TorrentKey torrentKey);
+    void selectionActiveChanged(bool active);
 
 private:
     enum FileTreeColumn {
@@ -117,6 +119,8 @@ private:
     QString mapRemotePathToLocalPath(const QString &remotePath,
                                      const QList<FolderMapping> &mappings) const;
     void setSelectedFilesPriorityState(int priority, bool wanted);
+    void updateSelectionState();
+    void finishPendingFileMutation(const QString &method);
     void applyFilter(const QString &text);
     bool filterItem(QTreeWidgetItem *item,
                     const QString &text,
@@ -133,6 +137,8 @@ private:
     int sortColumn = FileNameColumn;
     Qt::SortOrder sortOrder = Qt::AscendingOrder;
     bool rebuildingView = false;
+    bool selectionActive = false;
+    QStringList pendingFileMutationMethods;
     std::function<QList<FolderMapping>()> folderMappingsProvider;
     std::unique_ptr<TableColumnController> columnController;
     std::unique_ptr<TablePlaceholderController> placeholderController;

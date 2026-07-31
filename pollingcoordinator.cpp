@@ -95,6 +95,19 @@ void PollingCoordinator::setDetailView(DetailView view)
     m_detailView = view;
 }
 
+void PollingCoordinator::setFileRefreshSuppressed(bool suppressed)
+{
+    if (m_fileRefreshSuppressed == suppressed)
+        return;
+
+    m_fileRefreshSuppressed = suppressed;
+
+    // Once the user finishes a file-selection interaction, replace any reply
+    // deliberately ignored during it with a fresh authoritative snapshot.
+    if (!suppressed && m_detailView == DetailView::Files)
+        requestVisibleTorrentData();
+}
+
 void PollingCoordinator::requestSelectedTorrent(bool includeSummary)
 {
     if (!m_detailsPaneVisible || !isValidTorrentKey(m_selectedTorrent))
@@ -119,6 +132,7 @@ void PollingCoordinator::resetForServerChange()
     m_lastTrackerMetadataRefreshMs = 0;
     m_remoteDownloadDirectory.clear();
     m_selectedTorrent.clear();
+    m_fileRefreshSuppressed = false;
     if (m_requests.cancelTorrentDetails)
         m_requests.cancelTorrentDetails();
 }
@@ -184,7 +198,7 @@ void PollingCoordinator::requestVisibleTorrentData()
             m_requests.torrentPieces(m_selectedTorrent);
         break;
     case DetailView::Files:
-        if (m_requests.torrentFiles)
+        if (!m_fileRefreshSuppressed && m_requests.torrentFiles)
             m_requests.torrentFiles(m_selectedTorrent);
         break;
     case DetailView::Peers:

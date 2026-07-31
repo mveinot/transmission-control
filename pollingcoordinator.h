@@ -60,6 +60,7 @@ public:
     void setSelectedTorrent(const TorrentKey &torrentKey);
     void setDetailsPaneVisible(bool visible);
     void setDetailView(DetailView view);
+    void setFileRefreshSuppressed(bool suppressed);
     void requestSelectedTorrent(bool includeSummary);
     void handleTorrentListReceived();
 
@@ -84,6 +85,7 @@ private:
     qint64 m_lastFreeSpaceRefreshMs = 0;
     qint64 m_lastTrackerMetadataRefreshMs = 0;
     bool m_detailsPaneVisible = true;
+    bool m_fileRefreshSuppressed = false;
     bool m_pendingCommandDetailsRefresh = false;
 
     void requestVisibleTorrentData();

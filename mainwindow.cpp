@@ -681,16 +681,16 @@ MainWindow::MainWindow(QWidget *parent)
         );
     torrentFilesController->setup();
 
+    connect(torrentFilesController,
+            &TorrentFilesController::selectionActiveChanged,
+            pollingCoordinator,
+            &PollingCoordinator::setFileRefreshSuppressed);
+
     connect(torrentFilesController, &TorrentFilesController::statusMessageRequested,
             this, [this](const QString &message, int timeoutMs) {
                 if (statusBarController)
                     statusBarController->showMessage(message, timeoutMs);
             });
-
-    connect(torrentFilesController,
-            &TorrentFilesController::torrentDetailsRefreshRequested,
-            client,
-            &TorrentBackend::getTorrentFiles);
 
     torrentTrackersController = new TorrentTrackersController(
         ui->trackerTableWidget,
@@ -957,6 +957,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(client, &TorrentBackend::torrentFilesReceived,
             this, [this](const TorrentFiles &files) {
                 if (files.key != currentTorrentKey())
+                    return;
+
+                // A reply may already be in flight when file selection
+                // begins. Rebuilding now could retarget a pending context-menu
+                // action, so the coordinator requests a fresh snapshot later.
+                if (torrentFilesController->hasSelection())
                     return;
 
                 torrentFilesController->setTorrentContext(

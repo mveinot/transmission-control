@@ -7,6 +7,7 @@
 #include "tablecolumncontroller.h"
 #include "tableplaceholdercontroller.h"
 
+#include <QAbstractItemView>
 #include <QCoreApplication>
 #include <QIcon>
 #include <QDesktopServices>
@@ -100,6 +101,10 @@ void TorrentFilesController::setup()
         tr("Completed")
     });
     fileTreeWidget->setContextMenuPolicy(Qt::CustomContextMenu);
+    // Priority commands already expand and deduplicate every selected file or
+    // folder, so expose the conventional Ctrl/Command- and Shift-selection UI.
+    fileTreeWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
+    fileTreeWidget->setSelectionMode(QAbstractItemView::ExtendedSelection);
     fileTreeWidget->setAlternatingRowColors(false);
     fileTreeWidget->setRootIsDecorated(true);
     fileTreeWidget->setSortingEnabled(true);
@@ -130,6 +135,16 @@ void TorrentFilesController::setup()
     connect(fileTreeWidget, &QTreeWidget::customContextMenuRequested,
             this, &TorrentFilesController::showContextMenu);
 
+    connect(fileTreeWidget, &QTreeWidget::itemSelectionChanged,
+            this, &TorrentFilesController::updateSelectionState);
+
+    connect(client, &TorrentBackend::commandSucceeded,
+            this, &TorrentFilesController::finishPendingFileMutation);
+    connect(client, &TorrentBackend::commandFailed,
+            this, [this](const QString &method, const QString &) {
+                finishPendingFileMutation(method);
+            });
+
     connect(fileTreeWidget->header(), &QHeaderView::sortIndicatorChanged,
             this, &TorrentFilesController::handleSortChanged);
 
@@ -142,6 +157,39 @@ void TorrentFilesController::setup()
         connect(filterEdit, &QLineEdit::textChanged,
                 this, &TorrentFilesController::applyFilter);
     }
+}
+
+bool TorrentFilesController::hasSelection() const
+{
+    return selectionActive;
+}
+
+void TorrentFilesController::updateSelectionState()
+{
+    if (!fileTreeWidget || rebuildingView)
+        return;
+
+    const bool active = !fileTreeWidget->selectedItems().isEmpty();
+
+    if (selectionActive == active)
+        return;
+
+    selectionActive = active;
+    emit selectionActiveChanged(active);
+}
+
+void TorrentFilesController::finishPendingFileMutation(const QString &method)
+{
+    if (!pendingFileMutationMethods.contains(method)) {
+        return;
+    }
+
+    pendingFileMutationMethods.clear();
+
+    // Ending the interaction after backend acknowledgement resumes polling
+    // with a fresh snapshot without risking a read racing the mutation.
+    if (fileTreeWidget)
+        fileTreeWidget->clearSelection();
 }
 
 void TorrentFilesController::saveViewState() const
@@ -531,6 +579,7 @@ void TorrentFilesController::rebuildView()
     fileTreeWidget->resizeColumnToContents(FileNameColumn);
     applyFilter(filterEdit ? filterEdit->text() : QString());
     rebuildingView = false;
+    updateSelectionState();
 }
 
 void TorrentFilesController::handleSortChanged(int logicalIndex,
@@ -765,10 +814,16 @@ void TorrentFilesController::renameFileTreeItem(QTreeWidgetItem *item)
     if (newName == oldName)
         return;
 
+    // Transmission names this mutation explicitly; qBittorrent and Deluge
+    // report their corresponding operation through the generic torrent-set
+    // command category.
+    pendingFileMutationMethods = {
+        QStringLiteral("torrent-rename-path"),
+        QStringLiteral("torrent-set")
+    };
     client->renameTorrentPath(torrentKey, oldPath, newName);
 
     emit statusMessageRequested(tr("Renaming %1...").arg(oldName), 3000);
-    emit torrentDetailsRefreshRequested(torrentKey);
 }
 
 void TorrentFilesController::showContextMenu(const QPoint &pos)
@@ -822,7 +877,9 @@ void TorrentFilesController::showContextMenu(const QPoint &pos)
     menu.addSeparator();
 
     QMenu *priorityMenu = menu.addMenu(tr("Priority"));
-    priorityMenu->setVisible(capabilities.filePriorities);
+    // The parent menu owns the submenu's presentation through menuAction().
+    // Showing the QMenu directly can create a detached popup on some styles.
+    priorityMenu->menuAction()->setVisible(capabilities.filePriorities);
     priorityMenu->setEnabled(capabilities.filePriorities);
 
     QAction *skipPriorityAction = priorityMenu->addAction(tr("Skip"));
@@ -1065,6 +1122,7 @@ void TorrentFilesController::setSelectedFilesPriorityState(int priority,
     if (fileIndices.isEmpty())
         return;
 
+    pendingFileMutationMethods = {QStringLiteral("torrent-set")};
     client->setTorrentFilesWantedAndPriority(torrentKey, fileIndices, wanted, priority);
 
     const QString priorityText = wanted ? priorityToString(priority) : tr("Skip");
@@ -1075,5 +1133,4 @@ void TorrentFilesController::setSelectedFilesPriorityState(int priority,
             .arg(priorityText),
         3000);
 
-    emit torrentDetailsRefreshRequested(torrentKey);
 }

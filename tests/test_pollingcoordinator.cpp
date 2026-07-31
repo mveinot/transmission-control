@@ -11,6 +11,7 @@ private slots:
     void delayedDetailsUseCurrentSelection();
     void serverResetCancelsPendingCommandRefresh();
     void requestsOnlyVisibleDetailCategory();
+    void suppressesFileRefreshDuringSelection();
     void slowRequestsRespectCadenceAndCapability();
     void periodicPollingAnnouncesRefresh();
 };
@@ -104,6 +105,27 @@ void TestPollingCoordinator::requestsOnlyVisibleDetailCategory()
     coordinator.setDetailsPaneVisible(false);
     coordinator.handleTorrentListReceived();
     QCOMPARE(requestsMade, QStringList({QStringLiteral("cancel")}));
+}
+
+void TestPollingCoordinator::suppressesFileRefreshDuringSelection()
+{
+    QList<TorrentKey> fileRequests;
+    PollingCoordinator::Requests requests;
+    requests.torrentFiles =
+        [&](const TorrentKey &key) { fileRequests.append(key); };
+
+    PollingCoordinator coordinator(requests);
+    coordinator.setSelectedTorrent(QStringLiteral("selected"));
+    coordinator.setDetailView(PollingCoordinator::DetailView::Files);
+    coordinator.setFileRefreshSuppressed(true);
+
+    coordinator.handleTorrentListReceived();
+    coordinator.requestSelectedTorrent(false);
+    QVERIFY(fileRequests.isEmpty());
+
+    coordinator.setFileRefreshSuppressed(false);
+    QCOMPARE(fileRequests,
+             QList<TorrentKey> {QStringLiteral("selected")});
 }
 
 void TestPollingCoordinator::slowRequestsRespectCadenceAndCapability()
