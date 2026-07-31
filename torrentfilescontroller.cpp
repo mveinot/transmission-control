@@ -783,18 +783,24 @@ void TorrentFilesController::renameFileTreeItem(QTreeWidgetItem *item)
 
     const QString oldName = item->text(FileNameColumn).trimmed();
 
-    bool ok = false;
-    const QString newName = QInputDialog::getText(
-        dialogParent,
-        tr("Rename Path"),
-        tr("New name:"),
-        QLineEdit::Normal,
-        oldName,
-        &ok
-        ).trimmed();
+    QInputDialog dialog(dialogParent);
+    dialog.setWindowTitle(tr("Rename Path"));
+    dialog.setLabelText(tr("New name:"));
+    dialog.setTextEchoMode(QLineEdit::Normal);
+    dialog.setTextValue(oldName);
 
-    if (!ok)
+    // Preserve the compact operation while making long file and folder names
+    // practical to inspect and edit without horizontal scrolling.
+    const QSize naturalSize = dialog.sizeHint();
+    dialog.resize(naturalSize.width() * 2, naturalSize.height());
+
+    if (QLineEdit *editor = dialog.findChild<QLineEdit *>())
+        editor->selectAll();
+
+    if (dialog.exec() != QDialog::Accepted)
         return;
+
+    const QString newName = dialog.textValue().trimmed();
 
     if (newName.isEmpty()) {
         QMessageBox::warning(dialogParent,

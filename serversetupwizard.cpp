@@ -87,6 +87,9 @@ ServerSetupWizard::ServerSetupWizard(bool appendToExisting, QWidget *parent)
         tr("Enter the connection details supplied by your torrent server."));
     auto *detailsLayout = new QVBoxLayout(detailsPage);
     auto *form = new QFormLayout;
+    // Form-layout defaults differ by platform; connection fields should use
+    // all horizontal space available when the wizard is resized.
+    form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
 
     m_backendCombo = new QComboBox(detailsPage);
     m_backendCombo->addItem(tr("Transmission"), QStringLiteral("transmission"));
