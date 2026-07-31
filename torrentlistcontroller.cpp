@@ -28,6 +28,7 @@
 #include <QPair>
 #include <QSettings>
 #include <QSize>
+#include <QSizePolicy>
 #include <QStyledItemDelegate>
 #include <QStyle>
 #include <QStyleOptionViewItem>
@@ -943,7 +944,11 @@ void TorrentListController::setSelectedTorrentsLocation()
     layout->addWidget(descriptionLabel);
 
     auto *formLayout = new QFormLayout;
+    // QFormLayout defaults vary by platform; explicitly allow the path field
+    // to consume any additional horizontal space given to the dialog.
+    formLayout->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
     auto *locationEdit = new QLineEdit(initialLocation, &dialog);
+    locationEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     locationEdit->setPlaceholderText(tr("Remote download location"));
     locationEdit->selectAll();
 
@@ -977,6 +982,11 @@ void TorrentListController::setSelectedTorrentsLocation()
 
     connect(buttonBox, &QDialogButtonBox::rejected,
             &dialog, &QDialog::reject);
+
+    // Long remote paths are common, so open substantially wider than the
+    // compact platform-derived size while retaining the natural height.
+    const QSize naturalSize = dialog.sizeHint();
+    dialog.resize(naturalSize.width() * 7 / 4, naturalSize.height());
 
     if (dialog.exec() != QDialog::Accepted)
         return;
