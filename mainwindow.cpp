@@ -38,18 +38,19 @@
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
-#include <QInputDialog>
 #include <QIcon>
 #include <QItemSelectionModel>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QLabel>
 #include <QLineEdit>
 #include <QLocale>
 #include <QMenu>
 #include <QMessageBox>
 #include <QSettings>
 #include <QSignalBlocker>
+#include <QSize>
 #include <QSpinBox>
 #include <QStackedWidget>
 #include <QStandardPaths>
@@ -63,9 +64,11 @@
 #include <QTreeView>
 #include <QTextEdit>
 #include <QPlainTextEdit>
+#include <QPushButton>
 #include <QToolBar>
 #include <QTimer>
 #include <QUrl>
+#include <QUrlQuery>
 #include <QVBoxLayout>
 #include <functional>
 #include <algorithm>
@@ -94,6 +97,45 @@ namespace {
 constexpr int DefaultUpdateIntervalSeconds = 10;
 constexpr int MinimumUpdateIntervalSeconds = 1;
 constexpr int MaximumUpdateIntervalSeconds = 3600;
+constexpr qsizetype MaximumClipboardMagnetLength = 64 * 1024;
+
+QString clipboardMagnetCandidate()
+{
+    const QClipboard *clipboard = QApplication::clipboard();
+    if (!clipboard)
+        return {};
+
+    const QString candidate = clipboard->text(QClipboard::Clipboard).trimmed();
+    if (candidate.isEmpty() || candidate.size() > MaximumClipboardMagnetLength)
+        return {};
+
+    const QUrl url(candidate, QUrl::StrictMode);
+    if (!url.isValid() || url.scheme().compare(QStringLiteral("magnet"), Qt::CaseInsensitive) != 0)
+        return {};
+
+    // Require a recognized BitTorrent exact-topic identifier. This avoids
+    // treating arbitrary magnet-style URIs as torrents while accepting both
+    // v1 (btih) and v2/hybrid (btmh) links.
+    const auto queryItems = QUrlQuery(url).queryItems();
+    for (const auto &[key, value] : queryItems) {
+        if (key.compare(QStringLiteral("xt"), Qt::CaseInsensitive) != 0)
+            continue;
+
+        const QString topic = value.trimmed();
+        constexpr auto BtihPrefix = "urn:btih:";
+        constexpr auto BtmhPrefix = "urn:btmh:";
+
+        if ((topic.startsWith(QLatin1StringView(BtihPrefix), Qt::CaseInsensitive)
+             && topic.size() > QLatin1StringView(BtihPrefix).size())
+            || (topic.startsWith(QLatin1StringView(BtmhPrefix), Qt::CaseInsensitive)
+                && topic.size() > QLatin1StringView(BtmhPrefix).size())) {
+            return candidate;
+        }
+    }
+
+    return {};
+}
+
 bool jsonBoolAny(const QJsonObject &object,
                  std::initializer_list<const char *> keys,
                  bool *found = nullptr)
@@ -1362,18 +1404,48 @@ void MainWindow::addTorrentFromFile()
 
 void MainWindow::addTorrentFromMagnet()
 {
-    bool ok = false;
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Add Magnet Link"));
 
-    const QString magnetLink = QInputDialog::getText(
-        this,
-        tr("Add Magnet Link"),
-        tr("Magnet link:"),
-        QLineEdit::Normal,
-        QString(),
-        &ok
+    auto *layout = new QVBoxLayout(&dialog);
+    layout->addWidget(new QLabel(tr("Magnet link:"), &dialog));
+
+    auto *editor = new QPlainTextEdit(&dialog);
+    editor->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    editor->setTabChangesFocus(true);
+    editor->setFixedHeight(editor->fontMetrics().lineSpacing() * 4
+                           + editor->frameWidth() * 2 + 12);
+    editor->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    layout->addWidget(editor);
+
+    // Clipboard access occurs only in response to explicitly opening this
+    // dialog. Invalid or unrelated clipboard text leaves the field blank.
+    const QString clipboardMagnet = clipboardMagnetCandidate();
+    if (!clipboardMagnet.isEmpty()) {
+        editor->setPlainText(clipboardMagnet);
+        editor->selectAll();
+    }
+
+    auto *buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+        &dialog
         );
+    buttons->button(QDialogButtonBox::Ok)->setText(tr("Add"));
+    layout->addWidget(buttons);
 
-    if (!ok || magnetLink.trimmed().isEmpty())
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    // Wrapping keeps long links readable without requiring an unusually wide
+    // dialog; users can still enlarge it when comparing or editing a URI.
+    dialog.resize(600, dialog.sizeHint().height());
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    const QString magnetLink = editor->toPlainText().trimmed();
+
+    if (magnetLink.isEmpty())
         return;
 
     torrentAddController->addMagnetLink(magnetLink);
