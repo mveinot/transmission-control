@@ -9,14 +9,47 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QDateTime>
+#include <QDialog>
 #include <QHeaderView>
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QLocale>
 #include <QMenu>
 #include <QMessageBox>
+#include <QSize>
 #include <QTableWidget>
 #include <QTableWidgetItem>
+
+namespace {
+
+QString trackerUrlFromDialog(QWidget *parent,
+                             const QString &title,
+                             const QString &label,
+                             const QString &initialValue,
+                             bool *accepted)
+{
+    QInputDialog dialog(parent);
+    dialog.setWindowTitle(title);
+    dialog.setLabelText(label);
+    dialog.setTextEchoMode(QLineEdit::Normal);
+    dialog.setTextValue(initialValue);
+
+    // Tracker URLs are routinely much longer than the compact native input
+    // dialog. Preserve its natural height while providing useful URL width.
+    const QSize naturalSize = dialog.sizeHint();
+    dialog.resize(naturalSize.width() * 9 / 4, naturalSize.height());
+
+    if (QLineEdit *editor = dialog.findChild<QLineEdit *>())
+        editor->selectAll();
+
+    const bool wasAccepted = dialog.exec() == QDialog::Accepted;
+    if (accepted)
+        *accepted = wasAccepted;
+
+    return wasAccepted ? dialog.textValue() : QString();
+}
+
+} // namespace
 
 TorrentTrackersController::TorrentTrackersController(QTableWidget *trackerTableWidget,
                                                      TorrentBackend *client,
@@ -286,11 +319,10 @@ void TorrentTrackersController::addTrackerFromContextMenu()
         return;
 
     bool ok = false;
-    const QString trackerUrl = QInputDialog::getText(
+    const QString trackerUrl = trackerUrlFromDialog(
         dialogParent,
         tr("Add Tracker"),
         tr("Announce URL:"),
-        QLineEdit::Normal,
         QString(),
         &ok
         ).trimmed();
@@ -323,11 +355,10 @@ void TorrentTrackersController::editTrackerFromContextMenu(int row)
         return;
 
     bool ok = false;
-    const QString trackerUrl = QInputDialog::getText(
+    const QString trackerUrl = trackerUrlFromDialog(
         dialogParent,
         tr("Edit Tracker"),
         tr("Announce URL:"),
-        QLineEdit::Normal,
         oldTrackerUrl,
         &ok
         ).trimmed();
