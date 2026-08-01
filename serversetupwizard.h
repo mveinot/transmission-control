@@ -6,9 +6,8 @@
 class QComboBox;
 class QLabel;
 class QLineEdit;
-class QNetworkAccessManager;
-class QNetworkReply;
 class QPushButton;
+class ServerConnectionProbe;
 
 // Collects the minimum information required for Planetary's first server.
 // The definition is persisted only when the wizard is finished.
@@ -33,19 +32,17 @@ private:
     QLineEdit *m_usernameEdit = nullptr;
     QLineEdit *m_passwordEdit = nullptr;
     QLabel *m_urlLabel = nullptr;
+    QLabel *m_usernameLabel = nullptr;
     QLabel *m_testStatus = nullptr;
     QPushButton *m_testButton = nullptr;
-    QNetworkAccessManager *m_network = nullptr;
+    ServerConnectionProbe *m_connectionProbe = nullptr;
     bool m_appendToExisting = false;
     int m_savedServerIndex = -1;
-    bool m_transmissionRetry = false;
 
     QString backendType() const;
     void updateBackendFields();
     void importServer();
     void testConnection();
-    void sendTransmissionTest(const QByteArray &sessionToken = {});
-    void handleConnectionTestReply(QNetworkReply *reply);
     void setTestResult(const QString &message, bool success);
 };
 

@@ -1,31 +1,24 @@
 #include "serversetupwizard.h"
 
 #include "serverconfig.h"
+#include "serverconnectionprobe.h"
 #include "serverprofile.h"
 
 #include <QColor>
 #include <QComboBox>
 #include <QFormLayout>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QLabel>
 #include <QLineEdit>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QNetworkRequest>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QPalette>
 #include <QUrl>
-#include <QUrlQuery>
 #include <QVBoxLayout>
 #include <QWizardPage>
 
 #include <algorithm>
 
 namespace {
-constexpr int ConnectionTestTimeoutMs = 10000;
-
 class ServerDetailsPage final : public QWizardPage
 {
 public:
@@ -44,7 +37,7 @@ public:
 
 ServerSetupWizard::ServerSetupWizard(bool appendToExisting, QWidget *parent)
     : QWizard(parent)
-    , m_network(new QNetworkAccessManager(this))
+    , m_connectionProbe(new ServerConnectionProbe(this))
     , m_appendToExisting(appendToExisting)
 {
     setWindowTitle(tr("Set Up Planetary"));
@@ -66,9 +59,9 @@ ServerSetupWizard::ServerSetupWizard(bool appendToExisting, QWidget *parent)
                  "Add your first server to begin."));
     auto *welcomeLayout = new QVBoxLayout(welcomePage);
     auto *welcomeText = new QLabel(
-        tr("You will need the Web UI or RPC address for a Transmission or "
-           "qBittorrent server. Credentials are optional when the server "
-           "does not require authentication."),
+        tr("You will need the Web UI or RPC address for a Transmission, "
+           "qBittorrent, or Deluge server. Credentials are optional when "
+           "the server does not require authentication."),
         welcomePage);
     welcomeText->setWordWrap(true);
     welcomeLayout->addWidget(welcomeText);
@@ -94,6 +87,7 @@ ServerSetupWizard::ServerSetupWizard(bool appendToExisting, QWidget *parent)
     m_backendCombo = new QComboBox(detailsPage);
     m_backendCombo->addItem(tr("Transmission"), QStringLiteral("transmission"));
     m_backendCombo->addItem(tr("qBittorrent"), QStringLiteral("qbittorrent"));
+    m_backendCombo->addItem(tr("Deluge"), QStringLiteral("deluge"));
     form->addRow(tr("Server type:"), m_backendCombo);
 
     m_nameEdit = new QLineEdit(detailsPage);
@@ -104,8 +98,10 @@ ServerSetupWizard::ServerSetupWizard(bool appendToExisting, QWidget *parent)
     m_urlEdit = new QLineEdit(detailsPage);
     form->addRow(m_urlLabel, m_urlEdit);
 
+    m_usernameLabel = new QLabel(tr("Username:"), detailsPage);
     m_usernameEdit = new QLineEdit(detailsPage);
-    form->addRow(tr("Username:"), m_usernameEdit);
+    m_usernameLabel->setBuddy(m_usernameEdit);
+    form->addRow(m_usernameLabel, m_usernameEdit);
 
     m_passwordEdit = new QLineEdit(detailsPage);
     m_passwordEdit->setEchoMode(QLineEdit::Password);
@@ -134,10 +130,35 @@ ServerSetupWizard::ServerSetupWizard(bool appendToExisting, QWidget *parent)
             this, &ServerSetupWizard::testConnection);
     connect(importButton, &QPushButton::clicked,
             this, &ServerSetupWizard::importServer);
-    connect(m_network, &QNetworkAccessManager::finished,
-            this, &ServerSetupWizard::handleConnectionTestReply);
+    connect(m_connectionProbe, &ServerConnectionProbe::connectionSucceeded,
+            this, [this](const QUrl &workingUrl, bool adjusted) {
+                if (adjusted) {
+                    const auto result = QMessageBox::question(
+                        this,
+                        tr("Use Working Server URL"),
+                        tr("Connection succeeded using:\n%1\n\n"
+                           "Use this corrected URL?")
+                            .arg(workingUrl.toString()),
+                        QMessageBox::Yes | QMessageBox::No,
+                        QMessageBox::Yes);
+                    if (result == QMessageBox::Yes)
+                        m_urlEdit->setText(workingUrl.toString());
+                }
+                setTestResult(
+                    adjusted
+                        ? tr("Connection successful using the suggested URL.")
+                        : tr("Connection successful."),
+                    true);
+            });
+    connect(m_connectionProbe, &ServerConnectionProbe::connectionFailed,
+            this, [this](const QString &message,
+                         ServerConnectionProbe::FailureKind) {
+                setTestResult(message, false);
+            });
 
     const auto clearTestResult = [this]() {
+        m_connectionProbe->cancel();
+        m_testButton->setEnabled(true);
         m_testStatus->clear();
     };
     connect(m_nameEdit, &QLineEdit::textChanged, this, clearTestResult);
@@ -170,22 +191,49 @@ QString ServerSetupWizard::backendType() const
 
 void ServerSetupWizard::updateBackendFields()
 {
+    m_connectionProbe->cancel();
+    m_testButton->setEnabled(true);
     const bool qBittorrent = backendType() == QStringLiteral("qbittorrent");
-    m_urlLabel->setText(qBittorrent ? tr("Web UI URL:") : tr("RPC URL:"));
-    m_urlEdit->setPlaceholderText(
-        qBittorrent ? QStringLiteral("http://server:8080")
-                    : QStringLiteral("http://server:9091/transmission/rpc"));
+    const bool deluge = backendType() == QStringLiteral("deluge");
+    m_urlLabel->setText(qBittorrent || deluge ? tr("Web UI URL:")
+                                              : tr("RPC URL:"));
+    if (qBittorrent)
+        m_urlEdit->setPlaceholderText(QStringLiteral("http://server:8080"));
+    else if (deluge)
+        m_urlEdit->setPlaceholderText(QStringLiteral("http://server:8112"));
+    else
+        m_urlEdit->setPlaceholderText(
+            QStringLiteral("http://server:9091/transmission/rpc"));
+    m_usernameEdit->setVisible(!deluge);
+    m_usernameLabel->setVisible(!deluge);
+    m_passwordEdit->setPlaceholderText(
+        deluge ? tr("Required") : tr("Optional"));
     m_testStatus->clear();
 }
 
 void ServerSetupWizard::accept()
 {
     const QString name = m_nameEdit->text().trimmed();
-    const QString endpoint = m_urlEdit->text().trimmed();
+    QString endpoint = m_urlEdit->text().trimmed();
+    if (!endpoint.contains(QStringLiteral("://")) && !endpoint.isEmpty()) {
+        const QString suggested = QStringLiteral("http://") + endpoint;
+        const auto result = QMessageBox::question(
+            this,
+            tr("Add URL Scheme"),
+            tr("The server URL has no HTTP or HTTPS scheme. Use %1?")
+                .arg(suggested),
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::Yes);
+        if (result != QMessageBox::Yes)
+            return;
+        endpoint = suggested;
+        m_urlEdit->setText(endpoint);
+    }
     const QUrl url(endpoint);
 
     if (name.isEmpty() || endpoint.isEmpty()
         || !url.isValid()
+        || url.host().isEmpty()
         || (url.scheme() != QStringLiteral("http")
             && url.scheme() != QStringLiteral("https"))) {
         setTestResult(tr("Enter a name and a valid HTTP or HTTPS server URL."),
@@ -230,8 +278,25 @@ void ServerSetupWizard::importServer()
 
 void ServerSetupWizard::testConnection()
 {
-    const QUrl url(m_urlEdit->text().trimmed());
+    QString endpoint = m_urlEdit->text().trimmed();
+    if (!endpoint.contains(QStringLiteral("://")) && !endpoint.isEmpty()) {
+        const QString suggested = QStringLiteral("http://") + endpoint;
+        const auto result = QMessageBox::question(
+            this,
+            tr("Add URL Scheme"),
+            tr("The server URL has no HTTP or HTTPS scheme. Test using %1?")
+                .arg(suggested),
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::Yes);
+        if (result != QMessageBox::Yes)
+            return;
+        endpoint = suggested;
+        m_urlEdit->setText(endpoint);
+    }
+
+    const QUrl url(endpoint);
     if (!url.isValid()
+        || url.host().isEmpty()
         || (url.scheme() != QStringLiteral("http")
             && url.scheme() != QStringLiteral("https"))) {
         setTestResult(tr("Enter a valid HTTP or HTTPS server URL."), false);
@@ -240,112 +305,8 @@ void ServerSetupWizard::testConnection()
 
     m_testButton->setEnabled(false);
     m_testStatus->setText(tr("Testing…"));
-    m_transmissionRetry = false;
-
-    if (backendType() == QStringLiteral("qbittorrent")) {
-        QUrl loginUrl = url;
-        QString path = loginUrl.path();
-        if (path.endsWith(QLatin1Char('/')))
-            path.chop(1);
-        loginUrl.setPath(path + QStringLiteral("/api/v2/auth/login"));
-
-        QNetworkRequest request(loginUrl);
-        request.setHeader(QNetworkRequest::ContentTypeHeader,
-                          QStringLiteral("application/x-www-form-urlencoded"));
-        request.setTransferTimeout(ConnectionTestTimeoutMs);
-
-        QUrlQuery form;
-        form.addQueryItem(QStringLiteral("username"),
-                          m_usernameEdit->text().trimmed());
-        form.addQueryItem(QStringLiteral("password"), m_passwordEdit->text());
-        QNetworkReply *reply =
-            m_network->post(request, form.toString(QUrl::FullyEncoded).toUtf8());
-        reply->setProperty("planetaryBackend", QStringLiteral("qbittorrent"));
-    } else {
-        sendTransmissionTest();
-    }
-}
-
-void ServerSetupWizard::sendTransmissionTest(const QByteArray &sessionToken)
-{
-    QNetworkRequest request(QUrl(m_urlEdit->text().trimmed()));
-    request.setHeader(QNetworkRequest::ContentTypeHeader,
-                      QStringLiteral("application/json"));
-    request.setTransferTimeout(ConnectionTestTimeoutMs);
-
-    if (!sessionToken.isEmpty())
-        request.setRawHeader("X-Transmission-Session-Id", sessionToken);
-
-    const QString username = m_usernameEdit->text().trimmed();
-    const QString password = m_passwordEdit->text();
-    if (!username.isEmpty() || !password.isEmpty()) {
-        request.setRawHeader(
-            "Authorization",
-            QByteArrayLiteral("Basic ")
-                + (username + QLatin1Char(':') + password).toUtf8().toBase64());
-    }
-
-    const QJsonObject payload{
-        {QStringLiteral("method"), QStringLiteral("session-get")},
-        {QStringLiteral("arguments"),
-         QJsonObject{{QStringLiteral("fields"),
-                      QJsonArray{QStringLiteral("version")}}}}};
-    QNetworkReply *reply =
-        m_network->post(request, QJsonDocument(payload).toJson(QJsonDocument::Compact));
-    reply->setProperty("planetaryBackend", QStringLiteral("transmission"));
-}
-
-void ServerSetupWizard::handleConnectionTestReply(QNetworkReply *reply)
-{
-    if (!reply)
-        return;
-
-    const QString backend =
-        reply->property("planetaryBackend").toString();
-    const int status =
-        reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-    const QByteArray response = reply->readAll().trimmed();
-
-    if (backend == QStringLiteral("transmission")
-        && status == 409
-        && !m_transmissionRetry) {
-        const QByteArray sessionToken =
-            reply->rawHeader("X-Transmission-Session-Id");
-        reply->deleteLater();
-
-        if (!sessionToken.isEmpty()) {
-            m_transmissionRetry = true;
-            sendTransmissionTest(sessionToken);
-            return;
-        }
-    }
-
-    const bool networkSucceeded =
-        reply->error() == QNetworkReply::NoError;
-    bool succeeded = networkSucceeded && status >= 200 && status < 300;
-
-    if (backend == QStringLiteral("qbittorrent")) {
-        // Current qBittorrent versions return "Ok."; some releases return an
-        // empty HTTP 204 response after establishing the authenticated cookie.
-        succeeded = succeeded
-                    && (response == QByteArrayLiteral("Ok.")
-                        || (status == 204 && response.isEmpty()));
-    }
-
-    if (succeeded) {
-        setTestResult(tr("Connection successful."), true);
-    } else if (status == 401 || status == 403
-               || response == QByteArrayLiteral("Fails.")) {
-        setTestResult(tr("Authentication failed."), false);
-    } else {
-        const QString reason =
-            reply->errorString().trimmed().isEmpty()
-                ? tr("The server returned HTTP %1.").arg(status)
-                : reply->errorString();
-        setTestResult(tr("Connection failed: %1").arg(reason), false);
-    }
-
-    reply->deleteLater();
+    m_connectionProbe->start(
+        backendType(), url, m_usernameEdit->text(), m_passwordEdit->text());
 }
 
 void ServerSetupWizard::setTestResult(const QString &message, bool success)

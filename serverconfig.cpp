@@ -2,7 +2,9 @@
 #include "ui_serverconfig.h"
 
 #include "foldermappingsdialog.h"
+#include "serverconnectionprobe.h"
 
+#include <QColor>
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QFile>
@@ -17,8 +19,10 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QPalette>
 #include <QRegularExpression>
 #include <QSignalBlocker>
+#include <QUrl>
 
 namespace {
 
@@ -45,6 +49,7 @@ ServerConfig::ServerConfig(QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::ServerConfig)
     , serverListModel(new QStringListModel(this))
+    , connectionProbe(new ServerConnectionProbe(this))
 {
     ui->setupUi(this);
     // Retain the Designer opening size while allowing long names, endpoints,
@@ -74,6 +79,7 @@ ServerConfig::ServerConfig(QWidget *parent)
     ui->buttonSetDefaultServer->setEnabled(false);
     ui->buttonExportServer->setEnabled(false);
     ui->buttonConfigureFolderMappings->setEnabled(false);
+    ui->buttonTestConnection->setEnabled(false);
     updateFolderMappingsSummary();
 
     // Symbol-only controls retain compact visuals while exposing their purpose
@@ -104,6 +110,7 @@ ServerConfig::ServerConfig(QWidget *parent)
                 const int index = current.row();
 
                 if (index < 0 || index >= servers.size()) {
+                    connectionProbe->cancel();
                     clearEditor();
                     setEditorEnabled(false);
                     ui->buttonSaveServer->setEnabled(false);
@@ -111,6 +118,7 @@ ServerConfig::ServerConfig(QWidget *parent)
                     ui->buttonSetDefaultServer->setEnabled(false);
                     ui->buttonExportServer->setEnabled(false);
                     ui->buttonConfigureFolderMappings->setEnabled(false);
+                    ui->buttonTestConnection->setEnabled(false);
                     updateFolderMappingsSummary();
                     return;
                 }
@@ -122,6 +130,7 @@ ServerConfig::ServerConfig(QWidget *parent)
                 ui->buttonSetDefaultServer->setEnabled(true);
                 ui->buttonExportServer->setEnabled(true);
                 ui->buttonConfigureFolderMappings->setEnabled(true);
+                ui->buttonTestConnection->setEnabled(true);
                 updateFolderMappingsSummary();
             });
 
@@ -149,6 +158,47 @@ ServerConfig::ServerConfig(QWidget *parent)
             this, [this]() {
                 configureFolderMappings();
             });
+
+    connect(ui->buttonTestConnection, &QPushButton::clicked,
+            this, &ServerConfig::testConnection);
+
+    connect(connectionProbe, &ServerConnectionProbe::connectionSucceeded,
+            this, [this](const QUrl &workingUrl, bool adjusted) {
+                if (adjusted) {
+                    const auto result = QMessageBox::question(
+                        this,
+                        tr("Use Working Server URL"),
+                        tr("Connection succeeded using:\n%1\n\n"
+                           "Use this corrected URL?")
+                            .arg(workingUrl.toString()),
+                        QMessageBox::Yes | QMessageBox::No,
+                        QMessageBox::Yes);
+                    if (result == QMessageBox::Yes)
+                        ui->editServerUrl->setText(workingUrl.toString());
+                }
+                setConnectionTestResult(
+                    adjusted
+                        ? tr("Connection successful using the suggested URL.")
+                        : tr("Connection successful."),
+                    true);
+            });
+    connect(connectionProbe, &ServerConnectionProbe::connectionFailed,
+            this, [this](const QString &message,
+                         ServerConnectionProbe::FailureKind) {
+                setConnectionTestResult(message, false);
+            });
+
+    const auto clearConnectionTest = [this]() {
+        connectionProbe->cancel();
+        ui->labelConnectionTestResult->clear();
+        ui->buttonTestConnection->setEnabled(currentServerIndex() >= 0);
+    };
+    connect(ui->editServerUrl, &QLineEdit::textChanged,
+            this, clearConnectionTest);
+    connect(ui->editServerUsername, &QLineEdit::textChanged,
+            this, clearConnectionTest);
+    connect(ui->editServerPassword, &QLineEdit::textChanged,
+            this, clearConnectionTest);
 
     connect(ui->scButtonBox, &QDialogButtonBox::accepted, this, [this]() {
         if (saveSelectedServer())
@@ -273,17 +323,21 @@ void ServerConfig::saveEditorToServer(int index)
 
 void ServerConfig::clearEditor()
 {
+    connectionProbe->cancel();
     ui->comboServerType->setCurrentIndex(0);
     updateEditorForServerType();
     ui->editServerName->clear();
     ui->editServerUrl->clear();
     ui->editServerUsername->clear();
     ui->editServerPassword->clear();
+    ui->labelConnectionTestResult->clear();
     updateFolderMappingsSummary();
 }
 
 void ServerConfig::updateEditorForServerType()
 {
+    connectionProbe->cancel();
+    ui->labelConnectionTestResult->clear();
     const QString backendType = ui->comboServerType->currentData().toString();
     const bool deluge = backendType == QStringLiteral("deluge");
     const QString transmissionDefault =
@@ -331,6 +385,7 @@ void ServerConfig::setEditorEnabled(bool enabled)
     ui->editServerUsername->setEnabled(enabled);
     ui->editServerPassword->setEnabled(enabled);
     ui->buttonConfigureFolderMappings->setEnabled(enabled);
+    ui->buttonTestConnection->setEnabled(enabled);
 }
 
 void ServerConfig::addServer()
@@ -358,6 +413,7 @@ void ServerConfig::addServer()
     ui->buttonSetDefaultServer->setEnabled(true);
     ui->buttonExportServer->setEnabled(true);
     ui->buttonConfigureFolderMappings->setEnabled(true);
+    ui->buttonTestConnection->setEnabled(true);
     updateFolderMappingsSummary();
 
     ui->editServerName->setFocus();
@@ -746,11 +802,86 @@ bool ServerConfig::saveSelectedServer()
         return false;
     }
 
+    QUrl url;
+    if (!prepareEditorUrl(&url, false))
+        return false;
+
     saveEditorToServer(index);
     updateFolderMappingsSummary();
     saveServers();
 
     return true;
+}
+
+bool ServerConfig::prepareEditorUrl(QUrl *url, bool forConnectionTest)
+{
+    QString endpoint = ui->editServerUrl->text().trimmed();
+    if (!endpoint.contains(QStringLiteral("://")) && !endpoint.isEmpty()) {
+        const QString suggested = QStringLiteral("http://") + endpoint;
+        const auto result = QMessageBox::question(
+            this,
+            tr("Add URL Scheme"),
+            forConnectionTest
+                ? tr("The server URL has no HTTP or HTTPS scheme. Test using %1?")
+                      .arg(suggested)
+                : tr("The server URL has no HTTP or HTTPS scheme. Use %1?")
+                      .arg(suggested),
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::Yes);
+        if (result != QMessageBox::Yes)
+            return false;
+        endpoint = suggested;
+        ui->editServerUrl->setText(endpoint);
+    }
+
+    const QUrl parsed(endpoint);
+    if (!parsed.isValid() || parsed.host().isEmpty()
+        || (parsed.scheme() != QStringLiteral("http")
+            && parsed.scheme() != QStringLiteral("https"))) {
+        if (forConnectionTest) {
+            setConnectionTestResult(
+                tr("Enter a valid HTTP or HTTPS server URL."), false);
+        } else {
+            QMessageBox::warning(
+                this,
+                tr("Server Configuration"),
+                tr("Enter a valid HTTP or HTTPS server URL."));
+        }
+        return false;
+    }
+
+    if (url)
+        *url = parsed;
+    return true;
+}
+
+void ServerConfig::testConnection()
+{
+    QUrl url;
+    if (!prepareEditorUrl(&url, true))
+        return;
+
+    ui->buttonTestConnection->setEnabled(false);
+    ui->labelConnectionTestResult->setStyleSheet(QString());
+    ui->labelConnectionTestResult->setText(tr("Testing…"));
+    connectionProbe->start(
+        ui->comboServerType->currentData().toString(),
+        url,
+        ui->editServerUsername->text(),
+        ui->editServerPassword->text());
+}
+
+void ServerConfig::setConnectionTestResult(const QString &message,
+                                           bool success)
+{
+    ui->labelConnectionTestResult->setText(message);
+    const QColor color = success
+                             ? ui->labelConnectionTestResult->palette()
+                                   .color(QPalette::Link)
+                             : QColor(180, 55, 55);
+    ui->labelConnectionTestResult->setStyleSheet(
+        QStringLiteral("QLabel { color: %1; }").arg(color.name()));
+    ui->buttonTestConnection->setEnabled(currentServerIndex() >= 0);
 }
 
 void ServerConfig::updateFolderMappingsSummary()

@@ -217,6 +217,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         torrentsortproxymodel.h torrentsortproxymodel.cpp
         serverconfig.h serverconfig.cpp serverconfig.ui
         serversetupwizard.h serversetupwizard.cpp
+        serverconnectionprobe.h serverconnectionprobe.cpp
         percentfilldelegate.h percentfilldelegate.cpp
         elidedtexttooltipdelegate.h elidedtexttooltipdelegate.cpp
         torrentmodel.h torrentmodel.cpp

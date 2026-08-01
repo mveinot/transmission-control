@@ -85,6 +85,12 @@ add_planetary_test(test_serverprofile
     ${CMAKE_SOURCE_DIR}/serverprofile.h
 )
 
+add_planetary_test(test_serverconnectionprobe
+    test_serverconnectionprobe.cpp
+    ${CMAKE_SOURCE_DIR}/serverconnectionprobe.cpp
+    ${CMAKE_SOURCE_DIR}/serverconnectionprobe.h
+)
+
 add_planetary_test(test_windowlayoutcontroller
     test_windowlayoutcontroller.cpp
     ${CMAKE_SOURCE_DIR}/windowlayoutcontroller.cpp

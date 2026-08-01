@@ -13,6 +13,8 @@
 namespace Ui {
 class ServerConfig;
 }
+class ServerConnectionProbe;
+class QUrl;
 
 // Transactional editor for the persisted server array. Changes remain local to
 // the dialog until acceptance, including imported definitions and mappings.
@@ -32,6 +34,7 @@ private:
 
     QVector<ServerDefinition> servers;
     QStringListModel *serverListModel = nullptr;
+    ServerConnectionProbe *connectionProbe = nullptr;
 
     int currentServerIndex() const;
 
@@ -45,6 +48,9 @@ private:
     void setEditorEnabled(bool enabled);
     void updateEditorForServerType();
     void updateFolderMappingsSummary();
+    bool prepareEditorUrl(QUrl *url, bool forConnectionTest);
+    void testConnection();
+    void setConnectionTestResult(const QString &message, bool success);
 
     void addServer();
     void exportSelectedServer();
