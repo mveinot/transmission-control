@@ -11,6 +11,7 @@ BUILD_DIR="${BUILD_DIR:-build-release}"
 APP_PATH="$BUILD_DIR/$APP_NAME.app"
 DMG_ROOT="$BUILD_DIR/dmg-root"
 VERSION_FILE="${BUILD_DIR}/planetary-version.txt"
+BUILD_KEYCHAIN="$HOME/Library/Keychains/planetary-build.keychain-db"
 NOTARY_ARCHIVE="$BUILD_DIR/$APP_NAME-notarization.zip"
 SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application: Mark Veinot (TYR38WGV73)}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-PlanetaryNotary}"
@@ -71,6 +72,7 @@ codesign \
   --deep \
   --options runtime \
   --timestamp \
+  --keychain "$BUILD_KEYCHAIN" \
   --sign "$SIGNING_IDENTITY" \
   "$APP_PATH"
 
