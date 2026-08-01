@@ -44,7 +44,7 @@ if otool -L "$APP_PATH/Contents/MacOS/$APP_NAME" | grep -q "/usr/local/lib/libma
     "$APP_PATH/Contents/Frameworks/libmaxminddb.dylib"
 fi
 
-codesign --force --deep --sign - "$APP_PATH"
+codesign --force --deep --options runtime --timestamp --sign "Developer ID Application: Mark Veinot (TYR38WGV73)" "$APP_PATH"
 
 rm -rf "$DMG_ROOT"
 mkdir -p "$DMG_ROOT"
