@@ -26,6 +26,7 @@ private:
     Ui::AppSettings *ui;
     QString m_initialAppearance;
 
+    void populateLanguageOptions();
     void loadSettings();
     void saveSettings();
     QString selectedAppearance() const;

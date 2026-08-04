@@ -388,6 +388,25 @@ Aanwezige .torrent-bestanden kunnen opnieuw naar de ingestelde torrentserver wor
 
 %1</translation>
         </message>
+        <message>
+            <source>Language</source>
+            <translation>Taal</translation>
+        </message>
+        <message>
+            <source>Select the language used by Planetary</source>
+            <translation>Selecteer de taal die Planetary gebruikt</translation>
+        </message>
+        <message>
+            <source>Language changes take effect after restarting Planetary.</source>
+            <translation>Taalwijzigingen worden toegepast nadat Planetary opnieuw is gestart.</translation>
+        </message>
+    </context>
+    <context>
+        <name>ApplicationLocale</name>
+        <message>
+            <source>System Default</source>
+            <translation>Systeemstandaard</translation>
+        </message>
     </context>
     <context>
         <name>ApplicationCommandController</name>

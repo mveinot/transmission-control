@@ -1,4 +1,5 @@
 #include "applicationappearance.h"
+#include "applicationlocale.h"
 #include "mainwindow.h"
 #include "settingskeys.h"
 #include "singleinstanceguard.h"
@@ -10,49 +11,29 @@
 #include <QSettings>
 #include <QTimer>
 #include <QCoreApplication>
-#include <QDir>
 #include <QLibraryInfo>
 
-static QString translationsPath()
-{
-#ifdef Q_OS_MAC
-    QDir dir(QCoreApplication::applicationDirPath());
-
-    // Planetary.app/Contents/MacOS -> Planetary.app/Contents/Resources/translations
-    if (dir.dirName() == QStringLiteral("MacOS")) {
-        dir.cdUp();
-
-        if (dir.cd(QStringLiteral("Resources"))
-            && dir.cd(QStringLiteral("translations"))) {
-            return dir.absolutePath();
-        }
-    }
-#endif
-
-    // Normal Linux / Windows / local build layout:
-    // beside the executable in ./translations
-    QDir appDir(QCoreApplication::applicationDirPath());
-
-    if (appDir.cd(QStringLiteral("translations")))
-        return appDir.absolutePath();
-
-    return QString();
-}
-
-// if the user launched with a locale override use that, otherwise system locale
+// The environment override remains useful for translation development and
+// takes precedence over the persisted user preference.
 static QLocale applicationLocale()
 {
-    const QByteArray forcedLocale = qgetenv("PLANETARY_LOCALE");
-
-    if (!forcedLocale.isEmpty())
-        return QLocale(QString::fromUtf8(forcedLocale));
-
-    return QLocale::system();
+    const QString preference =
+        QSettings().value(
+            SettingsKeys::ApplicationLocale,
+            QString::fromLatin1(ApplicationLocale::SystemDefault)).toString();
+    return ApplicationLocale::resolve(preference, qgetenv("PLANETARY_LOCALE"));
 }
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+
+    // QSettings identity must be established before resolving the saved
+    // language preference or constructing any translated UI.
+    QCoreApplication::setOrganizationName(QStringLiteral("mvgrafx"));
+    QCoreApplication::setOrganizationDomain(QStringLiteral("mvgrafx.net"));
+    QCoreApplication::setApplicationName(QStringLiteral("Planetary"));
+    QCoreApplication::setApplicationVersion(__PLANETARY_VERSION__);
 
     // determine the language to load
     const QLocale locale = applicationLocale();
@@ -78,12 +59,6 @@ int main(int argc, char *argv[])
 
     if (appTranslationLoaded)
         a.installTranslator(&appTranslator);
-
-    // application details
-    QCoreApplication::setOrganizationName("mvgrafx");
-    QCoreApplication::setOrganizationDomain("mvgrafx.net");
-    QCoreApplication::setApplicationName(QString("Planetary"));
-    QCoreApplication::setApplicationVersion(__PLANETARY_VERSION__);
 
     // Apply the saved override before constructing any application windows.
     QSettings settings;

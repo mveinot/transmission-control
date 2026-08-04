@@ -388,6 +388,25 @@ Noch vorhandene .torrent-Dateien können erneut an den konfigurierten Torrent-Se
 
 %1</translation>
         </message>
+        <message>
+            <source>Language</source>
+            <translation>Sprache</translation>
+        </message>
+        <message>
+            <source>Select the language used by Planetary</source>
+            <translation>Die von Planetary verwendete Sprache auswählen</translation>
+        </message>
+        <message>
+            <source>Language changes take effect after restarting Planetary.</source>
+            <translation>Sprachänderungen werden nach einem Neustart von Planetary wirksam.</translation>
+        </message>
+    </context>
+    <context>
+        <name>ApplicationLocale</name>
+        <message>
+            <source>System Default</source>
+            <translation>Systemstandard</translation>
+        </message>
     </context>
     <context>
         <name>ApplicationCommandController</name>

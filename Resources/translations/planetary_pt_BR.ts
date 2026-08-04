@@ -388,6 +388,25 @@ Os arquivos .torrent ainda presentes poderão ser enviados novamente ao servidor
 
 %1</translation>
         </message>
+        <message>
+            <source>Language</source>
+            <translation>Idioma</translation>
+        </message>
+        <message>
+            <source>Select the language used by Planetary</source>
+            <translation>Selecione o idioma usado pelo Planetary</translation>
+        </message>
+        <message>
+            <source>Language changes take effect after restarting Planetary.</source>
+            <translation>As alterações de idioma entram em vigor após reiniciar o Planetary.</translation>
+        </message>
+    </context>
+    <context>
+        <name>ApplicationLocale</name>
+        <message>
+            <source>System Default</source>
+            <translation>Padrão do sistema</translation>
+        </message>
     </context>
     <context>
         <name>ApplicationCommandController</name>

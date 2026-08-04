@@ -389,6 +389,25 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
 
 %1</translation>
     </message>
+    <message>
+        <source>Language</source>
+        <translation>Langue</translation>
+    </message>
+    <message>
+        <source>Select the language used by Planetary</source>
+        <translation>Sélectionner la langue utilisée par Planetary</translation>
+    </message>
+    <message>
+        <source>Language changes take effect after restarting Planetary.</source>
+        <translation>Les changements de langue prennent effet après le redémarrage de Planetary.</translation>
+    </message>
+</context>
+<context>
+    <name>ApplicationLocale</name>
+    <message>
+        <source>System Default</source>
+        <translation>Valeur par défaut du système</translation>
+    </message>
 </context>
 <context>
     <name>ApplicationCommandController</name>

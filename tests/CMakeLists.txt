@@ -91,6 +91,14 @@ add_planetary_test(test_serverconnectionprobe
     ${CMAKE_SOURCE_DIR}/serverconnectionprobe.h
 )
 
+add_planetary_test(test_applicationlocale
+    test_applicationlocale.cpp
+    ${CMAKE_SOURCE_DIR}/applicationlocale.cpp
+    ${CMAKE_SOURCE_DIR}/applicationlocale.h
+    ${PLANETARY_GENERATED_TRANSLATIONS_CPP}
+)
+add_dependencies(test_applicationlocale PlanetaryTranslations)
+
 add_planetary_test(test_windowlayoutcontroller
     test_windowlayoutcontroller.cpp
     ${CMAKE_SOURCE_DIR}/windowlayoutcontroller.cpp

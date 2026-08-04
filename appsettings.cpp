@@ -1,5 +1,6 @@
 #include "appsettings.h"
 #include "applicationappearance.h"
+#include "applicationlocale.h"
 #include "ui_appsettings.h"
 #include "settingskeys.h"
 
@@ -40,6 +41,7 @@ AppSettings::AppSettings(QWidget *parent)
     ui->appearanceCombo->addItem(tr("Dark"),
                                  QString::fromLatin1(ApplicationAppearance::Dark));
 
+    populateLanguageOptions();
     loadSettings();
     updateNotificationOptionAvailability();
     refreshDefaultHandlerStatus();
@@ -144,6 +146,15 @@ AppSettings::~AppSettings()
     delete ui;
 }
 
+void AppSettings::populateLanguageOptions()
+{
+    ui->languageCombo->clear();
+    for (const ApplicationLocaleOption &option :
+         ApplicationLocale::availableOptions()) {
+        ui->languageCombo->addItem(option.displayName, option.code);
+    }
+}
+
 void AppSettings::loadSettings()
 {
     QSettings settings;
@@ -153,6 +164,13 @@ void AppSettings::loadSettings()
                        QString::fromLatin1(ApplicationAppearance::FollowSystem)).toString();
     const int appearanceIndex = ui->appearanceCombo->findData(m_initialAppearance);
     ui->appearanceCombo->setCurrentIndex(appearanceIndex >= 0 ? appearanceIndex : 0);
+
+    const QString localePreference =
+        settings.value(
+            SettingsKeys::ApplicationLocale,
+            QString::fromLatin1(ApplicationLocale::SystemDefault)).toString();
+    const int localeIndex = ui->languageCombo->findData(localePreference);
+    ui->languageCombo->setCurrentIndex(localeIndex >= 0 ? localeIndex : 0);
 
     const int intervalSeconds =
         settings.value(SettingsKeys::UpdateInterval,
@@ -236,6 +254,8 @@ void AppSettings::saveSettings()
     QSettings settings;
 
     settings.setValue(SettingsKeys::Appearance, selectedAppearance());
+    settings.setValue(SettingsKeys::ApplicationLocale,
+                      ui->languageCombo->currentData().toString());
 
     settings.setValue(SettingsKeys::UpdateInterval,
                       ui->updateInterval->value());
