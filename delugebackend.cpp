@@ -133,6 +133,7 @@ TorrentBackendCapabilities DelugeBackend::capabilities() const
     result.sequentialDownload = true;
     result.torrentProperties = true;
     result.torrentSpeedLimits = true;
+    result.torrentShareLimits = true;
     result.torrentPeerLimit = true;
     result.filePriorities = true;
     result.fileLowPriority = true;

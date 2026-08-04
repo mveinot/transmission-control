@@ -167,6 +167,7 @@ class TestDelugeBackend : public QObject
 
 private slots:
     void initTestCase();
+    void capabilitiesAdvertiseImplementedRatioLimits();
     void authenticationChecksDaemonAndReusesCookie();
     void torrentListIsNormalized();
     void expiredAuthenticationIsRetriedOnce();
@@ -195,6 +196,12 @@ void TestDelugeBackend::initTestCase()
     QSettings::setDefaultFormat(QSettings::IniFormat);
     QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
                        settingsDirectory.path());
+}
+
+void TestDelugeBackend::capabilitiesAdvertiseImplementedRatioLimits()
+{
+    DelugeBackend backend;
+    QVERIFY(backend.capabilities().torrentShareLimits);
 }
 
 void TestDelugeBackend::configureServer(const QUrl &url,
@@ -697,7 +704,9 @@ void TestDelugeBackend::torrentMutationsUseDelugeCoreMethods()
         sawSequential |=
             options.value(QStringLiteral("sequential_download")).toBool();
         sawProperties |=
-            options.value(QStringLiteral("max_connections")).toInt() == 75;
+            options.value(QStringLiteral("max_connections")).toInt() == 75
+            && options.value(QStringLiteral("stop_at_ratio")).toBool()
+            && options.value(QStringLiteral("stop_ratio")).toDouble() == 2.5;
     }
     QVERIFY(sawUnwanted);
     QVERIFY(sawHighPriority);
