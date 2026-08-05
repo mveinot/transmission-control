@@ -117,6 +117,8 @@ set(PROJECT_SOURCES
         mainwindow.ui
         transmissionbackend.h
         transmissionbackend.cpp
+        transmissionprotocol.h
+        transmissionprotocol.cpp
         qbittorrentbackend.h
         qbittorrentbackend.cpp
         delugebackend.h

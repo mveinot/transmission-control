@@ -185,6 +185,8 @@ add_planetary_test(test_transmissionbackend
     fakehttpserver.h
     ${CMAKE_SOURCE_DIR}/transmissionbackend.cpp
     ${CMAKE_SOURCE_DIR}/transmissionbackend.h
+    ${CMAKE_SOURCE_DIR}/transmissionprotocol.cpp
+    ${CMAKE_SOURCE_DIR}/transmissionprotocol.h
     ${CMAKE_SOURCE_DIR}/torrentbackend.h
     ${CMAKE_SOURCE_DIR}/torrent.cpp
     ${CMAKE_SOURCE_DIR}/torrent.h

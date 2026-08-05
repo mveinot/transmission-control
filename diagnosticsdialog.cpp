@@ -41,17 +41,20 @@ QString line(const QString &name, const QString &value)
 DiagnosticsDialog::DiagnosticsDialog(const QJsonObject &sessionSettings,
                                      const QString &serverName,
                                      const QString &rpcUrl,
+                                     const QString &backendName,
+                                     const QString &protocolDescription,
                                      GeoIpService *geoIpService,
                                      int refreshIntervalMs,
                                      QWidget *parent)
     : QDialog(parent), sessionSettings(sessionSettings), serverName(serverName), rpcUrl(rpcUrl),
+      backendName(backendName), protocolDescription(protocolDescription),
       geoIpService(geoIpService), refreshIntervalMs(refreshIntervalMs)
 {
     setWindowTitle(tr("Diagnostics"));
     resize(720, 620);
 
     auto *layout = new QVBoxLayout(this);
-    auto *intro = new QLabel(tr("Diagnostic information collected from Planetary and the active Transmission session. Passwords and authentication data are not included."), this);
+    auto *intro = new QLabel(tr("Diagnostic information collected from Planetary and the active torrent session. Passwords and authentication data are not included."), this);
     intro->setWordWrap(true);
     layout->addWidget(intro);
 
@@ -108,6 +111,8 @@ QString DiagnosticsDialog::buildReport() const
 
     out += QStringLiteral("\nACTIVE SERVER / RPC\n-------------------\n");
     out += line(QStringLiteral("Server name"), serverName.isEmpty() ? QStringLiteral("Unknown") : serverName);
+    out += line(QStringLiteral("Backend"), backendName.isEmpty() ? QStringLiteral("Unknown") : backendName);
+    out += line(QStringLiteral("Protocol"), protocolDescription.isEmpty() ? QStringLiteral("Unknown") : protocolDescription);
     out += line(QStringLiteral("RPC endpoint"), rpcUrl.isEmpty() ? QStringLiteral("Unknown") : rpcUrl);
     out += line(QStringLiteral("Session data available"), yesNo(!sessionSettings.isEmpty()));
     out += line(QStringLiteral("Transmission version"), valueOrUnknown(sessionSettings, QStringLiteral("version")));

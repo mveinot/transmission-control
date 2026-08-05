@@ -62,6 +62,7 @@ public:
     virtual QString backendName() const = 0;
     virtual QString serverDisplayName() const = 0;
     virtual QString endpointUrl() const = 0;
+    virtual QString protocolDescription() const = 0;
     virtual TorrentBackendCapabilities capabilities() const = 0;
 
     virtual bool setServerProfile(const ServerProfile &profile) = 0;

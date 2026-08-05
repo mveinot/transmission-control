@@ -7,6 +7,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include "torrentbackend.h"
+#include "transmissionprotocol.h"
 
 // Transmission implementation of the backend contract. Request contexts
 // preserve semantic routing across authentication retries; QObject ownership
@@ -21,6 +22,7 @@ public:
     QString backendName() const override;
     QString serverDisplayName() const override;
     QString endpointUrl() const override;
+    QString protocolDescription() const override;
     TorrentBackendCapabilities capabilities() const override;
     void init() override;
     void getTorrentList() override;
@@ -116,7 +118,8 @@ private:
         SessionGet,
         SessionStats,
         FreeSpace,
-        PortTest
+        PortTest,
+        ProtocolProbe
     };
 
     struct RpcRequestContext
@@ -128,6 +131,7 @@ private:
         bool deleteTorrentFileOnSuccess = false;
         bool retriedAfterAuth = false;
         bool updateBlocklistAfterSuccess = false;
+        qint64 requestId = 0;
     };
 
     QString username;
@@ -142,11 +146,18 @@ private:
     QNetworkAccessManager *na_manager = nullptr;
     QString serverName;
     QString rpcUrl;
+    qint64 m_nextRequestId = 1;
+    std::unique_ptr<TransmissionProtocol> m_protocol;
+    bool m_protocolReady = false;
+    bool m_protocolNegotiationInProgress = false;
+    QList<RpcRequestContext> m_requestsPendingAfterProtocol;
 
     void setSessionToken(QByteArray token);
+    void beginProtocolNegotiation();
+    void activateProtocol(std::unique_ptr<TransmissionProtocol> protocol);
+    void failProtocolNegotiation(const QString &message);
+    static bool isDefiniteModernProtocolRejection(int httpStatus);
 
-    QByteArray makeRpcPayload(const QString &method,
-                              const QJsonObject &arguments = {}) const;
     QNetworkRequest makeRequest() const;
     QHash<QNetworkReply *, RpcRequestContext> pendingRequests;
     // Tracker arrays change much less frequently than rates/status. Cache them

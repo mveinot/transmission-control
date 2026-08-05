@@ -20,6 +20,7 @@ public:
   QString backendName() const override;
   QString serverDisplayName() const override;
   QString endpointUrl() const override;
+  QString protocolDescription() const override;
   TorrentBackendCapabilities capabilities() const override;
   bool setServerProfile(const ServerProfile &profile) override;
   void init() override;

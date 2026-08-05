@@ -126,6 +126,11 @@ QString DelugeBackend::endpointUrl() const
     return m_baseUrl;
 }
 
+QString DelugeBackend::protocolDescription() const
+{
+    return QStringLiteral("Deluge Web JSON-RPC");
+}
+
 TorrentBackendCapabilities DelugeBackend::capabilities() const
 {
     TorrentBackendCapabilities result;

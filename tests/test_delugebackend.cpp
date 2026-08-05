@@ -202,6 +202,8 @@ void TestDelugeBackend::capabilitiesAdvertiseImplementedRatioLimits()
 {
     DelugeBackend backend;
     QVERIFY(backend.capabilities().torrentShareLimits);
+    QCOMPARE(backend.protocolDescription(),
+             QStringLiteral("Deluge Web JSON-RPC"));
 }
 
 void TestDelugeBackend::configureServer(const QUrl &url,

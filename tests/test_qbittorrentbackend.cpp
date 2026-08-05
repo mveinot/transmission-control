@@ -14,6 +14,7 @@ class TestQBittorrentBackend : public QObject
 
 private slots:
     void initTestCase();
+    void protocolIsIdentified();
     void login204IsAcceptedAndListIsNormalized();
     void expiredReadAuthenticationIsRecovered();
     void commandsUseFormEncodedHashes();
@@ -32,6 +33,13 @@ void TestQBittorrentBackend::initTestCase()
     QSettings::setDefaultFormat(QSettings::IniFormat);
     QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
                        m_settingsDirectory.path());
+}
+
+void TestQBittorrentBackend::protocolIsIdentified()
+{
+    QBittorrentBackend backend;
+    QCOMPARE(backend.protocolDescription(),
+             QStringLiteral("qBittorrent Web API v2"));
 }
 
 void TestQBittorrentBackend::configureServer(const QUrl &url)

@@ -1171,6 +1171,8 @@ void MainWindow::showDiagnostics()
     DiagnosticsDialog dialog(cachedSessionSettings,
                              client ? client->serverDisplayName() : QString(),
                              client ? client->endpointUrl() : QString(),
+                             client ? client->backendName() : QString(),
+                             client ? client->protocolDescription() : QString(),
                              geoIpService,
                              updateIntervalMs(),
                              this);

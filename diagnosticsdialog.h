@@ -16,6 +16,8 @@ public:
     explicit DiagnosticsDialog(const QJsonObject &sessionSettings,
                                const QString &serverName,
                                const QString &rpcUrl,
+                               const QString &backendName,
+                               const QString &protocolDescription,
                                GeoIpService *geoIpService,
                                int refreshIntervalMs,
                                QWidget *parent = nullptr);
@@ -25,6 +27,8 @@ private:
     QJsonObject sessionSettings;
     QString serverName;
     QString rpcUrl;
+    QString backendName;
+    QString protocolDescription;
     GeoIpService *geoIpService = nullptr;
     int refreshIntervalMs = 0;
     QTextEdit *reportEdit = nullptr;
