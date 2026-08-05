@@ -113,6 +113,9 @@ QString TorrentBackendRouter::serverDisplayName() const {
 QString TorrentBackendRouter::endpointUrl() const {
   return m_backend ? m_backend->endpointUrl() : QString();
 }
+QString TorrentBackendRouter::protocolDescription() const {
+  return m_backend ? m_backend->protocolDescription() : QString();
+}
 TorrentBackendCapabilities TorrentBackendRouter::capabilities() const {
   return m_backend ? m_backend->capabilities() : TorrentBackendCapabilities();
 }

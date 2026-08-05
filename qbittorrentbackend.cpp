@@ -106,6 +106,9 @@ QString QBittorrentBackend::serverDisplayName() const {
   return !m_serverName.isEmpty() ? m_serverName : m_baseUrl;
 }
 QString QBittorrentBackend::endpointUrl() const { return m_baseUrl; }
+QString QBittorrentBackend::protocolDescription() const {
+  return QStringLiteral("qBittorrent Web API v2");
+}
 
 TorrentBackendCapabilities QBittorrentBackend::capabilities() const {
   TorrentBackendCapabilities result;

@@ -7,6 +7,9 @@
 #include <QFileInfo>
 #include "transmissionbackend.h"
 
+#include <algorithm>
+#include <utility>
+
 namespace {
 constexpr QNetworkRequest::Attribute RpcRequestTypeAttribute =
     QNetworkRequest::User;
@@ -320,6 +323,7 @@ static bool sessionSupportsSequentialDownload(const QJsonObject &settings)
 TransmissionBackend::TransmissionBackend(QObject *parent)
     : TorrentBackend(parent)
     , na_manager(new QNetworkAccessManager(this))
+    , m_protocol(TransmissionProtocol::createLegacy())
 {
     connect(na_manager, &QNetworkAccessManager::finished,
             this, &TransmissionBackend::replyFinished);
@@ -333,6 +337,7 @@ void TransmissionBackend::init()
         return;
     }
 
+    beginProtocolNegotiation();
     getTorrentList();
 }
 
@@ -348,8 +353,19 @@ void TransmissionBackend::postRpc(const QString &method,
     postRpc(context);
 }
 
-void TransmissionBackend::postRpc(const RpcRequestContext &context)
+void TransmissionBackend::postRpc(const RpcRequestContext &sourceContext)
 {
+    if (!m_protocolReady
+        && sourceContext.type != RpcRequestType::ProtocolProbe) {
+        m_requestsPendingAfterProtocol.append(sourceContext);
+        beginProtocolNegotiation();
+        return;
+    }
+
+    RpcRequestContext context = sourceContext;
+    if (context.requestId == 0)
+        context.requestId = m_nextRequestId++;
+
     QNetworkRequest request = makeRequest();
 
     request.setAttribute(
@@ -361,7 +377,8 @@ void TransmissionBackend::postRpc(const RpcRequestContext &context)
 
     QNetworkReply *reply = na_manager->post(
         request,
-        makeRpcPayload(context.method, context.arguments)
+        m_protocol->encodeRequest(context.method, context.arguments,
+                                  context.requestId)
         );
 
     // Reply identity is the correlation key; the context also preserves retry
@@ -409,6 +426,23 @@ bool TransmissionBackend::prepareTorrentDetailRequest(
     RpcRequestType type,
     const TorrentKey &torrentKey)
 {
+    for (const RpcRequestContext &queued :
+         std::as_const(m_requestsPendingAfterProtocol)) {
+        if (queued.type != type)
+            continue;
+        const QJsonArray ids =
+            queued.arguments.value(QStringLiteral("ids")).toArray();
+        if (ids.size() == 1 && ids.first().toString() == torrentKey)
+            return false;
+    }
+    m_requestsPendingAfterProtocol.erase(
+        std::remove_if(m_requestsPendingAfterProtocol.begin(),
+                       m_requestsPendingAfterProtocol.end(),
+                       [type](const RpcRequestContext &queued) {
+                           return queued.type == type;
+                       }),
+        m_requestsPendingAfterProtocol.end());
+
     QList<QNetworkReply *> obsoleteReplies;
 
     for (auto it = pendingRequests.cbegin(); it != pendingRequests.cend(); ++it) {
@@ -435,6 +469,14 @@ bool TransmissionBackend::prepareTorrentDetailRequest(
 
 void TransmissionBackend::cancelTorrentDetailRequests()
 {
+    m_requestsPendingAfterProtocol.erase(
+        std::remove_if(m_requestsPendingAfterProtocol.begin(),
+                       m_requestsPendingAfterProtocol.end(),
+                       [](const RpcRequestContext &queued) {
+                           return isTorrentDetailRequest(queued.type);
+                       }),
+        m_requestsPendingAfterProtocol.end());
+
     QList<QNetworkReply *> obsoleteReplies;
 
     for (auto it = pendingRequests.cbegin(); it != pendingRequests.cend(); ++it) {
@@ -481,6 +523,11 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
     };
 
     const auto emitRequestFailed = [this, isTorrentGet, requestType, &context](const QString &message) {
+        if (requestType == RpcRequestType::ProtocolProbe) {
+            failProtocolNegotiation(message);
+            return;
+        }
+
         if (isTorrentGet) {
             emit updateFailed(message);
             return;
@@ -545,6 +592,15 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
         return;
     }
 
+    const int httpStatus =
+        reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    if (requestType == RpcRequestType::ProtocolProbe
+        && isDefiniteModernProtocolRejection(httpStatus)) {
+        reply->deleteLater();
+        activateProtocol(TransmissionProtocol::createLegacy());
+        return;
+    }
+
     if (reply->error() != QNetworkReply::NoError) {
         const QString message = reply->errorString();
 
@@ -575,13 +631,45 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
     }
 
     const QJsonObject root = doc.object();
-    const QString result = root.value("result").toString();
+    if (requestType == RpcRequestType::ProtocolProbe
+        && root.value(QStringLiteral("jsonrpc")).toString()
+               != QStringLiteral("2.0")) {
+        // A valid legacy envelope is definitive evidence that the endpoint
+        // expects Transmission's original RPC dialect.
+        if (root.value(QStringLiteral("result")).isString()) {
+            activateProtocol(TransmissionProtocol::createLegacy());
+            return;
+        }
+        failProtocolNegotiation(
+            tr("Transmission returned an unrecognized RPC response."));
+        return;
+    }
 
-    if (result != "success") {
+    const TransmissionProtocolReply protocolReply =
+        m_protocol->decodeReply(root, context.requestId,
+                                context.method);
+
+    if (requestType == RpcRequestType::ProtocolProbe) {
+        // Even a structured JSON-RPC error proves which envelope the endpoint
+        // speaks. Subsequent operation errors should be reported normally,
+        // not obscured by retrying them through the legacy dialect.
+        if (protocolReply.valid) {
+            activateProtocol(TransmissionProtocol::createJsonRpc2());
+            return;
+        }
+
+        failProtocolNegotiation(
+            protocolReply.error.isEmpty()
+                ? tr("Transmission protocol negotiation failed.")
+                : protocolReply.error);
+        return;
+    }
+
+    if (!protocolReply.valid || !protocolReply.success) {
         const QString message =
-            result.isEmpty()
+            protocolReply.error.isEmpty()
                 ? tr("Transmission RPC call failed.")
-                : result;
+                : protocolReply.error;
 
         qDebug() << "Transmission RPC error:" << message;
 
@@ -591,8 +679,7 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
     }
 
     if (requestType == RpcRequestType::SessionGet) {
-        const QJsonObject arguments =
-            root.value("arguments").toObject();
+        const QJsonObject arguments = protocolReply.result;
 
         const bool sequentialDownloadWasSupported =
             m_sequentialDownloadSupported;
@@ -628,13 +715,12 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
 
     if (requestType == RpcRequestType::SessionStats) {
         emit sessionStatisticsReceived(
-            root.value(QStringLiteral("arguments")).toObject());
+            protocolReply.result);
         return;
     }
 
     if (requestType == RpcRequestType::FreeSpace) {
-        const QJsonObject arguments =
-            root.value(QStringLiteral("arguments")).toObject();
+        const QJsonObject arguments = protocolReply.result;
 
         const QString path =
             arguments.value(QStringLiteral("path")).toString();
@@ -647,8 +733,7 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
     }
 
     if (requestType == RpcRequestType::PortTest) {
-        const QJsonObject arguments =
-            root.value(QStringLiteral("arguments")).toObject();
+        const QJsonObject arguments = protocolReply.result;
 
         const bool portIsOpen =
             arguments.value(QStringLiteral("port-is-open")).toBool(
@@ -673,8 +758,7 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
         }
 
         if (context.method == QStringLiteral("blocklist-update")) {
-            const QJsonObject arguments =
-                root.value(QStringLiteral("arguments")).toObject();
+            const QJsonObject arguments = protocolReply.result;
             const int ruleCount =
                 arguments.value(QStringLiteral("blocklist-size")).toInt(
                     arguments.value(QStringLiteral("blocklist_size")).toInt(-1));
@@ -695,8 +779,7 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
         }
 
         if (context.method == QStringLiteral("torrent-add")) {
-            const QJsonObject arguments =
-                root.value(QStringLiteral("arguments")).toObject();
+            const QJsonObject arguments = protocolReply.result;
             const QJsonObject added =
                 arguments.value(QStringLiteral("torrent-added")).toObject();
 
@@ -728,8 +811,7 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
         return;
     }
 
-    const QJsonObject arguments =
-        root.value("arguments").toObject();
+    const QJsonObject arguments = protocolReply.result;
 
     const QJsonValue torrentsValue =
         arguments.value("torrents");
@@ -897,6 +979,11 @@ bool TransmissionBackend::setServerProfile(const ServerProfile &profile)
     m_sequentialDownloadSupported = false;
     m_torrentLabelsSupported = false;
     m_torrentGroupsSupported = false;
+    m_protocol = TransmissionProtocol::createLegacy();
+    m_protocolReady = false;
+    m_protocolNegotiationInProgress = false;
+    m_requestsPendingAfterProtocol.clear();
+    m_nextRequestId = 1;
 
     emit serverChanged();
     return true;
@@ -921,6 +1008,72 @@ QString TransmissionBackend::serverDisplayName() const
 QString TransmissionBackend::endpointUrl() const
 {
     return rpcUrl;
+}
+
+QString TransmissionBackend::protocolDescription() const
+{
+    if (!m_protocolReady)
+        return tr("Negotiating");
+
+    return m_protocol->dialect() == TransmissionProtocolDialect::JsonRpc2
+               ? QStringLiteral("Transmission JSON-RPC 2.0")
+               : QStringLiteral("Transmission legacy RPC");
+}
+
+void TransmissionBackend::beginProtocolNegotiation()
+{
+    if (m_protocolReady || m_protocolNegotiationInProgress
+        || rpcUrl.trimmed().isEmpty()) {
+        return;
+    }
+
+    m_protocolNegotiationInProgress = true;
+    m_protocol = TransmissionProtocol::createJsonRpc2();
+
+    RpcRequestContext probe;
+    probe.method = QStringLiteral("session-get");
+    probe.type = RpcRequestType::ProtocolProbe;
+    postRpc(probe);
+}
+
+void TransmissionBackend::activateProtocol(
+    std::unique_ptr<TransmissionProtocol> protocol)
+{
+    m_protocol = std::move(protocol);
+    m_protocolReady = true;
+    m_protocolNegotiationInProgress = false;
+
+    const QList<RpcRequestContext> pending =
+        std::exchange(m_requestsPendingAfterProtocol, {});
+    for (const RpcRequestContext &request : pending)
+        postRpc(request);
+}
+
+void TransmissionBackend::failProtocolNegotiation(const QString &message)
+{
+    m_protocolNegotiationInProgress = false;
+    m_protocolReady = false;
+    const QList<RpcRequestContext> pending =
+        std::exchange(m_requestsPendingAfterProtocol, {});
+    const bool torrentListWasPending = std::any_of(
+        pending.cbegin(), pending.cend(), [](const RpcRequestContext &request) {
+            return request.type == RpcRequestType::TorrentGet;
+        });
+
+    if (torrentListWasPending) {
+        updateInProgress = false;
+        updateRequestedWhileInProgress = false;
+        emit updateFailed(message);
+        emit updateFinished();
+    } else {
+        emit commandFailed(QStringLiteral("protocol-negotiation"), message);
+    }
+}
+
+bool TransmissionBackend::isDefiniteModernProtocolRejection(int httpStatus)
+{
+    return httpStatus == 400 || httpStatus == 404 || httpStatus == 405
+           || httpStatus == 415 || httpStatus == 501;
 }
 
 TorrentBackendCapabilities TransmissionBackend::capabilities() const
@@ -1021,18 +1174,6 @@ void TransmissionBackend::getTorrentTrackerMetadata()
     };
     postRpc(QStringLiteral("torrent-get"), arguments,
             RpcRequestType::TorrentListTrackers);
-}
-
-QByteArray TransmissionBackend::makeRpcPayload(const QString &method,
-                                      const QJsonObject &arguments) const
-{
-    QJsonObject root;
-    root["method"] = method;
-
-    if (!arguments.isEmpty())
-        root["arguments"] = arguments;
-
-    return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }
 
 QNetworkRequest TransmissionBackend::makeRequest() const
