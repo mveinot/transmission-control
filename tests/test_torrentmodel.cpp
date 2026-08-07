@@ -67,6 +67,7 @@ private slots:
     void exposesQueueColumn();
     void exposesOptionalColumns();
     void exposesTorrentErrorState();
+    void verificationOverridesErrorPresentationAndUsesCheckProgress();
     void indexesRowsByTorrentKey();
     void queuePositionChangeEmitsDataChanged();
     void removesMissingRowsOnUpdate();
@@ -90,6 +91,38 @@ void TestTorrentModel::exposesQueueColumn()
     const QModelIndex queueIndex = model.index(0, TorrentModel::QueueColumn);
     QCOMPARE(model.data(queueIndex, Qt::DisplayRole).toInt(), 3);
     QCOMPARE(model.data(queueIndex, Qt::UserRole + 1).toInt(), 3);
+}
+
+void TestTorrentModel::verificationOverridesErrorPresentationAndUsesCheckProgress()
+{
+    TorrentModel model;
+    QJsonObject checking =
+        makeTorrentValue(10, "Checking", 2, 1.0, 1024, 3).toObject();
+    checking.insert(QStringLiteral("error"), 3);
+    checking.insert(QStringLiteral("errorString"),
+                    QStringLiteral("No data found"));
+    checking.insert(QStringLiteral("recheckProgress"), 0.425);
+    model.applyUpdate(makeTorrentList({checking}));
+
+    const QModelIndex nameIndex = model.index(0, TorrentModel::NameColumn);
+    const QModelIndex statusIndex = model.index(0, TorrentModel::StatusColumn);
+    const QModelIndex completedIndex =
+        model.index(0, TorrentModel::PercentDoneColumn);
+
+    QCOMPARE(model.data(statusIndex, Qt::DisplayRole).toString(),
+             QStringLiteral("Verifying"));
+    QVERIFY(model.data(nameIndex, TorrentModel::HasErrorRole).toBool());
+    QCOMPARE(model.data(completedIndex, Qt::DisplayRole).toString(),
+             QStringLiteral("42.5%"));
+    QCOMPARE(model.data(completedIndex, TorrentModel::SortRole).toDouble(),
+             42.5);
+    QCOMPARE(model.data(completedIndex,
+                        TorrentModel::DownloadCompletionRole).toDouble(),
+             100.0);
+    QVERIFY(model.data(statusIndex, Qt::ToolTipRole).toString().contains(
+        QStringLiteral("Previous error: No data found")));
+    QVERIFY(!model.data(statusIndex, Qt::FontRole).isValid());
+    QVERIFY(!model.data(statusIndex, Qt::ForegroundRole).isValid());
 }
 
 

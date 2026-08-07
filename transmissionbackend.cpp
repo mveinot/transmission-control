@@ -1130,6 +1130,7 @@ void TransmissionBackend::getTorrentList()
         "name",
         "hashString",
         "percentDone",
+        "recheckProgress",
         "status",
         "rateDownload",
         "rateUpload",

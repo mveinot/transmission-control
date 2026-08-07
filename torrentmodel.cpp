@@ -91,6 +91,8 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
     }
 
     const torrent &t = torrentVector.at(index.row());
+    const bool verificationVisible = t.isVerificationStatus();
+    const bool visibleError = t.hasError() && !verificationVisible;
 
     if (role == TrackerHostsRole)
         return t.getTrackerHosts();
@@ -116,8 +118,28 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
     if (role == ErrorStringRole)
         return t.getErrorString();
 
+    if (role == DownloadCompletionRole)
+        return t.getPercentDone();
+
     if (role == Qt::ToolTipRole) {
-        if (t.hasError()) {
+        if (verificationVisible
+            && (index.column() == NameColumn
+                || index.column() == StatusColumn)) {
+            QString text = tr("Status: %1").arg(t.getStatus());
+            if (t.hasVerificationProgress()) {
+                text += tr("\nVerification progress: %1%").arg(
+                    QString::number(t.getVerificationProgress(), 'f', 1));
+            }
+            if (t.hasError()) {
+                const QString message = t.getErrorString().isEmpty()
+                    ? tr("The torrent backend reports an error for this torrent.")
+                    : t.getErrorString();
+                text += tr("\nPrevious error: %1").arg(message);
+            }
+            return text;
+        }
+
+        if (visibleError) {
             const QString message = t.getErrorString().isEmpty()
                 ? tr("The torrent backend reports an error for this torrent.")
                 : t.getErrorString();
@@ -132,27 +154,38 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
         if (index.column() == StatusColumn)
             return tr("Status: %1").arg(t.getStatus());
 
+        if (index.column() == PercentDoneColumn
+            && t.isVerificationStatus()) {
+            if (t.hasVerificationProgress()) {
+                return tr("Verification progress: %1%\nDownload completed: %2%")
+                    .arg(QString::number(t.getVerificationProgress(), 'f', 1),
+                         QString::number(t.getPercentDone(), 'f', 1));
+            }
+            return tr("Verification progress unavailable.\nDownload completed: %1%")
+                .arg(QString::number(t.getPercentDone(), 'f', 1));
+        }
+
         if (index.column() == HealthColumn)
             return t.getHealthDetails();
     }
 
     if (role == Qt::DecorationRole) {
         if (index.column() == StatusColumn)
-            return statusIcon(t.getStatusValue(), t.hasError());
+            return statusIcon(t.getStatusValue(), visibleError);
 
-        if (index.column() == NameColumn && t.hasError())
+        if (index.column() == NameColumn && visibleError)
             return statusIcon(t.getStatusValue(), true);
     }
 
     if (role == Qt::ForegroundRole) {
-        if (t.hasError() && isStatusCueColumn(index.column()))
+        if (visibleError && isStatusCueColumn(index.column()))
             return errorTextBrush();
 
         if (index.column() == StatusColumn && t.getStatusValue() == 0)
             return disabledTextBrush();
     }
 
-    if (role == Qt::FontRole && t.hasError() && isStatusCueColumn(index.column())) {
+    if (role == Qt::FontRole && visibleError && isStatusCueColumn(index.column())) {
         QFont font;
         font.setBold(true);
         return font;
@@ -170,7 +203,10 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
             return t.getSize();
 
         case PercentDoneColumn:
-            return QString::number(t.getPercentDone(), 'f', 1) + "%";
+            return t.getDisplayedPercentDone() < 0.0
+                       ? QStringLiteral("—")
+                       : QString::number(t.getDisplayedPercentDone(), 'f', 1)
+                             + "%";
 
         case StatusColumn:
             return t.getStatus();
@@ -251,7 +287,7 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
             return t.getSizeBytes();
 
         case PercentDoneColumn:
-            return t.getPercentDone();
+            return t.getDisplayedPercentDone();
 
         case StatusColumn:
             return t.getStatus();

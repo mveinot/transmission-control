@@ -43,6 +43,7 @@ private slots:
     void parsesBasicFields();
     void prefersStableHashIdentity();
     void mapsTransmissionStatuses();
+    void verificationTakesPrecedenceOverRetainedError();
     void sameDisplayDataIncludesQueuePosition();
 };
 
@@ -58,6 +59,28 @@ void TestTorrent::parsesBasicFields()
     QCOMPARE(item.getQueuePosition(), 7);
     QCOMPARE(item.getFiles().size(), 1);
     QCOMPARE(item.getPeers().size(), 1);
+}
+
+void TestTorrent::verificationTakesPrecedenceOverRetainedError()
+{
+    QJsonObject value = makeTorrentValue(1, "Checking", 2, 1.0, 0).toObject();
+    value.insert(QStringLiteral("error"), 3);
+    value.insert(QStringLiteral("errorString"), QStringLiteral("No data found"));
+    value.insert(QStringLiteral("recheckProgress"), 0.375);
+
+    const torrent item(value);
+    QVERIFY(item.hasError());
+    QVERIFY(item.isVerificationStatus());
+    QVERIFY(item.hasVerificationProgress());
+    QCOMPARE(item.getStatus(), QStringLiteral("Verifying"));
+    QCOMPARE(item.getPercentDone(), 100.0);
+    QCOMPARE(item.getVerificationProgress(), 37.5);
+    QCOMPARE(item.getDisplayedPercentDone(), 37.5);
+    QCOMPARE(item.getHealth(), QStringLiteral("Unknown"));
+
+    QJsonObject withoutProgress = value;
+    withoutProgress.remove(QStringLiteral("recheckProgress"));
+    QCOMPARE(torrent(withoutProgress).getDisplayedPercentDone(), -1.0);
 }
 
 void TestTorrent::prefersStableHashIdentity()

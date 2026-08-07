@@ -32,6 +32,10 @@ public:
     QString getName() const;
     QString getHashString() const;
     double getPercentDone() const;
+    double getDisplayedPercentDone() const;
+    double getVerificationProgress() const;
+    bool hasVerificationProgress() const;
+    bool isVerificationStatus() const;
     QString getStatus() const;
     int getStatusValue() const;
     bool hasError() const;
@@ -85,6 +89,7 @@ private:
     QString name;
     QString hashString;
     double percentDone = 0.0;
+    double verificationProgress = -1.0;
     double rateDownload = 0.0;
     double rateUpload = 0.0;
     double uploadRatio = 0.0;

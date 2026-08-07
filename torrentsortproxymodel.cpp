@@ -143,7 +143,8 @@ bool TorrentSortProxyModel::matchesStateFilter(int sourceRow,
     return matchesState(
         m_stateFilter,
         statusValue,
-        model->data(percentIndex, Qt::UserRole + 1).toDouble(),
+        model->data(percentIndex,
+                    TorrentModel::DownloadCompletionRole).toDouble(),
         hasError,
         model->data(downIndex, TorrentModel::SortRole).toDouble(),
         model->data(upIndex, TorrentModel::SortRole).toDouble());

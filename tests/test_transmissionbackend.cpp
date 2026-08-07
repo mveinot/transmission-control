@@ -225,6 +225,9 @@ void TestTransmissionBackend::sessionChallengeIsRetriedAndListIsNormalized()
              QStringLiteral("session_get"));
     QCOMPARE(requests.last().value("method").toString(),
              QStringLiteral("torrent-get"));
+    QVERIFY(requests.last().value(QStringLiteral("arguments")).toObject()
+                .value(QStringLiteral("fields")).toArray()
+                .contains(QStringLiteral("recheckProgress")));
     QCOMPARE(backend.protocolDescription(),
              QStringLiteral("Transmission legacy RPC"));
     const QVector<torrent> torrents =
@@ -284,6 +287,9 @@ void TestTransmissionBackend::modernProtocolIsNegotiatedAndListIsNormalized()
              QStringLiteral("session_get"));
     QCOMPARE(requests.last().value(QStringLiteral("method")).toString(),
              QStringLiteral("torrent_get"));
+    QVERIFY(requests.last().value(QStringLiteral("params")).toObject()
+                .value(QStringLiteral("fields")).toArray()
+                .contains(QStringLiteral("recheck_progress")));
     QCOMPARE(backend.protocolDescription(),
              QStringLiteral("Transmission JSON-RPC 2.0"));
     const QVector<torrent> torrents =

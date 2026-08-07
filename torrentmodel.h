@@ -47,7 +47,8 @@ public:
         GroupRole,
         StatusValueRole,
         HasErrorRole,
-        ErrorStringRole
+        ErrorStringRole,
+        DownloadCompletionRole
     };
 
     explicit TorrentModel(QObject *parent = nullptr);

@@ -50,6 +50,10 @@ torrent::torrent(const QJsonValue &val)
     name = obj.value("name").toString();
     eta = obj.value("eta").toInt();
     percentDone = obj.value("percentDone").toDouble() * 100.0;
+    if (obj.value(QStringLiteral("recheckProgress")).isDouble()) {
+        verificationProgress =
+            obj.value(QStringLiteral("recheckProgress")).toDouble() * 100.0;
+    }
     status = statusFromInt(obj.value("status").toInt());
     rateDownload = obj.value("rateDownload").toDouble();
     rateUpload = obj.value("rateUpload").toDouble();
@@ -178,6 +182,22 @@ TorrentKey torrent::getKey() const { return key; }
 QString torrent::getName() const { return name; }
 QString torrent::getHashString() const { return hashString; }
 double torrent::getPercentDone() const { return percentDone; }
+double torrent::getDisplayedPercentDone() const
+{
+    if (isVerificationStatus())
+        return hasVerificationProgress() ? verificationProgress : -1.0;
+
+    return percentDone;
+}
+double torrent::getVerificationProgress() const { return verificationProgress; }
+bool torrent::hasVerificationProgress() const
+{
+    return verificationProgress >= 0.0;
+}
+bool torrent::isVerificationStatus() const
+{
+    return status == Status::WaitingToVerify || status == Status::Verifying;
+}
 int torrent::getQueuePosition() const { return queuePosition; };
 
 QString torrent::statusToString(Status status)
@@ -205,6 +225,11 @@ QString torrent::statusToString(Status status)
 
 QString torrent::getStatus() const
 {
+    // A retained data error explains why verification may have been started,
+    // but the active operation is the more useful primary status.
+    if (isVerificationStatus())
+        return statusToString(status);
+
     if (hasError())
         return QStringLiteral("Error");
 
@@ -461,13 +486,13 @@ QString healthLabelForScore(int score)
 
 int torrent::getHealthScore() const
 {
-    if (hasError())
-        return 0;
-
     if (status == Status::WaitingToVerify || status == Status::Verifying
         || status == Status::Unknown) {
         return -1;
     }
+
+    if (hasError())
+        return 0;
 
     const bool complete = percentDone >= 99.999;
 
@@ -513,6 +538,9 @@ int torrent::getHealthScore() const
 
 QString torrent::getHealth() const
 {
+    if (isVerificationStatus())
+        return healthLabelForScore(-1);
+
     if (hasError())
         return QStringLiteral("Error");
 
@@ -521,6 +549,9 @@ QString torrent::getHealth() const
 
 QString torrent::getHealthDetails() const
 {
+    if (isVerificationStatus())
+        return QStringLiteral("Health cannot be estimated while the torrent is being checked.");
+
     if (hasError()) {
         return errorString.isEmpty()
             ? QStringLiteral("The torrent backend reports an error for this torrent.")
@@ -577,6 +608,7 @@ bool torrent::sameDisplayData(const torrent &other) const
            && hashString == other.hashString
            && name == other.name
            && percentDone == other.percentDone
+           && verificationProgress == other.verificationProgress
            && rateDownload == other.rateDownload
            && rateUpload == other.rateUpload
            && uploadRatio == other.uploadRatio
