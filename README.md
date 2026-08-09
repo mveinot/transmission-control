@@ -9,10 +9,6 @@ The original project was written in Pascal and appears to no longer be maintaine
 
 This implementation is in C++/Qt and will be compatible with Windows/macOS/Linux/etc.
 
-The intention of this project is to achieve feature parity with Transmission Remote GUI at which point it will be christened with version 1.0.0
-
-From there the future remains to be seen.
-
 ## Screenshots
 
 <img src="images/screen2.png" alt="Torrent list with details">
