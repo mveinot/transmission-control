@@ -163,6 +163,15 @@ add_planetary_test(test_peerreconciler
     ${CMAKE_SOURCE_DIR}/tableplaceholdercontroller.h
 )
 
+add_planetary_test(test_torrentfilemodel
+    test_torrentfilemodel.cpp
+    ${CMAKE_SOURCE_DIR}/torrentfilemodel.cpp
+    ${CMAKE_SOURCE_DIR}/torrentfilemodel.h
+    ${CMAKE_SOURCE_DIR}/appicons.cpp
+    ${CMAKE_SOURCE_DIR}/appicons.h
+    ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
+)
+
 add_planetary_test(test_sessionoverviewwidget
     test_sessionoverviewwidget.cpp
     ${CMAKE_SOURCE_DIR}/sessionoverviewwidget.cpp

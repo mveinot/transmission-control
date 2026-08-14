@@ -249,6 +249,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         pieceprogressbarwidget.h pieceprogressbarwidget.cpp
         pieceprogresscontroller.h pieceprogresscontroller.cpp
         torrentdetailstabcontroller.h torrentdetailstabcontroller.cpp
+        torrentfilemodel.h torrentfilemodel.cpp
         torrentfilescontroller.h torrentfilescontroller.cpp
         peerreconciler.h peerreconciler.cpp
         torrentpeerscontroller.h torrentpeerscontroller.cpp
