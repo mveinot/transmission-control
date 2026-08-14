@@ -26,7 +26,19 @@ void WatchFolderController::setup()
         return;
 
     connect(m_manager, &WatchFolderManager::torrentFileReady,
-            m_torrentAddController, &TorrentAddController::addTorrentFileUsingDefaults);
+            this, [this](const QString &filePath) {
+                const QFileInfo fileInfo(filePath);
+
+                emit activityEventRequested(
+                    tr("Torrent file detected"),
+                    fileInfo.absoluteFilePath());
+
+                emit activityEventRequested(
+                    tr("Sending torrent to %1").arg(m_client->backendName()),
+                    fileInfo.fileName());
+
+                m_torrentAddController->addTorrentFileUsingDefaults(filePath);
+            });
 
     connect(m_client, &TorrentBackend::torrentFileAddSucceeded,
             m_manager, &WatchFolderManager::markTorrentFileProcessed);

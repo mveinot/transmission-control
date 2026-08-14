@@ -676,6 +676,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect(watchFolderController, &WatchFolderController::torrentListRefreshRequested,
             this, [this]() { pollingCoordinator->requestTorrentList(); });
 
+    connect(watchFolderController, &WatchFolderController::activityEventRequested,
+            this, [this](const QString &event, const QString &details) {
+                recordActivity(
+                    event,
+                    details,
+                    serverSelectionController->currentDisplayText());
+            });
+
     watchFolderController->loadSettings();
     trayController = new TrayController(this, this);
     trayController->setup();

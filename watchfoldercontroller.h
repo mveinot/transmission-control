@@ -26,6 +26,8 @@ public:
 signals:
     void statusMessageRequested(const QString &message, int timeoutMs);
     void torrentListRefreshRequested();
+    // Activity events are completed with the profile display name by MainWindow.
+    void activityEventRequested(const QString &event, const QString &details);
 
 private:
     WatchFolderManager *m_manager = nullptr;

@@ -513,36 +513,13 @@
           </widget>
          </item>
          <item>
-          <widget class="QTreeWidget" name="fileTreeWidget">
-           <property name="columnCount">
-            <number>4</number>
-           </property>
+          <widget class="QTreeView" name="fileTreeWidget">
            <attribute name="headerVisible">
             <bool>true</bool>
            </attribute>
            <attribute name="headerStretchLastSection">
             <bool>false</bool>
            </attribute>
-           <column>
-            <property name="text">
-             <string notr="true">1</string>
-            </property>
-           </column>
-           <column>
-            <property name="text">
-             <string notr="true">2</string>
-            </property>
-           </column>
-           <column>
-            <property name="text">
-             <string notr="true">3</string>
-            </property>
-           </column>
-           <column>
-            <property name="text">
-             <string notr="true">4</string>
-            </property>
-           </column>
           </widget>
          </item>
         </layout>
