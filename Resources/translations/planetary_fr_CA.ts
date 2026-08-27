@@ -135,6 +135,16 @@
         <translation>Démarrer les torrents en pause par défaut</translation>
     </message>
     <message>
+        <location filename="../../appsettings.ui" line="189"/>
+        <source>Show torrent options dialog after adding torrent file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../appsettings.ui" line="196"/>
+        <source>Show torrent options dialog after adding magnet link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location line="+12"/>
         <source>Application</source>
         <translation>Application</translation>

@@ -178,6 +178,22 @@ add_planetary_test(test_sessionoverviewwidget
     ${CMAKE_SOURCE_DIR}/sessionoverviewwidget.h
 )
 
+add_planetary_test(test_torrentaddcontroller
+    test_torrentaddcontroller.cpp
+    ${CMAKE_SOURCE_DIR}/torrentaddcontroller.cpp
+    ${CMAKE_SOURCE_DIR}/torrentaddcontroller.h
+    ${CMAKE_SOURCE_DIR}/torrentadddialog.cpp
+    ${CMAKE_SOURCE_DIR}/torrentadddialog.h
+    ${CMAKE_SOURCE_DIR}/torrentadddialog.ui
+    ${CMAKE_SOURCE_DIR}/torrentmetadataparser.cpp
+    ${CMAKE_SOURCE_DIR}/torrentmetadataparser.h
+    ${CMAKE_SOURCE_DIR}/bencodeparser.cpp
+    ${CMAKE_SOURCE_DIR}/bencodeparser.h
+    ${CMAKE_SOURCE_DIR}/bencodevalue.cpp
+    ${CMAKE_SOURCE_DIR}/bencodevalue.h
+    ${CMAKE_SOURCE_DIR}/torrentbackend.h
+)
+
 add_planetary_test(test_delugebackend
     test_delugebackend.cpp
     ${CMAKE_SOURCE_DIR}/delugebackend.cpp

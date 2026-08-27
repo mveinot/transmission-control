@@ -12,6 +12,10 @@ inline constexpr const char *ShowSessionOverview =          "app/showSessionOver
 inline constexpr const char *DeleteTorrentOnAdd =           "app/deleteTorrentFileOnSuccessfulAdd";
 inline constexpr const char *TorrentOpenDirectory =         "app/torrentOpenDirectory";
 inline constexpr const char *StartTorrentPaused =           "torrentAdd/startPaused";
+inline constexpr const char *ShowTorrentFileOptionsDialog =
+    "torrentAdd/showOptionsForTorrentFiles";
+inline constexpr const char *ShowMagnetLinkOptionsDialog =
+    "torrentAdd/showOptionsForMagnetLinks";
 inline constexpr const char *ShowTrayIcon =                 "app/tray/showIcon";
 inline constexpr const char *ShowNotifications =            "app/notifications/showNotifications";
 inline constexpr const char *NotifyTorrentAdded =             "app/notifications/torrentAdded";

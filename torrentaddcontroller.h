@@ -41,8 +41,11 @@ private:
     QString m_defaultDownloadDir;
 
     bool deleteTorrentFileOnSuccessfulAdd() const;
+    bool showOptionsDialog(TorrentAddDialog::SourceType sourceType) const;
     bool promptAndAdd(TorrentAddDialog::SourceType sourceType,
                       const QString &source);
+    bool addUsingDefaults(TorrentAddDialog::SourceType sourceType,
+                          const QString &source);
 
     QString savedDownloadDir() const;
     bool savedStartPaused() const;

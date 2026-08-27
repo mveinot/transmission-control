@@ -18,6 +18,7 @@
 #include "applicationcommandcontroller.h"
 #include <QActionGroup>
 #include <QAbstractItemView>
+#include <QAbstractSpinBox>
 #include <QApplication>
 #include <QAction>
 #include <QCheckBox>
@@ -43,6 +44,8 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QKeyEvent>
+#include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
 #include <QLocale>
@@ -98,6 +101,48 @@ constexpr int DefaultUpdateIntervalSeconds = 10;
 constexpr int MinimumUpdateIntervalSeconds = 1;
 constexpr int MaximumUpdateIntervalSeconds = 3600;
 constexpr qsizetype MaximumClipboardMagnetLength = 64 * 1024;
+
+class MagnetLinkEditor final : public QPlainTextEdit
+{
+public:
+    explicit MagnetLinkEditor(QDialog *dialog)
+        : QPlainTextEdit(dialog)
+        , m_dialog(dialog)
+    {
+    }
+
+protected:
+    void keyPressEvent(QKeyEvent *event) override
+    {
+        if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
+            m_dialog->accept();
+            event->accept();
+            return;
+        }
+
+        QPlainTextEdit::keyPressEvent(event);
+    }
+
+private:
+    QDialog *m_dialog;
+};
+
+bool isEditablePasteTarget(QWidget *widget)
+{
+    if (!widget)
+        return false;
+
+    if (const auto *lineEdit = qobject_cast<QLineEdit *>(widget))
+        return !lineEdit->isReadOnly();
+    if (const auto *textEdit = qobject_cast<QTextEdit *>(widget))
+        return !textEdit->isReadOnly();
+    if (const auto *plainTextEdit = qobject_cast<QPlainTextEdit *>(widget))
+        return !plainTextEdit->isReadOnly();
+    if (const auto *comboBox = qobject_cast<QComboBox *>(widget))
+        return comboBox->isEditable();
+
+    return qobject_cast<QAbstractSpinBox *>(widget) != nullptr;
+}
 
 QString clipboardMagnetCandidate()
 {
@@ -1420,7 +1465,7 @@ void MainWindow::addTorrentFromMagnet()
     auto *layout = new QVBoxLayout(&dialog);
     layout->addWidget(new QLabel(tr("Magnet link:"), &dialog));
 
-    auto *editor = new QPlainTextEdit(&dialog);
+    auto *editor = new MagnetLinkEditor(&dialog);
     editor->setLineWrapMode(QPlainTextEdit::WidgetWidth);
     editor->setTabChangesFocus(true);
     editor->setFixedHeight(editor->fontMetrics().lineSpacing() * 4
@@ -1433,7 +1478,7 @@ void MainWindow::addTorrentFromMagnet()
     const QString clipboardMagnet = clipboardMagnetCandidate();
     if (!clipboardMagnet.isEmpty()) {
         editor->setPlainText(clipboardMagnet);
-        editor->selectAll();
+        editor->moveCursor(QTextCursor::End);
     }
 
     auto *buttons = new QDialogButtonBox(
@@ -2036,7 +2081,28 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
-    Q_UNUSED(watched)
+    if (event->type() == QEvent::KeyPress && torrentAddController) {
+        auto *keyEvent = static_cast<QKeyEvent *>(event);
+        auto *targetWidget = qobject_cast<QWidget *>(watched);
+
+        if (!keyEvent->isAutoRepeat()
+            && keyEvent->matches(QKeySequence::Paste)
+            && targetWidget
+            && targetWidget->window() == this
+            && !isEditablePasteTarget(QApplication::focusWidget())) {
+            const QString magnetLink = clipboardMagnetCandidate();
+
+            if (!magnetLink.isEmpty()) {
+                // Avoid opening the optional add dialog while Qt is still
+                // dispatching the paste key event.
+                QTimer::singleShot(0, this, [this, magnetLink]() {
+                    if (torrentAddController)
+                        torrentAddController->addMagnetLink(magnetLink);
+                });
+                return true;
+            }
+        }
+    }
 
     if (event->type() == QEvent::FileOpen) {
         auto *fileOpenEvent = static_cast<QFileOpenEvent *>(event);

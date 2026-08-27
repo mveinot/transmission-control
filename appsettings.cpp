@@ -190,6 +190,14 @@ void AppSettings::loadSettings()
         settings.value(SettingsKeys::StartTorrentPaused, false).toBool()
         );
 
+    ui->showTorrentFileOptionsDialog->setChecked(
+        settings.value(SettingsKeys::ShowTorrentFileOptionsDialog, true).toBool()
+        );
+
+    ui->showMagnetLinkOptionsDialog->setChecked(
+        settings.value(SettingsKeys::ShowMagnetLinkOptionsDialog, true).toBool()
+        );
+
     ui->showSessionOverview->setChecked(
         settings.value(SettingsKeys::ShowSessionOverview, false).toBool()
         );
@@ -267,6 +275,12 @@ void AppSettings::saveSettings()
     // TorrentAddDialog, keeping both configuration surfaces synchronized.
     settings.setValue(SettingsKeys::StartTorrentPaused,
                       ui->startTorrentPaused->isChecked());
+
+    settings.setValue(SettingsKeys::ShowTorrentFileOptionsDialog,
+                      ui->showTorrentFileOptionsDialog->isChecked());
+
+    settings.setValue(SettingsKeys::ShowMagnetLinkOptionsDialog,
+                      ui->showMagnetLinkOptionsDialog->isChecked());
 
     settings.setValue(SettingsKeys::ShowSessionOverview,
                       ui->showSessionOverview->isChecked());

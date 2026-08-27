@@ -31,6 +31,16 @@ bool TorrentAddController::deleteTorrentFileOnSuccessfulAdd() const
     return settings.value(SettingsKeys::DeleteTorrentOnAdd, false).toBool();
 }
 
+bool TorrentAddController::showOptionsDialog(
+    TorrentAddDialog::SourceType sourceType) const
+{
+    QSettings settings;
+    const char *key = sourceType == TorrentAddDialog::SourceType::TorrentFile
+        ? SettingsKeys::ShowTorrentFileOptionsDialog
+        : SettingsKeys::ShowMagnetLinkOptionsDialog;
+    return settings.value(key, true).toBool();
+}
+
 TorrentAddController::TorrentAddController(TorrentBackend *client,
                                            QWidget *dialogParent,
                                            QObject *parent)
@@ -60,8 +70,11 @@ void TorrentAddController::addTorrentFile(const QString &filePath)
         return;
     }
 
-    promptAndAdd(TorrentAddDialog::SourceType::TorrentFile,
-                 fileInfo.absoluteFilePath());
+    const QString source = fileInfo.absoluteFilePath();
+    if (showOptionsDialog(TorrentAddDialog::SourceType::TorrentFile))
+        promptAndAdd(TorrentAddDialog::SourceType::TorrentFile, source);
+    else
+        addUsingDefaults(TorrentAddDialog::SourceType::TorrentFile, source);
 }
 
 
@@ -86,6 +99,9 @@ void TorrentAddController::addTorrentFiles(const QStringList &filePaths)
         return;
     }
 
+    const bool showDialog =
+        showOptionsDialog(TorrentAddDialog::SourceType::TorrentFile);
+
     for (const QString &filePath : std::as_const(normalizedFilePaths)) {
         const QFileInfo fileInfo(filePath);
 
@@ -95,8 +111,13 @@ void TorrentAddController::addTorrentFiles(const QStringList &filePaths)
             continue;
         }
 
-        if (!promptAndAdd(TorrentAddDialog::SourceType::TorrentFile,
-                          fileInfo.absoluteFilePath())) {
+        const bool added = showDialog
+            ? promptAndAdd(TorrentAddDialog::SourceType::TorrentFile,
+                           fileInfo.absoluteFilePath())
+            : addUsingDefaults(TorrentAddDialog::SourceType::TorrentFile,
+                               fileInfo.absoluteFilePath());
+
+        if (!added) {
             break;
         }
     }
@@ -116,7 +137,10 @@ void TorrentAddController::addMagnetLink(const QString &magnetLink)
         return;
     }
 
-    promptAndAdd(TorrentAddDialog::SourceType::MagnetLink, trimmed);
+    if (showOptionsDialog(TorrentAddDialog::SourceType::MagnetLink))
+        promptAndAdd(TorrentAddDialog::SourceType::MagnetLink, trimmed);
+    else
+        addUsingDefaults(TorrentAddDialog::SourceType::MagnetLink, trimmed);
 }
 
 bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
@@ -170,6 +194,41 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
                                  dialog.unwantedFileIndices(),
                                  dialog.lowPriorityFileIndices(),
                                  dialog.highPriorityFileIndices(),
+                                 deleteTorrentFileOnSuccessfulAdd());
+        break;
+
+    case TorrentAddDialog::SourceType::MagnetLink:
+        m_client->addMagnetLink(source, downloadDir, startPaused);
+        break;
+    }
+
+    emit addStarted();
+    return true;
+}
+
+bool TorrentAddController::addUsingDefaults(
+    TorrentAddDialog::SourceType sourceType,
+    const QString &source)
+{
+    if (!m_client) {
+        emit addFailed(tr("No torrent backend is available."));
+        return false;
+    }
+
+    QString downloadDir = savedDownloadDir();
+    if (downloadDir.isEmpty())
+        downloadDir = m_defaultDownloadDir;
+
+    const bool startPaused = savedStartPaused();
+
+    switch (sourceType) {
+    case TorrentAddDialog::SourceType::TorrentFile:
+        m_client->addTorrentFile(source,
+                                 downloadDir,
+                                 startPaused,
+                                 {},
+                                 {},
+                                 {},
                                  deleteTorrentFileOnSuccessfulAdd());
         break;
 
@@ -241,27 +300,6 @@ void TorrentAddController::addTorrentFileUsingDefaults(const QString &filePath)
         return;
     }
 
-    if (!m_client) {
-        emit addFailed(tr("No torrent backend is available."));
-        return;
-    }
-
-    QString downloadDir = savedDownloadDir();
-
-    if (downloadDir.isEmpty())
-        downloadDir = m_defaultDownloadDir;
-
-    const bool startPaused = savedStartPaused();
-
-    m_client->addTorrentFile(
-        fileInfo.absoluteFilePath(),
-        downloadDir,
-        startPaused,
-        {},
-        {},
-        {},
-        deleteTorrentFileOnSuccessfulAdd()
-        );
-
-    emit addStarted();
+    addUsingDefaults(TorrentAddDialog::SourceType::TorrentFile,
+                     fileInfo.absoluteFilePath());
 }

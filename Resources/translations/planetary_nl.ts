@@ -92,6 +92,16 @@
             <translation>Torrents standaard gepauzeerd starten</translation>
         </message>
         <message>
+            <location filename="../../appsettings.ui" line="189" />
+            <source>Show torrent options dialog after adding torrent file</source>
+            <translation type="unfinished"></translation>
+        </message>
+        <message>
+            <location filename="../../appsettings.ui" line="196" />
+            <source>Show torrent options dialog after adding magnet link</source>
+            <translation type="unfinished"></translation>
+        </message>
+        <message>
             <location filename="../../appsettings.ui" line="131" />
             <source>Application</source>
             <translation>Toepassing</translation>
