@@ -7,38 +7,134 @@ cd "$ROOT_DIR"
 APP_NAME="Planetary"
 QT_DIR="${QT_DIR:-$HOME/Qt/6.11.1/macos}"
 MAXMINDDB_ROOT="${MAXMINDDB_ROOT:-$HOME/Developer/Dependencies/libmaxminddb-1.13.3/install-universal-macos13}"
-MACOS_ARCHITECTURES="${MACOS_ARCHITECTURES:-x86_64;arm64}"
-MACOS_DEPLOYMENT_TARGET="${MACOS_DEPLOYMENT_TARGET:-13.0}"
-BUILD_DIR="${BUILD_DIR:-build-release}"
+MACOS_ARCHITECTURES="x86_64;arm64"
+MACOS_DEPLOYMENT_TARGET="13.0"
+BUILD_DIR="${BUILD_DIR:-build-macos-universal-release}"
 APP_PATH="$BUILD_DIR/$APP_NAME.app"
+APP_EXECUTABLE="$APP_PATH/Contents/MacOS/$APP_NAME"
 DMG_ROOT="$BUILD_DIR/dmg-root"
 VERSION_FILE="${BUILD_DIR}/planetary-version.txt"
-BUILD_KEYCHAIN="$HOME/Library/Keychains/planetary-build.keychain-db"
+BUILD_KEYCHAIN="${BUILD_KEYCHAIN:-$HOME/Library/Keychains/planetary-build.keychain-db}"
 NOTARY_ARCHIVE="$BUILD_DIR/$APP_NAME-notarization.zip"
 SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application: Mark Veinot (TYR38WGV73)}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-PlanetaryNotary}"
 
-for tool in cmake codesign ditto hdiutil lipo xcrun; do
+fail() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+for tool in awk cmake codesign ditto file find grep hdiutil lipo nm otool plutil security spctl vtool xattr xcrun; do
   if ! command -v "$tool" >/dev/null 2>&1; then
-    echo "Missing required tool: $tool"
-    exit 1
+    fail "Missing required tool: $tool"
   fi
 done
 
 if [[ ! -x "$QT_DIR/bin/macdeployqt" ]]; then
-  echo "Missing macdeployqt: $QT_DIR/bin/macdeployqt"
-  exit 1
+  fail "Missing macdeployqt: $QT_DIR/bin/macdeployqt"
+fi
+
+if [[ ! -f "$BUILD_KEYCHAIN" ]]; then
+  fail "Missing signing keychain: $BUILD_KEYCHAIN"
+fi
+
+if ! security find-identity -v -p codesigning "$BUILD_KEYCHAIN" |
+  grep -F "$SIGNING_IDENTITY" >/dev/null; then
+  fail "Signing identity is not available in $BUILD_KEYCHAIN: $SIGNING_IDENTITY"
 fi
 
 if [[ ! -f "$MAXMINDDB_ROOT/lib/libmaxminddb.a" ]]; then
-  echo "Missing universal libmaxminddb: $MAXMINDDB_ROOT/lib/libmaxminddb.a"
-  exit 1
+  fail "Missing universal libmaxminddb: $MAXMINDDB_ROOT/lib/libmaxminddb.a"
 fi
 
 if ! lipo "$MAXMINDDB_ROOT/lib/libmaxminddb.a" -verify_arch x86_64 arm64; then
-  echo "libmaxminddb is not universal: $MAXMINDDB_ROOT/lib/libmaxminddb.a"
-  exit 1
+  fail "libmaxminddb is not universal: $MAXMINDDB_ROOT/lib/libmaxminddb.a"
 fi
+
+for dependency_arch in x86_64 arm64; do
+  archive_minos_count=0
+  while IFS= read -r archive_minos; do
+    archive_minos_count=$((archive_minos_count + 1))
+    if [[ "$archive_minos" != "$MACOS_DEPLOYMENT_TARGET" ]]; then
+      fail "libmaxminddb ($dependency_arch) targets macOS $archive_minos, expected $MACOS_DEPLOYMENT_TARGET"
+    fi
+  done < <(
+    otool -arch "$dependency_arch" -l "$MAXMINDDB_ROOT/lib/libmaxminddb.a" |
+      awk '$1 == "minos" { print $2 }'
+  )
+
+  if [[ "$archive_minos_count" -eq 0 ]]; then
+    fail "No macOS build-version records found in libmaxminddb ($dependency_arch)"
+  fi
+done
+
+verify_macho() {
+  local artifact_path="$1"
+  local artifact_minos
+  local minos_count=0
+
+  if ! file -b "$artifact_path" | grep -q 'Mach-O'; then
+    return
+  fi
+
+  if ! lipo "$artifact_path" -verify_arch x86_64 arm64; then
+    fail "Mach-O is not universal: $artifact_path"
+  fi
+
+  while IFS= read -r artifact_minos; do
+    minos_count=$((minos_count + 1))
+    if [[ "$artifact_minos" != "$MACOS_DEPLOYMENT_TARGET" ]]; then
+      fail "$artifact_path targets macOS $artifact_minos, expected $MACOS_DEPLOYMENT_TARGET"
+    fi
+  done < <(vtool -show-build "$artifact_path" | awk '$1 == "minos" { print $2 }')
+
+  if [[ "$minos_count" -ne 2 ]]; then
+    fail "Expected two macOS build-version records in $artifact_path, found $minos_count"
+  fi
+
+  if otool -L "$artifact_path" | grep -E '^[[:space:]]+(/usr/local/|/opt/homebrew/|/Users/)' >/dev/null; then
+    otool -L "$artifact_path" >&2
+    fail "Mach-O contains a non-portable library dependency: $artifact_path"
+  fi
+}
+
+verify_app_bundle() {
+  local artifact_path
+  local executable_count=0
+  local plist_target
+
+  while IFS= read -r -d '' artifact_path; do
+    if file -b "$artifact_path" | grep -q 'Mach-O'; then
+      verify_macho "$artifact_path"
+      executable_count=$((executable_count + 1))
+    fi
+  done < <(find "$APP_PATH/Contents" -type f -print0)
+
+  if [[ "$executable_count" -eq 0 ]]; then
+    fail "No Mach-O files found in $APP_PATH"
+  fi
+
+  plist_target="$(plutil -extract LSMinimumSystemVersion raw "$APP_PATH/Contents/Info.plist")"
+  if [[ "$plist_target" != "$MACOS_DEPLOYMENT_TARGET" ]]; then
+    fail "Info.plist targets macOS $plist_target, expected $MACOS_DEPLOYMENT_TARGET"
+  fi
+
+  for required_arch in x86_64 arm64; do
+    if ! nm -arch "$required_arch" "$APP_EXECUTABLE" | grep ' _MMDB_open$' >/dev/null; then
+      fail "Static libmaxminddb symbols are missing from the $required_arch executable"
+    fi
+  done
+}
+
+sign_code() {
+  codesign \
+    --force \
+    --options runtime \
+    --timestamp \
+    --keychain "$BUILD_KEYCHAIN" \
+    --sign "$SIGNING_IDENTITY" \
+    "$1"
+}
 
 cmake -S . -B "$BUILD_DIR" \
   -DCMAKE_BUILD_TYPE=Release \
@@ -48,35 +144,36 @@ cmake -S . -B "$BUILD_DIR" \
   -DPLANETARY_MAXMINDDB_ROOT="$MAXMINDDB_ROOT" \
   -DMAXMINDDB_LIBRARY="$MAXMINDDB_ROOT/lib/libmaxminddb.a"
 
-cmake --build "$BUILD_DIR" --config Release
+cmake --build "$BUILD_DIR" --config Release --parallel
 
 if [[ ! -f "$VERSION_FILE" ]]; then
-  echo "Missing version file: $VERSION_FILE"
-  echo "CMake configure may have failed, or planetary-version.txt is not being generated."
-  exit 1
+  fail "Missing version file: $VERSION_FILE; CMake configure may have failed"
 fi
 
 VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
 
 if [[ -z "$VERSION" ]]; then
-  echo "Version file is empty: $VERSION_FILE"
-  exit 1
+  fail "Version file is empty: $VERSION_FILE"
 fi
 
 "$QT_DIR/bin/macdeployqt" "$APP_PATH" -verbose=2
+verify_app_bundle
 
 # Remove resource-fork metadata that can make an otherwise valid bundle fail
 # strict signing or notarization after files have been copied into it.
 xattr -cr "$APP_PATH"
 
-codesign \
-  --force \
-  --deep \
-  --options runtime \
-  --timestamp \
-  --keychain "$BUILD_KEYCHAIN" \
-  --sign "$SIGNING_IDENTITY" \
-  "$APP_PATH"
+# Sign nested code from the inside out. The final app signature seals the
+# already-signed frameworks and plugins into the bundle.
+while IFS= read -r -d '' plugin_path; do
+  sign_code "$plugin_path"
+done < <(find "$APP_PATH/Contents/PlugIns" -type f \( -name '*.dylib' -o -perm -111 \) -print0)
+
+while IFS= read -r -d '' framework_path; do
+  sign_code "$framework_path"
+done < <(find "$APP_PATH/Contents/Frameworks" -type d -name '*.framework' -prune -print0)
+
+sign_code "$APP_PATH"
 
 codesign --verify --deep --strict --verbose=2 "$APP_PATH"
 
@@ -96,7 +193,7 @@ rm -f "$NOTARY_ARCHIVE"
 
 rm -rf "$DMG_ROOT"
 mkdir -p "$DMG_ROOT"
-cp -R "$APP_PATH" "$DMG_ROOT/"
+ditto "$APP_PATH" "$DMG_ROOT/$APP_NAME.app"
 ln -s /Applications "$DMG_ROOT/Applications"
 
 DMG_PATH="$BUILD_DIR/${APP_NAME}-${VERSION}-macOS-universal.dmg"
@@ -111,7 +208,12 @@ hdiutil create \
 
 # Sign and notarize the distribution container as well as its enclosed app so
 # Gatekeeper can validate either layer without contacting Apple first.
-codesign --force --timestamp --sign "$SIGNING_IDENTITY" "$DMG_PATH"
+codesign \
+  --force \
+  --timestamp \
+  --keychain "$BUILD_KEYCHAIN" \
+  --sign "$SIGNING_IDENTITY" \
+  "$DMG_PATH"
 codesign --verify --verbose=2 "$DMG_PATH"
 
 echo "Submitting DMG for notarization..."
