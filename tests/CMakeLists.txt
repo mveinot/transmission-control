@@ -1,5 +1,14 @@
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Test Widgets Core Network)
 
+# With the project's legacy CMake policy scope, GENERATED is not automatically
+# visible in this subdirectory during a clean configure.
+set_source_files_properties(
+    "${PLANETARY_GENERATED_TRANSLATIONS_CPP}"
+    PROPERTIES
+        GENERATED TRUE
+        SKIP_AUTOGEN TRUE
+)
+
 function(add_planetary_test target)
     add_executable(${target}
         ${ARGN}

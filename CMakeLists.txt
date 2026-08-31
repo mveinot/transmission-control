@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 if(CMAKE_HOST_APPLE AND NOT CMAKE_OSX_DEPLOYMENT_TARGET)
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "14.0" CACHE STRING
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING
         "Minimum macOS version supported by Planetary" FORCE)
 endif()
 
@@ -394,8 +394,24 @@ if(WIN32)
     endif()
 endif()
 
-find_library(MAXMINDDB_LIBRARY maxminddb)
-find_path(MAXMINDDB_INCLUDE_DIR maxminddb.h)
+set(PLANETARY_MAXMINDDB_ROOT "" CACHE PATH
+    "Prefix containing the libmaxminddb library and headers")
+
+if(PLANETARY_MAXMINDDB_ROOT)
+    find_library(MAXMINDDB_LIBRARY
+        NAMES maxminddb libmaxminddb
+        PATHS "${PLANETARY_MAXMINDDB_ROOT}/lib"
+        NO_DEFAULT_PATH
+    )
+    find_path(MAXMINDDB_INCLUDE_DIR
+        NAMES maxminddb.h
+        PATHS "${PLANETARY_MAXMINDDB_ROOT}/include"
+        NO_DEFAULT_PATH
+    )
+else()
+    find_library(MAXMINDDB_LIBRARY NAMES maxminddb libmaxminddb)
+    find_path(MAXMINDDB_INCLUDE_DIR NAMES maxminddb.h)
+endif()
 
 if(MAXMINDDB_LIBRARY AND MAXMINDDB_INCLUDE_DIR)
     message(STATUS "Found libmaxminddb: ${MAXMINDDB_LIBRARY}")

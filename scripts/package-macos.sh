@@ -4,9 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-ARCH="$(uname -m)"
 APP_NAME="Planetary"
 QT_DIR="${QT_DIR:-$HOME/Qt/6.11.1/macos}"
+MAXMINDDB_ROOT="${MAXMINDDB_ROOT:-$HOME/Developer/Dependencies/libmaxminddb-1.13.3/install-universal-macos13}"
+MACOS_ARCHITECTURES="${MACOS_ARCHITECTURES:-x86_64;arm64}"
+MACOS_DEPLOYMENT_TARGET="${MACOS_DEPLOYMENT_TARGET:-13.0}"
 BUILD_DIR="${BUILD_DIR:-build-release}"
 APP_PATH="$BUILD_DIR/$APP_NAME.app"
 DMG_ROOT="$BUILD_DIR/dmg-root"
@@ -16,7 +18,7 @@ NOTARY_ARCHIVE="$BUILD_DIR/$APP_NAME-notarization.zip"
 SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application: Mark Veinot (TYR38WGV73)}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-PlanetaryNotary}"
 
-for tool in cmake codesign ditto hdiutil xcrun; do
+for tool in cmake codesign ditto hdiutil lipo xcrun; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     echo "Missing required tool: $tool"
     exit 1
@@ -28,9 +30,23 @@ if [[ ! -x "$QT_DIR/bin/macdeployqt" ]]; then
   exit 1
 fi
 
+if [[ ! -f "$MAXMINDDB_ROOT/lib/libmaxminddb.a" ]]; then
+  echo "Missing universal libmaxminddb: $MAXMINDDB_ROOT/lib/libmaxminddb.a"
+  exit 1
+fi
+
+if ! lipo "$MAXMINDDB_ROOT/lib/libmaxminddb.a" -verify_arch x86_64 arm64; then
+  echo "libmaxminddb is not universal: $MAXMINDDB_ROOT/lib/libmaxminddb.a"
+  exit 1
+fi
+
 cmake -S . -B "$BUILD_DIR" \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_PREFIX_PATH="$QT_DIR"
+  -DCMAKE_PREFIX_PATH="$QT_DIR" \
+  -DCMAKE_OSX_ARCHITECTURES="$MACOS_ARCHITECTURES" \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_DEPLOYMENT_TARGET" \
+  -DPLANETARY_MAXMINDDB_ROOT="$MAXMINDDB_ROOT" \
+  -DMAXMINDDB_LIBRARY="$MAXMINDDB_ROOT/lib/libmaxminddb.a"
 
 cmake --build "$BUILD_DIR" --config Release
 
@@ -48,20 +64,6 @@ if [[ -z "$VERSION" ]]; then
 fi
 
 "$QT_DIR/bin/macdeployqt" "$APP_PATH" -verbose=2
-
-if otool -L "$APP_PATH/Contents/MacOS/$APP_NAME" | grep -q "/usr/local/lib/libmaxminddb.dylib"; then
-  mkdir -p "$APP_PATH/Contents/Frameworks"
-  cp /usr/local/lib/libmaxminddb.dylib "$APP_PATH/Contents/Frameworks/"
-
-  install_name_tool -change \
-    /usr/local/lib/libmaxminddb.dylib \
-    @executable_path/../Frameworks/libmaxminddb.dylib \
-    "$APP_PATH/Contents/MacOS/$APP_NAME"
-
-  install_name_tool -id \
-    @rpath/libmaxminddb.dylib \
-    "$APP_PATH/Contents/Frameworks/libmaxminddb.dylib"
-fi
 
 # Remove resource-fork metadata that can make an otherwise valid bundle fail
 # strict signing or notarization after files have been copied into it.
@@ -97,7 +99,7 @@ mkdir -p "$DMG_ROOT"
 cp -R "$APP_PATH" "$DMG_ROOT/"
 ln -s /Applications "$DMG_ROOT/Applications"
 
-DMG_PATH="$BUILD_DIR/${APP_NAME}-${VERSION}-macOS-${ARCH}.dmg"
+DMG_PATH="$BUILD_DIR/${APP_NAME}-${VERSION}-macOS-universal.dmg"
 rm -f "$DMG_PATH"
 
 hdiutil create \
