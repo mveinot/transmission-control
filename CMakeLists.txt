@@ -350,7 +350,7 @@ endif()
 
 if(PLANETARY_QM_FILES)
     add_custom_target(PlanetaryTranslations
-        DEPENDS ${PLANETARY_QM_FILES}
+        DEPENDS "${PLANETARY_GENERATED_TRANSLATIONS_CPP}"
     )
 
     add_dependencies(Planetary PlanetaryTranslations)

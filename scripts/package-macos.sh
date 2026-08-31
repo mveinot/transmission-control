@@ -10,6 +10,7 @@ MAXMINDDB_ROOT="${MAXMINDDB_ROOT:-$HOME/Developer/Dependencies/libmaxminddb-1.13
 MACOS_ARCHITECTURES="x86_64;arm64"
 MACOS_DEPLOYMENT_TARGET="13.0"
 BUILD_DIR="${BUILD_DIR:-build-macos-universal-release}"
+BUILD_JOBS="${BUILD_JOBS:-4}"
 APP_PATH="$BUILD_DIR/$APP_NAME.app"
 APP_EXECUTABLE="$APP_PATH/Contents/MacOS/$APP_NAME"
 DMG_ROOT="$BUILD_DIR/dmg-root"
@@ -23,6 +24,10 @@ fail() {
   echo "error: $*" >&2
   exit 1
 }
+
+if [[ ! "$BUILD_JOBS" =~ ^[1-9][0-9]*$ ]]; then
+  fail "BUILD_JOBS must be a positive integer: $BUILD_JOBS"
+fi
 
 for tool in awk cmake codesign ditto file find grep hdiutil install_name_tool lipo nm otool plutil security spctl vtool xattr xcrun; do
   if ! command -v "$tool" >/dev/null 2>&1; then
@@ -231,7 +236,7 @@ cmake -S . -B "$BUILD_DIR" \
   -DPLANETARY_MAXMINDDB_ROOT="$MAXMINDDB_ROOT" \
   -DMAXMINDDB_LIBRARY="$MAXMINDDB_ROOT/lib/libmaxminddb.a"
 
-cmake --build "$BUILD_DIR" --config Release --parallel
+cmake --build "$BUILD_DIR" --config Release --target Planetary --parallel "$BUILD_JOBS"
 
 if [[ ! -f "$VERSION_FILE" ]]; then
   fail "Missing version file: $VERSION_FILE; CMake configure may have failed"
