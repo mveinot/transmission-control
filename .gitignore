@@ -22,6 +22,7 @@
 core
 build/
 build-release/
+build-macos-universal-release/
 dmg-root/
 !core/
 tags
