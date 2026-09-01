@@ -107,7 +107,7 @@ void UpdateCheckController::setup()
                     buttons->addButton(tr("Open Release Page"),
                                        QDialogButtonBox::AcceptRole);
                 openButton->setDefault(true);
-                buttons->addButton(QDialogButtonBox::Cancel);
+                buttons->addButton(QDialogButtonBox::Close);
                 connect(buttons, &QDialogButtonBox::accepted,
                         &dialog, &QDialog::accept);
                 connect(buttons, &QDialogButtonBox::rejected,

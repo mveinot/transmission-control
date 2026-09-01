@@ -21,3 +21,7 @@ If Planetary is useful to you and you'd like to support continued development:
 [![Support via PayPal](https://img.shields.io/badge/Support-PayPal-0070BA?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/MarkVeinot)
 
 Support is entirely optional and Planetary remains available regardless of contribution.
+
+## Development documentation
+
+- [Release update manifest](docs/release-manifest.md)
