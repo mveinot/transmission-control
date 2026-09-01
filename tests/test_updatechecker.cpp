@@ -9,6 +9,9 @@ class TestUpdateChecker : public QObject
 private slots:
     void versionComparison_data();
     void versionComparison();
+    void parsesStableManifest();
+    void rejectsInvalidManifest_data();
+    void rejectsInvalidManifest();
 };
 
 void TestUpdateChecker::versionComparison_data()
@@ -34,6 +37,78 @@ void TestUpdateChecker::versionComparison()
     QFETCH(bool, isNewer);
 
     QCOMPARE(UpdateChecker::isVersionNewer(latestVersion, currentVersion), isNewer);
+}
+
+void TestUpdateChecker::parsesStableManifest()
+{
+    const QByteArray data = R"json({
+        "schemaVersion": 1,
+        "channel": "stable",
+        "version": "2.0.0",
+        "build": 376,
+        "displayVersion": "2.0.0.376",
+        "minimumMacOSVersion": "13.0",
+        "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.0.0.376/Planetary-2.0.0.376-macOS-universal.dmg",
+        "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.0.0.376",
+        "sha256": "fd0dd6fa10d9a3098f6ac554cf6419ee96b01a54e16e3b59b504fb6c5f4e0cf8"
+    })json";
+
+    UpdateChecker::Manifest manifest;
+    QString errorMessage;
+    QVERIFY2(UpdateChecker::parseManifest(data, &manifest, &errorMessage),
+             qPrintable(errorMessage));
+    QCOMPARE(manifest.version, QStringLiteral("2.0.0"));
+    QCOMPARE(manifest.build, 376);
+    QCOMPARE(manifest.displayVersion, QStringLiteral("2.0.0.376"));
+    QCOMPARE(manifest.minimumMacOSVersion, QStringLiteral("13.0"));
+    QCOMPARE(manifest.downloadUrl,
+             QUrl(QStringLiteral("https://github.com/mveinot/transmission-control/releases/download/v2.0.0.376/Planetary-2.0.0.376-macOS-universal.dmg")));
+    QCOMPARE(manifest.releaseNotesUrl,
+             QUrl(QStringLiteral("https://github.com/mveinot/transmission-control/releases/tag/v2.0.0.376")));
+    QCOMPARE(manifest.sha256,
+             QStringLiteral("fd0dd6fa10d9a3098f6ac554cf6419ee96b01a54e16e3b59b504fb6c5f4e0cf8"));
+}
+
+void TestUpdateChecker::rejectsInvalidManifest_data()
+{
+    QTest::addColumn<QByteArray>("data");
+
+    const QByteArray valid = R"json({
+        "schemaVersion": 1,
+        "channel": "stable",
+        "version": "2.0.0",
+        "build": 376,
+        "displayVersion": "2.0.0.376",
+        "minimumMacOSVersion": "13.0",
+        "downloadUrl": "https://example.com/Planetary.dmg",
+        "releaseNotesUrl": "https://example.com/releases/2.0.0.376",
+        "sha256": "fd0dd6fa10d9a3098f6ac554cf6419ee96b01a54e16e3b59b504fb6c5f4e0cf8"
+    })json";
+
+    QTest::newRow("not json") << QByteArray("not json");
+    QTest::newRow("unsupported schema")
+        << QByteArray(valid).replace("\"schemaVersion\": 1", "\"schemaVersion\": 2");
+    QTest::newRow("wrong channel")
+        << QByteArray(valid).replace("\"stable\"", "\"beta\"");
+    QTest::newRow("mismatched display version")
+        << QByteArray(valid).replace("\"2.0.0.376\"", "\"2.0.0.377\"");
+    QTest::newRow("insecure download URL")
+        << QByteArray(valid).replace("https://example.com/Planetary.dmg",
+                                     "http://example.com/Planetary.dmg");
+    QTest::newRow("missing digest")
+        << QByteArray(valid).replace(
+               "fd0dd6fa10d9a3098f6ac554cf6419ee96b01a54e16e3b59b504fb6c5f4e0cf8",
+               "");
+}
+
+void TestUpdateChecker::rejectsInvalidManifest()
+{
+    QFETCH(QByteArray, data);
+
+    UpdateChecker::Manifest manifest;
+    QString errorMessage;
+    QVERIFY(!UpdateChecker::parseManifest(data, &manifest, &errorMessage));
+    QVERIFY(!errorMessage.isEmpty());
 }
 
 QTEST_MAIN(TestUpdateChecker)

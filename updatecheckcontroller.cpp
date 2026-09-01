@@ -28,8 +28,6 @@ void UpdateCheckController::setup()
 
     m_updateChecker = new UpdateChecker(this);
     m_updateChecker->setCurrentVersion(QStringLiteral(PLANETARY_VERSION_STRING));
-    m_updateChecker->setRepository(QStringLiteral("mveinot"),
-                                   QStringLiteral("transmission-control"));
 
     connect(m_updateChecker, &UpdateChecker::updateAvailable,
             this,

@@ -2,6 +2,8 @@
 #define UPDATECHECKER_H
 
 #include <QObject>
+#include <QByteArray>
+#include <QString>
 #include <QUrl>
 
 class QNetworkAccessManager;
@@ -14,15 +16,27 @@ class UpdateChecker : public QObject
     Q_OBJECT
 
 public:
+    struct Manifest {
+        QString version;
+        int build = 0;
+        QString displayVersion;
+        QString minimumMacOSVersion;
+        QUrl downloadUrl;
+        QUrl releaseNotesUrl;
+        QString sha256;
+    };
+
     explicit UpdateChecker(QObject *parent = nullptr);
 
     void checkForUpdates(bool userInitiated = false);
 
     void setCurrentVersion(const QString &version);
-    void setRepository(const QString &owner, const QString &repo);
 
     static bool isVersionNewer(const QString &latestVersion,
                                const QString &currentVersion);
+    static bool parseManifest(const QByteArray &data,
+                              Manifest *manifest,
+                              QString *errorMessage = nullptr);
 
 signals:
     void updateAvailable(const QString &currentVersion,
@@ -45,11 +59,8 @@ private:
     QNetworkAccessManager *m_network = nullptr;
 
     QString m_currentVersion;
-    QString m_owner = QStringLiteral("mveinot");
-    QString m_repo = QStringLiteral("transmission-control");
 
-
-    QUrl latestReleaseUrl() const;
+    static QUrl manifestUrl();
     static QList<int> parseVersionParts(const QString &version);
 };
 
