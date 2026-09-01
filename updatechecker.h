@@ -23,6 +23,7 @@ public:
         QString minimumMacOSVersion;
         QUrl downloadUrl;
         QUrl releaseNotesUrl;
+        QString releaseNotesMarkdown;
         QString sha256;
     };
 
@@ -42,6 +43,7 @@ signals:
     void updateAvailable(const QString &currentVersion,
                          const QString &latestVersion,
                          const QUrl &releaseUrl,
+                         const QString &releaseNotesMarkdown,
                          bool userInitiated);
 
     void noUpdateAvailable(const QString &currentVersion,

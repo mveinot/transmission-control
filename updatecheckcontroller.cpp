@@ -6,9 +6,18 @@
 
 #include <QDateTime>
 #include <QDesktopServices>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFont>
+#include <QHBoxLayout>
+#include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
+#include <QStyle>
+#include <QTextBrowser>
+#include <QTextDocument>
+#include <QVBoxLayout>
 #include <QWidget>
 
 namespace {
@@ -34,28 +43,78 @@ void UpdateCheckController::setup()
             [this](const QString &currentVersion,
                    const QString &latestVersion,
                    const QUrl &releaseUrl,
+                   const QString &releaseNotesMarkdown,
                    bool userInitiated) {
                 Q_UNUSED(userInitiated)
 
-                QMessageBox messageBox(m_parentWidget);
-                messageBox.setIcon(QMessageBox::Information);
-                messageBox.setWindowTitle(tr("Update Available"));
-                messageBox.setText(tr("A newer version of Planetary is available."));
-                messageBox.setInformativeText(
+                QDialog dialog(m_parentWidget);
+                dialog.setWindowTitle(tr("Update Available"));
+                dialog.resize(620, 480);
+
+                auto *layout = new QVBoxLayout(&dialog);
+                auto *summaryLayout = new QHBoxLayout;
+
+                auto *iconLabel = new QLabel(&dialog);
+                iconLabel->setPixmap(
+                    dialog.style()
+                        ->standardIcon(QStyle::SP_MessageBoxInformation)
+                        .pixmap(48, 48));
+                iconLabel->setAlignment(Qt::AlignTop);
+                summaryLayout->addWidget(iconLabel);
+
+                const QString summary =
+                    tr("A newer version of Planetary is available.").toHtmlEscaped();
+                QString versions =
                     tr("Installed version: %1\nLatest version: %2")
                         .arg(displayVersion(currentVersion),
                              displayVersion(latestVersion))
-                    );
+                        .toHtmlEscaped();
+                versions.replace(QLatin1Char('\n'), QStringLiteral("<br>"));
 
+                auto *summaryLabel = new QLabel(&dialog);
+                summaryLabel->setWordWrap(true);
+                summaryLabel->setText(
+                    QStringLiteral("<b>%1</b><br><br>%2").arg(summary, versions));
+                summaryLayout->addWidget(summaryLabel, 1);
+                layout->addLayout(summaryLayout);
+
+                auto *releaseNotesLabel = new QLabel(tr("Release Notes"), &dialog);
+                QFont releaseNotesFont = releaseNotesLabel->font();
+                releaseNotesFont.setBold(true);
+                releaseNotesLabel->setFont(releaseNotesFont);
+                layout->addWidget(releaseNotesLabel);
+
+                auto *releaseNotesBrowser = new QTextBrowser(&dialog);
+                releaseNotesBrowser->setReadOnly(true);
+                releaseNotesBrowser->setOpenExternalLinks(true);
+                releaseNotesLabel->setBuddy(releaseNotesBrowser);
+
+                QString markdown = releaseNotesMarkdown;
+                if (markdown.trimmed().isEmpty()) {
+                    markdown = QStringLiteral("[%1](%2)")
+                                   .arg(tr("Open Release Page"),
+                                        releaseUrl.toString(QUrl::FullyEncoded));
+                }
+                releaseNotesBrowser->document()->setMarkdown(
+                    markdown,
+                    QTextDocument::MarkdownFeatures(
+                        QTextDocument::MarkdownDialectGitHub)
+                        | QTextDocument::MarkdownNoHTML);
+                layout->addWidget(releaseNotesBrowser, 1);
+
+                auto *buttons = new QDialogButtonBox(&dialog);
                 QPushButton *openButton =
-                    messageBox.addButton(tr("Open Release Page"),
-                                         QMessageBox::AcceptRole);
+                    buttons->addButton(tr("Open Release Page"),
+                                       QDialogButtonBox::AcceptRole);
+                openButton->setDefault(true);
+                buttons->addButton(QDialogButtonBox::Cancel);
+                connect(buttons, &QDialogButtonBox::accepted,
+                        &dialog, &QDialog::accept);
+                connect(buttons, &QDialogButtonBox::rejected,
+                        &dialog, &QDialog::reject);
+                layout->addWidget(buttons);
 
-                messageBox.addButton(QMessageBox::Cancel);
-
-                messageBox.exec();
-
-                if (messageBox.clickedButton() == openButton)
+                if (dialog.exec() == QDialog::Accepted)
                     QDesktopServices::openUrl(releaseUrl);
             });
 

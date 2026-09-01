@@ -50,6 +50,7 @@ void TestUpdateChecker::parsesStableManifest()
         "minimumMacOSVersion": "13.0",
         "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.0.0.376/Planetary-2.0.0.376-macOS-universal.dmg",
         "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.0.0.376",
+        "releaseNotesMarkdown": "## What's new\n\n- Universal macOS binary",
         "sha256": "fd0dd6fa10d9a3098f6ac554cf6419ee96b01a54e16e3b59b504fb6c5f4e0cf8"
     })json";
 
@@ -65,8 +66,21 @@ void TestUpdateChecker::parsesStableManifest()
              QUrl(QStringLiteral("https://github.com/mveinot/transmission-control/releases/download/v2.0.0.376/Planetary-2.0.0.376-macOS-universal.dmg")));
     QCOMPARE(manifest.releaseNotesUrl,
              QUrl(QStringLiteral("https://github.com/mveinot/transmission-control/releases/tag/v2.0.0.376")));
+    QCOMPARE(manifest.releaseNotesMarkdown,
+             QStringLiteral("## What's new\n\n- Universal macOS binary"));
     QCOMPARE(manifest.sha256,
              QStringLiteral("fd0dd6fa10d9a3098f6ac554cf6419ee96b01a54e16e3b59b504fb6c5f4e0cf8"));
+
+    QByteArray dataWithoutReleaseNotes = data;
+    dataWithoutReleaseNotes.replace(
+        "        \"releaseNotesMarkdown\": \"## What's new\\n\\n- Universal macOS binary\",\n",
+        "");
+    UpdateChecker::Manifest manifestWithoutReleaseNotes;
+    QVERIFY2(UpdateChecker::parseManifest(dataWithoutReleaseNotes,
+                                          &manifestWithoutReleaseNotes,
+                                          &errorMessage),
+             qPrintable(errorMessage));
+    QVERIFY(manifestWithoutReleaseNotes.releaseNotesMarkdown.isEmpty());
 }
 
 void TestUpdateChecker::rejectsInvalidManifest_data()

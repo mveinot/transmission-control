@@ -5230,6 +5230,11 @@ Latest version: %2</source>
             <translation>Abrir página de la versión</translation>
         </message>
         <message>
+            <location filename="../../updatecheckcontroller.cpp" line="81" />
+            <source>Release Notes</source>
+            <translation>Notas de la versión</translation>
+        </message>
+        <message>
             <location filename="../../updatecheckcontroller.cpp" line="75" />
             <source>Planetary Is Up to Date</source>
             <translation>Planetary está actualizado</translation>

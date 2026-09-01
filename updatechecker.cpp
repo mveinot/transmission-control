@@ -73,6 +73,7 @@ void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
         emit updateAvailable(m_currentVersion,
                              manifest.displayVersion,
                              manifest.releaseNotesUrl,
+                             manifest.releaseNotesMarkdown,
                              userInitiated);
         return;
     }
@@ -142,6 +143,16 @@ bool UpdateChecker::parseManifest(const QByteArray &data,
     if (!isHttpsUrl(downloadUrl) || !isHttpsUrl(releaseNotesUrl))
         return fail(tr("Update response did not include release information."));
 
+    const QJsonValue releaseNotesValue =
+        object.value(QStringLiteral("releaseNotesMarkdown"));
+    if (!releaseNotesValue.isUndefined() && !releaseNotesValue.isString())
+        return fail(tr("Invalid update response."));
+
+    const QString releaseNotesMarkdown = releaseNotesValue.toString();
+    constexpr qsizetype MaximumReleaseNotesLength = 256 * 1024;
+    if (releaseNotesMarkdown.size() > MaximumReleaseNotesLength)
+        return fail(tr("Invalid update response."));
+
     const QString sha256 =
         object.value(QStringLiteral("sha256")).toString().trimmed().toLower();
     static const QRegularExpression sha256Pattern(
@@ -155,6 +166,7 @@ bool UpdateChecker::parseManifest(const QByteArray &data,
     manifest->minimumMacOSVersion = minimumMacOSVersion;
     manifest->downloadUrl = downloadUrl;
     manifest->releaseNotesUrl = releaseNotesUrl;
+    manifest->releaseNotesMarkdown = releaseNotesMarkdown;
     manifest->sha256 = sha256;
 
     if (errorMessage)
