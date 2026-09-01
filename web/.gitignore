@@ -1,0 +1,6 @@
+.DS_Store
+*.un~
+
+# Populated at runtime by downloads/index.php.
+downloads/cache/*
+!downloads/cache/.gitkeep

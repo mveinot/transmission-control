@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10131a">
+  <meta name="description" content="Planetary is a focused desktop client for remotely managing Transmission, qBittorrent, and Deluge servers from one polished interface.">
+  <meta property="og:title" content="Planetary — Desktop torrent server control">
+  <meta property="og:description" content="Manage Transmission, qBittorrent, and Deluge servers from one focused desktop interface.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://planetary.mvgrafx.net/assets/planetary.png">
+  <title>Planetary — Desktop torrent server control</title>
+  <link rel="icon" href="favicon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Planetary home">
+      <img src="assets/planetary.png" alt="" width="42" height="42">
+      <span>Planetary</span>
+    </a>
+    <nav aria-label="Main navigation">
+      <a href="#features">Features</a>
+      <a href="#screenshots">Screenshots</a>
+      <a href="#about">About</a>
+      <a class="nav-button" href="/downloads/">Download</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Remote control, without the browser tab</p>
+        <h1>Your torrent servers deserve a proper desktop client.</h1>
+        <p class="lead">Planetary brings Transmission, qBittorrent, and Deluge together in one focused Qt desktop app. Add transfers, inspect every detail, move between servers, and keep routine controls close at hand.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="/downloads/">Download Planetary</a>
+          <a class="button secondary" href="https://github.com/mveinot/transmission-control">View source on GitHub</a>
+        </div>
+        <p class="fine-print">Free, open source, and telemetry-free. The current macOS release is universal for Apple Silicon and Intel and supports macOS 13 or later.</p>
+      </div>
+      <div class="hero-visual" aria-label="Planetary application screenshot">
+        <div class="app-glow"></div>
+        <img src="assets/screen2.webp" alt="Planetary showing a list of torrents and detailed file information">
+      </div>
+    </section>
+
+    <section class="trust-strip" aria-label="Product highlights">
+      <span>macOS 13+ universal build</span>
+      <span>Transmission, qBittorrent &amp; Deluge</span>
+      <span>Built with Qt 6</span>
+      <span>No telemetry</span>
+    </section>
+
+    <section class="section" id="features">
+      <div class="section-heading">
+        <p class="eyebrow">The useful bits</p>
+        <h2>Daily torrent management, thoughtfully assembled.</h2>
+        <p>Planetary keeps common actions immediate and makes deeper controls available when you need them. Capabilities adapt to the server you are connected to, without turning the interface into a wall of switches.</p>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature-card featured">
+          <div class="feature-icon">↯</div>
+          <h3>Add torrents from wherever they arrive</h3>
+          <p>Open torrent files, paste a magnet link directly into the main window, use an add-options dialog, register Planetary as a file or magnet handler, or let a watch folder submit files automatically.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">⌘</div>
+          <h3>Three back ends, one interface</h3>
+          <p>Save multiple Transmission, qBittorrent, and Deluge servers and move between them without learning a different client for each daemon.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">◫</div>
+          <h3>Every useful detail</h3>
+          <p>Browse files, piece progress, peers, trackers, properties, transfer statistics, and session information in purpose-built views.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">◎</div>
+          <h3>Fine-grained transfer control</h3>
+          <p>Start, stop, verify, reannounce, reorder queues, relocate data, choose files, set priorities, and adjust per-torrent limits where the connected server supports them.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">⚑</div>
+          <h3>Organize and find quickly</h3>
+          <p>Search by name, filter by state, tracker, or folder, work with labels and groups, and search within an individual torrent's file tree.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">◌</div>
+          <h3>Status at a glance</h3>
+          <p>See aggregate rates, torrent counts, free disk space, alternative-speed state, refresh cadence, and a live session overview without opening another tool.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">◇</div>
+          <h3>Desktop-aware notifications</h3>
+          <p>Choose alerts for added, completed, stalled, and error states, delivered through native notifications or an external command. Built-in update checks present release notes inside the app.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon">≡</div>
+          <h3>Private by design</h3>
+          <p>Planetary includes no telemetry. Optional peer-country lookup uses a bundled local GeoIP database, so addresses are not sent to a lookup service.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section screenshots" id="screenshots">
+      <div class="section-heading split-heading">
+        <div>
+          <p class="eyebrow">A closer look</p>
+          <h2>Designed for information, not spectacle.</h2>
+        </div>
+        <p>The interface stays familiar to Transmission Remote GUI users while taking advantage of a modern Qt foundation and native platform behavior.</p>
+      </div>
+
+      <div class="screenshot-grid">
+        <figure class="screenshot-card screenshot-large">
+          <a href="assets/screen2.webp">
+            <img src="assets/screen2.webp" alt="Planetary torrent list and files panel" loading="lazy">
+          </a>
+          <figcaption>Files, progress, filters, and core transfer controls</figcaption>
+        </figure>
+        <figure class="screenshot-card">
+          <a href="assets/screen3.webp">
+            <img src="assets/screen3.webp" alt="Planetary peer list with country flags" loading="lazy">
+          </a>
+          <figcaption>Peer details with optional local GeoIP lookup</figcaption>
+        </figure>
+        <figure class="screenshot-card">
+          <a href="assets/screen4.png">
+            <img src="assets/screen4.png" alt="Planetary application interface" loading="lazy">
+          </a>
+          <figcaption>A native desktop interface for everyday management</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section about" id="about">
+      <div class="about-panel">
+        <div>
+          <p class="eyebrow">Why Planetary?</p>
+          <h2>A continuation of a good idea.</h2>
+        </div>
+        <div class="about-copy">
+          <p>Transmission Remote GUI set a high bar for remotely managing Transmission from a desktop. Planetary began as a modern C++ and Qt reimplementation and has grown into a multi-backend client for Transmission, qBittorrent, and Deluge.</p>
+          <p>It remains intentionally focused: make transfer management efficient, expose useful information, respect the desktop, and stay out of the way.</p>
+          <p><strong>Platform note:</strong> macOS is currently the polished, distributed release and is available as a universal app for macOS 13 or later. The codebase also builds on Windows and Linux, but those platforms have not yet received the same release and refinement work.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <img src="assets/planetary.png" alt="" width="110" height="110">
+      <div>
+        <p class="eyebrow">Ready when your daemon is</p>
+        <h2>Give your torrent servers a better front end.</h2>
+        <p>Planetary is free, open source, and built for people who would rather manage transfers than manage the software managing their transfers.</p>
+      </div>
+      <div class="cta-actions">
+        <a class="button primary" href="/downloads/">Get Planetary</a>
+        <a class="button secondary support" href="https://www.paypal.me/MarkVeinot" target="_blank" rel="noopener noreferrer">Support Planetary Development</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-brand">
+      <img src="assets/planetary.png" alt="" width="34" height="34">
+      <span>Planetary</span>
+    </div>
+    <p>Planetary is independent and is not affiliated with the Transmission, qBittorrent, or Deluge projects.</p>
+    <div class="footer-links">
+      <a href="https://github.com/mveinot/transmission-control">Source</a>
+      <a href="https://github.com/mveinot/transmission-control/issues">Issues</a>
+      <a href="https://github.com/mveinot/transmission-control/blob/main/LICENSE">License</a>
+    </div>
+  </footer>
+</body>
+</html>

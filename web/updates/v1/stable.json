@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "channel": "stable",
+  "version": "2.0.1",
+  "build": 380,
+  "displayVersion": "2.0.1.380",
+  "minimumMacOSVersion": "13.0",
+  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.0.1.380/Planetary-2.0.1.380-macOS-universal.dmg",
+  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.0.1.380",
+  "releaseNotesMarkdown": "## Planetary 2.0.1.380\n\nMinor release, no major changes.\n\n- Now checks for a new release manifest instead of using the GitHub API directly.\n- Can display release notes in the version check dialog.\n\n[Full changelog](https://github.com/mveinot/transmission-control/compare/v2.0.0.376...v2.0.1.380)",
+  "sha256": "4f323ea555222bc26f455c4ecbd298d2d53db8b40ae0d69df01686d52569f344"
+}
