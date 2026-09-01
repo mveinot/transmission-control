@@ -29,6 +29,7 @@ void StatusBarController::setup()
     m_filterLabel = makeSectionLabel();
     m_rateLabel = makeSectionLabel();
     m_freeSpaceLabel = makeSectionLabel();
+    m_freeSpaceLabel->setObjectName(QStringLiteral("freeSpaceStatusLabel"));
     m_speedModeLabel = makeSectionLabel();
     m_intervalLabel = makeSectionLabel();
 
@@ -81,6 +82,8 @@ void StatusBarController::setup()
     connect(m_client, &TorrentBackend::serverChanged,
             this, [this]() {
                 setServerName(m_client ? m_client->serverDisplayName() : QString());
+                setFreeSpaceAvailable(
+                    m_client && m_client->capabilities().freeSpaceQuery);
                 setActivityText(tr("Server changed"));
             });
     connect(m_client, &TorrentBackend::capabilitiesChanged,
@@ -127,8 +130,7 @@ void StatusBarController::clearFreeSpace()
 void StatusBarController::setFreeSpaceAvailable(bool available)
 {
     m_freeSpaceAvailable = available;
-    if (m_freeSpaceLabel)
-        m_freeSpaceLabel->setVisible(available);
+    refreshFreeSpaceLabel();
 }
 
 void StatusBarController::setSessionSettings(const QJsonObject &settings)
@@ -313,7 +315,8 @@ void StatusBarController::refreshFreeSpaceLabel()
         return;
 
     if (m_freeSpaceBytes < 0) {
-        m_freeSpaceLabel->setText(tr("Free: —"));
+        m_freeSpaceLabel->setText(
+            tr("Free: %1").arg(tr("Updating…")));
         return;
     }
 

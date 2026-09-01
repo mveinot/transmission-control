@@ -88,6 +88,15 @@ add_planetary_test(test_watchfoldermanager
     ${CMAKE_SOURCE_DIR}/watchfoldermanager.h
 )
 
+add_planetary_test(test_statusbarcontroller
+    test_statusbarcontroller.cpp
+    ${CMAKE_SOURCE_DIR}/statusbarcontroller.cpp
+    ${CMAKE_SOURCE_DIR}/statusbarcontroller.h
+    ${CMAKE_SOURCE_DIR}/torrent.cpp
+    ${CMAKE_SOURCE_DIR}/torrent.h
+    ${CMAKE_SOURCE_DIR}/torrentbackend.h
+)
+
 add_planetary_test(test_serverprofile
     test_serverprofile.cpp
     ${CMAKE_SOURCE_DIR}/serverprofile.cpp

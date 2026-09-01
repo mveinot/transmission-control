@@ -2003,9 +2003,10 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     if (statusBarController)
         statusBarController->setSessionSettings(sessionSettings);
 
-    if (!pollingCoordinator->requestFreeSpaceNow() && statusBarController) {
-        statusBarController->clearFreeSpace();
-    }
+    // Keep the most recently received measurement visible if this snapshot
+    // cannot start a replacement request (for example, while the remote
+    // download directory is temporarily unavailable).
+    pollingCoordinator->requestFreeSpaceNow();
 
     if (openQuickSpeedLimitsWhenReceived) {
         openQuickSpeedLimitsWhenReceived = false;
