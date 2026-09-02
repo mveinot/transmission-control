@@ -26,7 +26,7 @@ void TestStatusBarController::freeSpaceSectionRemainsVisible()
         QStringLiteral("freeSpaceStatusLabel"));
     QVERIFY(label);
     QVERIFY(!label->isHidden());
-    QVERIFY(label->text().contains(QStringLiteral("Updating")));
+    QCOMPARE(label->text(), QStringLiteral("Free: —"));
 
     controller.setFreeSpace(1024 * 1024);
     const QString measuredText = label->text();
@@ -38,7 +38,7 @@ void TestStatusBarController::freeSpaceSectionRemainsVisible()
 
     controller.clearFreeSpace();
     QVERIFY(!label->isHidden());
-    QVERIFY(label->text().contains(QStringLiteral("Updating")));
+    QCOMPARE(label->text(), QStringLiteral("Free: —"));
 }
 
 QTEST_MAIN(TestStatusBarController)

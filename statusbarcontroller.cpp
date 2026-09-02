@@ -315,8 +315,7 @@ void StatusBarController::refreshFreeSpaceLabel()
         return;
 
     if (m_freeSpaceBytes < 0) {
-        m_freeSpaceLabel->setText(
-            tr("Free: %1").arg(tr("Updating…")));
+        m_freeSpaceLabel->setText(tr("Free: —"));
         return;
     }
 
