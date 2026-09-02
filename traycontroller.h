@@ -21,6 +21,7 @@ public:
 
     void setup();
     void setTorrentGlobalActions(QAction *startAllAction, QAction *stopAllAction);
+    void setTorrentCounts(int totalCount, int downloadingCount, int seedingCount);
     void applySettings();
     void showMainWindow();
     void quitApplication();
@@ -38,6 +39,7 @@ private:
     bool trayIconEnabled() const;
     bool shouldCloseToTray() const;
     void updateTrayIconVisibility();
+    void updateTorrentCountActions();
     void rebuildTrayMenu();
 
     QMainWindow *m_window = nullptr;
@@ -47,6 +49,12 @@ private:
     QAction *m_quitAction = nullptr;
     QAction *m_startAllAction = nullptr;
     QAction *m_stopAllAction = nullptr;
+    QAction *m_totalCountAction = nullptr;
+    QAction *m_downloadingCountAction = nullptr;
+    QAction *m_seedingCountAction = nullptr;
+    int m_totalCount = 0;
+    int m_downloadingCount = 0;
+    int m_seedingCount = 0;
     bool m_reallyQuit = false;
 };
 

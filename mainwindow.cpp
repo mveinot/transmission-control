@@ -1548,6 +1548,9 @@ void MainWindow::handleServerActivated()
         statusBarController->updateTorrents({});
     }
 
+    if (trayController)
+        trayController->setTorrentCounts(0, 0, 0);
+
     client->getSessionSettings();
 }
 
@@ -1758,32 +1761,37 @@ void MainWindow::handleTorrentsReceived(const QVector<torrent> &torrents)
     if (statusBarController)
         statusBarController->updateTorrents(torrents);
 
-    if (sessionOverviewWidget) {
-        double downloadRate = 0.0;
-        double uploadRate = 0.0;
-        int downloadingCount = 0;
-        int seedingCount = 0;
-        int waitingCount = 0;
+    double downloadRate = 0.0;
+    double uploadRate = 0.0;
+    int downloadingCount = 0;
+    int seedingCount = 0;
+    int waitingCount = 0;
 
-        for (const torrent &item : torrents) {
-            downloadRate += item.getRateDownloadBytesPerSecond();
-            uploadRate += item.getRateUploadBytesPerSecond();
+    for (const torrent &item : torrents) {
+        downloadRate += item.getRateDownloadBytesPerSecond();
+        uploadRate += item.getRateUploadBytesPerSecond();
 
-            switch (item.getStatusValue()) {
-            case 3:
-                ++waitingCount;
-                break;
-            case 4:
-                ++downloadingCount;
-                break;
-            case 6:
-                ++seedingCount;
-                break;
-            default:
-                break;
-            }
+        switch (item.getStatusValue()) {
+        case 3:
+            ++waitingCount;
+            break;
+        case 4:
+            ++downloadingCount;
+            break;
+        case 6:
+            ++seedingCount;
+            break;
+        default:
+            break;
         }
+    }
 
+    if (trayController) {
+        trayController->setTorrentCounts(
+            torrents.size(), downloadingCount, seedingCount);
+    }
+
+    if (sessionOverviewWidget) {
         sessionOverviewWidget->addSample(
             QDateTime::currentMSecsSinceEpoch(),
             downloadRate,

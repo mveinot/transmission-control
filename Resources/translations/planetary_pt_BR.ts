@@ -5202,6 +5202,21 @@ Nível: %4</translation>
             <source>Quit</source>
             <translation>Sair</translation>
         </message>
+        <message>
+            <location filename="../../traycontroller.cpp" line="230" />
+            <source>Torrents: %1</source>
+            <translation>Torrents: %1</translation>
+        </message>
+        <message>
+            <location filename="../../traycontroller.cpp" line="234" />
+            <source>Downloading: %1</source>
+            <translation>Baixando: %1</translation>
+        </message>
+        <message>
+            <location filename="../../traycontroller.cpp" line="238" />
+            <source>Seeding: %1</source>
+            <translation>Semeando: %1</translation>
+        </message>
     </context>
     <context>
         <name>UpdateCheckController</name>

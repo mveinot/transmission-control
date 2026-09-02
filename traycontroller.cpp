@@ -38,6 +38,14 @@ void TrayController::setup()
 
     m_trayMenu = new QMenu(m_window);
 
+    m_totalCountAction = new QAction(this);
+    m_downloadingCountAction = new QAction(this);
+    m_seedingCountAction = new QAction(this);
+    m_totalCountAction->setEnabled(false);
+    m_downloadingCountAction->setEnabled(false);
+    m_seedingCountAction->setEnabled(false);
+    updateTorrentCountActions();
+
     m_showAction = new QAction(tr("Show Planetary"), this);
     m_quitAction = new QAction(tr("Quit"), this);
 
@@ -62,6 +70,16 @@ void TrayController::setTorrentGlobalActions(QAction *startAllAction, QAction *s
     m_startAllAction = startAllAction;
     m_stopAllAction = stopAllAction;
     rebuildTrayMenu();
+}
+
+void TrayController::setTorrentCounts(int totalCount,
+                                      int downloadingCount,
+                                      int seedingCount)
+{
+    m_totalCount = qMax(0, totalCount);
+    m_downloadingCount = qMax(0, downloadingCount);
+    m_seedingCount = qMax(0, seedingCount);
+    updateTorrentCountActions();
 }
 
 void TrayController::applySettings()
@@ -206,12 +224,38 @@ void TrayController::updateTrayIconVisibility()
     }
 }
 
+void TrayController::updateTorrentCountActions()
+{
+    if (m_totalCountAction)
+        m_totalCountAction->setText(tr("Torrents: %1").arg(m_totalCount));
+
+    if (m_downloadingCountAction) {
+        m_downloadingCountAction->setText(
+            tr("Downloading: %1").arg(m_downloadingCount));
+    }
+
+    if (m_seedingCountAction)
+        m_seedingCountAction->setText(tr("Seeding: %1").arg(m_seedingCount));
+}
+
 void TrayController::rebuildTrayMenu()
 {
     if (!m_trayMenu)
         return;
 
     m_trayMenu->clear();
+
+    if (m_totalCountAction)
+        m_trayMenu->addAction(m_totalCountAction);
+
+    if (m_downloadingCountAction)
+        m_trayMenu->addAction(m_downloadingCountAction);
+
+    if (m_seedingCountAction)
+        m_trayMenu->addAction(m_seedingCountAction);
+
+    if (m_totalCountAction || m_downloadingCountAction || m_seedingCountAction)
+        m_trayMenu->addSeparator();
 
     if (m_showAction)
         m_trayMenu->addAction(m_showAction);
