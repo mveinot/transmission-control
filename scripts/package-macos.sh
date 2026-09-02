@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 APP_NAME="Planetary"
-QT_DIR="${QT_DIR:-$HOME/Qt/6.11.1/macos}"
+QT_DIR="${QT_DIR:-$HOME/Qt/6.11.2/macos}"
 MAXMINDDB_ROOT="${MAXMINDDB_ROOT:-$HOME/Developer/Dependencies/libmaxminddb-1.13.3/install-universal-macos13}"
 MACOS_ARCHITECTURES="x86_64;arm64"
 MACOS_DEPLOYMENT_TARGET="13.0"

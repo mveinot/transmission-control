@@ -5,7 +5,7 @@ REM --------------------------------------------------
 REM Configuration
 REM --------------------------------------------------
 
-set QT_ROOT=C:\Qt\6.11.1\msvc2022_64
+set QT_ROOT=C:\Qt\6.11.2\msvc2022_64
 set BUILD_DIR=build-release
 set DIST_DIR=dist
 
@@ -85,4 +85,3 @@ echo %DIST_DIR%\Planetary-Windows.zip
 echo.
 
 endlocal
-
