@@ -668,7 +668,7 @@
   <action name="action_Open_Torrent">
    <property name="icon">
     <iconset resource="Resources/resources.qrc">
-     <normaloff>:/icons/ui/action-add-torrent.png</normaloff>:/icons/ui/action-add-torrent.png</iconset>
+     <normaloff>:/icons/ui/glass/action-add-torrent.png</normaloff>:/icons/ui/glass/action-add-torrent.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Open Torrent...</string>
@@ -677,7 +677,7 @@
   <action name="actionDelete_Torrent">
    <property name="icon">
     <iconset resource="Resources/resources.qrc">
-     <normaloff>:/icons/ui/action-delete.png</normaloff>:/icons/ui/action-delete.png</iconset>
+     <normaloff>:/icons/ui/glass/action-delete.png</normaloff>:/icons/ui/glass/action-delete.png</iconset>
    </property>
    <property name="text">
     <string>Delete Torrent...</string>
@@ -740,7 +740,7 @@
   <action name="actionStart_Torrent">
    <property name="icon">
     <iconset resource="Resources/resources.qrc">
-     <normaloff>:/icons/ui/action-start.png</normaloff>:/icons/ui/action-start.png</iconset>
+     <normaloff>:/icons/ui/glass/action-start.png</normaloff>:/icons/ui/glass/action-start.png</iconset>
    </property>
    <property name="text">
     <string>Start Torrent</string>
@@ -752,7 +752,7 @@
   <action name="actionStop_Torrent">
    <property name="icon">
     <iconset resource="Resources/resources.qrc">
-     <normaloff>:/icons/ui/action-stop.png</normaloff>:/icons/ui/action-stop.png</iconset>
+     <normaloff>:/icons/ui/glass/action-stop.png</normaloff>:/icons/ui/glass/action-stop.png</iconset>
    </property>
    <property name="text">
     <string>Stop Torrent</string>
@@ -764,7 +764,7 @@
   <action name="actionStart_All_Torrents">
    <property name="icon">
     <iconset resource="Resources/resources.qrc">
-     <normaloff>:/icons/ui/action-start-all.png</normaloff>:/icons/ui/action-start-all.png</iconset>
+     <normaloff>:/icons/ui/glass/action-start-all.png</normaloff>:/icons/ui/glass/action-start-all.png</iconset>
    </property>
    <property name="text">
     <string>Start All</string>
@@ -779,7 +779,7 @@
   <action name="actionStop_All_Torrents">
    <property name="icon">
     <iconset resource="Resources/resources.qrc">
-     <normaloff>:/icons/ui/action-stop-all.png</normaloff>:/icons/ui/action-stop-all.png</iconset>
+     <normaloff>:/icons/ui/glass/action-stop-all.png</normaloff>:/icons/ui/glass/action-stop-all.png</iconset>
    </property>
    <property name="text">
     <string>Stop All</string>
@@ -794,7 +794,7 @@
   <action name="actionAdd_Torrent_from_Magnet_Link">
    <property name="icon">
     <iconset resource="Resources/resources.qrc">
-     <normaloff>:/icons/ui/action-add-magnet.png</normaloff>:/icons/ui/action-add-magnet.png</iconset>
+     <normaloff>:/icons/ui/glass/action-add-magnet.png</normaloff>:/icons/ui/glass/action-add-magnet.png</iconset>
    </property>
    <property name="text">
     <string>Open Magnet Link...</string>
@@ -806,7 +806,7 @@
   <action name="actionReannounce">
    <property name="icon">
     <iconset resource="Resources/resources.qrc">
-     <normaloff>:/icons/ui/action-reannounce.png</normaloff>:/icons/ui/action-reannounce.png</iconset>
+     <normaloff>:/icons/ui/glass/action-reannounce.png</normaloff>:/icons/ui/glass/action-reannounce.png</iconset>
    </property>
    <property name="text">
     <string>Reannounce Torrent</string>
@@ -823,7 +823,7 @@
   <action name="actionVerify_Torrent">
    <property name="icon">
     <iconset resource="Resources/resources.qrc">
-     <normaloff>:/icons/ui/action-verify.png</normaloff>:/icons/ui/action-verify.png</iconset>
+     <normaloff>:/icons/ui/glass/action-verify.png</normaloff>:/icons/ui/glass/action-verify.png</iconset>
    </property>
    <property name="text">
     <string>Verify Torrent</string>
@@ -840,7 +840,7 @@
   <action name="moveTopAction">
    <property name="icon">
     <iconset resource="Resources/resources.qrc">
-     <normaloff>:/icons/ui/queue-top.png</normaloff>:/icons/ui/queue-top.png</iconset>
+     <normaloff>:/icons/ui/glass/queue-top.png</normaloff>:/icons/ui/glass/queue-top.png</iconset>
    </property>
    <property name="text">
     <string>Move to top</string>
@@ -852,7 +852,7 @@
   <action name="moveUpAction">
    <property name="icon">
     <iconset resource="Resources/resources.qrc">
-     <normaloff>:/icons/ui/queue-up.png</normaloff>:/icons/ui/queue-up.png</iconset>
+     <normaloff>:/icons/ui/glass/queue-up.png</normaloff>:/icons/ui/glass/queue-up.png</iconset>
    </property>
    <property name="text">
     <string>Move up</string>
@@ -864,7 +864,7 @@
   <action name="moveDownAction">
    <property name="icon">
     <iconset resource="Resources/resources.qrc">
-     <normaloff>:/icons/ui/queue-down.png</normaloff>:/icons/ui/queue-down.png</iconset>
+     <normaloff>:/icons/ui/glass/queue-down.png</normaloff>:/icons/ui/glass/queue-down.png</iconset>
    </property>
    <property name="text">
     <string>Move down</string>
@@ -876,7 +876,7 @@
   <action name="moveBottomAction">
    <property name="icon">
     <iconset resource="Resources/resources.qrc">
-     <normaloff>:/icons/ui/queue-bottom.png</normaloff>:/icons/ui/queue-bottom.png</iconset>
+     <normaloff>:/icons/ui/glass/queue-bottom.png</normaloff>:/icons/ui/glass/queue-bottom.png</iconset>
    </property>
    <property name="text">
     <string>Move to bottom</string>
@@ -917,7 +917,7 @@
   <action name="actionForce_Start_Torrent">
    <property name="icon">
     <iconset resource="Resources/resources.qrc">
-     <normaloff>:/icons/ui/action-force-start.png</normaloff>:/icons/ui/action-force-start.png</iconset>
+     <normaloff>:/icons/ui/glass/action-force-start.png</normaloff>:/icons/ui/glass/action-force-start.png</iconset>
    </property>
    <property name="text">
     <string>Force Start Torrent</string>

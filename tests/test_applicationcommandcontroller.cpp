@@ -1,6 +1,7 @@
 #include <QtTest>
 
 #include "applicationcommandcontroller.h"
+#include "appicons.h"
 
 #include <QAction>
 #include <QMainWindow>
@@ -14,6 +15,7 @@ class TestApplicationCommandController : public QObject
 private slots:
     void routesCommandsOnce();
     void reconcilesBackendAndSessionState();
+    void iconThemesProvideDistinctArtwork();
 };
 
 namespace {
@@ -176,6 +178,23 @@ void TestApplicationCommandController::reconcilesBackendAndSessionState()
     fixture.alternativeSpeed.trigger();
     QCOMPARE(alternativeSpeedRequests, 1);
     QVERIFY(!requestedState);
+}
+
+void TestApplicationCommandController::iconThemesProvideDistinctArtwork()
+{
+    const QIcon classic = AppIcons::icon(
+        AppIcons::Icon::ActionStart,
+        QString::fromLatin1(AppIcons::ClassicTheme));
+    const QIcon glass = AppIcons::icon(
+        AppIcons::Icon::ActionStart,
+        QString::fromLatin1(AppIcons::GlassTheme));
+
+    QVERIFY(!classic.isNull());
+    QVERIFY(!glass.isNull());
+    QVERIFY(classic.pixmap(128, 128).toImage()
+            != glass.pixmap(128, 128).toImage());
+    QCOMPARE(AppIcons::normalizedThemeId(QStringLiteral("unknown")),
+             QString::fromLatin1(AppIcons::GlassTheme));
 }
 
 int main(int argc, char **argv)

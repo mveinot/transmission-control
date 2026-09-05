@@ -7,6 +7,7 @@ namespace SettingsKeys {
 // part of ordinary C++ symbol refactoring.
 inline constexpr const char *UpdateInterval =               "app/updateIntervalSeconds";
 inline constexpr const char *Appearance =                   "app/appearance";
+inline constexpr const char *IconTheme =                    "app/iconTheme";
 inline constexpr const char *ApplicationLocale =            "app/locale";
 inline constexpr const char *ShowSessionOverview =          "app/showSessionOverview";
 inline constexpr const char *DeleteTorrentOnAdd =           "app/deleteTorrentFileOnSuccessfulAdd";

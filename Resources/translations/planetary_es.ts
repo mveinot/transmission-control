@@ -407,8 +407,24 @@ Los archivos .torrent que sigan presentes podrían enviarse de nuevo al servidor
             <translation>Seleccione el idioma utilizado por Planetary</translation>
         </message>
         <message>
-            <source>Language changes take effect after restarting Planetary.</source>
-            <translation>Los cambios de idioma se aplican después de reiniciar Planetary.</translation>
+            <source>Language and icon theme changes take effect after restarting Planetary.</source>
+            <translation>Los cambios de idioma y tema de iconos se aplican después de reiniciar Planetary.</translation>
+        </message>
+        <message>
+            <source>Icon theme</source>
+            <translation>Tema de iconos</translation>
+        </message>
+        <message>
+            <source>Select the icon style used throughout Planetary</source>
+            <translation>Seleccione el estilo de iconos utilizado en Planetary</translation>
+        </message>
+        <message>
+            <source>Glass</source>
+            <translation>Cristal</translation>
+        </message>
+        <message>
+            <source>Classic</source>
+            <translation>Clásico</translation>
         </message>
     </context>
     <context>

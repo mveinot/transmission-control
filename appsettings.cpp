@@ -1,6 +1,7 @@
 #include "appsettings.h"
 #include "applicationappearance.h"
 #include "applicationlocale.h"
+#include "appicons.h"
 #include "ui_appsettings.h"
 #include "settingskeys.h"
 
@@ -40,6 +41,11 @@ AppSettings::AppSettings(QWidget *parent)
                                  QString::fromLatin1(ApplicationAppearance::Light));
     ui->appearanceCombo->addItem(tr("Dark"),
                                  QString::fromLatin1(ApplicationAppearance::Dark));
+
+    ui->iconThemeCombo->addItem(tr("Glass"),
+                                QString::fromLatin1(AppIcons::GlassTheme));
+    ui->iconThemeCombo->addItem(tr("Classic"),
+                                QString::fromLatin1(AppIcons::ClassicTheme));
 
     populateLanguageOptions();
     loadSettings();
@@ -165,6 +171,12 @@ void AppSettings::loadSettings()
     const int appearanceIndex = ui->appearanceCombo->findData(m_initialAppearance);
     ui->appearanceCombo->setCurrentIndex(appearanceIndex >= 0 ? appearanceIndex : 0);
 
+    const QString iconTheme = AppIcons::normalizedThemeId(
+        settings.value(SettingsKeys::IconTheme,
+                       QString::fromLatin1(AppIcons::GlassTheme)).toString());
+    const int iconThemeIndex = ui->iconThemeCombo->findData(iconTheme);
+    ui->iconThemeCombo->setCurrentIndex(iconThemeIndex >= 0 ? iconThemeIndex : 0);
+
     const QString localePreference =
         settings.value(
             SettingsKeys::ApplicationLocale,
@@ -262,6 +274,8 @@ void AppSettings::saveSettings()
     QSettings settings;
 
     settings.setValue(SettingsKeys::Appearance, selectedAppearance());
+    settings.setValue(SettingsKeys::IconTheme,
+                      ui->iconThemeCombo->currentData().toString());
     settings.setValue(SettingsKeys::ApplicationLocale,
                       ui->languageCombo->currentData().toString());
 

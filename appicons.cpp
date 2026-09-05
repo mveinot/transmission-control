@@ -1,66 +1,69 @@
 #include "appicons.h"
 
+#include "settingskeys.h"
+
+#include <QSettings>
 #include <QString>
 
 namespace {
 
-QString iconPath(AppIcons::Icon icon)
+QString iconFileName(AppIcons::Icon icon)
 {
     switch (icon) {
     case AppIcons::Icon::ActionAddTorrent:
-        return QStringLiteral(":/icons/ui/action-add-torrent.png");
+        return QStringLiteral("action-add-torrent.png");
     case AppIcons::Icon::ActionAddMagnet:
-        return QStringLiteral(":/icons/ui/action-add-magnet.png");
+        return QStringLiteral("action-add-magnet.png");
     case AppIcons::Icon::ActionStart:
-        return QStringLiteral(":/icons/ui/action-start.png");
+        return QStringLiteral("action-start.png");
     case AppIcons::Icon::ActionStop:
-        return QStringLiteral(":/icons/ui/action-stop.png");
+        return QStringLiteral("action-stop.png");
     case AppIcons::Icon::ActionStartAll:
-        return QStringLiteral(":/icons/ui/action-start-all.png");
+        return QStringLiteral("action-start-all.png");
     case AppIcons::Icon::ActionStopAll:
-        return QStringLiteral(":/icons/ui/action-stop-all.png");
+        return QStringLiteral("action-stop-all.png");
     case AppIcons::Icon::ActionForceStart:
-        return QStringLiteral(":/icons/ui/action-force-start.png");
+        return QStringLiteral("action-force-start.png");
     case AppIcons::Icon::ActionVerify:
-        return QStringLiteral(":/icons/ui/action-verify.png");
+        return QStringLiteral("action-verify.png");
     case AppIcons::Icon::ActionReannounce:
-        return QStringLiteral(":/icons/ui/action-reannounce.png");
+        return QStringLiteral("action-reannounce.png");
     case AppIcons::Icon::ActionDelete:
-        return QStringLiteral(":/icons/ui/action-delete.png");
+        return QStringLiteral("action-delete.png");
     case AppIcons::Icon::QueueTop:
-        return QStringLiteral(":/icons/ui/queue-top.png");
+        return QStringLiteral("queue-top.png");
     case AppIcons::Icon::QueueUp:
-        return QStringLiteral(":/icons/ui/queue-up.png");
+        return QStringLiteral("queue-up.png");
     case AppIcons::Icon::QueueDown:
-        return QStringLiteral(":/icons/ui/queue-down.png");
+        return QStringLiteral("queue-down.png");
     case AppIcons::Icon::QueueBottom:
-        return QStringLiteral(":/icons/ui/queue-bottom.png");
+        return QStringLiteral("queue-bottom.png");
     case AppIcons::Icon::FilterAll:
-        return QStringLiteral(":/icons/ui/filter-all.png");
+        return QStringLiteral("filter-all.png");
     case AppIcons::Icon::FilterTracker:
-        return QStringLiteral(":/icons/ui/filter-tracker.png");
+        return QStringLiteral("filter-tracker.png");
     case AppIcons::Icon::FilterFolder:
-        return QStringLiteral(":/icons/ui/filter-folder.png");
+        return QStringLiteral("filter-folder.png");
     case AppIcons::Icon::StatusDownloading:
-        return QStringLiteral(":/icons/ui/status-downloading.png");
+        return QStringLiteral("status-downloading.png");
     case AppIcons::Icon::StatusSeeding:
-        return QStringLiteral(":/icons/ui/status-seeding.png");
+        return QStringLiteral("status-seeding.png");
     case AppIcons::Icon::StatusComplete:
-        return QStringLiteral(":/icons/ui/status-complete.png");
+        return QStringLiteral("status-complete.png");
     case AppIcons::Icon::StatusActive:
-        return QStringLiteral(":/icons/ui/status-active.png");
+        return QStringLiteral("status-active.png");
     case AppIcons::Icon::StatusInactive:
-        return QStringLiteral(":/icons/ui/status-inactive.png");
+        return QStringLiteral("status-inactive.png");
     case AppIcons::Icon::StatusStopped:
-        return QStringLiteral(":/icons/ui/status-stopped.png");
+        return QStringLiteral("status-stopped.png");
     case AppIcons::Icon::StatusError:
-        return QStringLiteral(":/icons/ui/status-error.png");
+        return QStringLiteral("status-error.png");
     case AppIcons::Icon::StatusVerifying:
-        return QStringLiteral(":/icons/ui/status-verifying.png");
+        return QStringLiteral("status-verifying.png");
     case AppIcons::Icon::StatusQueued:
-        return QStringLiteral(":/icons/ui/status-queued.png");
+        return QStringLiteral("status-queued.png");
     case AppIcons::Icon::StatusUnknown:
-        return QStringLiteral(":/icons/ui/status-unknown.png");
+        return QStringLiteral("status-unknown.png");
     }
 
     return QString();
@@ -70,9 +73,32 @@ QString iconPath(AppIcons::Icon icon)
 
 namespace AppIcons {
 
+QString normalizedThemeId(const QString &themeId)
+{
+    const QString normalized = themeId.trimmed().toLower();
+    if (normalized == QString::fromLatin1(ClassicTheme))
+        return normalized;
+
+    return QString::fromLatin1(GlassTheme);
+}
+
+QString selectedThemeId()
+{
+    return normalizedThemeId(
+        QSettings().value(SettingsKeys::IconTheme,
+                          QString::fromLatin1(GlassTheme)).toString());
+}
+
 QIcon icon(Icon icon)
 {
-    return QIcon(iconPath(icon));
+    return AppIcons::icon(icon, selectedThemeId());
+}
+
+QIcon icon(Icon icon, const QString &themeId)
+{
+    const QString path = QStringLiteral(":/icons/ui/%1/%2")
+                             .arg(normalizedThemeId(themeId), iconFileName(icon));
+    return QIcon(path);
 }
 
 } // namespace AppIcons

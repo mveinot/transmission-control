@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>657</width>
-    <height>657</height>
+    <height>687</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -114,6 +114,23 @@
                </widget>
               </item>
               <item row="2" column="0">
+               <widget class="QLabel" name="labelIconTheme">
+                <property name="text">
+                 <string>Icon theme</string>
+                </property>
+                <property name="buddy">
+                 <cstring>iconThemeCombo</cstring>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QComboBox" name="iconThemeCombo">
+                <property name="toolTip">
+                 <string>Select the icon style used throughout Planetary</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
                <widget class="QLabel" name="labelLanguage">
                 <property name="text">
                  <string>Language</string>
@@ -123,24 +140,24 @@
                 </property>
                </widget>
               </item>
-              <item row="2" column="1">
+              <item row="3" column="1">
                <widget class="QComboBox" name="languageCombo">
                 <property name="toolTip">
                  <string>Select the language used by Planetary</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="0" colspan="2">
+              <item row="4" column="0" colspan="2">
                <widget class="QLabel" name="labelLanguageRestartNotice">
                 <property name="text">
-                 <string>Language changes take effect after restarting Planetary.</string>
+                 <string>Language and icon theme changes take effect after restarting Planetary.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
                 </property>
                </widget>
               </item>
-              <item row="4" column="0" colspan="2">
+              <item row="5" column="0" colspan="2">
                <widget class="QCheckBox" name="showSessionOverview">
                 <property name="toolTip">
                  <string>Show recent bandwidth activity in the details pane when no torrent is selected</string>
