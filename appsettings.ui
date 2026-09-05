@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>657</width>
-    <height>687</height>
+    <height>657</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -61,11 +61,11 @@
            <property name="minimumSize">
             <size>
              <width>0</width>
-             <height>210</height>
+             <height>130</height>
             </size>
            </property>
            <property name="title">
-            <string>Display Options</string>
+            <string>General</string>
            </property>
            <layout class="QHBoxLayout" name="horizontalLayout_3">
             <property name="leftMargin">
@@ -100,37 +100,6 @@
                </widget>
               </item>
               <item row="1" column="0">
-               <widget class="QLabel" name="labelAppearance">
-                <property name="text">
-                 <string>Appearance</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <widget class="QComboBox" name="appearanceCombo">
-                <property name="toolTip">
-                 <string>Follow the operating system appearance or override it for Planetary</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="0">
-               <widget class="QLabel" name="labelIconTheme">
-                <property name="text">
-                 <string>Icon theme</string>
-                </property>
-                <property name="buddy">
-                 <cstring>iconThemeCombo</cstring>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QComboBox" name="iconThemeCombo">
-                <property name="toolTip">
-                 <string>Select the icon style used throughout Planetary</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="0">
                <widget class="QLabel" name="labelLanguage">
                 <property name="text">
                  <string>Language</string>
@@ -140,30 +109,20 @@
                 </property>
                </widget>
               </item>
-              <item row="3" column="1">
+              <item row="1" column="1">
                <widget class="QComboBox" name="languageCombo">
                 <property name="toolTip">
                  <string>Select the language used by Planetary</string>
                 </property>
                </widget>
               </item>
-              <item row="4" column="0" colspan="2">
+              <item row="2" column="0" colspan="2">
                <widget class="QLabel" name="labelLanguageRestartNotice">
                 <property name="text">
-                 <string>Language and icon theme changes take effect after restarting Planetary.</string>
+                 <string>Language changes take effect after restarting Planetary.</string>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="0" colspan="2">
-               <widget class="QCheckBox" name="showSessionOverview">
-                <property name="toolTip">
-                 <string>Show recent bandwidth activity in the details pane when no torrent is selected</string>
-                </property>
-                <property name="text">
-                 <string>Show bandwidth graph when no torrent is selected</string>
                 </property>
                </widget>
               </item>
@@ -294,6 +253,107 @@
           </widget>
          </item>
         </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="appearance">
+      <attribute name="title">
+       <string>Appearance</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayoutAppearance">
+       <property name="leftMargin">
+        <number>12</number>
+       </property>
+       <property name="topMargin">
+        <number>12</number>
+       </property>
+       <property name="rightMargin">
+        <number>12</number>
+       </property>
+       <property name="bottomMargin">
+        <number>12</number>
+       </property>
+       <item>
+        <widget class="QGroupBox" name="appearanceOptionsGroup">
+         <property name="title">
+          <string>Appearance</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayoutAppearance">
+          <property name="horizontalSpacing">
+           <number>12</number>
+          </property>
+          <property name="verticalSpacing">
+           <number>12</number>
+          </property>
+          <item row="0" column="0">
+           <widget class="QLabel" name="labelAppearance">
+            <property name="text">
+             <string>Colour scheme</string>
+            </property>
+            <property name="buddy">
+             <cstring>appearanceCombo</cstring>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QComboBox" name="appearanceCombo">
+            <property name="toolTip">
+             <string>Follow the operating system appearance or override it for Planetary</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelIconTheme">
+            <property name="text">
+             <string>Icon theme</string>
+            </property>
+            <property name="buddy">
+             <cstring>iconThemeCombo</cstring>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QComboBox" name="iconThemeCombo">
+            <property name="toolTip">
+             <string>Select the icon style used throughout Planetary</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0" colspan="2">
+           <widget class="QLabel" name="labelIconThemeRestartNotice">
+            <property name="text">
+             <string>Icon theme changes take effect after restarting Planetary.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QCheckBox" name="showSessionOverview">
+            <property name="toolTip">
+             <string>Show recent bandwidth activity in the details pane when no torrent is selected</string>
+            </property>
+            <property name="text">
+             <string>Show bandwidth graph when no torrent is selected</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacerAppearance">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </widget>

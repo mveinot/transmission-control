@@ -407,8 +407,8 @@ Aanwezige .torrent-bestanden kunnen opnieuw naar de ingestelde torrentserver wor
             <translation>Selecteer de taal die Planetary gebruikt</translation>
         </message>
         <message>
-            <source>Language and icon theme changes take effect after restarting Planetary.</source>
-            <translation>Wijzigingen in taal en pictogramthema worden toegepast nadat Planetary opnieuw is gestart.</translation>
+            <source>Language changes take effect after restarting Planetary.</source>
+            <translation>Taalwijzigingen worden toegepast nadat Planetary opnieuw is gestart.</translation>
         </message>
         <message>
             <source>Icon theme</source>
@@ -425,6 +425,14 @@ Aanwezige .torrent-bestanden kunnen opnieuw naar de ingestelde torrentserver wor
         <message>
             <source>Classic</source>
             <translation>Klassiek</translation>
+        </message>
+        <message>
+            <source>Colour scheme</source>
+            <translation>Kleurenschema</translation>
+        </message>
+        <message>
+            <source>Icon theme changes take effect after restarting Planetary.</source>
+            <translation>Wijzigingen in het pictogramthema worden toegepast nadat Planetary opnieuw is gestart.</translation>
         </message>
     </context>
     <context>

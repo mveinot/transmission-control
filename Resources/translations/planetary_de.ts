@@ -407,8 +407,8 @@ Noch vorhandene .torrent-Dateien können erneut an den konfigurierten Torrent-Se
             <translation>Die von Planetary verwendete Sprache auswählen</translation>
         </message>
         <message>
-            <source>Language and icon theme changes take effect after restarting Planetary.</source>
-            <translation>Änderungen an Sprache und Symbolthema werden nach einem Neustart von Planetary wirksam.</translation>
+            <source>Language changes take effect after restarting Planetary.</source>
+            <translation>Sprachänderungen werden nach einem Neustart von Planetary wirksam.</translation>
         </message>
         <message>
             <source>Icon theme</source>
@@ -425,6 +425,14 @@ Noch vorhandene .torrent-Dateien können erneut an den konfigurierten Torrent-Se
         <message>
             <source>Classic</source>
             <translation>Klassisch</translation>
+        </message>
+        <message>
+            <source>Colour scheme</source>
+            <translation>Farbschema</translation>
+        </message>
+        <message>
+            <source>Icon theme changes take effect after restarting Planetary.</source>
+            <translation>Änderungen am Symbolthema werden nach einem Neustart von Planetary wirksam.</translation>
         </message>
     </context>
     <context>
