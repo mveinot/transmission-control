@@ -1,6 +1,11 @@
 #ifndef APPICONS_H
 #define APPICONS_H
 
+#include <QList>
+#include <QString>
+
+#include <optional>
+
 namespace AppIcons {
 
 inline constexpr const char *ClassicTheme = "classic";
@@ -37,6 +42,10 @@ enum class Id {
     StatusQueued,
     StatusUnknown
 };
+
+QString semanticName(Id iconId);
+std::optional<Id> idFromSemanticName(const QString &name);
+QList<Id> allIds();
 
 } // namespace AppIcons
 

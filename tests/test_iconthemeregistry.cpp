@@ -1,0 +1,170 @@
+#include "appicons.h"
+#include "iconthememanifest.h"
+#include "iconthemeregistry.h"
+
+#include <QApplication>
+#include <QColor>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QImage>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QSet>
+#include <QSignalSpy>
+#include <QStandardPaths>
+#include <QTemporaryDir>
+#include <QtTest>
+
+namespace {
+
+bool writeIcon(const QString &path, const QColor &color)
+{
+    QDir().mkpath(QFileInfo(path).absolutePath());
+    QImage image(16, 16, QImage::Format_ARGB32);
+    image.fill(color);
+    return image.save(path);
+}
+
+bool writeManifest(const QString &themeDirectory,
+                   const QJsonObject &manifest)
+{
+    QDir().mkpath(themeDirectory);
+    QFile file(QDir(themeDirectory).filePath(QString::fromLatin1(
+        AppIcons::IconThemeManifestParser::FileName)));
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        return false;
+    return file.write(QJsonDocument(manifest).toJson()) >= 0;
+}
+
+QJsonObject manifest(const QString &id,
+                     const QString &name,
+                     const QJsonObject &icons)
+{
+    return {
+        {QStringLiteral("formatVersion"), 1},
+        {QStringLiteral("id"), id},
+        {QStringLiteral("name"), name},
+        {QStringLiteral("fallback"), QStringLiteral("glass")},
+        {QStringLiteral("icons"), icons}
+    };
+}
+
+QColor iconColor(const QIcon &icon)
+{
+    return icon.pixmap(16, 16).toImage().pixelColor(8, 8);
+}
+
+} // namespace
+
+class TestIconThemeRegistry : public QObject
+{
+    Q_OBJECT
+
+private slots:
+    void semanticNamesRoundTrip();
+    void standardDirectoryUsesApplicationDataLocation();
+    void scansLoadsFallsBackAndRescans();
+};
+
+void TestIconThemeRegistry::semanticNamesRoundTrip()
+{
+    QSet<QString> names;
+    for (AppIcons::Id iconId : AppIcons::allIds()) {
+        const QString name = AppIcons::semanticName(iconId);
+        QVERIFY(!name.isEmpty());
+        QVERIFY(!names.contains(name));
+        names.insert(name);
+        const auto roundTrip = AppIcons::idFromSemanticName(name.toUpper());
+        QVERIFY(roundTrip.has_value());
+        QCOMPARE(*roundTrip, iconId);
+    }
+    QCOMPARE(names.size(), 27);
+    QVERIFY(!AppIcons::idFromSemanticName(QStringLiteral("not-an-icon")));
+}
+
+void TestIconThemeRegistry::standardDirectoryUsesApplicationDataLocation()
+{
+    const QString appData =
+        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    const QString expected = appData.isEmpty()
+                                 ? QString()
+                                 : QDir(appData).filePath(
+                                       QStringLiteral("icon-themes"));
+    QCOMPARE(AppIcons::IconThemeRegistry::standardThemeDirectory(), expected);
+}
+
+void TestIconThemeRegistry::scansLoadsFallsBackAndRescans()
+{
+    QTemporaryDir temporaryDirectory;
+    QVERIFY(temporaryDirectory.isValid());
+
+    const QString themeDirectory =
+        QDir(temporaryDirectory.path()).filePath(QStringLiteral("ocean"));
+    QVERIFY(writeIcon(QDir(themeDirectory).filePath(QStringLiteral("icons/start.png")),
+                      Qt::red));
+    QVERIFY(writeManifest(
+        themeDirectory,
+        manifest(QStringLiteral("ocean"),
+                 QStringLiteral("Ocean"),
+                 {{QStringLiteral("action-start"),
+                   QStringLiteral("icons/start.png")}})));
+
+    const QString unsafeDirectory =
+        QDir(temporaryDirectory.path()).filePath(QStringLiteral("unsafe"));
+    QVERIFY(writeManifest(
+        unsafeDirectory,
+        manifest(QStringLiteral("unsafe"),
+                 QStringLiteral("Unsafe"),
+                 {{QStringLiteral("action-start"),
+                   QStringLiteral("../outside.png")}})));
+
+    AppIcons::IconThemeRegistry registry(temporaryDirectory.path());
+    QVERIFY(registry.contains(QStringLiteral("glass")));
+    QVERIFY(registry.contains(QStringLiteral("classic")));
+    QVERIFY(registry.contains(QStringLiteral("ocean")));
+    QVERIFY(!registry.contains(QStringLiteral("unsafe")));
+    QCOMPARE(registry.theme(QStringLiteral("ocean")).displayName(),
+             QStringLiteral("Ocean"));
+    QCOMPARE(iconColor(registry.icon(QStringLiteral("ocean"),
+                                     AppIcons::Id::ActionStart)),
+             QColor(Qt::red));
+
+    // The external theme omits ActionStop, so the built-in Glass icon wins.
+    QCOMPARE(registry.icon(QStringLiteral("ocean"), AppIcons::Id::ActionStop)
+                 .pixmap(64, 64).toImage(),
+             registry.icon(QStringLiteral("glass"), AppIcons::Id::ActionStop)
+                 .pixmap(64, 64).toImage());
+
+    QVERIFY(writeIcon(QDir(themeDirectory).filePath(QStringLiteral("icons/start-blue.png")),
+                      Qt::blue));
+    QVERIFY(writeManifest(
+        themeDirectory,
+        manifest(QStringLiteral("ocean"),
+                 QStringLiteral("Ocean"),
+                 {{QStringLiteral("action-start"),
+                   QStringLiteral("icons/start-blue.png")}})));
+    QSignalSpy registryChangedSpy(
+        &registry, &AppIcons::IconThemeRegistry::registryChanged);
+    registry.rescanExternalThemes();
+    QVERIFY(registryChangedSpy.count() >= 1);
+    QCOMPARE(iconColor(registry.icon(QStringLiteral("ocean"),
+                                     AppIcons::Id::ActionStart)),
+             QColor(Qt::blue));
+
+    QVERIFY(QDir(themeDirectory).removeRecursively());
+    registry.rescanExternalThemes();
+    QVERIFY(!registry.contains(QStringLiteral("ocean")));
+}
+
+int main(int argc, char **argv)
+{
+    qputenv("QT_QPA_PLATFORM", QByteArrayLiteral("offscreen"));
+    QApplication application(argc, argv);
+    QCoreApplication::setOrganizationName(QStringLiteral("PlanetaryTests"));
+    QCoreApplication::setApplicationName(QStringLiteral("IconThemeRegistry"));
+    TestIconThemeRegistry test;
+    return QTest::qExec(&test, argc, argv);
+}
+
+#include "test_iconthemeregistry.moc"

@@ -43,8 +43,9 @@ AppSettings::AppSettings(QWidget *parent)
     ui->appearanceCombo->addItem(tr("Dark"),
                                  QString::fromLatin1(ApplicationAppearance::Dark));
 
-    for (const AppIcons::IconTheme &theme :
-         AppIcons::IconThemeRegistry::instance().themes()) {
+    auto &themeRegistry = AppIcons::IconThemeRegistry::instance();
+    themeRegistry.rescanExternalThemes();
+    for (const AppIcons::IconTheme &theme : themeRegistry.themes()) {
         QString displayName = theme.displayName();
         if (theme.id() == QString::fromLatin1(AppIcons::GlassTheme))
             displayName = tr("Glass");

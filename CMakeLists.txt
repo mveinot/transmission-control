@@ -117,8 +117,11 @@ set_source_files_properties(
 
 set(PLANETARY_ICON_THEME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/appicons.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/appicons.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/icontheme.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/icontheme.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/iconthememanifest.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/iconthememanifest.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/iconthemeregistry.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/iconthemeregistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/iconthememanager.h"

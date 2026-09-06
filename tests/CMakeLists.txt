@@ -135,6 +135,12 @@ add_planetary_test(test_applicationcommandcontroller
     ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
 )
 
+add_planetary_test(test_iconthemeregistry
+    test_iconthemeregistry.cpp
+    ${PLANETARY_ICON_THEME_SOURCES}
+    ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
+)
+
 add_planetary_test(test_torrentfiltercontroller
     test_torrentfiltercontroller.cpp
     ${CMAKE_SOURCE_DIR}/torrent.cpp

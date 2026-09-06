@@ -1,54 +1,53 @@
 #include "iconthemeregistry.h"
 
+#include "iconthememanifest.h"
+
+#include <QDebug>
+#include <QDir>
+#include <QFileInfoList>
 #include <QSet>
+#include <QStandardPaths>
 
 namespace AppIcons {
 namespace {
 
 IconTheme::IconFiles builtInIconFiles()
 {
-    return {
-        {Id::ActionAddTorrent, QStringLiteral("action-add-torrent.png")},
-        {Id::ActionAddMagnet, QStringLiteral("action-add-magnet.png")},
-        {Id::ActionStart, QStringLiteral("action-start.png")},
-        {Id::ActionStop, QStringLiteral("action-stop.png")},
-        {Id::ActionStartAll, QStringLiteral("action-start-all.png")},
-        {Id::ActionStopAll, QStringLiteral("action-stop-all.png")},
-        {Id::ActionForceStart, QStringLiteral("action-force-start.png")},
-        {Id::ActionVerify, QStringLiteral("action-verify.png")},
-        {Id::ActionReannounce, QStringLiteral("action-reannounce.png")},
-        {Id::ActionDelete, QStringLiteral("action-delete.png")},
-        {Id::QueueTop, QStringLiteral("queue-top.png")},
-        {Id::QueueUp, QStringLiteral("queue-up.png")},
-        {Id::QueueDown, QStringLiteral("queue-down.png")},
-        {Id::QueueBottom, QStringLiteral("queue-bottom.png")},
-        {Id::FilterAll, QStringLiteral("filter-all.png")},
-        {Id::FilterTracker, QStringLiteral("filter-tracker.png")},
-        {Id::FilterFolder, QStringLiteral("filter-folder.png")},
-        {Id::StatusDownloading, QStringLiteral("status-downloading.png")},
-        {Id::StatusSeeding, QStringLiteral("status-seeding.png")},
-        {Id::StatusComplete, QStringLiteral("status-complete.png")},
-        {Id::StatusActive, QStringLiteral("status-active.png")},
-        {Id::StatusInactive, QStringLiteral("status-inactive.png")},
-        {Id::StatusStopped, QStringLiteral("status-stopped.png")},
-        {Id::StatusError, QStringLiteral("status-error.png")},
-        {Id::StatusVerifying, QStringLiteral("status-verifying.png")},
-        {Id::StatusQueued, QStringLiteral("status-queued.png")},
-        {Id::StatusUnknown, QStringLiteral("status-unknown.png")}
-    };
+    IconTheme::IconFiles files;
+    for (Id iconId : allIds())
+        files.insert(iconId, semanticName(iconId) + QStringLiteral(".png"));
+    return files;
 }
 
 } // namespace
 
 IconThemeRegistry &IconThemeRegistry::instance()
 {
-    static IconThemeRegistry registry;
+    static IconThemeRegistry registry(standardThemeDirectory());
     return registry;
 }
 
-IconThemeRegistry::IconThemeRegistry()
+QString IconThemeRegistry::standardThemeDirectory()
+{
+    const QString appData =
+        QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    return appData.isEmpty()
+               ? QString()
+               : QDir(appData).filePath(QStringLiteral("icon-themes"));
+}
+
+IconThemeRegistry::IconThemeRegistry(const QString &themeDirectory,
+                                     QObject *parent)
+    : QObject(parent)
+    , m_themeDirectory(themeDirectory.isEmpty()
+                           ? QString()
+                           : QDir::cleanPath(themeDirectory))
 {
     registerBuiltInThemes();
+    if (!m_themeDirectory.isEmpty()) {
+        QDir().mkpath(m_themeDirectory);
+        rescanExternalThemes();
+    }
 }
 
 QList<IconTheme> IconThemeRegistry::themes() const
@@ -79,6 +78,11 @@ QString IconThemeRegistry::resolvedThemeId(const QString &themeId) const
 QString IconThemeRegistry::defaultThemeId() const
 {
     return QString::fromLatin1(GlassTheme);
+}
+
+QString IconThemeRegistry::themeDirectory() const
+{
+    return m_themeDirectory;
 }
 
 QIcon IconThemeRegistry::icon(const QString &themeId, Id iconId) const
@@ -127,8 +131,54 @@ bool IconThemeRegistry::unregisterTheme(const QString &themeId)
 
     m_themes.remove(canonical);
     m_themeOrder.removeAll(canonical);
+    m_scannedThemeIds.remove(canonical);
     emit registryChanged(canonical);
     return true;
+}
+
+void IconThemeRegistry::rescanExternalThemes()
+{
+    if (m_themeDirectory.isEmpty())
+        return;
+
+    const QDir root(m_themeDirectory);
+    const QFileInfoList directories = root.entryInfoList(
+        QDir::Dirs | QDir::NoDotAndDotDot | QDir::Readable,
+        QDir::Name | QDir::IgnoreCase);
+
+    QSet<QString> discoveredIds;
+    for (const QFileInfo &directory : directories) {
+        const QString manifestPath = QDir(directory.absoluteFilePath())
+                                         .filePath(QString::fromLatin1(
+                                             IconThemeManifestParser::FileName));
+        if (!QFileInfo::exists(manifestPath))
+            continue;
+
+        const IconThemeManifestResult result =
+            IconThemeManifestParser::parseFile(manifestPath);
+        if (!result.succeeded()) {
+            qWarning().noquote()
+                << QStringLiteral("Skipping icon theme manifest %1: %2")
+                       .arg(manifestPath, result.error);
+            continue;
+        }
+
+        const QString themeId = canonicalId(result.theme.id());
+        if (discoveredIds.contains(themeId)) {
+            qWarning().noquote()
+                << QStringLiteral("Skipping duplicate icon theme id '%1' in %2")
+                       .arg(themeId, manifestPath);
+            continue;
+        }
+
+        if (registerTheme(result.theme))
+            discoveredIds.insert(themeId);
+    }
+
+    const QSet<QString> removedIds = m_scannedThemeIds - discoveredIds;
+    for (const QString &themeId : removedIds)
+        unregisterTheme(themeId);
+    m_scannedThemeIds = discoveredIds;
 }
 
 void IconThemeRegistry::registerBuiltInThemes()
