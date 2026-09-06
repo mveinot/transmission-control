@@ -115,6 +115,16 @@ set_source_files_properties(
         SKIP_AUTOGEN TRUE
 )
 
+set(PLANETARY_ICON_THEME_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/appicons.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/icontheme.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/icontheme.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/iconthemeregistry.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/iconthemeregistry.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/iconthememanager.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/iconthememanager.cpp"
+)
+
 set(PROJECT_SOURCES
         main.cpp
         mainwindow.cpp
@@ -154,8 +164,7 @@ set(PROJECT_SOURCES
         dialogabout.ui
         diagnosticsdialog.h
         diagnosticsdialog.cpp
-        appicons.h
-        appicons.cpp
+        ${PLANETARY_ICON_THEME_SOURCES}
         ${PLANETARY_TS_FILES}
 )
 
@@ -230,7 +239,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         percentfilldelegate.h percentfilldelegate.cpp
         elidedtexttooltipdelegate.h elidedtexttooltipdelegate.cpp
         torrentmodel.h torrentmodel.cpp
-        appicons.h appicons.cpp
         Resources/icons/planetary_menu.png
         geoipservice.h geoipservice.cpp
         Resources/geoip/country.mmdb

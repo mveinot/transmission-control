@@ -1,5 +1,5 @@
 #include "torrentfilemodel.h"
-#include "appicons.h"
+#include "iconthememanager.h"
 
 #include <QPersistentModelIndex>
 #include <QSignalSpy>
@@ -21,7 +21,7 @@ private slots:
 
 void TestTorrentFileModel::themeChangeRefreshesDecorations()
 {
-    auto &icons = AppIcons::IconManager::instance();
+    auto &icons = AppIcons::IconThemeManager::instance();
     const QString originalTheme = icons.themeId();
     icons.setThemeId(QString::fromLatin1(AppIcons::GlassTheme));
 

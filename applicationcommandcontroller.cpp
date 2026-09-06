@@ -1,6 +1,6 @@
 #include "applicationcommandcontroller.h"
 
-#include "appicons.h"
+#include "iconthememanager.h"
 
 #include <QAction>
 #include <QDesktopServices>
@@ -47,7 +47,7 @@ void ApplicationCommandController::setup()
 
 void ApplicationCommandController::setupActionAppearance()
 {
-    auto &icons = AppIcons::IconManager::instance();
+    auto &icons = AppIcons::IconThemeManager::instance();
     icons.bindAction(m_actions.openTorrent, AppIcons::Id::ActionAddTorrent);
     icons.bindAction(m_actions.addMagnet, AppIcons::Id::ActionAddMagnet);
     icons.bindAction(m_actions.startSelected, AppIcons::Id::ActionStart);

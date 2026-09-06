@@ -41,8 +41,7 @@ add_planetary_test(test_torrentmodel
     ${CMAKE_SOURCE_DIR}/torrent.h
     ${CMAKE_SOURCE_DIR}/torrentmodel.cpp
     ${CMAKE_SOURCE_DIR}/torrentmodel.h
-    ${CMAKE_SOURCE_DIR}/appicons.cpp
-    ${CMAKE_SOURCE_DIR}/appicons.h
+    ${PLANETARY_ICON_THEME_SOURCES}
     ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
 )
 
@@ -52,8 +51,7 @@ add_planetary_test(test_torrentsortproxymodel
     ${CMAKE_SOURCE_DIR}/torrent.h
     ${CMAKE_SOURCE_DIR}/torrentmodel.cpp
     ${CMAKE_SOURCE_DIR}/torrentmodel.h
-    ${CMAKE_SOURCE_DIR}/appicons.cpp
-    ${CMAKE_SOURCE_DIR}/appicons.h
+    ${PLANETARY_ICON_THEME_SOURCES}
     ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
     ${CMAKE_SOURCE_DIR}/torrentsortproxymodel.cpp
     ${CMAKE_SOURCE_DIR}/torrentsortproxymodel.h
@@ -133,8 +131,7 @@ add_planetary_test(test_applicationcommandcontroller
     test_applicationcommandcontroller.cpp
     ${CMAKE_SOURCE_DIR}/applicationcommandcontroller.cpp
     ${CMAKE_SOURCE_DIR}/applicationcommandcontroller.h
-    ${CMAKE_SOURCE_DIR}/appicons.cpp
-    ${CMAKE_SOURCE_DIR}/appicons.h
+    ${PLANETARY_ICON_THEME_SOURCES}
     ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
 )
 
@@ -144,8 +141,7 @@ add_planetary_test(test_torrentfiltercontroller
     ${CMAKE_SOURCE_DIR}/torrent.h
     ${CMAKE_SOURCE_DIR}/torrentmodel.cpp
     ${CMAKE_SOURCE_DIR}/torrentmodel.h
-    ${CMAKE_SOURCE_DIR}/appicons.cpp
-    ${CMAKE_SOURCE_DIR}/appicons.h
+    ${PLANETARY_ICON_THEME_SOURCES}
     ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
     ${CMAKE_SOURCE_DIR}/torrentsortproxymodel.cpp
     ${CMAKE_SOURCE_DIR}/torrentsortproxymodel.h
@@ -185,8 +181,7 @@ add_planetary_test(test_torrentfilemodel
     test_torrentfilemodel.cpp
     ${CMAKE_SOURCE_DIR}/torrentfilemodel.cpp
     ${CMAKE_SOURCE_DIR}/torrentfilemodel.h
-    ${CMAKE_SOURCE_DIR}/appicons.cpp
-    ${CMAKE_SOURCE_DIR}/appicons.h
+    ${PLANETARY_ICON_THEME_SOURCES}
     ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
 )
 

@@ -1,6 +1,6 @@
 #include "torrentfilemodel.h"
 
-#include "appicons.h"
+#include "iconthememanager.h"
 
 #include <QCoreApplication>
 #include <QFileInfo>
@@ -36,8 +36,8 @@ int TorrentFileModel::Node::row() const
 TorrentFileModel::TorrentFileModel(QObject *parent)
     : QAbstractItemModel(parent), m_root(std::make_unique<Node>())
 {
-    connect(&AppIcons::IconManager::instance(),
-            &AppIcons::IconManager::themeChanged,
+    connect(&AppIcons::IconThemeManager::instance(),
+            &AppIcons::IconThemeManager::themeChanged,
             this,
             [this]() { refreshIcons(m_root.get()); });
 }
@@ -93,15 +93,15 @@ QVariant TorrentFileModel::data(const QModelIndex &index, int role) const
     if (role == Qt::DecorationRole && index.column() == NameColumn) {
         switch (node->state) {
         case TransferState::Complete:
-            return AppIcons::IconManager::instance().icon(AppIcons::Id::StatusComplete);
+            return AppIcons::IconThemeManager::instance().icon(AppIcons::Id::StatusComplete);
         case TransferState::Transferring:
-            return AppIcons::IconManager::instance().icon(AppIcons::Id::StatusDownloading);
+            return AppIcons::IconThemeManager::instance().icon(AppIcons::Id::StatusDownloading);
         case TransferState::Skipped:
-            return AppIcons::IconManager::instance().icon(AppIcons::Id::StatusStopped);
+            return AppIcons::IconThemeManager::instance().icon(AppIcons::Id::StatusStopped);
         case TransferState::Mixed:
-            return AppIcons::IconManager::instance().icon(AppIcons::Id::StatusActive);
+            return AppIcons::IconThemeManager::instance().icon(AppIcons::Id::StatusActive);
         case TransferState::Unknown:
-            return AppIcons::IconManager::instance().icon(AppIcons::Id::StatusUnknown);
+            return AppIcons::IconThemeManager::instance().icon(AppIcons::Id::StatusUnknown);
         }
     }
 

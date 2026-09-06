@@ -1,5 +1,5 @@
 #include "torrentfiltercontroller.h"
-#include "appicons.h"
+#include "iconthememanager.h"
 #include "settingskeys.h"
 
 #include <QAbstractItemModel>
@@ -60,7 +60,7 @@ void TorrentFilterController::setup()
 
     m_filterList->setIconSize(QSize(20, 20));
 
-    auto &icons = AppIcons::IconManager::instance();
+    auto &icons = AppIcons::IconThemeManager::instance();
     icons.bindAction(m_actions.all, AppIcons::Id::FilterAll);
     icons.bindAction(m_actions.downloading, AppIcons::Id::StatusDownloading);
     icons.bindAction(m_actions.waiting, AppIcons::Id::StatusQueued);
@@ -69,7 +69,7 @@ void TorrentFilterController::setup()
     icons.bindAction(m_actions.inactive, AppIcons::Id::StatusInactive);
     icons.bindAction(m_actions.stopped, AppIcons::Id::StatusStopped);
     icons.bindAction(m_actions.error, AppIcons::Id::StatusError);
-    connect(&icons, &AppIcons::IconManager::themeChanged,
+    connect(&icons, &AppIcons::IconThemeManager::themeChanged,
             this, &TorrentFilterController::refreshIcons);
 
     if (m_searchEdit) {
@@ -405,7 +405,7 @@ QListWidgetItem *TorrentFilterController::createStatusItem(
     }
 
     auto *item = new QListWidgetItem(
-        AppIcons::IconManager::instance().icon(iconId), label);
+        AppIcons::IconThemeManager::instance().icon(iconId), label);
     item->setData(FilterTypeRole, typeToInt(ItemType::Status));
     item->setData(FilterValueRole, QString::number(static_cast<int>(filter)));
     item->setData(FilterBaseLabelRole, label);
@@ -418,7 +418,7 @@ QListWidgetItem *TorrentFilterController::createTrackerItem(const QString &label
 {
     const AppIcons::Id iconId = AppIcons::Id::FilterTracker;
     auto *item = new QListWidgetItem(
-        AppIcons::IconManager::instance().icon(iconId), label);
+        AppIcons::IconThemeManager::instance().icon(iconId), label);
     item->setData(FilterTypeRole, typeToInt(ItemType::Tracker));
     item->setData(FilterValueRole, trackerHost);
     item->setData(FilterBaseLabelRole, label);
@@ -431,7 +431,7 @@ QListWidgetItem *TorrentFilterController::createFolderItem(const QString &label,
 {
     const AppIcons::Id iconId = AppIcons::Id::FilterFolder;
     auto *item = new QListWidgetItem(
-        AppIcons::IconManager::instance().icon(iconId), label);
+        AppIcons::IconThemeManager::instance().icon(iconId), label);
     item->setData(FilterTypeRole, typeToInt(ItemType::Folder));
     item->setData(FilterValueRole, downloadDir);
     item->setData(FilterBaseLabelRole, label);
@@ -446,7 +446,7 @@ QListWidgetItem *TorrentFilterController::createMetadataItem(
     AppIcons::Id iconId) const
 {
     auto *item = new QListWidgetItem(
-        AppIcons::IconManager::instance().icon(iconId), label);
+        AppIcons::IconThemeManager::instance().icon(iconId), label);
     item->setData(FilterTypeRole, typeToInt(type));
     item->setData(FilterValueRole, value);
     item->setData(FilterBaseLabelRole, label);
@@ -459,7 +459,7 @@ void TorrentFilterController::refreshIcons()
     if (!m_filterList)
         return;
 
-    const auto &icons = AppIcons::IconManager::instance();
+    const auto &icons = AppIcons::IconThemeManager::instance();
     for (int row = 0; row < m_filterList->count(); ++row) {
         QListWidgetItem *item = m_filterList->item(row);
         const QVariant iconId = item ? item->data(FilterIconRole) : QVariant();

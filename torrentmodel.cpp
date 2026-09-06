@@ -1,5 +1,5 @@
 #include "torrentmodel.h"
-#include "appicons.h"
+#include "iconthememanager.h"
 
 #include <QApplication>
 #include <QBrush>
@@ -17,7 +17,7 @@ namespace {
 
 QIcon statusIcon(int statusValue, bool hasError)
 {
-    const auto &icons = AppIcons::IconManager::instance();
+    const auto &icons = AppIcons::IconThemeManager::instance();
     if (hasError)
         return icons.icon(AppIcons::Id::StatusError);
 
@@ -71,8 +71,8 @@ bool isStatusCueColumn(int column)
 TorrentModel::TorrentModel(QObject *parent)
     : QAbstractTableModel(parent)
 {
-    connect(&AppIcons::IconManager::instance(),
-            &AppIcons::IconManager::themeChanged,
+    connect(&AppIcons::IconThemeManager::instance(),
+            &AppIcons::IconThemeManager::themeChanged,
             this,
             [this]() {
                 if (torrentVector.isEmpty())

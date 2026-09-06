@@ -1,6 +1,7 @@
 #include <QtTest/QtTest>
 
 #include "torrentfiltercontroller.h"
+#include "iconthememanager.h"
 #include "torrentmodel.h"
 #include "torrentsortproxymodel.h"
 #include "settingskeys.h"
@@ -103,7 +104,7 @@ private slots:
 
 void TestTorrentFilterController::themeChangeRefreshesActionsAndListItems()
 {
-    auto &icons = AppIcons::IconManager::instance();
+    auto &icons = AppIcons::IconThemeManager::instance();
     const QString originalTheme = icons.themeId();
     icons.setThemeId(QString::fromLatin1(AppIcons::GlassTheme));
 

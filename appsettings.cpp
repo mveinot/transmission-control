@@ -1,7 +1,8 @@
 #include "appsettings.h"
 #include "applicationappearance.h"
 #include "applicationlocale.h"
-#include "appicons.h"
+#include "iconthememanager.h"
+#include "iconthemeregistry.h"
 #include "ui_appsettings.h"
 #include "settingskeys.h"
 
@@ -42,10 +43,15 @@ AppSettings::AppSettings(QWidget *parent)
     ui->appearanceCombo->addItem(tr("Dark"),
                                  QString::fromLatin1(ApplicationAppearance::Dark));
 
-    ui->iconThemeCombo->addItem(tr("Glass"),
-                                QString::fromLatin1(AppIcons::GlassTheme));
-    ui->iconThemeCombo->addItem(tr("Classic"),
-                                QString::fromLatin1(AppIcons::ClassicTheme));
+    for (const AppIcons::IconTheme &theme :
+         AppIcons::IconThemeRegistry::instance().themes()) {
+        QString displayName = theme.displayName();
+        if (theme.id() == QString::fromLatin1(AppIcons::GlassTheme))
+            displayName = tr("Glass");
+        else if (theme.id() == QString::fromLatin1(AppIcons::ClassicTheme))
+            displayName = tr("Classic");
+        ui->iconThemeCombo->addItem(displayName, theme.id());
+    }
 
     populateLanguageOptions();
     loadSettings();
@@ -64,7 +70,7 @@ AppSettings::AppSettings(QWidget *parent)
     connect(ui->iconThemeCombo, &QComboBox::currentIndexChanged,
             this, [this]() {
                 // Preview every icon consumer; accepting the dialog persists it.
-                AppIcons::IconManager::instance().setThemeId(
+                AppIcons::IconThemeManager::instance().setThemeId(
                     ui->iconThemeCombo->currentData().toString());
             });
 
@@ -103,7 +109,7 @@ AppSettings::AppSettings(QWidget *parent)
         // Escape and the window close button have the same rollback semantics
         // as the explicit Cancel button.
         ApplicationAppearance::apply(m_initialAppearance);
-        AppIcons::IconManager::instance().setThemeId(m_initialIconTheme);
+        AppIcons::IconThemeManager::instance().setThemeId(m_initialIconTheme);
     });
 
     connect(ui->buttonBrowseWatchFolder, &QPushButton::clicked,
@@ -178,7 +184,7 @@ void AppSettings::loadSettings()
     const int appearanceIndex = ui->appearanceCombo->findData(m_initialAppearance);
     ui->appearanceCombo->setCurrentIndex(appearanceIndex >= 0 ? appearanceIndex : 0);
 
-    auto &icons = AppIcons::IconManager::instance();
+    auto &icons = AppIcons::IconThemeManager::instance();
     m_initialIconTheme = icons.themeId();
     const int iconThemeIndex = ui->iconThemeCombo->findData(m_initialIconTheme);
     ui->iconThemeCombo->setCurrentIndex(iconThemeIndex >= 0 ? iconThemeIndex : 0);
@@ -281,8 +287,9 @@ void AppSettings::saveSettings()
 
     settings.setValue(SettingsKeys::Appearance, selectedAppearance());
     const QString iconTheme = ui->iconThemeCombo->currentData().toString();
-    AppIcons::IconManager::instance().setThemeId(iconTheme);
-    settings.setValue(SettingsKeys::IconTheme, iconTheme);
+    auto &iconManager = AppIcons::IconThemeManager::instance();
+    iconManager.setThemeId(iconTheme);
+    settings.setValue(SettingsKeys::IconTheme, iconManager.themeId());
     settings.setValue(SettingsKeys::ApplicationLocale,
                       ui->languageCombo->currentData().toString());
 
