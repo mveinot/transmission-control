@@ -93,7 +93,11 @@ void ApplicationCommandController::setupPlatformMenus()
         m_actions.quit->setMenuRole(QAction::QuitRole);
     if (m_actions.applicationSettings) {
         m_actions.applicationSettings->setText(tr("Settings…"));
-        m_actions.applicationSettings->setMenuRole(QAction::PreferencesRole);
+        // Qt's Cocoa plugin renders PreferencesRole as "Preferences...".
+        // Modern macOS uses "Settings…", so preserve our label while still
+        // placing this action in the standard application menu.
+        m_actions.applicationSettings->setMenuRole(
+            QAction::ApplicationSpecificRole);
         m_actions.applicationSettings->setShortcut(QKeySequence::Preferences);
     }
     if (m_actions.manageServers) {

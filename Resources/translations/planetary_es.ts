@@ -1141,8 +1141,8 @@ Save this mapping anyway?</source>
         </message>
         <message>
             <location filename="../../mainwindow.ui" line="848" />
-            <source>Client Settings...</source>
-            <translation>Ajustes del cliente…</translation>
+            <source>Settings…</source>
+            <translation>Ajustes…</translation>
         </message>
         <message>
             <location filename="../../mainwindow.ui" line="857" />

@@ -1152,8 +1152,8 @@ Enregistrer ce mappage quand même?</translation>
     </message>
     <message>
         <location line="+8"/>
-        <source>Client Settings...</source>
-        <translation>Paramètres du client...</translation>
+        <source>Settings…</source>
+        <translation>Paramètres…</translation>
     </message>
     <message>
         <location line="+9"/>

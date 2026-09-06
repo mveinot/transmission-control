@@ -1141,8 +1141,8 @@ Salvar este mapeamento mesmo assim?</translation>
         </message>
         <message>
             <location filename="../../mainwindow.ui" line="848" />
-            <source>Client Settings...</source>
-            <translation>Configurações do cliente…</translation>
+            <source>Settings…</source>
+            <translation>Configurações…</translation>
         </message>
         <message>
             <location filename="../../mainwindow.ui" line="857" />

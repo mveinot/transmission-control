@@ -137,6 +137,13 @@ void TestApplicationCommandController::routesCommandsOnce()
     QCOMPARE(importRequests, 1);
     QCOMPARE(fixture.openTorrent.shortcut(), QKeySequence::Open);
     QVERIFY(!fixture.openTorrent.icon().isNull());
+    QCOMPARE(fixture.applicationSettings.text(), QStringLiteral("Settings…"));
+#ifdef Q_OS_MACOS
+    QCOMPARE(fixture.applicationSettings.menuRole(),
+             QAction::ApplicationSpecificRole);
+    QCOMPARE(fixture.applicationSettings.shortcut(),
+             QKeySequence::Preferences);
+#endif
     QCOMPARE(fixture.window.menuBar()->actions().at(0)->text(),
              QStringLiteral("Edit"));
 }

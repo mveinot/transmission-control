@@ -1141,8 +1141,8 @@ Diese Zuordnung trotzdem speichern?</translation>
         </message>
         <message>
             <location filename="../../mainwindow.ui" line="848" />
-            <source>Client Settings...</source>
-            <translation>Client-Einstellungen...</translation>
+            <source>Settings…</source>
+            <translation>Einstellungen…</translation>
         </message>
         <message>
             <location filename="../../mainwindow.ui" line="857" />

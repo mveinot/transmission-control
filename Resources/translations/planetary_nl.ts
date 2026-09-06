@@ -1141,8 +1141,8 @@ Deze toewijzing toch opslaan?</translation>
         </message>
         <message>
             <location filename="../../mainwindow.ui" line="848" />
-            <source>Client Settings...</source>
-            <translation>Clientinstellingen…</translation>
+            <source>Settings…</source>
+            <translation>Instellingen…</translation>
         </message>
         <message>
             <location filename="../../mainwindow.ui" line="857" />
