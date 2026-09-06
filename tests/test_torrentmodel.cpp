@@ -5,6 +5,7 @@
 #include <QIcon>
 
 #include "torrentmodel.h"
+#include "appicons.h"
 
 namespace {
 
@@ -71,7 +72,32 @@ private slots:
     void indexesRowsByTorrentKey();
     void queuePositionChangeEmitsDataChanged();
     void removesMissingRowsOnUpdate();
+    void themeChangeRefreshesDecorations();
 };
+
+void TestTorrentModel::themeChangeRefreshesDecorations()
+{
+    auto &icons = AppIcons::IconManager::instance();
+    const QString originalTheme = icons.themeId();
+    icons.setThemeId(QString::fromLatin1(AppIcons::GlassTheme));
+
+    TorrentModel model;
+    model.applyUpdate(makeTorrentList({
+        makeTorrentValue(10, "One", 4, 0.25, 1024, 3),
+    }));
+    const QModelIndex status = model.index(0, TorrentModel::StatusColumn);
+    const QImage glass = status.data(Qt::DecorationRole).value<QIcon>()
+                             .pixmap(128, 128).toImage();
+    QSignalSpy changedSpy(&model, &QAbstractItemModel::dataChanged);
+
+    icons.setThemeId(QString::fromLatin1(AppIcons::ClassicTheme));
+
+    QCOMPARE(changedSpy.count(), 2);
+    QVERIFY(status.data(Qt::DecorationRole).value<QIcon>()
+                .pixmap(128, 128).toImage() != glass);
+
+    icons.setThemeId(originalTheme);
+}
 
 void TestTorrentModel::exposesQueueColumn()
 {

@@ -431,10 +431,6 @@ Tous les fichiers .torrent encore présents peuvent être à nouveau soumis au s
         <source>Colour scheme</source>
         <translation>Palette de couleurs</translation>
     </message>
-    <message>
-        <source>Icon theme changes take effect after restarting Planetary.</source>
-        <translation>Les changements de thème d’icônes prennent effet après le redémarrage de Planetary.</translation>
-    </message>
 </context>
 <context>
     <name>ApplicationLocale</name>

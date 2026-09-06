@@ -47,24 +47,21 @@ void ApplicationCommandController::setup()
 
 void ApplicationCommandController::setupActionAppearance()
 {
-    const auto setIcon = [](QAction *action, AppIcons::Icon icon) {
-        if (action)
-            action->setIcon(AppIcons::icon(icon));
-    };
-    setIcon(m_actions.openTorrent, AppIcons::Icon::ActionAddTorrent);
-    setIcon(m_actions.addMagnet, AppIcons::Icon::ActionAddMagnet);
-    setIcon(m_actions.startSelected, AppIcons::Icon::ActionStart);
-    setIcon(m_actions.stopSelected, AppIcons::Icon::ActionStop);
-    setIcon(m_actions.startAll, AppIcons::Icon::ActionStartAll);
-    setIcon(m_actions.stopAll, AppIcons::Icon::ActionStopAll);
-    setIcon(m_actions.forceStart, AppIcons::Icon::ActionForceStart);
-    setIcon(m_actions.verify, AppIcons::Icon::ActionVerify);
-    setIcon(m_actions.reannounce, AppIcons::Icon::ActionReannounce);
-    setIcon(m_actions.deleteTorrent, AppIcons::Icon::ActionDelete);
-    setIcon(m_actions.queueTop, AppIcons::Icon::QueueTop);
-    setIcon(m_actions.queueUp, AppIcons::Icon::QueueUp);
-    setIcon(m_actions.queueDown, AppIcons::Icon::QueueDown);
-    setIcon(m_actions.queueBottom, AppIcons::Icon::QueueBottom);
+    auto &icons = AppIcons::IconManager::instance();
+    icons.bindAction(m_actions.openTorrent, AppIcons::Id::ActionAddTorrent);
+    icons.bindAction(m_actions.addMagnet, AppIcons::Id::ActionAddMagnet);
+    icons.bindAction(m_actions.startSelected, AppIcons::Id::ActionStart);
+    icons.bindAction(m_actions.stopSelected, AppIcons::Id::ActionStop);
+    icons.bindAction(m_actions.startAll, AppIcons::Id::ActionStartAll);
+    icons.bindAction(m_actions.stopAll, AppIcons::Id::ActionStopAll);
+    icons.bindAction(m_actions.forceStart, AppIcons::Id::ActionForceStart);
+    icons.bindAction(m_actions.verify, AppIcons::Id::ActionVerify);
+    icons.bindAction(m_actions.reannounce, AppIcons::Id::ActionReannounce);
+    icons.bindAction(m_actions.deleteTorrent, AppIcons::Id::ActionDelete);
+    icons.bindAction(m_actions.queueTop, AppIcons::Id::QueueTop);
+    icons.bindAction(m_actions.queueUp, AppIcons::Id::QueueUp);
+    icons.bindAction(m_actions.queueDown, AppIcons::Id::QueueDown);
+    icons.bindAction(m_actions.queueBottom, AppIcons::Id::QueueBottom);
 
     if (m_actions.openTorrent)
         m_actions.openTorrent->setShortcut(QKeySequence::Open);

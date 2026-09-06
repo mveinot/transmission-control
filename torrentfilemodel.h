@@ -87,6 +87,7 @@ private:
     Node *findFolder(Node *parent, const QString &name) const;
     void updateAggregates(Node *node);
     void collectFileIndices(const Node *node, QList<int> *indices) const;
+    void refreshIcons(Node *parentNode);
     bool sameStructure(const QVector<TorrentFile> &files) const;
     static QString priorityText(int priority);
 };

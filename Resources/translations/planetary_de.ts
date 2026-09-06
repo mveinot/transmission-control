@@ -430,10 +430,6 @@ Noch vorhandene .torrent-Dateien können erneut an den konfigurierten Torrent-Se
             <source>Colour scheme</source>
             <translation>Farbschema</translation>
         </message>
-        <message>
-            <source>Icon theme changes take effect after restarting Planetary.</source>
-            <translation>Änderungen am Symbolthema werden nach einem Neustart von Planetary wirksam.</translation>
-        </message>
     </context>
     <context>
         <name>ApplicationLocale</name>

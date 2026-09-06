@@ -27,6 +27,7 @@ constexpr int FilterTypeRole = Qt::UserRole;
 constexpr int FilterValueRole = Qt::UserRole + 1;
 constexpr int FilterBaseLabelRole = Qt::UserRole + 2;
 constexpr int FilterSectionRole = Qt::UserRole + 3;
+constexpr int FilterIconRole = Qt::UserRole + 4;
 }
 
 TorrentFilterController::TorrentFilterController(QListWidget *filterList,
@@ -58,6 +59,18 @@ void TorrentFilterController::setup()
         settings.value(SettingsKeys::FilterGroupsCollapsed, false).toBool();
 
     m_filterList->setIconSize(QSize(20, 20));
+
+    auto &icons = AppIcons::IconManager::instance();
+    icons.bindAction(m_actions.all, AppIcons::Id::FilterAll);
+    icons.bindAction(m_actions.downloading, AppIcons::Id::StatusDownloading);
+    icons.bindAction(m_actions.waiting, AppIcons::Id::StatusQueued);
+    icons.bindAction(m_actions.completed, AppIcons::Id::StatusComplete);
+    icons.bindAction(m_actions.active, AppIcons::Id::StatusActive);
+    icons.bindAction(m_actions.inactive, AppIcons::Id::StatusInactive);
+    icons.bindAction(m_actions.stopped, AppIcons::Id::StatusStopped);
+    icons.bindAction(m_actions.error, AppIcons::Id::StatusError);
+    connect(&icons, &AppIcons::IconManager::themeChanged,
+            this, &TorrentFilterController::refreshIcons);
 
     if (m_searchEdit) {
         m_searchEdit->setClearButtonEnabled(true);
@@ -308,13 +321,14 @@ void TorrentFilterController::addLabelFilterItems(const QStringList &labels)
     if (!m_filterList)
         return;
 
-    static const QIcon labelIcon = AppIcons::icon(AppIcons::Icon::FilterAll);
     m_filterList->addItem(createHeaderItem(tr("Labels"), ItemType::Label));
     m_filterList->addItem(
-        createMetadataItem(ItemType::Label, tr("Unlabelled"), QString(), labelIcon));
+        createMetadataItem(ItemType::Label, tr("Unlabelled"), QString(),
+                           AppIcons::Id::FilterAll));
 
     for (const QString &label : labels)
-        m_filterList->addItem(createMetadataItem(ItemType::Label, label, label, labelIcon));
+        m_filterList->addItem(createMetadataItem(
+            ItemType::Label, label, label, AppIcons::Id::FilterAll));
 }
 
 void TorrentFilterController::addGroupFilterItems(const QStringList &groups)
@@ -322,13 +336,14 @@ void TorrentFilterController::addGroupFilterItems(const QStringList &groups)
     if (!m_filterList)
         return;
 
-    static const QIcon groupIcon = AppIcons::icon(AppIcons::Icon::FilterFolder);
     m_filterList->addItem(createHeaderItem(tr("Groups"), ItemType::Group));
     m_filterList->addItem(
-        createMetadataItem(ItemType::Group, tr("No Group"), QString(), groupIcon));
+        createMetadataItem(ItemType::Group, tr("No Group"), QString(),
+                           AppIcons::Id::FilterFolder));
 
     for (const QString &group : groups)
-        m_filterList->addItem(createMetadataItem(ItemType::Group, group, group, groupIcon));
+        m_filterList->addItem(createMetadataItem(
+            ItemType::Group, group, group, AppIcons::Id::FilterFolder));
 }
 
 QListWidgetItem *TorrentFilterController::createHeaderItem(
@@ -360,83 +375,97 @@ QListWidgetItem *TorrentFilterController::createStatusItem(
     const QString &label,
     TorrentSortProxyModel::StateFilter filter) const
 {
-    static const QIcon allIcon = AppIcons::icon(AppIcons::Icon::FilterAll);
-    static const QIcon downloadingIcon = AppIcons::icon(AppIcons::Icon::StatusDownloading);
-    static const QIcon waitingIcon = AppIcons::icon(AppIcons::Icon::StatusQueued);
-    static const QIcon completeIcon = AppIcons::icon(AppIcons::Icon::StatusComplete);
-    static const QIcon activeIcon = AppIcons::icon(AppIcons::Icon::StatusActive);
-    static const QIcon inactiveIcon = AppIcons::icon(AppIcons::Icon::StatusInactive);
-    static const QIcon stoppedIcon = AppIcons::icon(AppIcons::Icon::StatusStopped);
-    static const QIcon errorIcon = AppIcons::icon(AppIcons::Icon::StatusError);
-
-    QIcon icon;
+    AppIcons::Id iconId = AppIcons::Id::FilterAll;
 
     switch (filter) {
     case TorrentSortProxyModel::StateFilter::All:
-        icon = allIcon;
+        iconId = AppIcons::Id::FilterAll;
         break;
     case TorrentSortProxyModel::StateFilter::Downloading:
-        icon = downloadingIcon;
+        iconId = AppIcons::Id::StatusDownloading;
         break;
     case TorrentSortProxyModel::StateFilter::Waiting:
-        icon = waitingIcon;
+        iconId = AppIcons::Id::StatusQueued;
         break;
     case TorrentSortProxyModel::StateFilter::Completed:
-        icon = completeIcon;
+        iconId = AppIcons::Id::StatusComplete;
         break;
     case TorrentSortProxyModel::StateFilter::Active:
-        icon = activeIcon;
+        iconId = AppIcons::Id::StatusActive;
         break;
     case TorrentSortProxyModel::StateFilter::Inactive:
-        icon = inactiveIcon;
+        iconId = AppIcons::Id::StatusInactive;
         break;
     case TorrentSortProxyModel::StateFilter::Stopped:
-        icon = stoppedIcon;
+        iconId = AppIcons::Id::StatusStopped;
         break;
     case TorrentSortProxyModel::StateFilter::Error:
-        icon = errorIcon;
+        iconId = AppIcons::Id::StatusError;
         break;
     }
 
-    auto *item = new QListWidgetItem(icon, label);
+    auto *item = new QListWidgetItem(
+        AppIcons::IconManager::instance().icon(iconId), label);
     item->setData(FilterTypeRole, typeToInt(ItemType::Status));
     item->setData(FilterValueRole, QString::number(static_cast<int>(filter)));
     item->setData(FilterBaseLabelRole, label);
+    item->setData(FilterIconRole, static_cast<int>(iconId));
     return item;
 }
 
 QListWidgetItem *TorrentFilterController::createTrackerItem(const QString &label,
                                                             const QString &trackerHost) const
 {
-    static const QIcon trackerIcon = AppIcons::icon(AppIcons::Icon::FilterTracker);
-
-    auto *item = new QListWidgetItem(trackerIcon, label);
+    const AppIcons::Id iconId = AppIcons::Id::FilterTracker;
+    auto *item = new QListWidgetItem(
+        AppIcons::IconManager::instance().icon(iconId), label);
     item->setData(FilterTypeRole, typeToInt(ItemType::Tracker));
     item->setData(FilterValueRole, trackerHost);
     item->setData(FilterBaseLabelRole, label);
+    item->setData(FilterIconRole, static_cast<int>(iconId));
     return item;
 }
 
 QListWidgetItem *TorrentFilterController::createFolderItem(const QString &label,
                                                            const QString &downloadDir) const
 {
-    static const QIcon folderIcon = AppIcons::icon(AppIcons::Icon::FilterFolder);
-
-    auto *item = new QListWidgetItem(folderIcon, label);
+    const AppIcons::Id iconId = AppIcons::Id::FilterFolder;
+    auto *item = new QListWidgetItem(
+        AppIcons::IconManager::instance().icon(iconId), label);
     item->setData(FilterTypeRole, typeToInt(ItemType::Folder));
     item->setData(FilterValueRole, downloadDir);
     item->setData(FilterBaseLabelRole, label);
+    item->setData(FilterIconRole, static_cast<int>(iconId));
     return item;
 }
 
 QListWidgetItem *TorrentFilterController::createMetadataItem(
-    ItemType type, const QString &label, const QString &value, const QIcon &icon) const
+    ItemType type,
+    const QString &label,
+    const QString &value,
+    AppIcons::Id iconId) const
 {
-    auto *item = new QListWidgetItem(icon, label);
+    auto *item = new QListWidgetItem(
+        AppIcons::IconManager::instance().icon(iconId), label);
     item->setData(FilterTypeRole, typeToInt(type));
     item->setData(FilterValueRole, value);
     item->setData(FilterBaseLabelRole, label);
+    item->setData(FilterIconRole, static_cast<int>(iconId));
     return item;
+}
+
+void TorrentFilterController::refreshIcons()
+{
+    if (!m_filterList)
+        return;
+
+    const auto &icons = AppIcons::IconManager::instance();
+    for (int row = 0; row < m_filterList->count(); ++row) {
+        QListWidgetItem *item = m_filterList->item(row);
+        const QVariant iconId = item ? item->data(FilterIconRole) : QVariant();
+        if (iconId.isValid())
+            item->setIcon(icons.icon(static_cast<AppIcons::Id>(iconId.toInt())));
+    }
 }
 
 void TorrentFilterController::clearCategoricalFilters()

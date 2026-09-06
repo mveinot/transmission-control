@@ -36,6 +36,10 @@ int TorrentFileModel::Node::row() const
 TorrentFileModel::TorrentFileModel(QObject *parent)
     : QAbstractItemModel(parent), m_root(std::make_unique<Node>())
 {
+    connect(&AppIcons::IconManager::instance(),
+            &AppIcons::IconManager::themeChanged,
+            this,
+            [this]() { refreshIcons(m_root.get()); });
 }
 
 QModelIndex TorrentFileModel::index(int row, int column, const QModelIndex &parent) const
@@ -88,11 +92,16 @@ QVariant TorrentFileModel::data(const QModelIndex &index, int role) const
 
     if (role == Qt::DecorationRole && index.column() == NameColumn) {
         switch (node->state) {
-        case TransferState::Complete: return AppIcons::icon(AppIcons::Icon::StatusComplete);
-        case TransferState::Transferring: return AppIcons::icon(AppIcons::Icon::StatusDownloading);
-        case TransferState::Skipped: return AppIcons::icon(AppIcons::Icon::StatusStopped);
-        case TransferState::Mixed: return AppIcons::icon(AppIcons::Icon::StatusActive);
-        case TransferState::Unknown: return AppIcons::icon(AppIcons::Icon::StatusUnknown);
+        case TransferState::Complete:
+            return AppIcons::IconManager::instance().icon(AppIcons::Id::StatusComplete);
+        case TransferState::Transferring:
+            return AppIcons::IconManager::instance().icon(AppIcons::Id::StatusDownloading);
+        case TransferState::Skipped:
+            return AppIcons::IconManager::instance().icon(AppIcons::Id::StatusStopped);
+        case TransferState::Mixed:
+            return AppIcons::IconManager::instance().icon(AppIcons::Id::StatusActive);
+        case TransferState::Unknown:
+            return AppIcons::IconManager::instance().icon(AppIcons::Id::StatusUnknown);
         }
     }
 
@@ -339,6 +348,25 @@ void TorrentFileModel::collectFileIndices(const Node *node, QList<int> *indices)
     }
     for (const auto &child : node->children)
         collectFileIndices(child.get(), indices);
+}
+
+void TorrentFileModel::refreshIcons(Node *parentNode)
+{
+    if (!parentNode || parentNode->children.empty())
+        return;
+
+    Node *first = parentNode->children.front().get();
+    Node *last = parentNode->children.back().get();
+    emit dataChanged(createIndex(0, NameColumn, first),
+                     createIndex(static_cast<int>(parentNode->children.size()) - 1,
+                                 NameColumn,
+                                 last),
+                     QVector<int> {Qt::DecorationRole});
+
+    for (const auto &child : parentNode->children) {
+        if (!child->isFile())
+            refreshIcons(child.get());
+    }
 }
 
 QList<int> TorrentFileModel::fileIndices(const QModelIndex &index) const

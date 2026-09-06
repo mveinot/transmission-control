@@ -25,6 +25,7 @@ signals:
 private:
     Ui::AppSettings *ui;
     QString m_initialAppearance;
+    QString m_initialIconTheme;
 
     void populateLanguageOptions();
     void loadSettings();

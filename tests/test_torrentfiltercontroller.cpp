@@ -98,7 +98,41 @@ class TestTorrentFilterController : public QObject
 private slots:
     void setupBuildsConsistentIconListAndTrackerSelection();
     void restoresCollapsedSectionState();
+    void themeChangeRefreshesActionsAndListItems();
 };
+
+void TestTorrentFilterController::themeChangeRefreshesActionsAndListItems()
+{
+    auto &icons = AppIcons::IconManager::instance();
+    const QString originalTheme = icons.themeId();
+    icons.setThemeId(QString::fromLatin1(AppIcons::GlassTheme));
+
+    QListWidget list;
+    QLineEdit searchEdit;
+    TorrentModel sourceModel;
+    TorrentSortProxyModel proxy;
+    proxy.setSourceModel(&sourceModel);
+    QAction all;
+
+    TorrentFilterController::Actions actions;
+    actions.all = &all;
+    TorrentFilterController controller(&list, &searchEdit, &proxy, actions);
+    controller.setup();
+
+    QListWidgetItem *allItem = findItemByText(list, QStringLiteral("All (0)"));
+    QVERIFY(allItem);
+    const QImage glassItem = allItem->icon().pixmap(128, 128).toImage();
+    const QImage glassAction = all.icon().pixmap(128, 128).toImage();
+
+    icons.setThemeId(QString::fromLatin1(AppIcons::ClassicTheme));
+
+    QVERIFY(allItem->icon().pixmap(128, 128).toImage() != glassItem);
+    QVERIFY(all.icon().pixmap(128, 128).toImage() != glassAction);
+    QCOMPARE(all.property("planetaryIconId").toInt(),
+             static_cast<int>(AppIcons::Id::FilterAll));
+
+    icons.setThemeId(originalTheme);
+}
 
 void TestTorrentFilterController::setupBuildsConsistentIconListAndTrackerSelection()
 {

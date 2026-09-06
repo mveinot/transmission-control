@@ -17,29 +17,30 @@ namespace {
 
 QIcon statusIcon(int statusValue, bool hasError)
 {
+    const auto &icons = AppIcons::IconManager::instance();
     if (hasError)
-        return AppIcons::icon(AppIcons::Icon::StatusError);
+        return icons.icon(AppIcons::Id::StatusError);
 
     switch (statusValue) {
     case 0: // Paused
-        return AppIcons::icon(AppIcons::Icon::StatusStopped);
+        return icons.icon(AppIcons::Id::StatusStopped);
 
     case 1: // Waiting to verify
     case 3: // Queued
     case 5: // Waiting to seed
-        return AppIcons::icon(AppIcons::Icon::StatusQueued);
+        return icons.icon(AppIcons::Id::StatusQueued);
 
     case 2: // Verifying
-        return AppIcons::icon(AppIcons::Icon::StatusVerifying);
+        return icons.icon(AppIcons::Id::StatusVerifying);
 
     case 4: // Downloading
-        return AppIcons::icon(AppIcons::Icon::StatusDownloading);
+        return icons.icon(AppIcons::Id::StatusDownloading);
 
     case 6: // Seeding
-        return AppIcons::icon(AppIcons::Icon::StatusSeeding);
+        return icons.icon(AppIcons::Id::StatusSeeding);
 
     default:
-        return AppIcons::icon(AppIcons::Icon::StatusUnknown);
+        return icons.icon(AppIcons::Id::StatusUnknown);
     }
 }
 
@@ -70,6 +71,21 @@ bool isStatusCueColumn(int column)
 TorrentModel::TorrentModel(QObject *parent)
     : QAbstractTableModel(parent)
 {
+    connect(&AppIcons::IconManager::instance(),
+            &AppIcons::IconManager::themeChanged,
+            this,
+            [this]() {
+                if (torrentVector.isEmpty())
+                    return;
+
+                const QVector<int> roles {Qt::DecorationRole};
+                emit dataChanged(index(0, NameColumn),
+                                 index(torrentVector.size() - 1, NameColumn),
+                                 roles);
+                emit dataChanged(index(0, StatusColumn),
+                                 index(torrentVector.size() - 1, StatusColumn),
+                                 roles);
+            });
 }
 
 int TorrentModel::rowCount(const QModelIndex &parent) const

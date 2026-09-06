@@ -430,10 +430,6 @@ Aanwezige .torrent-bestanden kunnen opnieuw naar de ingestelde torrentserver wor
             <source>Colour scheme</source>
             <translation>Kleurenschema</translation>
         </message>
-        <message>
-            <source>Icon theme changes take effect after restarting Planetary.</source>
-            <translation>Wijzigingen in het pictogramthema worden toegepast nadat Planetary opnieuw is gestart.</translation>
-        </message>
     </context>
     <context>
         <name>ApplicationLocale</name>

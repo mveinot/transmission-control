@@ -6,6 +6,7 @@
 #include <QStringList>
 #include <QVector>
 
+#include "appicons.h"
 #include "torrent.h"
 #include "torrentsortproxymodel.h"
 
@@ -101,7 +102,8 @@ private:
     QListWidgetItem *createMetadataItem(ItemType type,
                                         const QString &label,
                                         const QString &value,
-                                        const QIcon &icon) const;
+                                        AppIcons::Id iconId) const;
+    void refreshIcons();
     void clearCategoricalFilters();
     void applyCurrentListSelection(QListWidgetItem *current);
     void selectStatusFilter(TorrentSortProxyModel::StateFilter filter);

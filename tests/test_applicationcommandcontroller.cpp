@@ -182,19 +182,43 @@ void TestApplicationCommandController::reconcilesBackendAndSessionState()
 
 void TestApplicationCommandController::iconThemesProvideDistinctArtwork()
 {
-    const QIcon classic = AppIcons::icon(
-        AppIcons::Icon::ActionStart,
+    auto &icons = AppIcons::IconManager::instance();
+    const QString originalTheme = icons.themeId();
+    icons.setThemeId(QString::fromLatin1(AppIcons::GlassTheme));
+
+    CommandFixture fixture;
+    ApplicationCommandController controller(
+        &fixture.window,
+        fixture.actions(),
+        fixture.menus(),
+        {});
+    controller.setup();
+
+    const QImage glassAction = fixture.startSelected.icon()
+                                   .pixmap(128, 128).toImage();
+    QSignalSpy themeChangedSpy(&icons, &AppIcons::IconManager::themeChanged);
+    icons.setThemeId(QString::fromLatin1(AppIcons::ClassicTheme));
+
+    const QIcon classic = icons.icon(
+        AppIcons::Id::ActionStart,
         QString::fromLatin1(AppIcons::ClassicTheme));
-    const QIcon glass = AppIcons::icon(
-        AppIcons::Icon::ActionStart,
+    const QIcon glass = icons.icon(
+        AppIcons::Id::ActionStart,
         QString::fromLatin1(AppIcons::GlassTheme));
 
     QVERIFY(!classic.isNull());
     QVERIFY(!glass.isNull());
     QVERIFY(classic.pixmap(128, 128).toImage()
             != glass.pixmap(128, 128).toImage());
-    QCOMPARE(AppIcons::normalizedThemeId(QStringLiteral("unknown")),
+    QCOMPARE(themeChangedSpy.count(), 1);
+    QCOMPARE(fixture.startSelected.property("planetaryIconId").toInt(),
+             static_cast<int>(AppIcons::Id::ActionStart));
+    QVERIFY(fixture.startSelected.icon().pixmap(128, 128).toImage()
+            != glassAction);
+    QCOMPARE(icons.normalizedThemeId(QStringLiteral("unknown")),
              QString::fromLatin1(AppIcons::GlassTheme));
+
+    icons.setThemeId(originalTheme);
 }
 
 int main(int argc, char **argv)

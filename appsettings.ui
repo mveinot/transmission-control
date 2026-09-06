@@ -317,16 +317,6 @@
            </widget>
           </item>
           <item row="2" column="0" colspan="2">
-           <widget class="QLabel" name="labelIconThemeRestartNotice">
-            <property name="text">
-             <string>Icon theme changes take effect after restarting Planetary.</string>
-            </property>
-            <property name="wordWrap">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0" colspan="2">
            <widget class="QCheckBox" name="showSessionOverview">
             <property name="toolTip">
              <string>Show recent bandwidth activity in the details pane when no torrent is selected</string>

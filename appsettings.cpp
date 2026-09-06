@@ -61,6 +61,12 @@ AppSettings::AppSettings(QWidget *parent)
                 // Preview the choice without persisting it until the dialog is accepted.
                 ApplicationAppearance::apply(selectedAppearance());
             });
+    connect(ui->iconThemeCombo, &QComboBox::currentIndexChanged,
+            this, [this]() {
+                // Preview every icon consumer; accepting the dialog persists it.
+                AppIcons::IconManager::instance().setThemeId(
+                    ui->iconThemeCombo->currentData().toString());
+            });
 
     connect(ui->buttonTestNotification, &QPushButton::clicked,
             this, &AppSettings::testNotificationRequested);
@@ -97,6 +103,7 @@ AppSettings::AppSettings(QWidget *parent)
         // Escape and the window close button have the same rollback semantics
         // as the explicit Cancel button.
         ApplicationAppearance::apply(m_initialAppearance);
+        AppIcons::IconManager::instance().setThemeId(m_initialIconTheme);
     });
 
     connect(ui->buttonBrowseWatchFolder, &QPushButton::clicked,
@@ -171,10 +178,9 @@ void AppSettings::loadSettings()
     const int appearanceIndex = ui->appearanceCombo->findData(m_initialAppearance);
     ui->appearanceCombo->setCurrentIndex(appearanceIndex >= 0 ? appearanceIndex : 0);
 
-    const QString iconTheme = AppIcons::normalizedThemeId(
-        settings.value(SettingsKeys::IconTheme,
-                       QString::fromLatin1(AppIcons::GlassTheme)).toString());
-    const int iconThemeIndex = ui->iconThemeCombo->findData(iconTheme);
+    auto &icons = AppIcons::IconManager::instance();
+    m_initialIconTheme = icons.themeId();
+    const int iconThemeIndex = ui->iconThemeCombo->findData(m_initialIconTheme);
     ui->iconThemeCombo->setCurrentIndex(iconThemeIndex >= 0 ? iconThemeIndex : 0);
 
     const QString localePreference =
@@ -274,8 +280,9 @@ void AppSettings::saveSettings()
     QSettings settings;
 
     settings.setValue(SettingsKeys::Appearance, selectedAppearance());
-    settings.setValue(SettingsKeys::IconTheme,
-                      ui->iconThemeCombo->currentData().toString());
+    const QString iconTheme = ui->iconThemeCombo->currentData().toString();
+    AppIcons::IconManager::instance().setThemeId(iconTheme);
+    settings.setValue(SettingsKeys::IconTheme, iconTheme);
     settings.setValue(SettingsKeys::ApplicationLocale,
                       ui->languageCombo->currentData().toString());
 

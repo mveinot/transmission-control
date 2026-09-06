@@ -430,10 +430,6 @@ Os arquivos .torrent ainda presentes poderão ser enviados novamente ao servidor
             <source>Colour scheme</source>
             <translation>Esquema de cores</translation>
         </message>
-        <message>
-            <source>Icon theme changes take effect after restarting Planetary.</source>
-            <translation>As alterações do tema de ícones entram em vigor após reiniciar o Planetary.</translation>
-        </message>
     </context>
     <context>
         <name>ApplicationLocale</name>
