@@ -469,6 +469,18 @@ $repositoryUrl = sprintf(
         </p>
     </section>
 
+    <section class="theme-download" aria-labelledby="theme-download-title">
+        <div class="theme-download-icon" aria-hidden="true">✦</div>
+        <div class="theme-download-copy">
+            <span class="badge">New</span>
+            <h2 id="theme-download-title">Planetary icon themes</h2>
+            <p>Explore the complete collection of built-in icon themes. Download the pack and install the themes from Planetary’s preferences.</p>
+        </div>
+        <a class="button primary" href="../icon-themes.zip" download>
+            Download theme pack <span aria-hidden="true">↓</span>
+        </a>
+    </section>
+
     <?php if ($latestRelease): ?>
         <?php
         $latestName = (string) ($latestRelease['name'] ?: $latestRelease['tag_name']);

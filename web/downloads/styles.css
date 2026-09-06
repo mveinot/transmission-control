@@ -16,6 +16,55 @@
   margin-top: 0;
 }
 
+.theme-download {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin: 0 0 34px;
+  padding: 22px 26px;
+  border: 1px solid rgba(242, 185, 75, .3);
+  border-radius: 20px;
+  background:
+    linear-gradient(110deg, rgba(242, 185, 75, .14), rgba(242, 185, 75, .04) 58%, transparent),
+    var(--panel-solid);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .2);
+}
+
+.theme-download-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border: 1px solid rgba(242, 185, 75, .32);
+  border-radius: 15px;
+  color: var(--accent-light);
+  background: rgba(242, 185, 75, .1);
+  font-size: 1.55rem;
+}
+
+.theme-download-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.theme-download-copy h2 {
+  margin: 7px 0 4px;
+  font-size: clamp(1.25rem, 2.5vw, 1.65rem);
+}
+
+.theme-download-copy p {
+  max-width: 690px;
+  margin: 0;
+  color: var(--muted);
+  font-size: .92rem;
+}
+
+.theme-download .button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .latest-card {
   position: relative;
   overflow: hidden;
@@ -345,9 +394,15 @@ pre {
   }
 
   .release-heading,
-  .release-title-row {
+  .release-title-row,
+  .theme-download {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .theme-download .button {
+    width: 100%;
+    text-align: center;
   }
 
   .asset-grid {
