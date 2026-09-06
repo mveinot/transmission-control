@@ -473,7 +473,7 @@ $repositoryUrl = sprintf(
         <div class="theme-download-icon" aria-hidden="true">✦</div>
         <div class="theme-download-copy">
             <span class="badge">New</span>
-            <h2 id="theme-download-title">Planetary icon themes</h2>
+            <h2 id="theme-download-title">Planetary themes</h2>
             <p>Explore the complete collection of built-in icon/colour themes. Download the pack and install the themes from Planetary’s preferences.</p>
         </div>
         <a class="button primary" href="../icon-themes.zip" download>
