@@ -64,6 +64,7 @@ class TestIconThemeRegistry : public QObject
 private slots:
     void semanticNamesRoundTrip();
     void standardDirectoryUsesApplicationDataLocation();
+    void exampleThemeManifestIsComplete();
     void scansLoadsFallsBackAndRescans();
 };
 
@@ -92,6 +93,25 @@ void TestIconThemeRegistry::standardDirectoryUsesApplicationDataLocation()
                                  : QDir(appData).filePath(
                                        QStringLiteral("icon-themes"));
     QCOMPARE(AppIcons::IconThemeRegistry::standardThemeDirectory(), expected);
+}
+
+void TestIconThemeRegistry::exampleThemeManifestIsComplete()
+{
+    const QString manifestPath = QFINDTESTDATA(
+        "../extras/icon-themes/polar-night/theme.json");
+    QVERIFY(!manifestPath.isEmpty());
+
+    const AppIcons::IconThemeManifestResult result =
+        AppIcons::IconThemeManifestParser::parseFile(manifestPath);
+    QVERIFY2(result.succeeded(), qPrintable(result.error));
+    QCOMPARE(result.theme.id(), QStringLiteral("polar-night"));
+    for (AppIcons::Id iconId : AppIcons::allIds()) {
+        QVERIFY2(result.theme.hasIcon(iconId),
+                 qPrintable(AppIcons::semanticName(iconId)));
+        QVERIFY2(QFileInfo::exists(result.theme.iconPath(iconId)),
+                 qPrintable(result.theme.iconPath(iconId)));
+        QVERIFY(!QIcon(result.theme.iconPath(iconId)).isNull());
+    }
 }
 
 void TestIconThemeRegistry::scansLoadsFallsBackAndRescans()
