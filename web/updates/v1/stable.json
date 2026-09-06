@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "channel": "stable",
-  "version": "2.0.1",
-  "build": 380,
-  "displayVersion": "2.0.1.380",
+  "version": "2.1.0",
+  "build": 396,
+  "displayVersion": "2.1.0.396",
   "minimumMacOSVersion": "13.0",
-  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.0.1.380/Planetary-2.0.1.380-macOS-universal.dmg",
-  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.0.1.380",
-  "releaseNotesMarkdown": "## Planetary 2.0.1.380\n\nMinor release, no major changes.\n\n- Now checks for a new release manifest instead of using the GitHub API directly.\n- Can display release notes in the version check dialog.\n\n[Full changelog](https://github.com/mveinot/transmission-control/compare/v2.0.0.376...v2.0.1.380)",
-  "sha256": "4f323ea555222bc26f455c4ecbd298d2d53db8b40ae0d69df01686d52569f344"
+  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.1.0.396/Planetary-2.1.0.396-macOS-universal.dmg",
+  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.1.0.396",
+  "releaseNotesMarkdown": "**Full Changelog**: https://github.com/mveinot/transmission-control/compare/v2.0.1.380...v2.1.0.396\n\nNotable changes:\n\n* Build against Qt 6.11.2\n* Icon and colour theme support - user defined themes are supported\n\nUser-defined themes are searched for in `~/Library/Application Support/mvgrafx/Planetary/icon-themes`\n\nA sample pack will be available to download on the project website: https://planetary.mvgrafx.net",
+  "sha256": "61a241c16e6996738085ebb30251ea307421df7f593411c4312e8362514de28d"
 }
