@@ -6,6 +6,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QClipboard>
+#include <QEvent>
 #include <QFont>
 #include <QHash>
 #include <QIcon>
@@ -59,6 +60,11 @@ void TorrentFilterController::setup()
         settings.value(SettingsKeys::FilterGroupsCollapsed, false).toBool();
 
     m_filterList->setIconSize(QSize(20, 20));
+    m_filterList->setMouseTracking(true);
+    m_filterList->viewport()->setMouseTracking(true);
+    m_filterList->viewport()->installEventFilter(this);
+    connect(m_filterList, &QListWidget::itemEntered,
+            this, &TorrentFilterController::setHoveredItem);
 
     auto &icons = AppIcons::IconThemeManager::instance();
     icons.bindAction(m_actions.all, AppIcons::Id::FilterAll);
@@ -252,6 +258,7 @@ void TorrentFilterController::rebuildWithFilters(const QStringList &trackerHosts
     m_labelsAvailable = labelsAvailable;
     m_groupsAvailable = groupsAvailable;
 
+    setHoveredItem(nullptr);
     QSignalBlocker blocker(m_filterList);
     m_filterList->clear();
 
@@ -463,9 +470,46 @@ void TorrentFilterController::refreshIcons()
     for (int row = 0; row < m_filterList->count(); ++row) {
         QListWidgetItem *item = m_filterList->item(row);
         const QVariant iconId = item ? item->data(FilterIconRole) : QVariant();
-        if (iconId.isValid())
-            item->setIcon(icons.icon(static_cast<AppIcons::Id>(iconId.toInt())));
+        if (iconId.isValid()) {
+            const auto semanticId =
+                static_cast<AppIcons::Id>(iconId.toInt());
+            item->setIcon(m_hoveredItem == item
+                              ? icons.hoverIcon(semanticId)
+                              : icons.icon(semanticId));
+        }
     }
+}
+
+void TorrentFilterController::setHoveredItem(QListWidgetItem *item)
+{
+    if (!m_filterList || item == m_hoveredItem)
+        return;
+
+    const auto &icons = AppIcons::IconThemeManager::instance();
+    if (m_hoveredItem) {
+        const QVariant iconId = m_hoveredItem->data(FilterIconRole);
+        if (iconId.isValid())
+            m_hoveredItem->setIcon(
+                icons.icon(static_cast<AppIcons::Id>(iconId.toInt())));
+    }
+
+    m_hoveredItem = item;
+    if (!m_hoveredItem)
+        return;
+
+    const QVariant iconId = m_hoveredItem->data(FilterIconRole);
+    if (iconId.isValid())
+        m_hoveredItem->setIcon(
+            icons.hoverIcon(static_cast<AppIcons::Id>(iconId.toInt())));
+}
+
+bool TorrentFilterController::eventFilter(QObject *watched, QEvent *event)
+{
+    if (m_filterList && watched == m_filterList->viewport()
+        && event && event->type() == QEvent::Leave) {
+        setHoveredItem(nullptr);
+    }
+    return QObject::eventFilter(watched, event);
 }
 
 void TorrentFilterController::clearCategoricalFilters()

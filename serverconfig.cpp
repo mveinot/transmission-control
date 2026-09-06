@@ -1,6 +1,7 @@
 #include "serverconfig.h"
 #include "ui_serverconfig.h"
 
+#include "colorthememanager.h"
 #include "foldermappingsdialog.h"
 #include "serverconnectionprobe.h"
 
@@ -875,10 +876,8 @@ void ServerConfig::setConnectionTestResult(const QString &message,
                                            bool success)
 {
     ui->labelConnectionTestResult->setText(message);
-    const QColor color = success
-                             ? ui->labelConnectionTestResult->palette()
-                                   .color(QPalette::Link)
-                             : QColor(180, 55, 55);
+    const QColor color = AppColors::ColorThemeManager::instance().color(
+        success ? AppColors::Role::Success : AppColors::Role::Error);
     ui->labelConnectionTestResult->setStyleSheet(
         QStringLiteral("QLabel { color: %1; }").arg(color.name()));
     ui->buttonTestConnection->setEnabled(currentServerIndex() >= 0);

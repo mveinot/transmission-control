@@ -1,6 +1,6 @@
 #include "appicons.h"
-#include "iconthememanifest.h"
-#include "iconthemeregistry.h"
+#include "thememanifest.h"
+#include "themeregistry.h"
 
 #include <QApplication>
 #include <QColor>
@@ -31,7 +31,7 @@ bool writeManifest(const QString &themeDirectory,
 {
     QDir().mkpath(themeDirectory);
     QFile file(QDir(themeDirectory).filePath(QString::fromLatin1(
-        AppIcons::IconThemeManifestParser::FileName)));
+        AppThemes::ThemeManifestParser::FileName)));
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
         return false;
     return file.write(QJsonDocument(manifest).toJson()) >= 0;
@@ -57,7 +57,7 @@ QColor iconColor(const QIcon &icon)
 
 } // namespace
 
-class TestIconThemeRegistry : public QObject
+class TestThemeRegistry : public QObject
 {
     Q_OBJECT
 
@@ -65,10 +65,11 @@ private slots:
     void semanticNamesRoundTrip();
     void standardDirectoryUsesApplicationDataLocation();
     void exampleThemeManifestIsComplete();
+    void exampleColorThemeManifestsLoad();
     void scansLoadsFallsBackAndRescans();
 };
 
-void TestIconThemeRegistry::semanticNamesRoundTrip()
+void TestThemeRegistry::semanticNamesRoundTrip()
 {
     QSet<QString> names;
     for (AppIcons::Id iconId : AppIcons::allIds()) {
@@ -82,9 +83,23 @@ void TestIconThemeRegistry::semanticNamesRoundTrip()
     }
     QCOMPARE(names.size(), 27);
     QVERIFY(!AppIcons::idFromSemanticName(QStringLiteral("not-an-icon")));
+
+    names.clear();
+    for (AppColors::Role colorRole : AppColors::allRoles()) {
+        const QString name = AppColors::semanticName(colorRole);
+        QVERIFY(!name.isEmpty());
+        QVERIFY(!names.contains(name));
+        names.insert(name);
+        const auto roundTrip = AppColors::roleFromSemanticName(name.toUpper());
+        QVERIFY(roundTrip.has_value());
+        QCOMPARE(*roundTrip, colorRole);
+    }
+    QCOMPARE(names.size(), 11);
+    QVERIFY(!AppColors::roleFromSemanticName(
+        QStringLiteral("not-a-color")));
 }
 
-void TestIconThemeRegistry::standardDirectoryUsesApplicationDataLocation()
+void TestThemeRegistry::standardDirectoryUsesApplicationDataLocation()
 {
     const QString appData =
         QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -92,29 +107,67 @@ void TestIconThemeRegistry::standardDirectoryUsesApplicationDataLocation()
                                  ? QString()
                                  : QDir(appData).filePath(
                                        QStringLiteral("icon-themes"));
-    QCOMPARE(AppIcons::IconThemeRegistry::standardThemeDirectory(), expected);
+    QCOMPARE(AppThemes::ThemeRegistry::standardThemeDirectory(), expected);
 }
 
-void TestIconThemeRegistry::exampleThemeManifestIsComplete()
+void TestThemeRegistry::exampleThemeManifestIsComplete()
 {
     const QString manifestPath = QFINDTESTDATA(
         "../extras/icon-themes/polar-night/theme.json");
     QVERIFY(!manifestPath.isEmpty());
 
-    const AppIcons::IconThemeManifestResult result =
-        AppIcons::IconThemeManifestParser::parseFile(manifestPath);
+    const AppThemes::ThemeManifestResult result =
+        AppThemes::ThemeManifestParser::parseFile(manifestPath);
     QVERIFY2(result.succeeded(), qPrintable(result.error));
     QCOMPARE(result.theme.id(), QStringLiteral("polar-night"));
+    QVERIFY(result.theme.hasIconTheme());
+    QVERIFY(result.theme.hasColorTheme());
+    QCOMPARE(result.theme.colorTheme().mode(), AppColors::Mode::Dark);
+    QCOMPARE(result.theme.colorTheme().color(
+                 AppColors::Role::Download, QPalette()),
+             QColor(QStringLiteral("#20d6f2")));
+    const AppIcons::IconTheme iconTheme = result.theme.iconTheme();
     for (AppIcons::Id iconId : AppIcons::allIds()) {
-        QVERIFY2(result.theme.hasIcon(iconId),
+        QVERIFY2(iconTheme.hasIcon(iconId),
                  qPrintable(AppIcons::semanticName(iconId)));
-        QVERIFY2(QFileInfo::exists(result.theme.iconPath(iconId)),
-                 qPrintable(result.theme.iconPath(iconId)));
-        QVERIFY(!QIcon(result.theme.iconPath(iconId)).isNull());
+        QVERIFY2(QFileInfo::exists(iconTheme.iconPath(iconId)),
+                 qPrintable(iconTheme.iconPath(iconId)));
+        QVERIFY(!QIcon(iconTheme.iconPath(iconId)).isNull());
     }
 }
 
-void TestIconThemeRegistry::scansLoadsFallsBackAndRescans()
+void TestThemeRegistry::exampleColorThemeManifestsLoad()
+{
+    const QString themesPath = QFINDTESTDATA("../extras/icon-themes");
+    QVERIFY(!themesPath.isEmpty());
+
+    const QStringList expectedIds {
+        QStringLiteral("catppuccin-mocha"),
+        QStringLiteral("dracula"),
+        QStringLiteral("gruvbox-dark"),
+        QStringLiteral("gruvbox-light"),
+        QStringLiteral("nord"),
+        QStringLiteral("one-dark"),
+        QStringLiteral("rose-pine"),
+        QStringLiteral("solarized-dark"),
+        QStringLiteral("solarized-light"),
+        QStringLiteral("tokyo-night-storm")
+    };
+
+    for (const QString &themeId : expectedIds) {
+        const QString manifestPath =
+            QDir(themesPath).filePath(themeId + QStringLiteral("/theme.json"));
+        const AppThemes::ThemeManifestResult result =
+            AppThemes::ThemeManifestParser::parseFile(manifestPath);
+        QVERIFY2(result.succeeded(),
+                 qPrintable(themeId + QStringLiteral(": ") + result.error));
+        QCOMPARE(result.theme.id(), themeId);
+        QVERIFY(!result.theme.hasIconTheme());
+        QVERIFY(result.theme.hasColorTheme());
+    }
+}
+
+void TestThemeRegistry::scansLoadsFallsBackAndRescans()
 {
     QTemporaryDir temporaryDirectory;
     QVERIFY(temporaryDirectory.isValid());
@@ -139,13 +192,60 @@ void TestIconThemeRegistry::scansLoadsFallsBackAndRescans()
                  {{QStringLiteral("action-start"),
                    QStringLiteral("../outside.png")}})));
 
-    AppIcons::IconThemeRegistry registry(temporaryDirectory.path());
+    const QString colorsDirectory =
+        QDir(temporaryDirectory.path()).filePath(QStringLiteral("dusk"));
+    QVERIFY(writeManifest(
+        colorsDirectory,
+        {{QStringLiteral("formatVersion"), 1},
+         {QStringLiteral("id"), QStringLiteral("dusk")},
+         {QStringLiteral("name"), QStringLiteral("Dusk")},
+         {QStringLiteral("colors"),
+          QJsonObject {
+              {QStringLiteral("mode"), QStringLiteral("dark")},
+              {QStringLiteral("palette"),
+               QJsonObject {
+                   {QStringLiteral("window"), QStringLiteral("#112233")},
+                   {QStringLiteral("text"), QStringLiteral("#f4f5f6")}
+               }},
+              {QStringLiteral("semantic"),
+               QJsonObject {
+                   {QStringLiteral("download"), QStringLiteral("#22ccdd")}
+               }}
+          }}}));
+
+    QVERIFY(writeManifest(
+        temporaryDirectory.path(),
+        {{QStringLiteral("formatVersion"), 1},
+         {QStringLiteral("id"), QStringLiteral("standalone")},
+         {QStringLiteral("name"), QStringLiteral("Standalone")},
+         {QStringLiteral("colors"), QJsonObject {}}}));
+
+    AppThemes::ThemeRegistry registry(temporaryDirectory.path());
     QVERIFY(registry.contains(QStringLiteral("glass")));
     QVERIFY(registry.contains(QStringLiteral("classic")));
     QVERIFY(registry.contains(QStringLiteral("ocean")));
+    QVERIFY(registry.contains(QStringLiteral("dusk")));
+    QVERIFY(registry.contains(QStringLiteral("standalone")));
     QVERIFY(!registry.contains(QStringLiteral("unsafe")));
-    QCOMPARE(registry.theme(QStringLiteral("ocean")).displayName(),
+    QCOMPARE(registry.iconTheme(QStringLiteral("ocean")).displayName(),
              QStringLiteral("Ocean"));
+    QVERIFY(registry.theme(QStringLiteral("ocean")).hasIconTheme());
+    QVERIFY(!registry.theme(QStringLiteral("ocean")).hasColorTheme());
+    QVERIFY(!registry.theme(QStringLiteral("dusk")).hasIconTheme());
+    QVERIFY(registry.theme(QStringLiteral("dusk")).hasColorTheme());
+    QVERIFY(registry.theme(QStringLiteral("standalone")).hasColorTheme());
+    QCOMPARE(registry.resolvedIconThemeId(QStringLiteral("dusk")),
+             QStringLiteral("glass"));
+    QCOMPARE(registry.resolvedColorThemeId(QStringLiteral("ocean")),
+             QStringLiteral("system"));
+
+    const AppColors::ColorTheme dusk = registry.colorTheme(QStringLiteral("dusk"));
+    QCOMPARE(dusk.mode(), AppColors::Mode::Dark);
+    const QPalette duskPalette = dusk.appliedTo(QPalette());
+    QCOMPARE(duskPalette.color(QPalette::Window), QColor(QStringLiteral("#112233")));
+    QCOMPARE(duskPalette.color(QPalette::Text), QColor(QStringLiteral("#f4f5f6")));
+    QCOMPARE(dusk.color(AppColors::Role::Download, duskPalette),
+             QColor(QStringLiteral("#22ccdd")));
     QCOMPARE(iconColor(registry.icon(QStringLiteral("ocean"),
                                      AppIcons::Id::ActionStart)),
              QColor(Qt::red));
@@ -165,7 +265,7 @@ void TestIconThemeRegistry::scansLoadsFallsBackAndRescans()
                  {{QStringLiteral("action-start"),
                    QStringLiteral("icons/start-blue.png")}})));
     QSignalSpy registryChangedSpy(
-        &registry, &AppIcons::IconThemeRegistry::registryChanged);
+        &registry, &AppThemes::ThemeRegistry::registryChanged);
     registry.rescanExternalThemes();
     QVERIFY(registryChangedSpy.count() >= 1);
     QCOMPARE(iconColor(registry.icon(QStringLiteral("ocean"),
@@ -182,8 +282,8 @@ int main(int argc, char **argv)
     qputenv("QT_QPA_PLATFORM", QByteArrayLiteral("offscreen"));
     QApplication application(argc, argv);
     QCoreApplication::setOrganizationName(QStringLiteral("PlanetaryTests"));
-    QCoreApplication::setApplicationName(QStringLiteral("IconThemeRegistry"));
-    TestIconThemeRegistry test;
+    QCoreApplication::setApplicationName(QStringLiteral("ThemeRegistry"));
+    TestThemeRegistry test;
     return QTest::qExec(&test, argc, argv);
 }
 

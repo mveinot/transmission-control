@@ -24,13 +24,13 @@ signals:
 
 private:
     Ui::AppSettings *ui;
-    QString m_initialAppearance;
+    QString m_initialColorTheme;
     QString m_initialIconTheme;
 
     void populateLanguageOptions();
     void loadSettings();
     void saveSettings();
-    QString selectedAppearance() const;
+    QString selectedColorTheme() const;
     void updateNotificationOptionAvailability();
     void refreshDefaultHandlerStatus();
     void requestDefaultHandler(bool magnetLinks);

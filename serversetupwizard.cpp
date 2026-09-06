@@ -1,5 +1,6 @@
 #include "serversetupwizard.h"
 
+#include "colorthememanager.h"
 #include "serverconfig.h"
 #include "serverconnectionprobe.h"
 #include "serverprofile.h"
@@ -312,9 +313,8 @@ void ServerSetupWizard::testConnection()
 void ServerSetupWizard::setTestResult(const QString &message, bool success)
 {
     m_testStatus->setText(message);
-    const QColor color =
-        success ? m_testStatus->palette().color(QPalette::Link)
-                : QColor(180, 55, 55);
+    const QColor color = AppColors::ColorThemeManager::instance().color(
+        success ? AppColors::Role::Success : AppColors::Role::Error);
     m_testStatus->setStyleSheet(
         QStringLiteral("QLabel { color: %1; }").arg(color.name()));
     m_testButton->setEnabled(true);

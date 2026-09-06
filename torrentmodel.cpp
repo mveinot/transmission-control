@@ -1,4 +1,5 @@
 #include "torrentmodel.h"
+#include "colorthememanager.h"
 #include "iconthememanager.h"
 
 #include <QApplication>
@@ -47,18 +48,14 @@ QIcon statusIcon(int statusValue, bool hasError)
 
 QBrush errorTextBrush()
 {
-    const QPalette palette = QApplication::palette();
-    const QColor base = palette.color(QPalette::Base);
-
-    if (base.lightness() < 128)
-        return QBrush(QColor(255, 120, 120));
-
-    return QBrush(QColor(170, 0, 0));
+    return QBrush(AppColors::ColorThemeManager::instance().color(
+        AppColors::Role::Error));
 }
 
 QBrush disabledTextBrush()
 {
-    return QBrush(QApplication::palette().color(QPalette::Disabled, QPalette::Text));
+    return QBrush(AppColors::ColorThemeManager::instance().color(
+        AppColors::Role::Inactive));
 }
 
 bool isStatusCueColumn(int column)
@@ -85,6 +82,18 @@ TorrentModel::TorrentModel(QObject *parent)
                 emit dataChanged(index(0, StatusColumn),
                                  index(torrentVector.size() - 1, StatusColumn),
                                  roles);
+            });
+    connect(&AppColors::ColorThemeManager::instance(),
+            &AppColors::ColorThemeManager::themeChanged,
+            this,
+            [this]() {
+                if (torrentVector.isEmpty())
+                    return;
+
+                emit dataChanged(index(0, 0),
+                                 index(torrentVector.size() - 1,
+                                       ColumnCount - 1),
+                                 {Qt::ForegroundRole});
             });
 }
 

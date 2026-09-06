@@ -31,5 +31,39 @@
     "status-verifying": "icons/status-verifying.png",
     "status-queued": "icons/status-queued.png",
     "status-unknown": "icons/status-unknown.png"
+  },
+  "colors": {
+    "mode": "dark",
+    "palette": {
+      "window": "#101827",
+      "window-text": "#eaf7ff",
+      "base": "#0b1220",
+      "alternate-base": "#142139",
+      "tool-tip-base": "#18243a",
+      "tool-tip-text": "#f3fbff",
+      "text": "#e6f3ff",
+      "button": "#172945",
+      "button-text": "#eaf7ff",
+      "bright-text": "#ffffff",
+      "highlight": "#137f9f",
+      "highlighted-text": "#ffffff",
+      "link": "#35d7f2",
+      "link-visited": "#b58cff",
+      "placeholder-text": "#8295aa",
+      "accent": "#23c9ea"
+    },
+    "semantic": {
+      "download": "#20d6f2",
+      "upload": "#a779ff",
+      "success": "#4de2bd",
+      "warning": "#f0b45a",
+      "error": "#ff6f70",
+      "inactive": "#71849b",
+      "verification": "#aa7dff",
+      "queued": "#9b76e8",
+      "piece-complete": "#785de8",
+      "piece-remaining": "#101827",
+      "piece-border": "#39cbe8"
+    }
   }
 }

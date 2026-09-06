@@ -11,6 +11,7 @@
 #include "torrentsortproxymodel.h"
 
 class QAction;
+class QEvent;
 class QLineEdit;
 class QListWidget;
 class QListWidgetItem;
@@ -46,6 +47,9 @@ public:
     void rebuild(const QVector<torrent> &torrents);
     void setStateFilter(TorrentSortProxyModel::StateFilter filter);
 
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 signals:
     void resultCountChanged(int visibleCount, int totalCount);
     void filterSummaryChanged(const QString &summary);
@@ -78,6 +82,7 @@ private:
     bool m_foldersCollapsed = false;
     bool m_labelsCollapsed = false;
     bool m_groupsCollapsed = false;
+    QListWidgetItem *m_hoveredItem = nullptr;
 
     void rebuildWithFilters(const QStringList &trackerHosts,
                             const QStringList &downloadDirs,
@@ -104,6 +109,7 @@ private:
                                         const QString &value,
                                         AppIcons::Id iconId) const;
     void refreshIcons();
+    void setHoveredItem(QListWidgetItem *item);
     void clearCategoricalFilters();
     void applyCurrentListSelection(QListWidgetItem *current);
     void selectStatusFilter(TorrentSortProxyModel::StateFilter filter);

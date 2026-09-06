@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "id": "gruvbox-light",
+  "name": "Gruvbox Light",
+  "colors": {
+    "mode": "light",
+    "palette": {
+      "window": "#fbf1c7",
+      "window-text": "#3c3836",
+      "base": "#f9f5d7",
+      "alternate-base": "#ebdbb2",
+      "tool-tip-base": "#ebdbb2",
+      "tool-tip-text": "#282828",
+      "text": "#3c3836",
+      "button": "#ebdbb2",
+      "button-text": "#3c3836",
+      "bright-text": "#1d2021",
+      "highlight": "#458588",
+      "highlighted-text": "#fbf1c7",
+      "link": "#076678",
+      "link-visited": "#8f3f71",
+      "placeholder-text": "#7c6f64",
+      "accent": "#458588"
+    },
+    "semantic": {
+      "download": "#076678",
+      "upload": "#8f3f71",
+      "success": "#79740e",
+      "warning": "#b57614",
+      "error": "#9d0006",
+      "inactive": "#7c6f64",
+      "verification": "#8f3f71",
+      "queued": "#af3a03",
+      "piece-complete": "#427b58",
+      "piece-remaining": "#f9f5d7",
+      "piece-border": "#a89984"
+    }
+  }
+}

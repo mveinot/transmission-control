@@ -1,5 +1,6 @@
 #include "statusbarcontroller.h"
 
+#include "colorthememanager.h"
 #include "torrentbackend.h"
 
 #include <QCursor>
@@ -16,6 +17,10 @@ StatusBarController::StatusBarController(QStatusBar *statusBar,
     , m_statusBar(statusBar)
     , m_client(client)
 {
+    connect(&AppColors::ColorThemeManager::instance(),
+            &AppColors::ColorThemeManager::themeChanged,
+            this,
+            [this]() { refreshActivityStyle(); });
 }
 
 void StatusBarController::setup()
@@ -348,9 +353,26 @@ void StatusBarController::setActivityText(const QString &text, bool error)
         return;
 
     m_activityLabel->setText(text);
-    m_activityLabel->setStyleSheet(error ? QStringLiteral("color: #ff6b6b;")
-                                         : QString());
+    m_activityIsError = error;
+    refreshActivityStyle();
 
     if (!error)
         m_activityLabel->setToolTip(QString());
+}
+
+void StatusBarController::refreshActivityStyle()
+{
+    if (!m_activityLabel)
+        return;
+
+    if (!m_activityIsError) {
+        m_activityLabel->setStyleSheet(QString());
+        return;
+    }
+
+    const QString color = AppColors::ColorThemeManager::instance()
+                              .color(AppColors::Role::Error)
+                              .name(QColor::HexArgb);
+    m_activityLabel->setStyleSheet(
+        QStringLiteral("color: %1;").arg(color));
 }

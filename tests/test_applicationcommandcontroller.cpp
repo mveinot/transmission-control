@@ -2,12 +2,13 @@
 
 #include "applicationcommandcontroller.h"
 #include "iconthememanager.h"
-#include "iconthemeregistry.h"
+#include "themeregistry.h"
 
 #include <QAction>
 #include <QMainWindow>
 #include <QMenu>
 #include <QMenuBar>
+#include <QToolButton>
 
 class TestApplicationCommandController : public QObject
 {
@@ -17,6 +18,8 @@ private slots:
     void routesCommandsOnce();
     void reconcilesBackendAndSessionState();
     void iconThemesProvideDistinctArtwork();
+    void iconsProvideSoftwareHoverArtwork();
+    void toolbarButtonsReceiveExplicitHoverArtwork();
     void registeredThemeCanReplaceItsArtworkLive();
 };
 
@@ -224,16 +227,57 @@ void TestApplicationCommandController::iconThemesProvideDistinctArtwork()
              static_cast<int>(AppIcons::Id::ActionStart));
     QVERIFY(fixture.startSelected.icon().pixmap(128, 128).toImage()
             != glassAction);
-    QCOMPARE(AppIcons::IconThemeRegistry::instance()
-                 .resolvedThemeId(QStringLiteral("unknown")),
+    QCOMPARE(AppThemes::ThemeRegistry::instance()
+                 .resolvedIconThemeId(QStringLiteral("unknown")),
              QString::fromLatin1(AppIcons::GlassTheme));
+
+    icons.setThemeId(originalTheme);
+}
+
+void TestApplicationCommandController::iconsProvideSoftwareHoverArtwork()
+{
+    auto &icons = AppIcons::IconThemeManager::instance();
+    const QString originalTheme = icons.themeId();
+    icons.setThemeId(QString::fromLatin1(AppIcons::GlassTheme));
+
+    const QIcon icon = icons.icon(AppIcons::Id::ActionStart);
+    QVERIFY(!icon.isNull());
+    const QImage normal = icon.pixmap(64, 64, QIcon::Normal).toImage();
+    const QImage active = icon.pixmap(64, 64, QIcon::Active).toImage();
+    QVERIFY(normal != active);
+
+    icons.setThemeId(originalTheme);
+}
+
+void TestApplicationCommandController::toolbarButtonsReceiveExplicitHoverArtwork()
+{
+    auto &icons = AppIcons::IconThemeManager::instance();
+    const QString originalTheme = icons.themeId();
+    icons.setThemeId(QString::fromLatin1(AppIcons::GlassTheme));
+
+    QAction action;
+    icons.bindAction(&action, AppIcons::Id::ActionStart);
+    QToolButton button;
+    button.setDefaultAction(&action);
+    button.show();
+    QTest::qWait(20);
+
+    const QImage normal = icons.icon(AppIcons::Id::ActionStart)
+                              .pixmap(64, 64, QIcon::Normal).toImage();
+    const QImage hover = icons.icon(AppIcons::Id::ActionStart)
+                             .pixmap(64, 64, QIcon::Active).toImage();
+    QTest::mouseMove(&button, QPoint(4, 4));
+    QTRY_COMPARE(button.icon().pixmap(64, 64).toImage(), hover);
+    QEvent leaveEvent(QEvent::Leave);
+    QApplication::sendEvent(&button, &leaveEvent);
+    QTRY_COMPARE(button.icon().pixmap(64, 64).toImage(), normal);
 
     icons.setThemeId(originalTheme);
 }
 
 void TestApplicationCommandController::registeredThemeCanReplaceItsArtworkLive()
 {
-    auto &registry = AppIcons::IconThemeRegistry::instance();
+    auto &registry = AppThemes::ThemeRegistry::instance();
     auto &icons = AppIcons::IconThemeManager::instance();
     const QString originalTheme = icons.themeId();
     const QString customThemeId = QStringLiteral("test-external");
@@ -241,12 +285,20 @@ void TestApplicationCommandController::registeredThemeCanReplaceItsArtworkLive()
         {AppIcons::Id::ActionStart, QStringLiteral("action-start.png")}
     };
 
-    QVERIFY(registry.registerTheme(AppIcons::IconTheme(
-        customThemeId,
-        QStringLiteral("Test External"),
-        QStringLiteral(":/icons/ui/classic"),
-        files,
-        QString::fromLatin1(AppIcons::GlassTheme))));
+    const auto themeWithBasePath = [&](const QString &basePath) {
+        const AppIcons::IconTheme iconTheme(
+            customThemeId,
+            QStringLiteral("Test External"),
+            basePath,
+            files,
+            QString::fromLatin1(AppIcons::GlassTheme));
+        return AppThemes::Theme(customThemeId,
+                                QStringLiteral("Test External"),
+                                iconTheme,
+                                std::nullopt);
+    };
+    QVERIFY(registry.registerTheme(
+        themeWithBasePath(QStringLiteral(":/icons/ui/classic"))));
     QVERIFY(registry.contains(customThemeId));
 
     QAction action;
@@ -261,12 +313,8 @@ void TestApplicationCommandController::registeredThemeCanReplaceItsArtworkLive()
                  .pixmap(128, 128).toImage());
 
     QSignalSpy themeChangedSpy(&icons, &AppIcons::IconThemeManager::themeChanged);
-    QVERIFY(registry.registerTheme(AppIcons::IconTheme(
-        customThemeId,
-        QStringLiteral("Test External"),
-        QStringLiteral(":/icons/ui/glass"),
-        files,
-        QString::fromLatin1(AppIcons::GlassTheme))));
+    QVERIFY(registry.registerTheme(
+        themeWithBasePath(QStringLiteral(":/icons/ui/glass"))));
 
     QCOMPARE(themeChangedSpy.count(), 1);
     QVERIFY(action.icon().pixmap(128, 128).toImage() != classicArtwork);

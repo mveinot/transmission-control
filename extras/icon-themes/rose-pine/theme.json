@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "id": "rose-pine",
+  "name": "Rosé Pine",
+  "colors": {
+    "mode": "dark",
+    "palette": {
+      "window": "#191724",
+      "window-text": "#e0def4",
+      "base": "#1f1d2e",
+      "alternate-base": "#26233a",
+      "tool-tip-base": "#26233a",
+      "tool-tip-text": "#e0def4",
+      "text": "#e0def4",
+      "button": "#26233a",
+      "button-text": "#e0def4",
+      "bright-text": "#ffffff",
+      "highlight": "#403d52",
+      "highlighted-text": "#e0def4",
+      "link": "#9ccfd8",
+      "link-visited": "#c4a7e7",
+      "placeholder-text": "#908caa",
+      "accent": "#c4a7e7"
+    },
+    "semantic": {
+      "download": "#9ccfd8",
+      "upload": "#c4a7e7",
+      "success": "#31748f",
+      "warning": "#f6c177",
+      "error": "#eb6f92",
+      "inactive": "#908caa",
+      "verification": "#c4a7e7",
+      "queued": "#ebbcba",
+      "piece-complete": "#31748f",
+      "piece-remaining": "#1f1d2e",
+      "piece-border": "#524f67"
+    }
+  }
+}

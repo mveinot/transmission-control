@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "id": "solarized-dark",
+  "name": "Solarized Dark",
+  "colors": {
+    "mode": "dark",
+    "palette": {
+      "window": "#002b36",
+      "window-text": "#839496",
+      "base": "#073642",
+      "alternate-base": "#002b36",
+      "tool-tip-base": "#073642",
+      "tool-tip-text": "#93a1a1",
+      "text": "#93a1a1",
+      "button": "#073642",
+      "button-text": "#93a1a1",
+      "bright-text": "#fdf6e3",
+      "highlight": "#268bd2",
+      "highlighted-text": "#fdf6e3",
+      "link": "#2aa198",
+      "link-visited": "#6c71c4",
+      "placeholder-text": "#586e75",
+      "accent": "#268bd2"
+    },
+    "semantic": {
+      "download": "#268bd2",
+      "upload": "#d33682",
+      "success": "#859900",
+      "warning": "#b58900",
+      "error": "#dc322f",
+      "inactive": "#586e75",
+      "verification": "#6c71c4",
+      "queued": "#cb4b16",
+      "piece-complete": "#2aa198",
+      "piece-remaining": "#073642",
+      "piece-border": "#586e75"
+    }
+  }
+}

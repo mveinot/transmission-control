@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "id": "solarized-light",
+  "name": "Solarized Light",
+  "colors": {
+    "mode": "light",
+    "palette": {
+      "window": "#fdf6e3",
+      "window-text": "#586e75",
+      "base": "#fdf6e3",
+      "alternate-base": "#eee8d5",
+      "tool-tip-base": "#fdf6e3",
+      "tool-tip-text": "#586e75",
+      "text": "#586e75",
+      "button": "#eee8d5",
+      "button-text": "#586e75",
+      "bright-text": "#002b36",
+      "highlight": "#268bd2",
+      "highlighted-text": "#fdf6e3",
+      "link": "#268bd2",
+      "link-visited": "#6c71c4",
+      "placeholder-text": "#93a1a1",
+      "accent": "#268bd2"
+    },
+    "semantic": {
+      "download": "#268bd2",
+      "upload": "#d33682",
+      "success": "#859900",
+      "warning": "#b58900",
+      "error": "#dc322f",
+      "inactive": "#93a1a1",
+      "verification": "#6c71c4",
+      "queued": "#cb4b16",
+      "piece-complete": "#2aa198",
+      "piece-remaining": "#fdf6e3",
+      "piece-border": "#93a1a1"
+    }
+  }
+}

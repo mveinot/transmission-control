@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "id": "one-dark",
+  "name": "One Dark",
+  "colors": {
+    "mode": "dark",
+    "palette": {
+      "window": "#282c34",
+      "window-text": "#abb2bf",
+      "base": "#21252b",
+      "alternate-base": "#2c323c",
+      "tool-tip-base": "#2c323c",
+      "tool-tip-text": "#abb2bf",
+      "text": "#abb2bf",
+      "button": "#2c323c",
+      "button-text": "#abb2bf",
+      "bright-text": "#ffffff",
+      "highlight": "#3e4451",
+      "highlighted-text": "#d7dae0",
+      "link": "#61afef",
+      "link-visited": "#c678dd",
+      "placeholder-text": "#5c6370",
+      "accent": "#61afef"
+    },
+    "semantic": {
+      "download": "#61afef",
+      "upload": "#c678dd",
+      "success": "#98c379",
+      "warning": "#e5c07b",
+      "error": "#e06c75",
+      "inactive": "#5c6370",
+      "verification": "#c678dd",
+      "queued": "#d19a66",
+      "piece-complete": "#56b6c2",
+      "piece-remaining": "#21252b",
+      "piece-border": "#4b5263"
+    }
+  }
+}

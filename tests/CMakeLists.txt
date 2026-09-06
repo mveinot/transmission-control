@@ -41,7 +41,7 @@ add_planetary_test(test_torrentmodel
     ${CMAKE_SOURCE_DIR}/torrent.h
     ${CMAKE_SOURCE_DIR}/torrentmodel.cpp
     ${CMAKE_SOURCE_DIR}/torrentmodel.h
-    ${PLANETARY_ICON_THEME_SOURCES}
+    ${PLANETARY_THEME_SOURCES}
     ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
 )
 
@@ -51,7 +51,7 @@ add_planetary_test(test_torrentsortproxymodel
     ${CMAKE_SOURCE_DIR}/torrent.h
     ${CMAKE_SOURCE_DIR}/torrentmodel.cpp
     ${CMAKE_SOURCE_DIR}/torrentmodel.h
-    ${PLANETARY_ICON_THEME_SOURCES}
+    ${PLANETARY_THEME_SOURCES}
     ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
     ${CMAKE_SOURCE_DIR}/torrentsortproxymodel.cpp
     ${CMAKE_SOURCE_DIR}/torrentsortproxymodel.h
@@ -93,6 +93,8 @@ add_planetary_test(test_statusbarcontroller
     ${CMAKE_SOURCE_DIR}/torrent.cpp
     ${CMAKE_SOURCE_DIR}/torrent.h
     ${CMAKE_SOURCE_DIR}/torrentbackend.h
+    ${PLANETARY_THEME_SOURCES}
+    ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
 )
 
 add_planetary_test(test_serverprofile
@@ -131,13 +133,13 @@ add_planetary_test(test_applicationcommandcontroller
     test_applicationcommandcontroller.cpp
     ${CMAKE_SOURCE_DIR}/applicationcommandcontroller.cpp
     ${CMAKE_SOURCE_DIR}/applicationcommandcontroller.h
-    ${PLANETARY_ICON_THEME_SOURCES}
+    ${PLANETARY_THEME_SOURCES}
     ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
 )
 
 add_planetary_test(test_iconthemeregistry
     test_iconthemeregistry.cpp
-    ${PLANETARY_ICON_THEME_SOURCES}
+    ${PLANETARY_THEME_SOURCES}
     ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
 )
 
@@ -147,7 +149,7 @@ add_planetary_test(test_torrentfiltercontroller
     ${CMAKE_SOURCE_DIR}/torrent.h
     ${CMAKE_SOURCE_DIR}/torrentmodel.cpp
     ${CMAKE_SOURCE_DIR}/torrentmodel.h
-    ${PLANETARY_ICON_THEME_SOURCES}
+    ${PLANETARY_THEME_SOURCES}
     ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
     ${CMAKE_SOURCE_DIR}/torrentsortproxymodel.cpp
     ${CMAKE_SOURCE_DIR}/torrentsortproxymodel.h
@@ -167,6 +169,8 @@ add_planetary_test(test_pieceprogressbarwidget
     test_pieceprogressbarwidget.cpp
     ${CMAKE_SOURCE_DIR}/pieceprogressbarwidget.cpp
     ${CMAKE_SOURCE_DIR}/pieceprogressbarwidget.h
+    ${PLANETARY_THEME_SOURCES}
+    ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
 )
 
 add_planetary_test(test_peerreconciler
@@ -187,7 +191,7 @@ add_planetary_test(test_torrentfilemodel
     test_torrentfilemodel.cpp
     ${CMAKE_SOURCE_DIR}/torrentfilemodel.cpp
     ${CMAKE_SOURCE_DIR}/torrentfilemodel.h
-    ${PLANETARY_ICON_THEME_SOURCES}
+    ${PLANETARY_THEME_SOURCES}
     ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
 )
 
@@ -195,6 +199,14 @@ add_planetary_test(test_sessionoverviewwidget
     test_sessionoverviewwidget.cpp
     ${CMAKE_SOURCE_DIR}/sessionoverviewwidget.cpp
     ${CMAKE_SOURCE_DIR}/sessionoverviewwidget.h
+    ${PLANETARY_THEME_SOURCES}
+    ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
+)
+
+add_planetary_test(test_colorthememanager
+    test_colorthememanager.cpp
+    ${PLANETARY_THEME_SOURCES}
+    ${CMAKE_SOURCE_DIR}/Resources/resources.qrc
 )
 
 add_planetary_test(test_torrentaddcontroller

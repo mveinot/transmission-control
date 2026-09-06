@@ -115,17 +115,25 @@ set_source_files_properties(
         SKIP_AUTOGEN TRUE
 )
 
-set(PLANETARY_ICON_THEME_SOURCES
+set(PLANETARY_THEME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/appicons.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/appicons.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/appcolors.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/appcolors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/icontheme.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/icontheme.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/iconthememanifest.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/iconthememanifest.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/iconthemeregistry.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/iconthemeregistry.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/colortheme.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/colortheme.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/theme.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/theme.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/thememanifest.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/thememanifest.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/themeregistry.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/themeregistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/iconthememanager.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/iconthememanager.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/colorthememanager.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/colorthememanager.cpp"
 )
 
 set(PROJECT_SOURCES
@@ -167,7 +175,7 @@ set(PROJECT_SOURCES
         dialogabout.ui
         diagnosticsdialog.h
         diagnosticsdialog.cpp
-        ${PLANETARY_ICON_THEME_SOURCES}
+        ${PLANETARY_THEME_SOURCES}
         ${PLANETARY_TS_FILES}
 )
 
@@ -232,8 +240,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         appsettings.ui
         appsettings.h
         appsettings.cpp
-        applicationappearance.h
-        applicationappearance.cpp
         Resources/icons/planetary.png
         torrentsortproxymodel.h torrentsortproxymodel.cpp
         serverconfig.h serverconfig.cpp serverconfig.ui

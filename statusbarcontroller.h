@@ -66,6 +66,7 @@ private:
     qint64 m_freeSpaceBytes = -1;
     bool m_altSpeedEnabled = false;
     bool m_freeSpaceAvailable = true;
+    bool m_activityIsError = false;
     int m_updateIntervalSeconds = 0;
     QString m_serverName;
 
@@ -82,6 +83,7 @@ private:
     void refreshFreeSpaceLabel();
     void refreshSpeedModeLabel();
     void refreshIntervalLabel();
+    void refreshActivityStyle();
     void setActivityText(const QString &text, bool error = false);
 };
 

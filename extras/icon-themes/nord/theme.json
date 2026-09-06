@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "id": "nord",
+  "name": "Nord",
+  "colors": {
+    "mode": "dark",
+    "palette": {
+      "window": "#2e3440",
+      "window-text": "#e5e9f0",
+      "base": "#2e3440",
+      "alternate-base": "#3b4252",
+      "tool-tip-base": "#3b4252",
+      "tool-tip-text": "#eceff4",
+      "text": "#e5e9f0",
+      "button": "#434c5e",
+      "button-text": "#eceff4",
+      "bright-text": "#ffffff",
+      "highlight": "#5e81ac",
+      "highlighted-text": "#eceff4",
+      "link": "#88c0d0",
+      "link-visited": "#b48ead",
+      "placeholder-text": "#7b88a1",
+      "accent": "#88c0d0"
+    },
+    "semantic": {
+      "download": "#88c0d0",
+      "upload": "#b48ead",
+      "success": "#a3be8c",
+      "warning": "#ebcb8b",
+      "error": "#bf616a",
+      "inactive": "#7b88a1",
+      "verification": "#81a1c1",
+      "queued": "#d08770",
+      "piece-complete": "#5e81ac",
+      "piece-remaining": "#2e3440",
+      "piece-border": "#4c566a"
+    }
+  }
+}

@@ -1,8 +1,8 @@
 #include "appsettings.h"
-#include "applicationappearance.h"
 #include "applicationlocale.h"
+#include "colorthememanager.h"
 #include "iconthememanager.h"
-#include "iconthemeregistry.h"
+#include "themeregistry.h"
 #include "ui_appsettings.h"
 #include "settingskeys.h"
 
@@ -36,16 +36,19 @@ AppSettings::AppSettings(QWidget *parent)
     ui->updateInterval->setMaximum(MaximumUpdateIntervalSeconds);
     ui->updateInterval->setSuffix(tr(" seconds"));
 
-    ui->appearanceCombo->addItem(tr("Follow System"),
-                                 QString::fromLatin1(ApplicationAppearance::FollowSystem));
-    ui->appearanceCombo->addItem(tr("Light"),
-                                 QString::fromLatin1(ApplicationAppearance::Light));
-    ui->appearanceCombo->addItem(tr("Dark"),
-                                 QString::fromLatin1(ApplicationAppearance::Dark));
-
-    auto &themeRegistry = AppIcons::IconThemeRegistry::instance();
+    auto &themeRegistry = AppThemes::ThemeRegistry::instance();
     themeRegistry.rescanExternalThemes();
-    for (const AppIcons::IconTheme &theme : themeRegistry.themes()) {
+    for (const AppColors::ColorTheme &theme : themeRegistry.colorThemes()) {
+        QString displayName = theme.displayName();
+        if (theme.id() == QString::fromLatin1(AppColors::SystemTheme))
+            displayName = tr("Follow System");
+        else if (theme.id() == QString::fromLatin1(AppColors::LightTheme))
+            displayName = tr("Light");
+        else if (theme.id() == QString::fromLatin1(AppColors::DarkTheme))
+            displayName = tr("Dark");
+        ui->colorThemeCombo->addItem(displayName, theme.id());
+    }
+    for (const AppIcons::IconTheme &theme : themeRegistry.iconThemes()) {
         QString displayName = theme.displayName();
         if (theme.id() == QString::fromLatin1(AppIcons::GlassTheme))
             displayName = tr("Glass");
@@ -63,10 +66,11 @@ AppSettings::AppSettings(QWidget *parent)
             this, &AppSettings::updateNotificationOptionAvailability);
     connect(ui->enableDesktopNotifications, &QCheckBox::toggled,
             this, &AppSettings::updateNotificationOptionAvailability);
-    connect(ui->appearanceCombo, &QComboBox::currentIndexChanged,
+    connect(ui->colorThemeCombo, &QComboBox::currentIndexChanged,
             this, [this]() {
                 // Preview the choice without persisting it until the dialog is accepted.
-                ApplicationAppearance::apply(selectedAppearance());
+                AppColors::ColorThemeManager::instance().setThemeId(
+                    selectedColorTheme());
             });
     connect(ui->iconThemeCombo, &QComboBox::currentIndexChanged,
             this, [this]() {
@@ -109,7 +113,8 @@ AppSettings::AppSettings(QWidget *parent)
     connect(this, &QDialog::rejected, this, [this]() {
         // Escape and the window close button have the same rollback semantics
         // as the explicit Cancel button.
-        ApplicationAppearance::apply(m_initialAppearance);
+        AppColors::ColorThemeManager::instance().setThemeId(
+            m_initialColorTheme);
         AppIcons::IconThemeManager::instance().setThemeId(m_initialIconTheme);
     });
 
@@ -179,11 +184,11 @@ void AppSettings::loadSettings()
 {
     QSettings settings;
 
-    m_initialAppearance =
-        settings.value(SettingsKeys::Appearance,
-                       QString::fromLatin1(ApplicationAppearance::FollowSystem)).toString();
-    const int appearanceIndex = ui->appearanceCombo->findData(m_initialAppearance);
-    ui->appearanceCombo->setCurrentIndex(appearanceIndex >= 0 ? appearanceIndex : 0);
+    auto &colors = AppColors::ColorThemeManager::instance();
+    m_initialColorTheme = colors.themeId();
+    const int colorThemeIndex = ui->colorThemeCombo->findData(m_initialColorTheme);
+    ui->colorThemeCombo->setCurrentIndex(
+        colorThemeIndex >= 0 ? colorThemeIndex : 0);
 
     auto &icons = AppIcons::IconThemeManager::instance();
     m_initialIconTheme = icons.themeId();
@@ -286,7 +291,9 @@ void AppSettings::saveSettings()
 {
     QSettings settings;
 
-    settings.setValue(SettingsKeys::Appearance, selectedAppearance());
+    auto &colorManager = AppColors::ColorThemeManager::instance();
+    colorManager.setThemeId(selectedColorTheme());
+    settings.setValue(SettingsKeys::ColorTheme, colorManager.themeId());
     const QString iconTheme = ui->iconThemeCombo->currentData().toString();
     auto &iconManager = AppIcons::IconThemeManager::instance();
     iconManager.setThemeId(iconTheme);
@@ -355,9 +362,9 @@ void AppSettings::saveSettings()
     settings.sync();
 }
 
-QString AppSettings::selectedAppearance() const
+QString AppSettings::selectedColorTheme() const
 {
-    return ui->appearanceCombo->currentData().toString();
+    return ui->colorThemeCombo->currentData().toString();
 }
 
 void AppSettings::updateNotificationOptionAvailability()

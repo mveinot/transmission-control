@@ -1,4 +1,5 @@
 #include "sessionoverviewwidget.h"
+#include "colorthememanager.h"
 
 #include <QDateTime>
 #include <QEvent>
@@ -20,15 +21,6 @@ constexpr int PanelLeftMargin = 6;
 constexpr int PanelRightMargin = 6;
 constexpr int PanelContentMargin = 12;
 
-QColor downloadColor()
-{
-    return QColor(45, 117, 210);
-}
-
-QColor uploadColor()
-{
-    return QColor(123, 78, 180);
-}
 }
 
 SessionOverviewWidget::SessionOverviewWidget(QWidget *parent)
@@ -38,6 +30,10 @@ SessionOverviewWidget::SessionOverviewWidget(QWidget *parent)
     setMinimumHeight(120);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setAccessibleName(tr("Bandwidth activity"));
+    connect(&AppColors::ColorThemeManager::instance(),
+            &AppColors::ColorThemeManager::themeChanged,
+            this,
+            [this]() { update(); });
     updateAccessibleSummary();
 }
 
@@ -240,8 +236,9 @@ void SessionOverviewWidget::paintEvent(QPaintEvent *)
             painter.drawPath(path);
         };
 
-        drawSeries(downloadColor(), true);
-        drawSeries(uploadColor(), false);
+        const auto &colors = AppColors::ColorThemeManager::instance();
+        drawSeries(colors.color(AppColors::Role::Download), true);
+        drawSeries(colors.color(AppColors::Role::Upload), false);
 
         painter.setPen(secondaryText);
         painter.drawText(QRectF(plot.left(), plot.top() + 2, plot.width(), 18),

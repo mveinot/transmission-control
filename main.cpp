@@ -1,5 +1,5 @@
-#include "applicationappearance.h"
 #include "applicationlocale.h"
+#include "colorthememanager.h"
 #include "mainwindow.h"
 #include "settingskeys.h"
 #include "singleinstanceguard.h"
@@ -60,11 +60,9 @@ int main(int argc, char *argv[])
     if (appTranslationLoaded)
         a.installTranslator(&appTranslator);
 
-    // Apply the saved override before constructing any application windows.
-    QSettings settings;
-    ApplicationAppearance::apply(
-        settings.value(SettingsKeys::Appearance,
-                       QString::fromLatin1(ApplicationAppearance::FollowSystem)).toString());
+    // Resolve and apply the saved system/built-in/external colour theme before
+    // constructing any application windows.
+    AppColors::ColorThemeManager::instance();
 
     a.setWindowIcon(QIcon(":/icons/planetary.icns"));
 

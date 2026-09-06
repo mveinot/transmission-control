@@ -1,5 +1,6 @@
 #include <QtTest/QtTest>
 
+#include "colorthememanager.h"
 #include "pieceprogressbarwidget.h"
 
 #include <QImage>
@@ -12,7 +13,7 @@ private slots:
     void decodesTransmissionBitOrder();
     void partitionsPiecesAcrossAvailableColumns();
     void clampsOverallProgress();
-    void usesFixedHighContrastColors();
+    void usesSemanticThemeColors();
     void exposesProgressToAssistiveClients();
 };
 
@@ -53,7 +54,7 @@ void TestPieceProgressBarWidget::clampsOverallProgress()
     QCOMPARE(widget.sizeHint().height(), 22);
 }
 
-void TestPieceProgressBarWidget::usesFixedHighContrastColors()
+void TestPieceProgressBarWidget::usesSemanticThemeColors()
 {
     PieceProgressBarWidget widget;
     widget.resize(100, 22);
@@ -63,12 +64,13 @@ void TestPieceProgressBarWidget::usesFixedHighContrastColors()
     image.fill(Qt::transparent);
     widget.render(&image);
 
-    const QColor foreground(QStringLiteral("#403878"));
-    const QColor background(QStringLiteral("#ffffff"));
-    QCOMPARE(image.pixelColor(25, 4), foreground);
-    QCOMPARE(image.pixelColor(75, 4), background);
-    QCOMPARE(image.pixelColor(25, 16), foreground);
-    QCOMPARE(image.pixelColor(75, 16), background);
+    const auto &colors = AppColors::ColorThemeManager::instance();
+    const QColor foreground = colors.color(AppColors::Role::PieceComplete);
+    const QColor background = colors.color(AppColors::Role::PieceRemaining);
+    QCOMPARE(image.pixelColor(25, 4).rgba(), foreground.rgba());
+    QCOMPARE(image.pixelColor(75, 4).rgba(), background.rgba());
+    QCOMPARE(image.pixelColor(25, 16).rgba(), foreground.rgba());
+    QCOMPARE(image.pixelColor(75, 16).rgba(), background.rgba());
 }
 
 void TestPieceProgressBarWidget::exposesProgressToAssistiveClients()

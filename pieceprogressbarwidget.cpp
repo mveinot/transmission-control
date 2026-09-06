@@ -1,4 +1,5 @@
 #include "pieceprogressbarwidget.h"
+#include "colorthememanager.h"
 
 #include <QPainter>
 #include <QPaintEvent>
@@ -6,10 +7,6 @@
 #include <QtGlobal>
 
 namespace {
-
-const QColor PieceBackgroundColor(QStringLiteral("#ffffff"));
-const QColor PieceForegroundColor(QStringLiteral("#403878"));
-const QColor PieceFrameColor(QStringLiteral("#77728f"));
 
 QColor blendedColor(const QColor &background,
                     const QColor &foreground,
@@ -35,6 +32,10 @@ PieceProgressBarWidget::PieceProgressBarWidget(QWidget *parent)
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     setAccessibleName(tr("Torrent piece completion"));
     setAccessibleDescription(tr("No piece completion data available."));
+    connect(&AppColors::ColorThemeManager::instance(),
+            &AppColors::ColorThemeManager::themeChanged,
+            this,
+            [this]() { update(); });
 }
 
 void PieceProgressBarWidget::clear()
@@ -149,10 +150,9 @@ void PieceProgressBarWidget::paintEvent(QPaintEvent *event)
     if (frame.width() <= 0 || frame.height() <= 0)
         return;
 
-    // This compact data visualization intentionally uses a fixed high-contrast
-    // scheme; palette highlight colors were too subdued in some dark themes.
-    const QColor background = PieceBackgroundColor;
-    const QColor foreground = PieceForegroundColor;
+    const auto &colors = AppColors::ColorThemeManager::instance();
+    const QColor background = colors.color(AppColors::Role::PieceRemaining);
+    const QColor foreground = colors.color(AppColors::Role::PieceComplete);
     painter.fillRect(frame, background);
 
     const QRect content = frame.adjusted(1, 1, -1, -1);
@@ -188,7 +188,7 @@ void PieceProgressBarWidget::paintEvent(QPaintEvent *event)
         }
     }
 
-    painter.setPen(PieceFrameColor);
+    painter.setPen(colors.color(AppColors::Role::PieceBorder));
     painter.drawLine(content.left(), piecesRect.top() - 1,
                      content.right(), piecesRect.top() - 1);
     painter.drawRect(frame);
