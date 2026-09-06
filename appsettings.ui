@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>657</width>
-    <height>657</height>
+    <height>578</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -279,10 +279,7 @@
           <string>Appearance</string>
          </property>
          <layout class="QGridLayout" name="gridLayoutAppearance">
-          <property name="horizontalSpacing">
-           <number>12</number>
-          </property>
-          <property name="verticalSpacing">
+          <property name="spacing">
            <number>12</number>
           </property>
           <item row="0" column="0">
@@ -345,7 +342,7 @@
        <item>
         <spacer name="verticalSpacerAppearance">
          <property name="orientation">
-          <enum>Qt::Vertical</enum>
+          <enum>Qt::Orientation::Vertical</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
