@@ -108,13 +108,6 @@ TorrentAddDialog::TorrentAddDialog(QWidget *parent)
     sourcePalette.setColor(QPalette::Text, sourcePalette.color(QPalette::WindowText));
     ui->editSource->setPalette(sourcePalette);
 
-    ui->editSource->setStyleSheet(QStringLiteral(
-        "QLineEdit {"
-        "  background: transparent;"
-        "  border: none;"
-        "  padding: 0px;"
-        "}"
-        ));
 }
 
 TorrentAddDialog::~TorrentAddDialog()
@@ -155,6 +148,9 @@ void TorrentAddDialog::setSource(SourceType type, const QString &source)
 
     ui->editSource->setText(source);
     ui->editSource->setCursorPosition(0);
+
+    ui->labelTopLevelFolder->setVisible(type == SourceType::TorrentFile);
+    ui->editTopLevelFolder->setVisible(type == SourceType::TorrentFile);
 }
 
 void TorrentAddDialog::setDownloadDir(const QString &downloadDir)
@@ -189,6 +185,10 @@ void TorrentAddDialog::setTorrentMetadata(const TorrentMetadata &metadata)
         m_updatingPriorities = false;
         return;
     }
+
+    ui->editTopLevelFolder->setText(metadata.multiFile ? metadata.name : QString());
+    ui->labelTopLevelFolder->setEnabled(metadata.multiFile);
+    ui->editTopLevelFolder->setEnabled(metadata.multiFile);
 
     ui->treeTorrentContents->show();
     ui->labelContentsSummary->setText(
@@ -385,6 +385,13 @@ bool TorrentAddDialog::startPaused() const
 bool TorrentAddDialog::rememberOptions() const
 {
     return ui->checkRememberOptions->isChecked();
+}
+
+QString TorrentAddDialog::topLevelFolderName() const
+{
+    return ui->editTopLevelFolder->isEnabled()
+               ? ui->editTopLevelFolder->text().trimmed()
+               : QString();
 }
 
 QList<int> TorrentAddDialog::unwantedFileIndices() const

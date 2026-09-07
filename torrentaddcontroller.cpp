@@ -48,6 +48,24 @@ TorrentAddController::TorrentAddController(TorrentBackend *client,
     , m_client(client)
     , m_dialogParent(dialogParent)
 {
+    if (m_client) {
+        connect(m_client, &TorrentBackend::torrentAdded,
+                this, [this](const TorrentKey &key, const QString &) {
+                    if (m_pendingRenames.isEmpty())
+                        return;
+
+                    const PendingRename rename = m_pendingRenames.dequeue();
+                    if (rename.originalName != rename.newName)
+                        m_client->renameTorrentPath(key, rename.originalName,
+                                                    rename.newName);
+                });
+        connect(m_client, &TorrentBackend::commandFailed,
+                this, [this](const QString &method, const QString &) {
+                    if (method == QStringLiteral("torrent-add")
+                        && !m_pendingRenames.isEmpty())
+                        m_pendingRenames.dequeue();
+                });
+    }
 }
 
 void TorrentAddController::setDefaultDownloadDir(const QString &downloadDir)
@@ -182,12 +200,26 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
 
     const QString downloadDir = dialog.downloadDir();
     const bool startPaused = dialog.startPaused();
+    const QString renamedFolder = dialog.topLevelFolderName();
+
+    if (!renamedFolder.isEmpty()
+        && (renamedFolder == QStringLiteral(".")
+            || renamedFolder == QStringLiteral("..")
+            || renamedFolder.contains(QLatin1Char('/'))
+            || renamedFolder.contains(QLatin1Char('\\')))) {
+        emit addFailed(tr("The top-level folder name is not valid."));
+        return false;
+    }
 
     if (dialog.rememberOptions())
         saveOptions(downloadDir, startPaused);
 
     switch (sourceType) {
     case TorrentAddDialog::SourceType::TorrentFile:
+        if (!renamedFolder.isEmpty())
+            m_pendingRenames.enqueue({
+                TorrentMetadataParser::parseTorrentFile(source).name,
+                renamedFolder});
         m_client->addTorrentFile(source,
                                  downloadDir,
                                  startPaused,

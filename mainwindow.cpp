@@ -16,6 +16,7 @@
 #include "notificationcontroller.h"
 #include "activitylogmodel.h"
 #include "applicationcommandcontroller.h"
+#include "iconthememanager.h"
 #include <QActionGroup>
 #include <QAbstractItemView>
 #include <QAbstractSpinBox>
@@ -51,6 +52,9 @@
 #include <QLocale>
 #include <QMenu>
 #include <QMessageBox>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QSize>
@@ -65,6 +69,8 @@
 #include <QClipboard>
 #include <QTableWidgetItem>
 #include <QTreeView>
+#include <QTemporaryFile>
+#include <QInputDialog>
 #include <QTextEdit>
 #include <QPlainTextEdit>
 #include <QPushButton>
@@ -370,6 +376,10 @@ void MainWindow::setupApplicationCommands()
     handlers.findFiles = [this]() { focusFileSearch(); };
     handlers.openTorrent = [this]() { addTorrentFromFile(); };
     handlers.addMagnet = [this]() { addTorrentFromMagnet(); };
+    AppIcons::IconThemeManager::instance().bindAction(
+        ui->actionOpen_Torrent_URL, AppIcons::Id::ActionAddTorrent);
+    connect(ui->actionOpen_Torrent_URL, &QAction::triggered,
+            this, &MainWindow::addTorrentFromUrl);
     handlers.startSelected = [this]() {
         if (torrentListController)
             torrentListController->startSelectedTorrents();
@@ -659,7 +669,7 @@ MainWindow::MainWindow(QWidget *parent)
     generalWidgets.downloadDirLabel = ui->labelGeneralDownloadDir;
     generalWidgets.hashLabel = ui->labelGeneralHash;
     generalWidgets.commentLabel = ui->labelGeneralComment;
-    generalWidgets.magnetLineEdit = ui->lineGeneralMagnet;
+    generalWidgets.magnetLabel = ui->lineGeneralMagnet;
 
     torrentGeneralController = new TorrentGeneralController(generalWidgets, this);
     torrentGeneralController->setup();
@@ -1455,6 +1465,78 @@ void MainWindow::addTorrentFromFile()
         );
 
     torrentAddController->addTorrentFiles(fileNames);
+}
+
+void MainWindow::addTorrentFromUrl()
+{
+    QInputDialog dialog(this);
+    dialog.setWindowTitle(tr("Open Torrent URL"));
+    dialog.setLabelText(tr("URL to a torrent file:"));
+    dialog.setTextEchoMode(QLineEdit::Normal);
+    dialog.resize(620, dialog.sizeHint().height());
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    const QUrl url(dialog.textValue().trimmed());
+    if (!url.isValid()
+        || (url.scheme().compare(QStringLiteral("http"), Qt::CaseInsensitive) != 0
+            && url.scheme().compare(QStringLiteral("https"), Qt::CaseInsensitive) != 0)
+        || url.host().isEmpty()) {
+        QMessageBox::warning(
+            this, tr("Open Torrent URL"),
+            tr("Please enter a valid HTTP or HTTPS URL to a torrent file."));
+        return;
+    }
+
+    auto *network = new QNetworkAccessManager(this);
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::UserAgentHeader,
+                      QStringLiteral("Planetary/%1")
+                          .arg(QCoreApplication::applicationVersion()));
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::NoLessSafeRedirectPolicy);
+
+    if (statusBarController)
+        statusBarController->showMessage(tr("Downloading torrent file..."), 5000);
+
+    QNetworkReply *reply = network->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, network]() {
+        reply->deleteLater();
+        network->deleteLater();
+
+        if (reply->error() != QNetworkReply::NoError) {
+            if (statusBarController)
+                statusBarController->showMessage(
+                    tr("Could not download torrent file: %1")
+                        .arg(reply->errorString()), 6000);
+            return;
+        }
+
+        const QByteArray data = reply->readAll();
+        if (data.isEmpty()) {
+            if (statusBarController)
+                statusBarController->showMessage(
+                    tr("The downloaded torrent file was empty."), 5000);
+            return;
+        }
+
+        QTemporaryFile temporary(
+            QDir::tempPath() + QStringLiteral("/planetary-torrent-XXXXXX.torrent"));
+        temporary.setAutoRemove(false);
+        if (!temporary.open() || temporary.write(data) != data.size()) {
+            if (statusBarController)
+                statusBarController->showMessage(
+                    tr("Could not save downloaded torrent file: %1")
+                        .arg(temporary.errorString()), 6000);
+            return;
+        }
+
+        const QString filePath = temporary.fileName();
+        temporary.close();
+        torrentAddController->addTorrentFile(filePath);
+        QFile::remove(filePath);
+    });
 }
 
 void MainWindow::addTorrentFromMagnet()

@@ -4,9 +4,13 @@
 #include "torrentdetailstabcontroller.h"
 
 #include <QDateTime>
+#include <QApplication>
+#include <QClipboard>
+#include <QFontMetrics>
 #include <QLabel>
-#include <QLineEdit>
 #include <QLocale>
+#include <QMenu>
+#include <QSizePolicy>
 #include <QTabWidget>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -22,7 +26,7 @@ TorrentGeneralController::TorrentGeneralController(const Widgets &widgets,
 
 void TorrentGeneralController::setup()
 {
-    configureMagnetLineEdit();
+    configureMagnetLabel();
 
     if (m_widgets.generalTab && m_widgets.generalLayout) {
         m_pieceProgressController = new PieceProgressController(
@@ -66,8 +70,10 @@ void TorrentGeneralController::clear()
     if (m_widgets.commentLabel)
         m_widgets.commentLabel->clear();
 
-    if (m_widgets.magnetLineEdit)
-        m_widgets.magnetLineEdit->clear();
+    if (m_widgets.magnetLabel) {
+        m_widgets.magnetLabel->clear();
+        m_widgets.magnetLabel->setToolTip(QString());
+    }
 
     if (m_pieceProgressController)
         m_pieceProgressController->clear();
@@ -167,24 +173,33 @@ bool TorrentGeneralController::looksLikeUrl(const QString &text)
            && !url.host().isEmpty();
 }
 
-void TorrentGeneralController::configureMagnetLineEdit()
+void TorrentGeneralController::configureMagnetLabel()
 {
-    if (!m_widgets.magnetLineEdit)
+    if (!m_widgets.magnetLabel)
         return;
 
-    m_widgets.magnetLineEdit->setReadOnly(true);
-    m_widgets.magnetLineEdit->setFrame(false);
-    m_widgets.magnetLineEdit->setCursorPosition(0);
-    m_widgets.magnetLineEdit->setTextMargins(0, 0, 0, 0);
-    m_widgets.magnetLineEdit->setContextMenuPolicy(Qt::DefaultContextMenu);
+    m_widgets.magnetLabel->setTextInteractionFlags(
+        Qt::TextSelectableByMouse);
+    // A long magnet URI must never become the layout's minimum width. Keep
+    // the complete value in the label/tooltip, but let the surrounding form
+    // decide how much horizontal space is available.
+    m_widgets.magnetLabel->setSizePolicy(
+        QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred));
+    m_widgets.magnetLabel->setMinimumWidth(0);
+    m_widgets.magnetLabel->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_widgets.magnetLabel, &QWidget::customContextMenuRequested,
+            this, [this](const QPoint &position) {
+                if (!m_widgets.magnetLabel
+                    || m_widgets.magnetLabel->text().isEmpty())
+                    return;
 
-    m_widgets.magnetLineEdit->setStyleSheet(QStringLiteral(
-        "QLineEdit {"
-        "  background: transparent;"
-        "  border: none;"
-        "  padding: 0px;"
-        "}"
-        ));
+                QMenu menu(m_widgets.magnetLabel);
+                QAction *copy = menu.addAction(tr("Copy"));
+                if (menu.exec(m_widgets.magnetLabel->mapToGlobal(position))
+                    == copy) {
+                    QApplication::clipboard()->setText(m_currentMagnetLink);
+                }
+            });
 }
 
 void TorrentGeneralController::updateGeneralFields(const TorrentDetails &details)
@@ -201,8 +216,16 @@ void TorrentGeneralController::updateGeneralFields(const TorrentDetails &details
     if (m_widgets.hashLabel)
         m_widgets.hashLabel->setText(m_currentHashString);
 
-    if (m_widgets.magnetLineEdit)
-        m_widgets.magnetLineEdit->setText(m_currentMagnetLink);
+    if (m_widgets.magnetLabel) {
+        // Keep the layout's size hint bounded by showing a compact preview;
+        // the complete URI remains available via the tooltip and Copy action.
+        const QString preview = QFontMetrics(m_widgets.magnetLabel->font())
+                                    .elidedText(m_currentMagnetLink,
+                                                Qt::ElideMiddle,
+                                                360);
+        m_widgets.magnetLabel->setText(preview);
+        m_widgets.magnetLabel->setToolTip(m_currentMagnetLink);
+    }
 
     if (m_widgets.commentLabel) {
         const QString trimmedComment = details.comment.trimmed();

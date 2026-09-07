@@ -414,15 +414,15 @@
              </widget>
             </item>
             <item row="6" column="1">
-             <widget class="QLineEdit" name="lineGeneralMagnet">
+             <widget class="QLabel" name="lineGeneralMagnet">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                 <horstretch>1</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
               </property>
-              <property name="readOnly">
-               <bool>true</bool>
+              <property name="textInteractionFlags">
+               <set>Qt::TextInteractionFlag::TextSelectableByMouse</set>
               </property>
              </widget>
             </item>
@@ -610,6 +610,7 @@
      <string>File</string>
     </property>
     <addaction name="action_Open_Torrent"/>
+    <addaction name="actionOpen_Torrent_URL"/>
    <addaction name="actionAdd_Torrent_from_Magnet_Link"/>
    <addaction name="separator"/>
     <addaction name="actionServer_Setup"/>
@@ -668,6 +669,11 @@
   <action name="action_Open_Torrent">
    <property name="text">
     <string>&amp;Open Torrent...</string>
+   </property>
+  </action>
+  <action name="actionOpen_Torrent_URL">
+   <property name="text">
+    <string>Open Torrent URL...</string>
    </property>
   </action>
   <action name="actionDelete_Torrent">

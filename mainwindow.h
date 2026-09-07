@@ -45,6 +45,8 @@ class ServerSelectionController;
 class PollingCoordinator;
 class ApplicationCommandController;
 class WindowLayoutController;
+class QNetworkAccessManager;
+class QNetworkReply;
 
 /*
  * Application composition root for the desktop UI. MainWindow owns the RPC
@@ -100,6 +102,7 @@ private:
     void updatePollingDetailView();
     TorrentAddController *torrentAddController = nullptr;
     void addTorrentFromFile();
+    void addTorrentFromUrl();
     void addTorrentFromMagnet();
     void saveTableViewState();
     void restoreTableViewState();

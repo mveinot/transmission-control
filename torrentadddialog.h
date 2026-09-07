@@ -41,6 +41,7 @@ public:
     QString downloadDir() const;
     bool startPaused() const;
     bool rememberOptions() const;
+    QString topLevelFolderName() const;
 
     QList<int> unwantedFileIndices() const;
     QList<int> lowPriorityFileIndices() const;

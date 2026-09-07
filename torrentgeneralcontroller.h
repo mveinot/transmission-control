@@ -9,7 +9,6 @@
 #include "torrentkey.h"
 
 class QLabel;
-class QLineEdit;
 class QTabWidget;
 class QVBoxLayout;
 class QWidget;
@@ -35,7 +34,7 @@ public:
         QLabel *downloadDirLabel = nullptr;
         QLabel *hashLabel = nullptr;
         QLabel *commentLabel = nullptr;
-        QLineEdit *magnetLineEdit = nullptr;
+        QLabel *magnetLabel = nullptr;
     };
 
     explicit TorrentGeneralController(const Widgets &widgets,
@@ -60,7 +59,7 @@ signals:
 
 private:
     static bool looksLikeUrl(const QString &text);
-    void configureMagnetLineEdit();
+    void configureMagnetLabel();
     void updateGeneralFields(const TorrentDetails &details);
 
     Widgets m_widgets;

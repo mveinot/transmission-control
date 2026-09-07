@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <QQueue>
 
 class QWidget;
 class TorrentBackend;
@@ -35,10 +36,16 @@ signals:
     void addFailed(const QString &message);
 
 private:
+    struct PendingRename {
+        QString originalName;
+        QString newName;
+    };
+
     TorrentBackend *m_client = nullptr;
     QWidget *m_dialogParent = nullptr;
 
     QString m_defaultDownloadDir;
+    QQueue<PendingRename> m_pendingRenames;
 
     bool deleteTorrentFileOnSuccessfulAdd() const;
     bool showOptionsDialog(TorrentAddDialog::SourceType sourceType) const;
