@@ -8,11 +8,13 @@ Theme::Theme(QString id,
              QString displayName,
              std::optional<AppIcons::IconTheme> iconTheme,
              std::optional<AppColors::ColorTheme> colorTheme,
-             bool builtIn)
+             bool builtIn,
+             QString styleSheetPath)
     : m_id(id.trimmed().toLower())
     , m_displayName(std::move(displayName))
     , m_iconTheme(std::move(iconTheme))
     , m_colorTheme(std::move(colorTheme))
+    , m_styleSheetPath(std::move(styleSheetPath))
     , m_builtIn(builtIn)
 {
 }
@@ -47,6 +49,16 @@ bool Theme::hasIconTheme() const
 bool Theme::hasColorTheme() const
 {
     return m_colorTheme && m_colorTheme->isValid();
+}
+
+bool Theme::hasStyleSheet() const
+{
+    return !m_styleSheetPath.isEmpty();
+}
+
+QString Theme::styleSheetPath() const
+{
+    return m_styleSheetPath;
 }
 
 AppIcons::IconTheme Theme::iconTheme() const

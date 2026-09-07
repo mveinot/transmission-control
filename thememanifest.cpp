@@ -225,7 +225,35 @@ ThemeManifestResult ThemeManifestParser::parseFile(const QString &manifestPath)
     if (!componentError.isEmpty())
         return failure(componentError);
 
-    const Theme theme(id, name, icons, colors, false);
+    QString styleSheetPath;
+    const QJsonValue styleValue = root.value(QStringLiteral("style"));
+    if (!styleValue.isUndefined()) {
+        if (!styleValue.isObject())
+            return failure(QStringLiteral("style must be an object"));
+
+        const QJsonValue sheetValue =
+            styleValue.toObject().value(QStringLiteral("stylesheet"));
+        if (!sheetValue.isString())
+            return failure(QStringLiteral("style.stylesheet must be a string"));
+
+        styleSheetPath = sheetValue.toString().trimmed();
+        if (!isSafeRelativePath(styleSheetPath))
+            return failure(QStringLiteral(
+                "Stylesheet path must stay inside the theme directory"));
+        if (!colors)
+            return failure(QStringLiteral(
+                "A stylesheet must be associated with a colors component"));
+
+        const QString absoluteStyleSheet =
+            QDir(basePath).filePath(styleSheetPath);
+        const QFileInfo styleInfo(absoluteStyleSheet);
+        if (!styleInfo.isFile() || !styleInfo.isReadable()) {
+            return failure(QStringLiteral("Stylesheet file is missing or unreadable"));
+        }
+        styleSheetPath = styleInfo.absoluteFilePath();
+    }
+
+    const Theme theme(id, name, icons, colors, false, styleSheetPath);
     if (!theme.isValid())
         return failure(QStringLiteral("Theme must define icons, colors, or both"));
     return {theme, QString()};

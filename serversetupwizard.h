@@ -38,12 +38,15 @@ private:
     ServerConnectionProbe *m_connectionProbe = nullptr;
     bool m_appendToExisting = false;
     int m_savedServerIndex = -1;
+    bool m_testHasResult = false;
+    bool m_testSucceeded = false;
 
     QString backendType() const;
     void updateBackendFields();
     void importServer();
     void testConnection();
     void setTestResult(const QString &message, bool success);
+    void refreshTestStatusPalette();
 };
 
 #endif // SERVERSETUPWIZARD_H

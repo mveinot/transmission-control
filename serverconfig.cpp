@@ -2,9 +2,11 @@
 #include "ui_serverconfig.h"
 
 #include "colorthememanager.h"
+#include "appcolors.h"
 #include "foldermappingsdialog.h"
 #include "serverconnectionprobe.h"
 
+#include <QApplication>
 #include <QColor>
 #include <QComboBox>
 #include <QCoreApplication>
@@ -53,6 +55,10 @@ ServerConfig::ServerConfig(QWidget *parent)
     , connectionProbe(new ServerConnectionProbe(this))
 {
     ui->setupUi(this);
+    connect(&AppColors::ColorThemeManager::instance(),
+            &AppColors::ColorThemeManager::themeChanged,
+            this,
+            [this]() { refreshConnectionTestPalette(); });
     // Retain the Designer opening size while allowing long names, endpoints,
     // and localized labels to benefit from additional available space.
     setMinimumSize(720, 420);
@@ -863,7 +869,8 @@ void ServerConfig::testConnection()
         return;
 
     ui->buttonTestConnection->setEnabled(false);
-    ui->labelConnectionTestResult->setStyleSheet(QString());
+    connectionTestHasResult = false;
+    refreshConnectionTestPalette();
     ui->labelConnectionTestResult->setText(tr("Testing…"));
     connectionProbe->start(
         ui->comboServerType->currentData().toString(),
@@ -876,11 +883,27 @@ void ServerConfig::setConnectionTestResult(const QString &message,
                                            bool success)
 {
     ui->labelConnectionTestResult->setText(message);
-    const QColor color = AppColors::ColorThemeManager::instance().color(
-        success ? AppColors::Role::Success : AppColors::Role::Error);
-    ui->labelConnectionTestResult->setStyleSheet(
-        QStringLiteral("QLabel { color: %1; }").arg(color.name()));
+    connectionTestHasResult = true;
+    connectionTestSucceeded = success;
+    refreshConnectionTestPalette();
     ui->buttonTestConnection->setEnabled(currentServerIndex() >= 0);
+}
+
+void ServerConfig::refreshConnectionTestPalette()
+{
+    if (!ui || !ui->labelConnectionTestResult)
+        return;
+
+    QPalette palette = QApplication::palette();
+    if (connectionTestHasResult) {
+        palette.setColor(
+            QPalette::WindowText,
+            AppColors::ColorThemeManager::instance().color(
+                connectionTestSucceeded ? AppColors::Role::Success
+                                        : AppColors::Role::Error));
+        palette.setColor(QPalette::Text, palette.color(QPalette::WindowText));
+    }
+    ui->labelConnectionTestResult->setPalette(palette);
 }
 
 void ServerConfig::updateFolderMappingsSummary()

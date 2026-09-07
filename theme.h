@@ -18,7 +18,8 @@ public:
           QString displayName,
           std::optional<AppIcons::IconTheme> iconTheme,
           std::optional<AppColors::ColorTheme> colorTheme,
-          bool builtIn = false);
+          bool builtIn = false,
+          QString styleSheetPath = {});
 
     bool isValid() const;
     QString id() const;
@@ -26,6 +27,8 @@ public:
     bool isBuiltIn() const;
     bool hasIconTheme() const;
     bool hasColorTheme() const;
+    bool hasStyleSheet() const;
+    QString styleSheetPath() const;
     AppIcons::IconTheme iconTheme() const;
     AppColors::ColorTheme colorTheme() const;
 
@@ -34,6 +37,7 @@ private:
     QString m_displayName;
     std::optional<AppIcons::IconTheme> m_iconTheme;
     std::optional<AppColors::ColorTheme> m_colorTheme;
+    QString m_styleSheetPath;
     bool m_builtIn = false;
 };
 

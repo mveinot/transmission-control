@@ -32,6 +32,7 @@ private:
 
     void updateGeometry();
     void updateVisibility();
+    void refreshPalette();
 };
 
 #endif // TABLEPLACEHOLDERCONTROLLER_H

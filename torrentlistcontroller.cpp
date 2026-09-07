@@ -161,19 +161,8 @@ void TorrentListController::setup(const ActionSet &actions)
     m_tableView->setIconSize(QSize(16, 16));
 
 #ifdef Q_OS_WIN
-    /*
-     * The native Windows item-view style frames every selected cell
-     * independently. In a row-selecting table those frames resemble grid
-     * lines and leave visible seams between columns even when showGrid is
-     * disabled. Keep the native behavior elsewhere, but use a continuous,
-     * palette-derived selection fill for the torrent table on Windows.
-     */
-    m_tableView->setStyleSheet(QStringLiteral(
-        "QTableView::item:selected {"
-        " background-color: palette(highlight);"
-        " color: palette(highlighted-text);"
-        " border: none;"
-        "}"));
+    // The delegate removes the native current-cell frame while preserving
+    // the platform palette's row selection colours.
     m_tableView->setItemDelegate(
         new WindowsTorrentItemDelegate(m_tableView));
 #endif

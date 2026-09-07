@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "id": "aqua-dark",
+  "name": "Aqua Dark",
+  "colors": {
+    "mode": "dark",
+    "palette": {
+      "window": "#1c1c1e",
+      "window-text": "#f5f5f7",
+      "base": "#121214",
+      "alternate-base": "#252527",
+      "tool-tip-base": "#2c2c2e",
+      "tool-tip-text": "#ffffff",
+      "text": "#f5f5f7",
+      "button": "#2c2c2e",
+      "button-text": "#f5f5f7",
+      "bright-text": "#ffffff",
+      "highlight": "#0a84ff",
+      "highlighted-text": "#ffffff",
+      "link": "#64d2ff",
+      "link-visited": "#bf5af2",
+      "placeholder-text": "#98989d",
+      "accent": "#0a84ff"
+    },
+    "semantic": {
+      "download": "#64d2ff",
+      "upload": "#bf5af2",
+      "success": "#30d158",
+      "warning": "#ff9f0a",
+      "error": "#ff453a",
+      "inactive": "#98989d",
+      "verification": "#bf5af2",
+      "queued": "#98989d",
+      "piece-complete": "#0a84ff",
+      "piece-remaining": "#1c1c1e",
+      "piece-border": "#5e8ebd"
+    }
+  }
+}

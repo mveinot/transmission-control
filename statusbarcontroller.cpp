@@ -3,11 +3,13 @@
 #include "colorthememanager.h"
 #include "torrentbackend.h"
 
+#include <QApplication>
 #include <QCursor>
 #include <QEvent>
 #include <QLabel>
 #include <QLocale>
 #include <QMouseEvent>
+#include <QPalette>
 #include <QStatusBar>
 
 StatusBarController::StatusBarController(QStatusBar *statusBar,
@@ -366,13 +368,14 @@ void StatusBarController::refreshActivityStyle()
         return;
 
     if (!m_activityIsError) {
-        m_activityLabel->setStyleSheet(QString());
+        m_activityLabel->setPalette(QPalette());
         return;
     }
 
-    const QString color = AppColors::ColorThemeManager::instance()
-                              .color(AppColors::Role::Error)
-                              .name(QColor::HexArgb);
-    m_activityLabel->setStyleSheet(
-        QStringLiteral("color: %1;").arg(color));
+    QPalette palette = QApplication::palette();
+    palette.setColor(
+        QPalette::WindowText,
+        AppColors::ColorThemeManager::instance().color(AppColors::Role::Error));
+    palette.setColor(QPalette::Text, palette.color(QPalette::WindowText));
+    m_activityLabel->setPalette(palette);
 }

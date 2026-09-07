@@ -3,8 +3,12 @@
 #include "themeregistry.h"
 
 #include <QApplication>
+#include <QColor>
+#include <QFile>
+#include <QDir>
 #include <QPalette>
 #include <QSignalSpy>
+#include <QTemporaryDir>
 #include <QtTest>
 
 class TestColorThemeManager : public QObject
@@ -14,6 +18,7 @@ class TestColorThemeManager : public QObject
 private slots:
     void selectsBuiltInColorModes();
     void appliesPaletteAndSemanticColorsImmediately();
+    void appliesThemeStylesheetImmediately();
 };
 
 void TestColorThemeManager::selectsBuiltInColorModes()
@@ -79,6 +84,50 @@ void TestColorThemeManager::appliesPaletteAndSemanticColorsImmediately()
 
     QVERIFY(registry.unregisterTheme(themeId));
     QCOMPARE(manager.themeId(), QStringLiteral("system"));
+    if (originalThemeId != QStringLiteral("system"))
+        manager.setThemeId(originalThemeId);
+}
+
+void TestColorThemeManager::appliesThemeStylesheetImmediately()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const QString stylePath = QDir(directory.path()).filePath(
+        QStringLiteral("planetary.qss"));
+    QFile styleFile(stylePath);
+    QVERIFY(styleFile.open(QIODevice::WriteOnly));
+    const QByteArray styleSheet =
+        "QPushButton { border-radius: 7px; }\n";
+    QCOMPARE(styleFile.write(styleSheet), styleSheet.size());
+    styleFile.close();
+
+    auto &registry = AppThemes::ThemeRegistry::instance();
+    auto &manager = AppColors::ColorThemeManager::instance();
+    const QString originalThemeId = manager.themeId();
+    const QString themeId = QStringLiteral("test-runtime-style");
+    AppColors::ColorTheme::PaletteColors palette {
+        {QPalette::Window, QColor(QStringLiteral("#223344"))}
+    };
+    const AppColors::ColorTheme colors(
+        themeId, QStringLiteral("Test Runtime Style"), AppColors::Mode::System,
+        palette);
+    QVERIFY(registry.registerTheme(AppThemes::Theme(
+        themeId, QStringLiteral("Test Runtime Style"), std::nullopt, colors,
+        false, stylePath)));
+
+    // Stylesheets are opt-in at the manager API level; normal application
+    // paths keep this disabled while the widget treatment is being revised.
+    manager.setStylesheetEnabled(true);
+    manager.setThemeId(themeId);
+    QCOMPARE(qApp->styleSheet(), QString::fromUtf8(styleSheet));
+
+    manager.setStylesheetEnabled(false);
+    QCOMPARE(qApp->styleSheet(), QString());
+    manager.setStylesheetEnabled(true);
+    QCOMPARE(qApp->styleSheet(), QString::fromUtf8(styleSheet));
+
+    QVERIFY(registry.unregisterTheme(themeId));
+    QCOMPARE(qApp->styleSheet(), QString());
     if (originalThemeId != QStringLiteral("system"))
         manager.setThemeId(originalThemeId);
 }

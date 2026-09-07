@@ -13,6 +13,8 @@
 #include <QMessageBox>
 #include <QSettings>
 #include <QPointer>
+#include <QSignalBlocker>
+#include <QTimer>
 
 #ifdef Q_OS_MACOS
 #include "macdefaulthandlerbackend.h"
@@ -36,31 +38,18 @@ AppSettings::AppSettings(QWidget *parent)
     ui->updateInterval->setMaximum(MaximumUpdateIntervalSeconds);
     ui->updateInterval->setSuffix(tr(" seconds"));
 
-    auto &themeRegistry = AppThemes::ThemeRegistry::instance();
-    themeRegistry.rescanExternalThemes();
-    for (const AppColors::ColorTheme &theme : themeRegistry.colorThemes()) {
-        QString displayName = theme.displayName();
-        if (theme.id() == QString::fromLatin1(AppColors::SystemTheme))
-            displayName = tr("Follow System");
-        else if (theme.id() == QString::fromLatin1(AppColors::LightTheme))
-            displayName = tr("Light");
-        else if (theme.id() == QString::fromLatin1(AppColors::DarkTheme))
-            displayName = tr("Dark");
-        ui->colorThemeCombo->addItem(displayName, theme.id());
-    }
-    for (const AppIcons::IconTheme &theme : themeRegistry.iconThemes()) {
-        QString displayName = theme.displayName();
-        if (theme.id() == QString::fromLatin1(AppIcons::GlassTheme))
-            displayName = tr("Glass");
-        else if (theme.id() == QString::fromLatin1(AppIcons::ClassicTheme))
-            displayName = tr("Classic");
-        ui->iconThemeCombo->addItem(displayName, theme.id());
-    }
+    populateThemeOptions();
 
     populateLanguageOptions();
     loadSettings();
     updateNotificationOptionAvailability();
-    refreshDefaultHandlerStatus();
+    // Launch Services queries can block while macOS resolves the registered
+    // handlers. Defer them until the dialog's event loop is running so the
+    // Preferences window can appear immediately.
+    QTimer::singleShot(250, this, [this]() {
+        if (isVisible())
+            refreshDefaultHandlerStatus();
+    });
 
     connect(ui->enableNotifications, &QCheckBox::toggled,
             this, &AppSettings::updateNotificationOptionAvailability);
@@ -76,9 +65,13 @@ AppSettings::AppSettings(QWidget *parent)
             this, [this]() {
                 // Preview every icon consumer; accepting the dialog persists it.
                 AppIcons::IconThemeManager::instance().setThemeId(
-                    ui->iconThemeCombo->currentData().toString());
+                ui->iconThemeCombo->currentData().toString());
             });
-
+    connect(ui->refreshThemePacks, &QPushButton::clicked,
+            this, [this]() {
+                AppThemes::ThemeRegistry::instance().rescanExternalThemes();
+                populateThemeOptions();
+            });
     connect(ui->buttonTestNotification, &QPushButton::clicked,
             this, &AppSettings::testNotificationRequested);
     connect(ui->enableExternalCommand, &QCheckBox::toggled,
@@ -116,6 +109,7 @@ AppSettings::AppSettings(QWidget *parent)
         AppColors::ColorThemeManager::instance().setThemeId(
             m_initialColorTheme);
         AppIcons::IconThemeManager::instance().setThemeId(m_initialIconTheme);
+        AppColors::ColorThemeManager::instance().setStylesheetEnabled(false);
     });
 
     connect(ui->buttonBrowseWatchFolder, &QPushButton::clicked,
@@ -178,6 +172,44 @@ void AppSettings::populateLanguageOptions()
          ApplicationLocale::availableOptions()) {
         ui->languageCombo->addItem(option.displayName, option.code);
     }
+}
+
+void AppSettings::populateThemeOptions()
+{
+    const QString selectedColor = ui->colorThemeCombo->currentData().toString();
+    const QString selectedIcon = ui->iconThemeCombo->currentData().toString();
+    const QSignalBlocker colorBlocker(ui->colorThemeCombo);
+    const QSignalBlocker iconBlocker(ui->iconThemeCombo);
+    auto &themeRegistry = AppThemes::ThemeRegistry::instance();
+
+    ui->colorThemeCombo->clear();
+    for (const AppColors::ColorTheme &theme : themeRegistry.colorThemes()) {
+        QString displayName = theme.displayName();
+        if (theme.id() == QString::fromLatin1(AppColors::SystemTheme))
+            displayName = tr("Follow System");
+        else if (theme.id() == QString::fromLatin1(AppColors::LightTheme))
+            displayName = tr("Light");
+        else if (theme.id() == QString::fromLatin1(AppColors::DarkTheme))
+            displayName = tr("Dark");
+        ui->colorThemeCombo->addItem(displayName, theme.id());
+    }
+
+    ui->iconThemeCombo->clear();
+    for (const AppIcons::IconTheme &theme : themeRegistry.iconThemes()) {
+        QString displayName = theme.displayName();
+        if (theme.id() == QString::fromLatin1(AppIcons::GlassTheme))
+            displayName = tr("Glass");
+        else if (theme.id() == QString::fromLatin1(AppIcons::ClassicTheme))
+            displayName = tr("Classic");
+        ui->iconThemeCombo->addItem(displayName, theme.id());
+    }
+
+    int index = ui->colorThemeCombo->findData(selectedColor);
+    if (index >= 0)
+        ui->colorThemeCombo->setCurrentIndex(index);
+    index = ui->iconThemeCombo->findData(selectedIcon);
+    if (index >= 0)
+        ui->iconThemeCombo->setCurrentIndex(index);
 }
 
 void AppSettings::loadSettings()
@@ -294,6 +326,9 @@ void AppSettings::saveSettings()
     auto &colorManager = AppColors::ColorThemeManager::instance();
     colorManager.setThemeId(selectedColorTheme());
     settings.setValue(SettingsKeys::ColorTheme, colorManager.themeId());
+    // Theme stylesheets are intentionally disabled while the QSS treatment is
+    // being revised; palette-based colour themes remain active.
+    settings.setValue(SettingsKeys::ApplyThemeStylesheet, false);
     const QString iconTheme = ui->iconThemeCombo->currentData().toString();
     auto &iconManager = AppIcons::IconThemeManager::instance();
     iconManager.setThemeId(iconTheme);

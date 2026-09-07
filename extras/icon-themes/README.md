@@ -6,8 +6,8 @@ subdirectory into the external theme directory documented in
 Planetary rescans it.
 
 Icon and colour components are independent. All packages below are colour-only
-except Polar Night, which also supplies icons, so any of these colour schemes
-can be paired with Glass, Classic, or Polar Night icons.
+except Polar Night and Aqua Icons, which also supply icons, so any of these
+colour schemes can be paired with Glass, Classic, Polar Night, or Aqua icons.
 
 ## Included colour schemes
 
@@ -21,6 +21,8 @@ can be paired with Glass, Classic, or Polar Night icons.
 | Rosé Pine | [Rosé Pine palette](https://github.com/rose-pine/rose-pine-palette) |
 | Tokyo Night Storm | [Tokyo Night](https://github.com/folke/tokyonight.nvim) |
 | One Dark | [One Dark](https://github.com/joshdick/onedark.vim) |
+| Metro | Microsoft Fluent-inspired blue and neutral palette |
+| Aqua Light / Aqua Dark | macOS Aqua-inspired light and dark palettes |
 
 The original palettes provide the colour vocabulary. Their mapping onto Qt's
 application palette and Planetary's torrent-specific semantic roles is a

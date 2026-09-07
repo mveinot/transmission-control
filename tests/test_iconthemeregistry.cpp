@@ -66,6 +66,7 @@ private slots:
     void standardDirectoryUsesApplicationDataLocation();
     void exampleThemeManifestIsComplete();
     void exampleColorThemeManifestsLoad();
+    void stylesheetManifestLoads();
     void scansLoadsFallsBackAndRescans();
 };
 
@@ -146,6 +147,9 @@ void TestThemeRegistry::exampleColorThemeManifestsLoad()
         QStringLiteral("dracula"),
         QStringLiteral("gruvbox-dark"),
         QStringLiteral("gruvbox-light"),
+        QStringLiteral("aqua-light"),
+        QStringLiteral("aqua-dark"),
+        QStringLiteral("metro"),
         QStringLiteral("nord"),
         QStringLiteral("one-dark"),
         QStringLiteral("rose-pine"),
@@ -165,6 +169,44 @@ void TestThemeRegistry::exampleColorThemeManifestsLoad()
         QVERIFY(!result.theme.hasIconTheme());
         QVERIFY(result.theme.hasColorTheme());
     }
+}
+
+void TestThemeRegistry::stylesheetManifestLoads()
+{
+    QTemporaryDir temporaryDirectory;
+    QVERIFY(temporaryDirectory.isValid());
+    const QString themeDirectory = QDir(temporaryDirectory.path()).filePath(
+        QStringLiteral("styled"));
+    QFile stylesheet(QDir(themeDirectory).filePath(QStringLiteral("theme.qss")));
+    QVERIFY(QDir().mkpath(themeDirectory));
+    QVERIFY(stylesheet.open(QIODevice::WriteOnly));
+    QVERIFY(stylesheet.write("QPushButton { color: #ffffff; }\n") > 0);
+    stylesheet.close();
+
+    const QJsonObject colors {
+        {QStringLiteral("mode"), QStringLiteral("dark")},
+        {QStringLiteral("palette"), QJsonObject {
+            {QStringLiteral("window"), QStringLiteral("#101010")}
+        }}
+    };
+    const QJsonObject styledManifest {
+        {QStringLiteral("formatVersion"), 1},
+        {QStringLiteral("id"), QStringLiteral("styled")},
+        {QStringLiteral("name"), QStringLiteral("Styled")},
+        {QStringLiteral("colors"), colors},
+        {QStringLiteral("style"), QJsonObject {
+            {QStringLiteral("stylesheet"), QStringLiteral("theme.qss")}
+        }}
+    };
+    QVERIFY(writeManifest(themeDirectory, styledManifest));
+
+    const auto result = AppThemes::ThemeManifestParser::parseFile(
+        QDir(themeDirectory).filePath(QString::fromLatin1(
+            AppThemes::ThemeManifestParser::FileName)));
+    QVERIFY2(result.succeeded(), qPrintable(result.error));
+    QVERIFY(result.theme.hasColorTheme());
+    QVERIFY(result.theme.hasStyleSheet());
+    QCOMPARE(result.theme.styleSheetPath(), stylesheet.fileName());
 }
 
 void TestThemeRegistry::scansLoadsFallsBackAndRescans()

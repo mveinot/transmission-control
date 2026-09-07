@@ -35,6 +35,8 @@ private:
     QVector<ServerDefinition> servers;
     QStringListModel *serverListModel = nullptr;
     ServerConnectionProbe *connectionProbe = nullptr;
+    bool connectionTestHasResult = false;
+    bool connectionTestSucceeded = false;
 
     int currentServerIndex() const;
 
@@ -51,6 +53,7 @@ private:
     bool prepareEditorUrl(QUrl *url, bool forConnectionTest);
     void testConnection();
     void setConnectionTestResult(const QString &message, bool success);
+    void refreshConnectionTestPalette();
 
     void addServer();
     void exportSelectedServer();

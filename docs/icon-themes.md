@@ -54,6 +54,9 @@ icon-themes/
       "error": "#ff6f70",
       "piece-complete": "#785de8"
     }
+  },
+  "style": {
+    "stylesheet": "planetary.qss"
   }
 }
 ```
@@ -71,6 +74,17 @@ icon-themes/
 - `icons` maps semantic icon IDs to image paths relative to the directory
   containing the manifest. Absolute paths and paths outside that directory are
   rejected. Qt-supported raster and SVG formats can be used.
+- `style` is optional and may contain a `stylesheet` path relative to the
+  manifest. It must be paired with a `colors` component and is applied when
+  that colour theme is selected. Stylesheets are limited to 256 KiB.
+
+The optional stylesheet is loaded with `QApplication` and can use normal Qt
+Style Sheet selectors, pseudo-states, palette roles, and dynamic properties.
+It is intended for widget-level visual details that cannot be expressed by a
+palette alone. The initial implementation does not provide a separate style
+selection: stylesheet selection follows the colour-theme selection. Avoid
+relative `url(...)` assets for now; image assets will be given an explicit
+theme-resource mechanism in a future format revision.
 
 A theme may provide only the icons it changes. Missing, unreadable, or invalid
 icons are resolved through the declared fallback, with built-in Glass always

@@ -28,6 +28,7 @@ private:
     QString m_initialIconTheme;
 
     void populateLanguageOptions();
+    void populateThemeOptions();
     void loadSettings();
     void saveSettings();
     QString selectedColorTheme() const;

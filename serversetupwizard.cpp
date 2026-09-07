@@ -1,6 +1,8 @@
 #include "serversetupwizard.h"
 
+#include "appcolors.h"
 #include "colorthememanager.h"
+
 #include "serverconfig.h"
 #include "serverconnectionprobe.h"
 #include "serverprofile.h"
@@ -8,6 +10,7 @@
 #include <QColor>
 #include <QComboBox>
 #include <QFormLayout>
+#include <QApplication>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -41,6 +44,10 @@ ServerSetupWizard::ServerSetupWizard(bool appendToExisting, QWidget *parent)
     , m_connectionProbe(new ServerConnectionProbe(this))
     , m_appendToExisting(appendToExisting)
 {
+    connect(&AppColors::ColorThemeManager::instance(),
+            &AppColors::ColorThemeManager::themeChanged,
+            this,
+            [this]() { refreshTestStatusPalette(); });
     setWindowTitle(tr("Set Up Planetary"));
 #ifdef Q_OS_WIN
     // AeroStyle bypasses the active widget style on composited Windows
@@ -305,6 +312,8 @@ void ServerSetupWizard::testConnection()
     }
 
     m_testButton->setEnabled(false);
+    m_testHasResult = false;
+    refreshTestStatusPalette();
     m_testStatus->setText(tr("Testing…"));
     m_connectionProbe->start(
         backendType(), url, m_usernameEdit->text(), m_passwordEdit->text());
@@ -313,9 +322,25 @@ void ServerSetupWizard::testConnection()
 void ServerSetupWizard::setTestResult(const QString &message, bool success)
 {
     m_testStatus->setText(message);
-    const QColor color = AppColors::ColorThemeManager::instance().color(
-        success ? AppColors::Role::Success : AppColors::Role::Error);
-    m_testStatus->setStyleSheet(
-        QStringLiteral("QLabel { color: %1; }").arg(color.name()));
+    m_testHasResult = true;
+    m_testSucceeded = success;
+    refreshTestStatusPalette();
     m_testButton->setEnabled(true);
+}
+
+void ServerSetupWizard::refreshTestStatusPalette()
+{
+    if (!m_testStatus)
+        return;
+
+    QPalette palette = QApplication::palette();
+    if (m_testHasResult) {
+        palette.setColor(
+            QPalette::WindowText,
+            AppColors::ColorThemeManager::instance().color(
+                m_testSucceeded ? AppColors::Role::Success
+                                : AppColors::Role::Error));
+        palette.setColor(QPalette::Text, palette.color(QPalette::WindowText));
+    }
+    m_testStatus->setPalette(palette);
 }

@@ -17,7 +17,9 @@ public:
 
     QString themeId() const;
     QColor color(Role role) const;
+    bool stylesheetEnabled() const;
     void setThemeId(const QString &themeId);
+    void setStylesheetEnabled(bool enabled);
 
 signals:
     void themeChanged(const QString &themeId);
@@ -28,6 +30,7 @@ private:
     void applyTheme();
 
     QString m_themeId;
+    bool m_stylesheetEnabled = true;
 };
 
 } // namespace AppColors

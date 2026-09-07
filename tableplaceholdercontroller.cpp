@@ -1,6 +1,7 @@
 #include "tableplaceholdercontroller.h"
 
 #include <QAbstractScrollArea>
+#include <QApplication>
 #include <QEvent>
 #include <QColor>
 #include <QFont>
@@ -26,12 +27,23 @@ TablePlaceholderController::TablePlaceholderController(QAbstractScrollArea *view
     font.setItalic(true);
     m_label->setFont(font);
 
-    const QColor textColor = m_view->palette().color(QPalette::Disabled, QPalette::Text);
-    m_label->setStyleSheet(QStringLiteral("QLabel { color: %1; }").arg(textColor.name()));
+    refreshPalette();
 
     m_view->viewport()->installEventFilter(this);
     updateGeometry();
     updateVisibility();
+}
+
+void TablePlaceholderController::refreshPalette()
+{
+    if (!m_view || !m_label)
+        return;
+
+    QPalette palette = m_view->palette();
+    const QColor textColor = palette.color(QPalette::Disabled, QPalette::Text);
+    palette.setColor(QPalette::WindowText, textColor);
+    palette.setColor(QPalette::Text, textColor);
+    m_label->setPalette(palette);
 }
 
 void TablePlaceholderController::setMessage(const QString &message)
@@ -66,6 +78,9 @@ bool TablePlaceholderController::eventFilter(QObject *watched, QEvent *event)
         case QEvent::Show:
             updateGeometry();
             updateVisibility();
+            break;
+        case QEvent::ApplicationPaletteChange:
+            refreshPalette();
             break;
         default:
             break;
