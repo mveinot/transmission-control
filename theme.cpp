@@ -71,4 +71,12 @@ AppColors::ColorTheme Theme::colorTheme() const
     return m_colorTheme.value_or(AppColors::ColorTheme());
 }
 
+bool Theme::operator==(const Theme &other) const
+{
+    return m_id == other.m_id && m_displayName == other.m_displayName
+        && m_iconTheme == other.m_iconTheme && m_colorTheme == other.m_colorTheme
+        && m_styleSheetPath == other.m_styleSheetPath
+        && m_builtIn == other.m_builtIn;
+}
+
 } // namespace AppThemes

@@ -303,6 +303,8 @@ void ThemeRegistry::rescanExternalThemes()
         if (existing.isBuiltIn())
             continue;
 
+        const bool changed = !m_themes.contains(themeId) || !(existing == result.theme);
+
         if (!m_themes.contains(themeId))
             m_themeOrder.append(themeId);
         m_themes.insert(themeId, result.theme);
@@ -317,7 +319,8 @@ void ThemeRegistry::rescanExternalThemes()
             m_archiveSources.remove(themeId);
         }
         discoveredIds.insert(themeId);
-        emit registryChanged(themeId);
+        if (changed)
+            emit registryChanged(themeId);
     }
 
     const QSet<QString> removedIds = m_scannedThemeIds - discoveredIds;

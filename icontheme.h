@@ -30,6 +30,7 @@ public:
     QString basePath() const;
     QString fallbackThemeId() const;
     bool isBuiltIn() const;
+    bool operator==(const IconTheme &other) const;
 
     bool hasIcon(Id iconId) const;
     QString iconPath(Id iconId) const;

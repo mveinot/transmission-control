@@ -49,6 +49,14 @@ bool ColorTheme::hasPaletteOverrides() const
     return !m_paletteColors.isEmpty();
 }
 
+bool ColorTheme::operator==(const ColorTheme &other) const
+{
+    return m_id == other.m_id && m_displayName == other.m_displayName
+        && m_mode == other.m_mode && m_paletteColors == other.m_paletteColors
+        && m_semanticColors == other.m_semanticColors
+        && m_builtIn == other.m_builtIn;
+}
+
 QPalette ColorTheme::appliedTo(const QPalette &basePalette) const
 {
     QPalette result = basePalette;

@@ -31,6 +31,7 @@ public:
     QString styleSheetPath() const;
     AppIcons::IconTheme iconTheme() const;
     AppColors::ColorTheme colorTheme() const;
+    bool operator==(const Theme &other) const;
 
 private:
     QString m_id;

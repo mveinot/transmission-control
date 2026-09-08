@@ -51,6 +51,14 @@ bool IconTheme::isBuiltIn() const
     return m_builtIn;
 }
 
+bool IconTheme::operator==(const IconTheme &other) const
+{
+    return m_id == other.m_id && m_displayName == other.m_displayName
+        && m_basePath == other.m_basePath && m_iconFiles == other.m_iconFiles
+        && m_fallbackThemeId == other.m_fallbackThemeId
+        && m_builtIn == other.m_builtIn;
+}
+
 bool IconTheme::hasIcon(Id iconId) const
 {
     return m_iconFiles.contains(iconId) && !m_iconFiles.value(iconId).isEmpty();

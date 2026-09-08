@@ -35,6 +35,7 @@ public:
     Mode mode() const;
     bool isBuiltIn() const;
     bool hasPaletteOverrides() const;
+    bool operator==(const ColorTheme &other) const;
 
     QPalette appliedTo(const QPalette &basePalette) const;
     QColor color(Role role, const QPalette &palette) const;
