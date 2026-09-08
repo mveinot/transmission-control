@@ -452,7 +452,7 @@ $repositoryUrl = sprintf(
     </a>
     <nav aria-label="Main navigation">
         <a href="/#features">Features</a>
-        <a href="/#themes">Themes</a>
+        <a href="/themes/">Themes</a>
         <a href="/#screenshots">Screenshots</a>
         <a href="/#about">About</a>
         <a class="nav-button" href="/downloads/" aria-current="page">Download</a>
@@ -475,10 +475,10 @@ $repositoryUrl = sprintf(
         <div class="theme-download-copy">
             <span class="badge">New</span>
             <h2 id="theme-download-title">Planetary themes</h2>
-            <p>Explore external icon and colour schemes that can be mixed independently. Download the collection and select its themes under Settings → Appearance.</p>
+            <p>Explore external icon and colour schemes that can be mixed independently. Choose and download an individual theme from the catalogue.</p>
         </div>
-        <a class="button primary" href="../icon-themes.zip" download>
-            Download theme pack <span aria-hidden="true">↓</span>
+        <a class="button primary" href="/themes/">
+            Browse themes <span aria-hidden="true">→</span>
         </a>
     </section>
 

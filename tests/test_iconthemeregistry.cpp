@@ -1,4 +1,5 @@
 #include "appicons.h"
+#include "themearchive.h"
 #include "thememanifest.h"
 #include "themeregistry.h"
 
@@ -121,9 +122,24 @@ void TestThemeRegistry::standardDirectoryUsesApplicationDataLocation()
 
 void TestThemeRegistry::exampleThemeManifestIsComplete()
 {
-    const QString manifestPath = QFINDTESTDATA(
-        "../extras/icon-themes/polar-night/theme.json");
-    QVERIFY(!manifestPath.isEmpty());
+    const QString archivePath = QFINDTESTDATA(
+        "../web/themes/packages/polar-night.planetarytheme");
+    QVERIFY(!archivePath.isEmpty());
+
+    const AppThemes::ThemeArchiveManifest archive =
+        AppThemes::ThemeArchive::readManifest(archivePath);
+    QVERIFY2(archive.succeeded(), qPrintable(archive.error));
+
+    QTemporaryDir extractionDirectory;
+    QVERIFY(extractionDirectory.isValid());
+    QString extractionError;
+    QVERIFY2(AppThemes::ThemeArchive::extract(
+                  archivePath, archive.entryPrefix,
+                  extractionDirectory.path(), &extractionError),
+             qPrintable(extractionError));
+
+    const QString manifestPath = QDir(extractionDirectory.path()).filePath(
+        QString::fromLatin1(AppThemes::ThemeManifestParser::FileName));
 
     const AppThemes::ThemeManifestResult result =
         AppThemes::ThemeManifestParser::parseFile(manifestPath);
@@ -147,12 +163,13 @@ void TestThemeRegistry::exampleThemeManifestIsComplete()
 
 void TestThemeRegistry::exampleColorThemeManifestsLoad()
 {
-    const QString themesPath = QFINDTESTDATA("../extras/icon-themes");
+    const QString themesPath = QFINDTESTDATA("../web/themes/packages");
     QVERIFY(!themesPath.isEmpty());
 
     const QStringList expectedIds {
         QStringLiteral("catppuccin-mocha"),
         QStringLiteral("dracula"),
+        QStringLiteral("elflord"),
         QStringLiteral("gruvbox-dark"),
         QStringLiteral("gruvbox-light"),
         QStringLiteral("nord"),
@@ -164,10 +181,15 @@ void TestThemeRegistry::exampleColorThemeManifestsLoad()
     };
 
     for (const QString &themeId : expectedIds) {
-        const QString manifestPath =
-            QDir(themesPath).filePath(themeId + QStringLiteral("/theme.json"));
+        const QString archivePath = QDir(themesPath).filePath(
+            themeId + QStringLiteral(".planetarytheme"));
+        const AppThemes::ThemeArchiveManifest archive =
+            AppThemes::ThemeArchive::readManifest(archivePath);
+        QVERIFY2(archive.succeeded(), qPrintable(themeId + QStringLiteral(": ")
+                                              + archive.error));
         const AppThemes::ThemeManifestResult result =
-            AppThemes::ThemeManifestParser::parseFile(manifestPath);
+            AppThemes::ThemeManifestParser::parseData(
+                archive.data, themesPath, false);
         QVERIFY2(result.succeeded(),
                  qPrintable(themeId + QStringLiteral(": ") + result.error));
         QCOMPARE(result.theme.id(), themeId);
