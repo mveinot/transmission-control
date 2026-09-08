@@ -177,6 +177,11 @@ h3 { margin: 0 0 10px; font-size: 1.22rem; }
 }
 .feature-card.featured { grid-column: span 2; background: linear-gradient(145deg, rgba(242,185,75,.13), rgba(255,255,255,.025)); }
 .feature-card p { margin: 0; color: var(--muted); }
+.theme-points code {
+  color: var(--accent-light);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: .88em;
+}
 .feature-icon {
   display: grid;
   width: 39px;
@@ -190,6 +195,41 @@ h3 { margin: 0 0 10px; font-size: 1.22rem; }
   font-size: 1.14rem;
   font-weight: 800;
 }
+
+.theme-section {
+  width: min(calc(100% - 48px), 1320px);
+  padding-bottom: 100px;
+}
+.theme-points {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--line);
+}
+.theme-points article {
+  display: flex;
+  min-height: 132px;
+  padding: 24px;
+  flex-direction: column;
+  gap: 7px;
+  background: var(--panel-solid);
+}
+.theme-points strong { font-size: 1rem; }
+.theme-points span { color: var(--muted); font-size: .9rem; }
+.theme-gallery {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.theme-gallery .screenshot-card {
+  box-shadow: 0 30px 75px rgba(0, 0, 0, .24);
+}
+.theme-gallery figcaption strong { color: var(--text); }
+.theme-action { display: flex; justify-content: center; margin-top: 27px; }
 
 .screenshots { padding-top: 100px; }
 .split-heading { display: grid; grid-template-columns: 1fr .65fr; align-items: end; max-width: none; gap: 60px; }
@@ -281,9 +321,10 @@ footer p { margin: 0; text-align: center; }
   .trust-strip span:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
   .trust-strip span:nth-child(4) { border-top: 1px solid var(--line); }
   .section { padding: 90px 0; }
-  .feature-grid, .screenshot-grid, .split-heading, .about-panel { grid-template-columns: 1fr; }
+  .feature-grid, .screenshot-grid, .theme-gallery, .split-heading, .about-panel { grid-template-columns: 1fr; }
   .feature-card.featured, .screenshot-card.screenshot-large { grid-column: auto; }
   .feature-card { min-height: 220px; }
+  .theme-points { grid-template-columns: 1fr; }
   .split-heading { gap: 20px; }
   .about-panel { padding: 29px; }
   .cta { grid-template-columns: 1fr; text-align: center; padding: 30px 24px; }

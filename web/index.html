@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#10131a">
-  <meta name="description" content="Planetary is a focused desktop client for remotely managing Transmission, qBittorrent, and Deluge servers from one polished interface.">
+  <meta name="description" content="Planetary is a focused, themeable desktop client for remotely managing Transmission, qBittorrent, and Deluge servers from one polished interface.">
   <meta property="og:title" content="Planetary — Desktop torrent server control">
-  <meta property="og:description" content="Manage Transmission, qBittorrent, and Deluge servers from one focused desktop interface.">
+  <meta property="og:description" content="Manage Transmission, qBittorrent, and Deluge servers from one focused, themeable desktop interface.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://planetary.mvgrafx.net/assets/planetary.png">
   <title>Planetary — Desktop torrent server control</title>
@@ -21,6 +21,7 @@
     </a>
     <nav aria-label="Main navigation">
       <a href="#features">Features</a>
+      <a href="#themes">Themes</a>
       <a href="#screenshots">Screenshots</a>
       <a href="#about">About</a>
       <a class="nav-button" href="/downloads/">Download</a>
@@ -32,7 +33,7 @@
       <div class="hero-copy">
         <p class="eyebrow">Remote control, without the browser tab</p>
         <h1>Your torrent servers deserve a proper desktop client.</h1>
-        <p class="lead">Planetary brings Transmission, qBittorrent, and Deluge together in one focused Qt desktop app. Add transfers, inspect every detail, move between servers, and keep routine controls close at hand.</p>
+        <p class="lead">Planetary brings Transmission, qBittorrent, and Deluge together in one focused Qt desktop app. Add transfers from files, URLs, or magnets, inspect every detail, move between servers, and make the workspace your own.</p>
         <div class="hero-actions">
           <a class="button primary" href="/downloads/">Download Planetary</a>
           <a class="button secondary" href="https://github.com/mveinot/transmission-control">View source on GitHub</a>
@@ -48,7 +49,7 @@
     <section class="trust-strip" aria-label="Product highlights">
       <span>macOS 13+ universal build</span>
       <span>Transmission, qBittorrent &amp; Deluge</span>
-      <span>Built with Qt 6</span>
+      <span>Installable icon &amp; colour themes</span>
       <span>No telemetry</span>
     </section>
 
@@ -63,7 +64,7 @@
         <article class="feature-card featured">
           <div class="feature-icon">↯</div>
           <h3>Add torrents from wherever they arrive</h3>
-          <p>Open torrent files, paste a magnet link directly into the main window, use an add-options dialog, register Planetary as a file or magnet handler, or let a watch folder submit files automatically.</p>
+          <p>Open torrent files, fetch them from a URL, paste a magnet directly into the main window, use registered handlers, or let a watch folder submit files automatically. Choose when add options appear and rename a torrent’s top-level folder before starting it.</p>
         </article>
         <article class="feature-card">
           <div class="feature-icon">⌘</div>
@@ -103,13 +104,57 @@
       </div>
     </section>
 
+    <section class="section theme-section" id="themes">
+      <div class="section-heading split-heading">
+        <div>
+          <p class="eyebrow">Your console, your colours</p>
+          <h2>Two independent layers of personality.</h2>
+        </div>
+        <p>Choose an icon theme and a colour scheme separately, then change either one live. Planetary refreshes actions, status symbols, tables, charts, and semantic transfer colours immediately.</p>
+      </div>
+
+      <div class="theme-points" aria-label="Theme capabilities">
+        <article>
+          <strong>Mix and match</strong>
+          <span>Pair any colour scheme with Glass, Classic, or an external icon set.</span>
+        </article>
+        <article>
+          <strong>One-file installation</strong>
+          <span>Open a <code>.planetarytheme</code> package and select its components in Appearance.</span>
+        </article>
+        <article>
+          <strong>Graceful fallback</strong>
+          <span>Partial icon packs inherit missing artwork, while hover effects are generated automatically.</span>
+        </article>
+      </div>
+
+      <div class="theme-gallery">
+        <figure class="screenshot-card">
+          <a href="assets/screen5.png">
+            <img src="assets/screen5.png" alt="Planetary using the cyan-on-black Elflord colour scheme with glossy blue icons" loading="lazy">
+          </a>
+          <figcaption><strong>Elflord</strong> colours paired with Polar Night icons</figcaption>
+        </figure>
+        <figure class="screenshot-card">
+          <a href="assets/screen6.png">
+            <img src="assets/screen6.png" alt="Planetary using a warm light colour scheme with richly rendered Celestial Enamel icons" loading="lazy">
+          </a>
+          <figcaption><strong>Gruvbox Light</strong> paired with Celestial Enamel icons</figcaption>
+        </figure>
+      </div>
+
+      <div class="theme-action">
+        <a class="button secondary" href="/downloads/#theme-download-title">Explore downloadable themes</a>
+      </div>
+    </section>
+
     <section class="section screenshots" id="screenshots">
       <div class="section-heading split-heading">
         <div>
           <p class="eyebrow">A closer look</p>
           <h2>Designed for information, not spectacle.</h2>
         </div>
-        <p>The interface stays familiar to Transmission Remote GUI users while taking advantage of a modern Qt foundation and native platform behavior.</p>
+        <p>The interface stays familiar to Transmission Remote GUI users while adding multi-server workflows, flexible importing, live themes, and native platform behavior on a modern Qt foundation.</p>
       </div>
 
       <div class="screenshot-grid">
