@@ -63,8 +63,9 @@ DialogAbout::DialogAbout(QWidget *parent)
 
     if (credits.isEmpty()) {
         credits =
-            "Planetary uses Qt, libmaxminddb, and DB-IP Lite country data.\n\n"
+            "Planetary uses Qt, libmaxminddb, miniz, and DB-IP Lite country data.\n\n"
             "libmaxminddb is licensed under the Apache License, Version 2.0.\n"
+            "miniz is licensed under the MIT License.\n"
             "DB-IP Lite data is licensed under Creative Commons Attribution 4.0 "
             "and requires attribution to DB-IP.com.";
     }

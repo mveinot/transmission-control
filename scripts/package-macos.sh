@@ -6,8 +6,6 @@ cd "$ROOT_DIR"
 
 APP_NAME="Planetary"
 QT_DIR="${QT_DIR:-$HOME/Qt/6.11.2/macos}"
-MAXMINDDB_ROOT="${MAXMINDDB_ROOT:-$HOME/Developer/Dependencies/libmaxminddb-1.13.3/install-universal-macos13}"
-MINIZ_ROOT="${MINIZ_ROOT:-$HOME/Developer/Dependencies/miniz-3.1.2/install-universal-macos13}"
 MACOS_ARCHITECTURES="x86_64;arm64"
 MACOS_DEPLOYMENT_TARGET="13.0"
 BUILD_DIR="${BUILD_DIR:-build-macos-universal-release}"
@@ -48,39 +46,6 @@ if ! security find-identity -v -p codesigning "$BUILD_KEYCHAIN" |
   grep -F "$SIGNING_IDENTITY" >/dev/null; then
   fail "Signing identity is not available in $BUILD_KEYCHAIN: $SIGNING_IDENTITY"
 fi
-
-if [[ ! -f "$MAXMINDDB_ROOT/lib/libmaxminddb.a" ]]; then
-  fail "Missing universal libmaxminddb: $MAXMINDDB_ROOT/lib/libmaxminddb.a"
-fi
-
-if ! lipo "$MAXMINDDB_ROOT/lib/libmaxminddb.a" -verify_arch x86_64 arm64; then
-  fail "libmaxminddb is not universal: $MAXMINDDB_ROOT/lib/libmaxminddb.a"
-fi
-
-if [[ ! -f "$MINIZ_ROOT/lib/libminiz.a" ]]; then
-  fail "Missing universal miniz: $MINIZ_ROOT/lib/libminiz.a"
-fi
-
-if ! lipo "$MINIZ_ROOT/lib/libminiz.a" -verify_arch x86_64 arm64; then
-  fail "miniz is not universal: $MINIZ_ROOT/lib/libminiz.a"
-fi
-
-for dependency_arch in x86_64 arm64; do
-  archive_minos_count=0
-  while IFS= read -r archive_minos; do
-    archive_minos_count=$((archive_minos_count + 1))
-    if [[ "$archive_minos" != "$MACOS_DEPLOYMENT_TARGET" ]]; then
-      fail "libmaxminddb ($dependency_arch) targets macOS $archive_minos, expected $MACOS_DEPLOYMENT_TARGET"
-    fi
-  done < <(
-    otool -arch "$dependency_arch" -l "$MAXMINDDB_ROOT/lib/libmaxminddb.a" |
-      awk '$1 == "minos" { print $2 }'
-  )
-
-  if [[ "$archive_minos_count" -eq 0 ]]; then
-    fail "No macOS build-version records found in libmaxminddb ($dependency_arch)"
-  fi
-done
 
 verify_macho() {
   local artifact_path="$1"
@@ -199,6 +164,10 @@ verify_app_bundle() {
     if ! nm -arch "$required_arch" "$APP_EXECUTABLE" | grep ' _MMDB_open$' >/dev/null; then
       fail "Static libmaxminddb symbols are missing from the $required_arch executable"
     fi
+    if ! nm -arch "$required_arch" "$APP_EXECUTABLE" |
+      grep ' _mz_zip_reader_init_file$' >/dev/null; then
+      fail "Static miniz symbols are missing from the $required_arch executable"
+    fi
   done
 }
 
@@ -241,11 +210,7 @@ cmake -S . -B "$BUILD_DIR" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH="$QT_DIR" \
   -DCMAKE_OSX_ARCHITECTURES="$MACOS_ARCHITECTURES" \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_DEPLOYMENT_TARGET" \
-  -DPLANETARY_MAXMINDDB_ROOT="$MAXMINDDB_ROOT" \
-  -DMAXMINDDB_LIBRARY="$MAXMINDDB_ROOT/lib/libmaxminddb.a" \
-  -DPLANETARY_MINIZ_ROOT="$MINIZ_ROOT" \
-  -DMINIZ_LIBRARY="$MINIZ_ROOT/lib/libminiz.a"
+  -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_DEPLOYMENT_TARGET"
 
 cmake --build "$BUILD_DIR" --config Release --target Planetary --parallel "$BUILD_JOBS"
 

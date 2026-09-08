@@ -5,9 +5,18 @@ Copyright (C) The Qt Company Ltd. and other contributors.
 Used under the applicable Qt open-source licensing terms.
 
 libmaxminddb
-Copyright (c) MaxMind, Inc.
+Copyright 2013-2026 MaxMind, Inc.
 Licensed under the Apache License, Version 2.0.
 https://github.com/maxmind/libmaxminddb
+
+The complete Apache license, MaxMind NOTICE, and notices for incorporated
+compatibility routines are included in the application's licenses directory.
+
+miniz
+Copyright 2013-2014 RAD Game Tools and Valve Software.
+Copyright 2010-2014 Rich Geldreich and Tenacious Software LLC.
+Licensed under the MIT License.
+https://github.com/richgel999/miniz
 
 DB-IP Lite Country Database
 IP geolocation data provided by DB-IP.com.

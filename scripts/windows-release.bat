@@ -35,7 +35,8 @@ REM Configure
 REM --------------------------------------------------
 
 cmake -S . -B %BUILD_DIR% ^
--DCMAKE_BUILD_TYPE=Release
+-DCMAKE_BUILD_TYPE=Release ^
+-DCMAKE_PREFIX_PATH="%QT_ROOT%"
 
 if errorlevel 1 exit /b 1
 
@@ -66,11 +67,18 @@ REM --------------------------------------------------
 if errorlevel 1 exit /b 1
 
 REM --------------------------------------------------
-REM Copy extras
+REM Copy data and license materials
 REM --------------------------------------------------
 
-if exist LICENSE copy LICENSE %DIST_DIR%\Planetary
-if exist THIRD_PARTY_NOTICES.txt copy THIRD_PARTY_NOTICES.txt %DIST_DIR%\Planetary\
+mkdir %DIST_DIR%\Planetary\geoip
+mkdir %DIST_DIR%\Planetary\licenses
+
+copy /Y Resources\geoip\country.mmdb %DIST_DIR%\Planetary\geoip\
+copy /Y LICENSE %DIST_DIR%\Planetary\licenses\
+copy /Y Resources\licenses\gpl-3.0.txt %DIST_DIR%\Planetary\licenses\
+copy /Y Resources\licenses\THIRD_PARTY_NOTICES.txt %DIST_DIR%\Planetary\licenses\
+copy /Y Resources\licenses\flag-icons.txt %DIST_DIR%\Planetary\licenses\
+copy /Y %BUILD_DIR%\generated\licenses\* %DIST_DIR%\Planetary\licenses\
 
 REM --------------------------------------------------
 REM Create ZIP

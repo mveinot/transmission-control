@@ -27,10 +27,8 @@ function(add_planetary_test target)
     )
 
     set(theme_archive_source "${CMAKE_SOURCE_DIR}/themearchive.cpp")
-    if(theme_archive_source IN_LIST ARGN
-       AND MINIZ_LIBRARY AND MINIZ_INCLUDE_DIR)
-        target_include_directories(${target} PRIVATE ${MINIZ_INCLUDE_DIR})
-        target_link_libraries(${target} PRIVATE ${MINIZ_LIBRARY})
+    if(theme_archive_source IN_LIST ARGN)
+        target_link_libraries(${target} PRIVATE Planetary::miniz)
         target_compile_definitions(${target} PRIVATE PLANETARY_HAVE_MINIZ)
     endif()
 

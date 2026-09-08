@@ -25,3 +25,11 @@ Support is entirely optional and Planetary remains available regardless of contr
 ## Development documentation
 
 - [Release update manifest](docs/release-manifest.md)
+- [Bundled C dependencies](docs/bundled-dependencies.md)
+
+## License
+
+Planetary is licensed under the GNU General Public License, version 2 or (at
+your option) any later version. Bundled third-party components remain under
+their respective licenses; their source, provenance, and license texts are
+kept in [`third_party`](third_party/).

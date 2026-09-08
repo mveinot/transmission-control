@@ -12,7 +12,7 @@ if(NOT PLANETARY_VERSION_BASE MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
     message(FATAL_ERROR "PLANETARY_VERSION must be in major.minor.patch format, e.g. 0.8.0")
 endif()
 
-project(Planetary VERSION ${PLANETARY_VERSION_BASE} LANGUAGES CXX)
+project(Planetary VERSION ${PLANETARY_VERSION_BASE} LANGUAGES C CXX)
 
 if(APPLE)
     enable_language(OBJCXX)
@@ -27,6 +27,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Network Core Test Svg)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Network Core Test Svg)
+
+add_subdirectory(third_party)
 
 file(GLOB PLANETARY_TS_FILES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/Resources/translations/*.ts"
@@ -376,101 +378,14 @@ if(PLANETARY_QM_FILES)
 
 endif()
 
-if(WIN32)
-    set(MAXMINDDB_ROOT "C:/dev/vcpkg/installed/x64-mingw-dynamic")
-
-    find_path(MAXMINDDB_INCLUDE_DIR
-        NAMES maxminddb.h
-        PATHS "${MAXMINDDB_ROOT}/include"
-        NO_DEFAULT_PATH
-    )
-
-    find_library(MAXMINDDB_LIBRARY
-        NAMES maxminddb libmaxminddb
-        PATHS "${MAXMINDDB_ROOT}/lib"
-        NO_DEFAULT_PATH
-    )
-
-    message(STATUS "MAXMINDDB_INCLUDE_DIR=${MAXMINDDB_INCLUDE_DIR}")
-    message(STATUS "MAXMINDDB_LIBRARY=${MAXMINDDB_LIBRARY}")
-
-    if(MAXMINDDB_INCLUDE_DIR AND MAXMINDDB_LIBRARY)
-        target_include_directories(Planetary PRIVATE
-            "${MAXMINDDB_INCLUDE_DIR}"
-        )
-
-        target_link_libraries(Planetary PRIVATE
-            "${MAXMINDDB_LIBRARY}"
-        )
-
-        target_compile_definitions(Planetary PRIVATE
-            PLANETARY_WITH_GEOIP=1
-        )
-
-        message(STATUS "GeoIP support enabled on Windows")
-    else()
-        message(WARNING "libmaxminddb not found on Windows; lookup will be disabled")
-    endif()
-endif()
-
-set(PLANETARY_MAXMINDDB_ROOT "" CACHE PATH
-    "Prefix containing the libmaxminddb library and headers")
-
-if(PLANETARY_MAXMINDDB_ROOT)
-    find_library(MAXMINDDB_LIBRARY
-        NAMES maxminddb libmaxminddb
-        PATHS "${PLANETARY_MAXMINDDB_ROOT}/lib"
-        NO_DEFAULT_PATH
-    )
-    find_path(MAXMINDDB_INCLUDE_DIR
-        NAMES maxminddb.h
-        PATHS "${PLANETARY_MAXMINDDB_ROOT}/include"
-        NO_DEFAULT_PATH
-    )
-else()
-    find_library(MAXMINDDB_LIBRARY NAMES maxminddb libmaxminddb)
-    find_path(MAXMINDDB_INCLUDE_DIR NAMES maxminddb.h)
-endif()
-
-if(MAXMINDDB_LIBRARY AND MAXMINDDB_INCLUDE_DIR)
-    message(STATUS "Found libmaxminddb: ${MAXMINDDB_LIBRARY}")
-    message(STATUS "Found maxminddb.h: ${MAXMINDDB_INCLUDE_DIR}")
-
-    target_compile_definitions(Planetary PRIVATE PLANETARY_HAVE_MAXMINDDB)
-    target_include_directories(Planetary PRIVATE ${MAXMINDDB_INCLUDE_DIR})
-    target_link_libraries(Planetary PRIVATE ${MAXMINDDB_LIBRARY})
-else()
-    message(WARNING "libmaxminddb not found; GeoIP MMDB lookup will be disabled")
-endif()
-
-set(PLANETARY_MINIZ_ROOT "" CACHE PATH
-    "Prefix containing the miniz static library and headers")
-
-if(PLANETARY_MINIZ_ROOT)
-    find_library(MINIZ_LIBRARY
-        NAMES miniz
-        PATHS "${PLANETARY_MINIZ_ROOT}/lib"
-        NO_DEFAULT_PATH
-    )
-    find_path(MINIZ_INCLUDE_DIR
-        NAMES miniz/miniz.h miniz.h
-        PATHS "${PLANETARY_MINIZ_ROOT}/include"
-        NO_DEFAULT_PATH
-    )
-else()
-    find_library(MINIZ_LIBRARY NAMES miniz)
-    find_path(MINIZ_INCLUDE_DIR NAMES miniz/miniz.h miniz.h)
-endif()
-
-if(MINIZ_LIBRARY AND MINIZ_INCLUDE_DIR)
-    message(STATUS "Found miniz: ${MINIZ_LIBRARY}")
-    message(STATUS "Found miniz headers: ${MINIZ_INCLUDE_DIR}")
-    target_include_directories(Planetary PRIVATE ${MINIZ_INCLUDE_DIR})
-    target_link_libraries(Planetary PRIVATE ${MINIZ_LIBRARY})
-    target_compile_definitions(Planetary PRIVATE PLANETARY_HAVE_MINIZ)
-else()
-    message(WARNING "miniz not found; ZIP archive support will be unavailable")
-endif()
+target_link_libraries(Planetary PRIVATE
+    Planetary::maxminddb
+    Planetary::miniz
+)
+target_compile_definitions(Planetary PRIVATE
+    PLANETARY_HAVE_MAXMINDDB
+    PLANETARY_HAVE_MINIZ
+)
 
 set(GEOIP_DB_SOURCE
     "${CMAKE_CURRENT_SOURCE_DIR}/Resources/geoip/country.mmdb"
@@ -504,6 +419,17 @@ else()
     message(WARNING "LICENSE file not found at ${APP_LICENSE_FILE}")
 endif()
 
+set(GPL3_LICENSE_FILE
+    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/gpl-3.0.txt"
+)
+
+if(EXISTS "${GPL3_LICENSE_FILE}")
+    set_source_files_properties("${GPL3_LICENSE_FILE}" PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources/licenses"
+    )
+    target_sources(Planetary PRIVATE "${GPL3_LICENSE_FILE}")
+endif()
+
 set(THIRD_PARTY_NOTICES_FILE
     "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/THIRD_PARTY_NOTICES.txt"
 )
@@ -516,6 +442,47 @@ if(EXISTS "${THIRD_PARTY_NOTICES_FILE}")
     target_sources(Planetary PRIVATE
         "${THIRD_PARTY_NOTICES_FILE}"
     )
+endif()
+
+set(PLANETARY_GENERATED_LICENSE_DIR
+    "${PLANETARY_GENERATED_DIR}/licenses"
+)
+file(MAKE_DIRECTORY "${PLANETARY_GENERATED_LICENSE_DIR}")
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libmaxminddb/LICENSE"
+    "${PLANETARY_GENERATED_LICENSE_DIR}/libmaxminddb-LICENSE.txt"
+    COPYONLY
+)
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libmaxminddb/NOTICE"
+    "${PLANETARY_GENERATED_LICENSE_DIR}/libmaxminddb-NOTICE.txt"
+    COPYONLY
+)
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libmaxminddb/src/maxminddb-compat-util.h"
+    "${PLANETARY_GENERATED_LICENSE_DIR}/libmaxminddb-compat-util.h"
+    COPYONLY
+)
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/miniz/LICENSE"
+    "${PLANETARY_GENERATED_LICENSE_DIR}/miniz-LICENSE.txt"
+    COPYONLY
+)
+
+set(PLANETARY_THIRD_PARTY_LICENSE_FILES
+    "${PLANETARY_GENERATED_LICENSE_DIR}/libmaxminddb-LICENSE.txt"
+    "${PLANETARY_GENERATED_LICENSE_DIR}/libmaxminddb-NOTICE.txt"
+    "${PLANETARY_GENERATED_LICENSE_DIR}/libmaxminddb-compat-util.h"
+    "${PLANETARY_GENERATED_LICENSE_DIR}/miniz-LICENSE.txt"
+)
+
+if(APPLE)
+    set_source_files_properties(
+        ${PLANETARY_THIRD_PARTY_LICENSE_FILES}
+        PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/licenses"
+    )
+    target_sources(Planetary PRIVATE ${PLANETARY_THIRD_PARTY_LICENSE_FILES})
 endif()
 
 set(FLAG_ICONS_LICENSE_FILE
@@ -591,8 +558,10 @@ install(FILES
 
 install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/gpl-3.0.txt"
     "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/THIRD_PARTY_NOTICES.txt"
     "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/flag-icons.txt"
+    ${PLANETARY_THIRD_PARTY_LICENSE_FILES}
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/planetary/licenses"
     OPTIONAL
 )
