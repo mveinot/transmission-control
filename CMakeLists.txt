@@ -128,6 +128,8 @@ set(PLANETARY_THEME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/theme.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/thememanifest.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/thememanifest.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/themearchive.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/themearchive.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/themeregistry.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/themeregistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/iconthememanager.h"
@@ -441,6 +443,35 @@ else()
     message(WARNING "libmaxminddb not found; GeoIP MMDB lookup will be disabled")
 endif()
 
+set(PLANETARY_MINIZ_ROOT "" CACHE PATH
+    "Prefix containing the miniz static library and headers")
+
+if(PLANETARY_MINIZ_ROOT)
+    find_library(MINIZ_LIBRARY
+        NAMES miniz
+        PATHS "${PLANETARY_MINIZ_ROOT}/lib"
+        NO_DEFAULT_PATH
+    )
+    find_path(MINIZ_INCLUDE_DIR
+        NAMES miniz/miniz.h miniz.h
+        PATHS "${PLANETARY_MINIZ_ROOT}/include"
+        NO_DEFAULT_PATH
+    )
+else()
+    find_library(MINIZ_LIBRARY NAMES miniz)
+    find_path(MINIZ_INCLUDE_DIR NAMES miniz/miniz.h miniz.h)
+endif()
+
+if(MINIZ_LIBRARY AND MINIZ_INCLUDE_DIR)
+    message(STATUS "Found miniz: ${MINIZ_LIBRARY}")
+    message(STATUS "Found miniz headers: ${MINIZ_INCLUDE_DIR}")
+    target_include_directories(Planetary PRIVATE ${MINIZ_INCLUDE_DIR})
+    target_link_libraries(Planetary PRIVATE ${MINIZ_LIBRARY})
+    target_compile_definitions(Planetary PRIVATE PLANETARY_HAVE_MINIZ)
+else()
+    message(WARNING "miniz not found; ZIP archive support will be unavailable")
+endif()
+
 set(GEOIP_DB_SOURCE
     "${CMAKE_CURRENT_SOURCE_DIR}/Resources/geoip/country.mmdb"
 )
@@ -545,6 +576,11 @@ install(FILES
 install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/packaging/linux/planetary.desktop"
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications"
+)
+
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/packaging/linux/planetary-theme.xml"
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/mime/packages"
 )
 
 install(FILES

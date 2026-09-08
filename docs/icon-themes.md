@@ -6,6 +6,13 @@ inside the user's `~/Library/Application Support` directory. Each immediate
 subdirectory is one theme and must contain a file named `theme.json`.
 Standalone `*.json` manifests placed directly in `icon-themes` are also
 discovered; their relative icon paths resolve from that directory.
+Single-file theme packs with the `.planetarytheme` extension are discovered in
+the same directory. A pack is a ZIP file containing exactly one `theme.json`,
+either at its root or inside one enclosing theme directory. Planetary reads the
+manifest directly from the pack when **Refresh Theme Packs** is used and only
+extracts its assets into the application cache when that theme is selected.
+On supported desktops, opening or double-clicking a `.planetarytheme` file
+installs it into this directory and refreshes Planetary's theme registry.
 
 The directory name is retained for compatibility with the first external icon
 theme format. A package may now contain icons, colours, or both. Planetary
@@ -22,7 +29,13 @@ icon-themes/
     icons/
       start.svg
       stop.png
+  midnight.planetarytheme
 ```
+
+Pack paths must be relative and remain within the theme directory. Encrypted
+entries, unsupported compression methods, path traversal, and unreasonably
+large or numerous entries are rejected. Stored and Deflate-compressed ZIP
+entries are supported.
 
 ## Manifest format
 

@@ -104,6 +104,7 @@ private:
     void addTorrentFromFile();
     void addTorrentFromUrl();
     void addTorrentFromMagnet();
+    bool installThemePack(const QString &filePath);
     void saveTableViewState();
     void restoreTableViewState();
     int updateIntervalMs() const;

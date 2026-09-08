@@ -21,6 +21,7 @@ fi
 mkdir -p "$PREFIX/bin"
 mkdir -p "$PREFIX/share/applications"
 mkdir -p "$PREFIX/share/icons/hicolor/512x512/apps"
+mkdir -p "$PREFIX/share/mime/packages"
 
 cp "$BINARY" "$PREFIX/bin/$APP_NAME"
 chmod +x "$PREFIX/bin/$APP_NAME"
@@ -41,10 +42,15 @@ sed "s|^Exec=.*|Exec=$PREFIX/bin/$APP_NAME %U|" "$DESKTOP_SOURCE" \
 
 chmod +x "$PREFIX/share/applications/${APP_ID}.desktop"
 
+cp "packaging/linux/planetary-theme.xml" \
+  "$PREFIX/share/mime/packages/planetary-theme.xml"
+
+update-mime-database "$PREFIX/share/mime" 2>/dev/null || true
 update-desktop-database "$PREFIX/share/applications" 2>/dev/null || true
 gtk-update-icon-cache "$PREFIX/share/icons/hicolor" 2>/dev/null || true
 
 xdg-mime default "${APP_ID}.desktop" application/x-bittorrent
+xdg-mime default "${APP_ID}.desktop" application/vnd.mvgrafx.planetary-theme
 xdg-mime default "${APP_ID}.desktop" x-scheme-handler/magnet
 
 echo "Installed $APP_NAME locally."

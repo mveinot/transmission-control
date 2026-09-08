@@ -6,5 +6,5 @@ Exec=/home/vmark/.local/bin/Planetary %U
 Icon=planetary
 Terminal=false
 Categories=Network;FileTransfer;P2P;Qt;
-MimeType=application/x-bittorrent;x-scheme-handler/magnet;
+MimeType=application/x-bittorrent;application/vnd.mvgrafx.planetary-theme;x-scheme-handler/magnet;
 StartupNotify=true

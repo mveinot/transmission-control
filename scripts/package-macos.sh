@@ -7,6 +7,7 @@ cd "$ROOT_DIR"
 APP_NAME="Planetary"
 QT_DIR="${QT_DIR:-$HOME/Qt/6.11.2/macos}"
 MAXMINDDB_ROOT="${MAXMINDDB_ROOT:-$HOME/Developer/Dependencies/libmaxminddb-1.13.3/install-universal-macos13}"
+MINIZ_ROOT="${MINIZ_ROOT:-$HOME/Developer/Dependencies/miniz-3.1.2/install-universal-macos13}"
 MACOS_ARCHITECTURES="x86_64;arm64"
 MACOS_DEPLOYMENT_TARGET="13.0"
 BUILD_DIR="${BUILD_DIR:-build-macos-universal-release}"
@@ -54,6 +55,14 @@ fi
 
 if ! lipo "$MAXMINDDB_ROOT/lib/libmaxminddb.a" -verify_arch x86_64 arm64; then
   fail "libmaxminddb is not universal: $MAXMINDDB_ROOT/lib/libmaxminddb.a"
+fi
+
+if [[ ! -f "$MINIZ_ROOT/lib/libminiz.a" ]]; then
+  fail "Missing universal miniz: $MINIZ_ROOT/lib/libminiz.a"
+fi
+
+if ! lipo "$MINIZ_ROOT/lib/libminiz.a" -verify_arch x86_64 arm64; then
+  fail "miniz is not universal: $MINIZ_ROOT/lib/libminiz.a"
 fi
 
 for dependency_arch in x86_64 arm64; do
@@ -234,7 +243,9 @@ cmake -S . -B "$BUILD_DIR" \
   -DCMAKE_OSX_ARCHITECTURES="$MACOS_ARCHITECTURES" \
   -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_DEPLOYMENT_TARGET" \
   -DPLANETARY_MAXMINDDB_ROOT="$MAXMINDDB_ROOT" \
-  -DMAXMINDDB_LIBRARY="$MAXMINDDB_ROOT/lib/libmaxminddb.a"
+  -DMAXMINDDB_LIBRARY="$MAXMINDDB_ROOT/lib/libmaxminddb.a" \
+  -DPLANETARY_MINIZ_ROOT="$MINIZ_ROOT" \
+  -DMINIZ_LIBRARY="$MINIZ_ROOT/lib/libminiz.a"
 
 cmake --build "$BUILD_DIR" --config Release --target Planetary --parallel "$BUILD_JOBS"
 

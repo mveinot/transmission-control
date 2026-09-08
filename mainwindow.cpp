@@ -17,6 +17,9 @@
 #include "activitylogmodel.h"
 #include "applicationcommandcontroller.h"
 #include "iconthememanager.h"
+#include "themearchive.h"
+#include "thememanifest.h"
+#include "themeregistry.h"
 #include <QActionGroup>
 #include <QAbstractItemView>
 #include <QAbstractSpinBox>
@@ -35,6 +38,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFileOpenEvent>
+#include <QFile>
 #include <QFont>
 #include <QFormLayout>
 #include <QGroupBox>
@@ -62,6 +66,7 @@
 #include <QStackedWidget>
 #include <QStandardPaths>
 #include <QScrollBar>
+#include <QSaveFile>
 #include <QStringList>
 #include <QSizePolicy>
 #include <QTableWidget>
@@ -1360,7 +1365,25 @@ void MainWindow::onServerSetupTriggered()
 void MainWindow::runFirstTimeServerSetup(const QStringList &launchArguments,
                                          bool forceWizard)
 {
-    pendingLaunchArguments.append(launchArguments);
+    // Theme packs are local application content and do not require a torrent
+    // server. Process them before first-run server setup so cancelling the
+    // wizard cannot prevent a requested theme installation.
+    QStringList serverDependentArguments;
+    for (const QString &argument : launchArguments) {
+        const QUrl url(argument.trimmed());
+        const QString localPath = url.isLocalFile()
+                                      ? url.toLocalFile()
+                                      : argument.trimmed();
+        const QFileInfo fileInfo(localPath);
+        if (fileInfo.isFile()
+            && fileInfo.suffix().compare(QStringLiteral("planetarytheme"),
+                                         Qt::CaseInsensitive) == 0) {
+            installThemePack(fileInfo.absoluteFilePath());
+        } else {
+            serverDependentArguments.append(argument);
+        }
+    }
+    pendingLaunchArguments.append(serverDependentArguments);
 
     const bool alreadyConfigured = ServerSetupWizard::hasConfiguredServer();
     if (!alreadyConfigured || forceWizard) {
@@ -1390,9 +1413,6 @@ void MainWindow::handleLaunchArguments(const QStringList &arguments)
         return;
     }
 
-    if (!torrentAddController)
-        return;
-
     bool handledAny = false;
 
     for (const QString &argument : arguments) {
@@ -1416,9 +1436,20 @@ void MainWindow::handleLaunchArguments(const QStringList &arguments)
             continue;
         }
 
-        const QFileInfo fileInfo(trimmed);
+        const QString localPath = url.isLocalFile() ? url.toLocalFile() : trimmed;
+        const QFileInfo fileInfo(localPath);
 
         if (fileInfo.exists()
+            && fileInfo.isFile()
+            && fileInfo.suffix().compare(QStringLiteral("planetarytheme"),
+                                         Qt::CaseInsensitive) == 0) {
+            installThemePack(fileInfo.absoluteFilePath());
+            handledAny = true;
+            continue;
+        }
+
+        if (torrentAddController
+            && fileInfo.exists()
             && fileInfo.isFile()
             && fileInfo.suffix().compare(QStringLiteral("torrent"),
                                          Qt::CaseInsensitive) == 0) {
@@ -1430,6 +1461,124 @@ void MainWindow::handleLaunchArguments(const QStringList &arguments)
 
     if (handledAny)
         bringToFront();
+}
+
+bool MainWindow::installThemePack(const QString &filePath)
+{
+    const QFileInfo sourceInfo(filePath);
+    if (!sourceInfo.isFile()
+        || sourceInfo.suffix().compare(QStringLiteral("planetarytheme"),
+                                       Qt::CaseInsensitive) != 0) {
+        return false;
+    }
+
+    const AppThemes::ThemeArchiveManifest archive =
+        AppThemes::ThemeArchive::readManifest(sourceInfo.absoluteFilePath());
+    if (!archive.succeeded()) {
+        QMessageBox::warning(
+            this, tr("Install Theme Pack"),
+            tr("Planetary could not read this theme pack:\n\n%1")
+                .arg(archive.error));
+        return false;
+    }
+
+    auto &registry = AppThemes::ThemeRegistry::instance();
+    const AppThemes::ThemeManifestResult manifest =
+        AppThemes::ThemeManifestParser::parseData(
+            archive.data, registry.themeDirectory(), false);
+    if (!manifest.succeeded()) {
+        QMessageBox::warning(
+            this, tr("Install Theme Pack"),
+            tr("This theme pack has an invalid manifest:\n\n%1")
+                .arg(manifest.error));
+        return false;
+    }
+
+    const QString themeDirectory = registry.themeDirectory();
+    if (themeDirectory.isEmpty() || !QDir().mkpath(themeDirectory)) {
+        QMessageBox::warning(this, tr("Install Theme Pack"),
+                             tr("Planetary could not create the theme-pack directory."));
+        return false;
+    }
+
+    const QString destinationPath =
+        QDir(themeDirectory).filePath(sourceInfo.fileName());
+    const QFileInfo destinationInfo(destinationPath);
+    const bool alreadyInstalled =
+        destinationInfo.exists()
+        && destinationInfo.canonicalFilePath() == sourceInfo.canonicalFilePath();
+
+    bool destinationProvidesSameTheme = false;
+    if (!alreadyInstalled && destinationInfo.isFile()) {
+        const AppThemes::ThemeArchiveManifest installedArchive =
+            AppThemes::ThemeArchive::readManifest(destinationPath);
+        if (installedArchive.succeeded()) {
+            const AppThemes::ThemeManifestResult installedManifest =
+                AppThemes::ThemeManifestParser::parseData(
+                    installedArchive.data, themeDirectory, false);
+            destinationProvidesSameTheme =
+                installedManifest.succeeded()
+                && installedManifest.theme.id() == manifest.theme.id();
+        }
+    }
+
+    if (!alreadyInstalled && registry.contains(manifest.theme.id())
+        && !destinationProvidesSameTheme) {
+        QMessageBox::warning(
+            this, tr("Install Theme Pack"),
+            tr("A theme with the identifier “%1” is already installed. Remove it before installing this pack.")
+                .arg(manifest.theme.id()));
+        return false;
+    }
+
+    if (!alreadyInstalled && destinationInfo.exists()) {
+        const QMessageBox::StandardButton choice = QMessageBox::question(
+            this, tr("Replace Theme Pack"),
+            tr("A theme pack named “%1” is already installed. Replace it?")
+                .arg(sourceInfo.fileName()),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (choice != QMessageBox::Yes)
+            return false;
+    }
+
+    if (!alreadyInstalled) {
+        QFile source(sourceInfo.absoluteFilePath());
+        QSaveFile destination(destinationPath);
+        if (!source.open(QIODevice::ReadOnly)
+            || !destination.open(QIODevice::WriteOnly)) {
+            QMessageBox::warning(this, tr("Install Theme Pack"),
+                                 tr("Planetary could not copy the theme pack."));
+            return false;
+        }
+
+        QByteArray buffer;
+        buffer.resize(256 * 1024);
+        while (true) {
+            const qint64 bytesRead = source.read(buffer.data(), buffer.size());
+            if (bytesRead == 0)
+                break;
+            if (bytesRead < 0
+                || destination.write(buffer.constData(), bytesRead)
+                       != bytesRead) {
+                destination.cancelWriting();
+                QMessageBox::warning(this, tr("Install Theme Pack"),
+                                     tr("Planetary could not copy the theme pack."));
+                return false;
+            }
+        }
+        if (!destination.commit()) {
+            QMessageBox::warning(this, tr("Install Theme Pack"),
+                                 tr("Planetary could not finish installing the theme pack."));
+            return false;
+        }
+    }
+
+    registry.rescanExternalThemes();
+    QMessageBox::information(
+        this, tr("Theme Pack Installed"),
+        tr("“%1” is installed. Its icon and colour components can be selected independently in Settings > Appearance.")
+            .arg(manifest.theme.displayName()));
+    return true;
 }
 
 void MainWindow::addTorrentFromFile()

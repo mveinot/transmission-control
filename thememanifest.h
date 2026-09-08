@@ -3,6 +3,7 @@
 
 #include "theme.h"
 
+#include <QByteArray>
 #include <QString>
 
 namespace AppThemes {
@@ -22,6 +23,9 @@ public:
     static constexpr const char *FileName = "theme.json";
 
     static ThemeManifestResult parseFile(const QString &manifestPath);
+    static ThemeManifestResult parseData(const QByteArray &manifestData,
+                                         const QString &basePath,
+                                         bool verifyReferencedFiles = true);
 };
 
 } // namespace AppThemes

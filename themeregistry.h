@@ -19,9 +19,11 @@ class ThemeRegistry final : public QObject
 public:
     static ThemeRegistry &instance();
     static QString standardThemeDirectory();
+    static QString standardThemeCacheDirectory();
 
     explicit ThemeRegistry(const QString &themeDirectory,
-                           QObject *parent = nullptr);
+                           QObject *parent = nullptr,
+                           const QString &themeCacheDirectory = QString());
 
     QList<Theme> themes() const;
     QList<AppIcons::IconTheme> iconThemes() const;
@@ -45,13 +47,26 @@ signals:
     void registryChanged(const QString &themeId);
 
 private:
+    struct ArchiveSource {
+        QString archivePath;
+        QString entryPrefix;
+        QString cachePath;
+    };
+
     void registerBuiltInThemes();
+    bool ensureThemeMaterialized(const QString &themeId) const;
+    QString archiveCachePath(const QString &archivePath,
+                             const QString &themeId) const;
     QString canonicalId(const QString &themeId) const;
 
     QString m_themeDirectory;
-    QHash<QString, Theme> m_themes;
+    QString m_themeCacheDirectory;
+    mutable QHash<QString, Theme> m_themes;
     QStringList m_themeOrder;
     QSet<QString> m_scannedThemeIds;
+    QHash<QString, ArchiveSource> m_archiveSources;
+    mutable QSet<QString> m_failedArchiveIds;
+    mutable QSet<QString> m_materializedArchiveIds;
 };
 
 } // namespace AppThemes

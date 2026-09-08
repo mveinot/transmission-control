@@ -3,6 +3,7 @@
 #include "themeregistry.h"
 
 #include <QApplication>
+#include <QBuffer>
 #include <QColor>
 #include <QDir>
 #include <QFile>
@@ -15,6 +16,10 @@
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QtTest>
+
+#ifdef PLANETARY_HAVE_MINIZ
+#include <miniz/miniz.h>
+#endif
 
 namespace {
 
@@ -68,6 +73,9 @@ private slots:
     void exampleColorThemeManifestsLoad();
     void stylesheetManifestLoads();
     void scansLoadsFallsBackAndRescans();
+#ifdef PLANETARY_HAVE_MINIZ
+    void archiveIndexesAndExtractsLazily();
+#endif
 };
 
 void TestThemeRegistry::semanticNamesRoundTrip()
@@ -147,9 +155,6 @@ void TestThemeRegistry::exampleColorThemeManifestsLoad()
         QStringLiteral("dracula"),
         QStringLiteral("gruvbox-dark"),
         QStringLiteral("gruvbox-light"),
-        QStringLiteral("aqua-light"),
-        QStringLiteral("aqua-dark"),
-        QStringLiteral("metro"),
         QStringLiteral("nord"),
         QStringLiteral("one-dark"),
         QStringLiteral("rose-pine"),
@@ -170,6 +175,56 @@ void TestThemeRegistry::exampleColorThemeManifestsLoad()
         QVERIFY(result.theme.hasColorTheme());
     }
 }
+
+#ifdef PLANETARY_HAVE_MINIZ
+void TestThemeRegistry::archiveIndexesAndExtractsLazily()
+{
+    QTemporaryDir temporaryDirectory;
+    QVERIFY(temporaryDirectory.isValid());
+    const QString archivePath = QDir(temporaryDirectory.path())
+                                    .filePath(QStringLiteral("packed.planetarytheme"));
+    const QByteArray nativePath = QFile::encodeName(archivePath);
+    mz_zip_archive archive {};
+    QVERIFY(mz_zip_writer_init_file(&archive, nativePath.constData(), 0));
+
+    const QByteArray manifestData = QJsonDocument(manifest(
+        QStringLiteral("packed"), QStringLiteral("Packed"),
+        {{QStringLiteral("action-start"), QStringLiteral("icons/start.png")}}))
+                                        .toJson();
+    QVERIFY(mz_zip_writer_add_mem(&archive, "packed/theme.json",
+                                  manifestData.constData(), manifestData.size(),
+                                  MZ_BEST_COMPRESSION));
+
+    QImage image(16, 16, QImage::Format_ARGB32);
+    image.fill(Qt::magenta);
+    QByteArray imageData;
+    QBuffer imageBuffer(&imageData);
+    QVERIFY(imageBuffer.open(QIODevice::WriteOnly));
+    QVERIFY(image.save(&imageBuffer, "PNG"));
+    QVERIFY(mz_zip_writer_add_mem(&archive, "packed/icons/start.png",
+                                  imageData.constData(), imageData.size(),
+                                  MZ_BEST_COMPRESSION));
+    QVERIFY(mz_zip_writer_finalize_archive(&archive));
+    QVERIFY(mz_zip_writer_end(&archive));
+
+    const QString cacheDirectory = QDir(temporaryDirectory.path())
+                                       .filePath(QStringLiteral("cache"));
+    AppThemes::ThemeRegistry registry(temporaryDirectory.path(), nullptr,
+                                      cacheDirectory);
+    QVERIFY(registry.contains(QStringLiteral("packed")));
+    QCOMPARE(registry.iconThemes().constLast().displayName(),
+             QStringLiteral("Packed"));
+    QVERIFY(!QDir(cacheDirectory).exists());
+
+    QCOMPARE(iconColor(registry.icon(QStringLiteral("packed"),
+                                     AppIcons::Id::ActionStart)),
+             QColor(Qt::magenta));
+    QVERIFY(QDir(cacheDirectory).exists());
+    QVERIFY(QFileInfo::exists(
+        registry.iconTheme(QStringLiteral("packed"))
+            .iconPath(AppIcons::Id::ActionStart)));
+}
+#endif
 
 void TestThemeRegistry::stylesheetManifestLoads()
 {

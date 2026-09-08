@@ -170,9 +170,17 @@ ThemeManifestResult ThemeManifestParser::parseFile(const QString &manifestPath)
                            .arg(manifest.errorString()));
     }
 
+    return parseData(manifest.readAll(), QFileInfo(manifestPath).absolutePath());
+}
+
+ThemeManifestResult ThemeManifestParser::parseData(
+    const QByteArray &manifestData,
+    const QString &basePath,
+    bool verifyReferencedFiles)
+{
     QJsonParseError parseError;
     const QJsonDocument document =
-        QJsonDocument::fromJson(manifest.readAll(), &parseError);
+        QJsonDocument::fromJson(manifestData, &parseError);
     if (parseError.error != QJsonParseError::NoError) {
         return failure(QStringLiteral("Invalid JSON: %1")
                            .arg(parseError.errorString()));
@@ -212,7 +220,6 @@ ThemeManifestResult ThemeManifestParser::parseFile(const QString &manifestPath)
         fallback = QString::fromLatin1(AppIcons::GlassTheme);
 
     QString componentError;
-    const QString basePath = QFileInfo(manifestPath).absolutePath();
     const std::optional<AppIcons::IconTheme> icons =
         parseIcons(root.value(QStringLiteral("icons")),
                    id, name, basePath, fallback, &componentError);
@@ -247,7 +254,8 @@ ThemeManifestResult ThemeManifestParser::parseFile(const QString &manifestPath)
         const QString absoluteStyleSheet =
             QDir(basePath).filePath(styleSheetPath);
         const QFileInfo styleInfo(absoluteStyleSheet);
-        if (!styleInfo.isFile() || !styleInfo.isReadable()) {
+        if (verifyReferencedFiles
+            && (!styleInfo.isFile() || !styleInfo.isReadable())) {
             return failure(QStringLiteral("Stylesheet file is missing or unreadable"));
         }
         styleSheetPath = styleInfo.absoluteFilePath();

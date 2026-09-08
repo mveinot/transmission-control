@@ -16,6 +16,8 @@
 #include <QSignalBlocker>
 #include <QTimer>
 
+#include <algorithm>
+
 #ifdef Q_OS_MACOS
 #include "macdefaulthandlerbackend.h"
 #endif
@@ -182,8 +184,7 @@ void AppSettings::populateThemeOptions()
     const QSignalBlocker iconBlocker(ui->iconThemeCombo);
     auto &themeRegistry = AppThemes::ThemeRegistry::instance();
 
-    ui->colorThemeCombo->clear();
-    for (const AppColors::ColorTheme &theme : themeRegistry.colorThemes()) {
+    const auto displayColorName = [this](const AppColors::ColorTheme &theme) {
         QString displayName = theme.displayName();
         if (theme.id() == QString::fromLatin1(AppColors::SystemTheme))
             displayName = tr("Follow System");
@@ -191,18 +192,50 @@ void AppSettings::populateThemeOptions()
             displayName = tr("Light");
         else if (theme.id() == QString::fromLatin1(AppColors::DarkTheme))
             displayName = tr("Dark");
-        ui->colorThemeCombo->addItem(displayName, theme.id());
-    }
-
-    ui->iconThemeCombo->clear();
-    for (const AppIcons::IconTheme &theme : themeRegistry.iconThemes()) {
+        return displayName;
+    };
+    const auto displayIconName = [this](const AppIcons::IconTheme &theme) {
         QString displayName = theme.displayName();
         if (theme.id() == QString::fromLatin1(AppIcons::GlassTheme))
             displayName = tr("Glass");
         else if (theme.id() == QString::fromLatin1(AppIcons::ClassicTheme))
             displayName = tr("Classic");
-        ui->iconThemeCombo->addItem(displayName, theme.id());
+        return displayName;
+    };
+    const auto alphabetical = [](const auto &left, const auto &right) {
+        return QString::localeAwareCompare(left.displayName(), right.displayName()) < 0;
+    };
+
+    QList<AppColors::ColorTheme> nativeColors;
+    QList<AppColors::ColorTheme> externalColors;
+    for (const AppColors::ColorTheme &theme : themeRegistry.colorThemes()) {
+        if (theme.isBuiltIn())
+            nativeColors.append(theme);
+        else
+            externalColors.append(theme);
     }
+    std::sort(externalColors.begin(), externalColors.end(), alphabetical);
+
+    ui->colorThemeCombo->clear();
+    for (const AppColors::ColorTheme &theme : nativeColors)
+        ui->colorThemeCombo->addItem(displayColorName(theme), theme.id());
+    for (const AppColors::ColorTheme &theme : externalColors)
+        ui->colorThemeCombo->addItem(displayColorName(theme), theme.id());
+
+    QList<AppIcons::IconTheme> nativeIcons;
+    QList<AppIcons::IconTheme> externalIcons;
+    for (const AppIcons::IconTheme &theme : themeRegistry.iconThemes()) {
+        if (theme.isBuiltIn())
+            nativeIcons.append(theme);
+        else
+            externalIcons.append(theme);
+    }
+    std::sort(externalIcons.begin(), externalIcons.end(), alphabetical);
+    ui->iconThemeCombo->clear();
+    for (const AppIcons::IconTheme &theme : nativeIcons)
+        ui->iconThemeCombo->addItem(displayIconName(theme), theme.id());
+    for (const AppIcons::IconTheme &theme : externalIcons)
+        ui->iconThemeCombo->addItem(displayIconName(theme), theme.id());
 
     int index = ui->colorThemeCombo->findData(selectedColor);
     if (index >= 0)
