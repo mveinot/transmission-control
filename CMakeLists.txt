@@ -302,8 +302,6 @@ set_target_properties(Planetary PROPERTIES
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
 )
 
-find_program(IWYU_PATH NAMES include-what-you-use iwyu)
-
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET transmission-control APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
 #                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
