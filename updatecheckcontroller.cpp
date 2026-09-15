@@ -18,16 +18,20 @@
 #include <QStandardPaths>
 #include <QFile>
 #include <QFileInfo>
+#include <QSaveFile>
 #include <QDir>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QApplication>
+#include <QProgressBar>
 #include <QStyle>
 #include <QTextBrowser>
 #include <QTextDocument>
 #include <QVBoxLayout>
 #include <QWidget>
+
+#include <memory>
 
 namespace {
 constexpr int AutomaticUpdateCheckIntervalSeconds = 24 * 60 * 60;
@@ -118,6 +122,12 @@ void UpdateCheckController::setup()
                 layout->addWidget(releaseNotesBrowser, 1);
 
                 auto *buttons = new QDialogButtonBox(&dialog);
+                auto *progress = new QProgressBar(&dialog);
+                progress->setRange(0, 100);
+                progress->setValue(0);
+                progress->setTextVisible(true);
+                progress->setVisible(false);
+                layout->addWidget(progress);
                 QPushButton *downloadButton =
                     buttons->addButton(tr("Download Release"),
                                        QDialogButtonBox::ActionRole);
@@ -128,49 +138,88 @@ void UpdateCheckController::setup()
                 buttons->addButton(QDialogButtonBox::Close);
                 auto *network = new QNetworkAccessManager(&dialog);
                 connect(downloadButton, &QPushButton::clicked, &dialog,
-                        [&, network, downloadUrl, sha256, downloadButton]() {
+                        [&, network, downloadUrl, sha256, downloadButton, progress]() {
                     downloadButton->setEnabled(false);
                     downloadButton->setText(tr("Downloading…"));
+                    progress->setVisible(true);
+                    progress->setRange(0, 0);
+                    QString name = QFileInfo(downloadUrl.path()).fileName();
+                    if (name.isEmpty())
+                        name = QStringLiteral("Planetary-update.dmg");
+                    QString downloads = QStandardPaths::writableLocation(
+                        QStandardPaths::DownloadLocation);
+                    if (downloads.isEmpty())
+                        downloads = QDir::tempPath();
+                    const QString path = QDir(downloads).filePath(name);
+                    auto file = std::make_shared<QSaveFile>(path);
+                    auto hash = std::make_shared<QCryptographicHash>(
+                        QCryptographicHash::Sha256);
+                    auto writeFailed = std::make_shared<bool>(false);
+                    if (!file->open(QIODevice::WriteOnly)) {
+                        progress->setVisible(false);
+                        downloadButton->setEnabled(true);
+                        downloadButton->setText(tr("Download Release"));
+                        QMessageBox::warning(&dialog, tr("Download Failed"),
+                                             tr("Planetary could not prepare the download file."));
+                        return;
+                    }
                     QNetworkRequest request(downloadUrl);
                     request.setRawHeader("User-Agent", "Planetary");
                     QNetworkReply *reply = network->get(request);
+                    connect(reply, &QNetworkReply::downloadProgress, &dialog,
+                            [progress](qint64 received, qint64 total) {
+                        if (total > 0) {
+                            progress->setRange(0, 100);
+                            progress->setValue(static_cast<int>(
+                                (received * 100) / total));
+                        } else {
+                            progress->setRange(0, 0);
+                        }
+                    });
+                    connect(reply, &QNetworkReply::readyRead, &dialog,
+                            [reply, file, hash, writeFailed]() {
+                        const QByteArray chunk = reply->readAll();
+                        if (!chunk.isEmpty()) {
+                            hash->addData(chunk);
+                            if (file->write(chunk) != chunk.size())
+                                *writeFailed = true;
+                        }
+                    });
                     connect(reply, &QNetworkReply::finished, &dialog,
-                            [&, reply, downloadUrl, sha256, downloadButton]() {
+                            [&, reply, downloadUrl, sha256, downloadButton,
+                             progress, file, hash, writeFailed, path]() {
                         reply->deleteLater();
                         downloadButton->setEnabled(true);
                         downloadButton->setText(tr("Download Release"));
+                        progress->setVisible(false);
                         if (reply->error() != QNetworkReply::NoError) {
                             QMessageBox::warning(&dialog, tr("Download Failed"),
                                                  reply->errorString());
                             return;
                         }
-                        const QByteArray data = reply->readAll();
-                        const QString digest = QString::fromLatin1(
-                            QCryptographicHash::hash(data,
-                                                     QCryptographicHash::Sha256)
-                                .toHex());
+                        const QByteArray finalChunk = reply->readAll();
+                        if (!finalChunk.isEmpty()) {
+                            hash->addData(finalChunk);
+                            if (file->write(finalChunk) != finalChunk.size())
+                                *writeFailed = true;
+                        }
+                        if (*writeFailed) {
+                            QMessageBox::warning(&dialog, tr("Download Failed"),
+                                                 tr("Planetary could not save the downloaded release."));
+                            return;
+                        }
+                        const QString digest = QString::fromLatin1(hash->result().toHex());
                         if (digest.compare(sha256, Qt::CaseInsensitive) != 0) {
                             QMessageBox::critical(
                                 &dialog, tr("Download Verification Failed"),
                                 tr("The downloaded release did not match the published SHA-256 checksum."));
                             return;
                         }
-                        QString name = QFileInfo(downloadUrl.path()).fileName();
-                        if (name.isEmpty())
-                            name = QStringLiteral("Planetary-update.dmg");
-                        QString downloads = QStandardPaths::writableLocation(
-                            QStandardPaths::DownloadLocation);
-                        if (downloads.isEmpty())
-                            downloads = QDir::tempPath();
-                        const QString path = QDir(downloads).filePath(name);
-                        QFile file(path);
-                        if (!file.open(QIODevice::WriteOnly)
-                            || file.write(data) != data.size()) {
+                        if (!file->commit()) {
                             QMessageBox::warning(&dialog, tr("Download Failed"),
                                                  tr("Planetary could not save the downloaded release."));
                             return;
                         }
-                        file.close();
                         QDesktopServices::openUrl(QUrl::fromLocalFile(path));
                         const auto choice = QMessageBox::question(
                             &dialog, tr("Release Ready"),
