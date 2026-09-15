@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "channel": "beta",
-  "version": "2.2.1",
-  "build": 416,
-  "displayVersion": "2.2.1.416",
+  "version": "2.2.2",
+  "build": 420,
+  "displayVersion": "2.2.2.420",
   "minimumMacOSVersion": "13.0",
-  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.2.1.416-beta/Planetary-2.2.1.416-macOS-universal.dmg",
-  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.2.1.416-beta",
-  "releaseNotesMarkdown": "Testing updater logic",
-  "sha256": "f6a7426be5f43d1a8f58bf662fe963de12ae16ba9cc79274a4cbe8937a959f36"
+  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.2.2.420-beta/Planetary-2.2.2.420-macOS-universal.dmg",
+  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.2.2.420-beta",
+  "releaseNotesMarkdown": "Further testing beta channel and release logic",
+  "sha256": "f14c8827c455e2c8f44bd6bfc33cf26142ef26408eead375c9f5a91ba132eee5"
 }
