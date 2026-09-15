@@ -210,6 +210,7 @@ cmake -S . -B "$BUILD_DIR" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH="$QT_DIR" \
   -DCMAKE_OSX_ARCHITECTURES="$MACOS_ARCHITECTURES" \
+  -DCMAKE_OSX_SYSROOT=macosx \
   -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_DEPLOYMENT_TARGET"
 
 cmake --build "$BUILD_DIR" --config Release --target Planetary --parallel "$BUILD_JOBS"
