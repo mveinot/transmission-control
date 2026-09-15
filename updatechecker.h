@@ -29,7 +29,7 @@ public:
 
     explicit UpdateChecker(QObject *parent = nullptr);
 
-    void checkForUpdates(bool userInitiated = false);
+    void checkForUpdates(bool userInitiated = false, bool beta = false);
 
     void setCurrentVersion(const QString &version);
 
@@ -37,11 +37,14 @@ public:
                                const QString &currentVersion);
     static bool parseManifest(const QByteArray &data,
                               Manifest *manifest,
-                              QString *errorMessage = nullptr);
+                              QString *errorMessage = nullptr,
+                              const QString &expectedChannel = QStringLiteral("stable"));
 
 signals:
     void updateAvailable(const QString &currentVersion,
                          const QString &latestVersion,
+                         const QUrl &downloadUrl,
+                         const QString &sha256,
                          const QUrl &releaseUrl,
                          const QString &releaseNotesMarkdown,
                          bool userInitiated);
@@ -62,7 +65,7 @@ private:
 
     QString m_currentVersion;
 
-    static QUrl manifestUrl();
+    static QUrl manifestUrl(bool beta);
     static QList<int> parseVersionParts(const QString &version);
 };
 

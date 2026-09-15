@@ -5,6 +5,7 @@
 #include "version.h"
 
 #include <QDateTime>
+#include <QCryptographicHash>
 #include <QDesktopServices>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -14,6 +15,14 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
+#include <QStandardPaths>
+#include <QFile>
+#include <QFileInfo>
+#include <QDir>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QApplication>
 #include <QStyle>
 #include <QTextBrowser>
 #include <QTextDocument>
@@ -42,13 +51,17 @@ void UpdateCheckController::setup()
             this,
             [this](const QString &currentVersion,
                    const QString &latestVersion,
+                   const QUrl &downloadUrl,
+                   const QString &sha256,
                    const QUrl &releaseUrl,
                    const QString &releaseNotesMarkdown,
                    bool userInitiated) {
                 Q_UNUSED(userInitiated)
 
                 QDialog dialog(m_parentWidget);
-                dialog.setWindowTitle(tr("Update Available"));
+                dialog.setWindowTitle(m_betaCheckInFlight
+                                          ? tr("Beta Update Available")
+                                          : tr("Update Available"));
                 dialog.resize(620, 480);
 
                 auto *layout = new QVBoxLayout(&dialog);
@@ -63,7 +76,9 @@ void UpdateCheckController::setup()
                 summaryLayout->addWidget(iconLabel);
 
                 const QString summary =
-                    tr("A newer version of Planetary is available.").toHtmlEscaped();
+                    (m_betaCheckInFlight
+                         ? tr("A newer beta version of Planetary is available.")
+                         : tr("A newer version of Planetary is available.")).toHtmlEscaped();
                 QString versions =
                     tr("Installed version: %1\nLatest version: %2")
                         .arg(displayVersion(currentVersion),
@@ -103,11 +118,68 @@ void UpdateCheckController::setup()
                 layout->addWidget(releaseNotesBrowser, 1);
 
                 auto *buttons = new QDialogButtonBox(&dialog);
+                QPushButton *downloadButton =
+                    buttons->addButton(tr("Download Release"),
+                                       QDialogButtonBox::ActionRole);
                 QPushButton *openButton =
                     buttons->addButton(tr("Open Release Page"),
                                        QDialogButtonBox::AcceptRole);
                 openButton->setDefault(true);
                 buttons->addButton(QDialogButtonBox::Close);
+                auto *network = new QNetworkAccessManager(&dialog);
+                connect(downloadButton, &QPushButton::clicked, &dialog,
+                        [&, network, downloadUrl, sha256, downloadButton]() {
+                    downloadButton->setEnabled(false);
+                    downloadButton->setText(tr("Downloading…"));
+                    QNetworkRequest request(downloadUrl);
+                    request.setRawHeader("User-Agent", "Planetary");
+                    QNetworkReply *reply = network->get(request);
+                    connect(reply, &QNetworkReply::finished, &dialog,
+                            [&, reply, downloadUrl, sha256, downloadButton]() {
+                        reply->deleteLater();
+                        downloadButton->setEnabled(true);
+                        downloadButton->setText(tr("Download Release"));
+                        if (reply->error() != QNetworkReply::NoError) {
+                            QMessageBox::warning(&dialog, tr("Download Failed"),
+                                                 reply->errorString());
+                            return;
+                        }
+                        const QByteArray data = reply->readAll();
+                        const QString digest = QString::fromLatin1(
+                            QCryptographicHash::hash(data,
+                                                     QCryptographicHash::Sha256)
+                                .toHex());
+                        if (digest.compare(sha256, Qt::CaseInsensitive) != 0) {
+                            QMessageBox::critical(
+                                &dialog, tr("Download Verification Failed"),
+                                tr("The downloaded release did not match the published SHA-256 checksum."));
+                            return;
+                        }
+                        QString name = QFileInfo(downloadUrl.path()).fileName();
+                        if (name.isEmpty())
+                            name = QStringLiteral("Planetary-update.dmg");
+                        QString downloads = QStandardPaths::writableLocation(
+                            QStandardPaths::DownloadLocation);
+                        if (downloads.isEmpty())
+                            downloads = QDir::tempPath();
+                        const QString path = QDir(downloads).filePath(name);
+                        QFile file(path);
+                        if (!file.open(QIODevice::WriteOnly)
+                            || file.write(data) != data.size()) {
+                            QMessageBox::warning(&dialog, tr("Download Failed"),
+                                                 tr("Planetary could not save the downloaded release."));
+                            return;
+                        }
+                        file.close();
+                        QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+                        const auto choice = QMessageBox::question(
+                            &dialog, tr("Release Ready"),
+                            tr("The release disk image is open. Quit Planetary now so you can replace the application?"),
+                            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+                        if (choice == QMessageBox::Yes)
+                            qApp->quit();
+                    });
+                });
                 connect(buttons, &QDialogButtonBox::accepted,
                         &dialog, &QDialog::accept);
                 connect(buttons, &QDialogButtonBox::rejected,
@@ -168,12 +240,13 @@ void UpdateCheckController::setup()
             });
 }
 
-void UpdateCheckController::checkNow()
+void UpdateCheckController::checkNow(bool beta)
 {
     setup();
 
+    m_betaCheckInFlight = beta;
     if (m_updateChecker)
-        m_updateChecker->checkForUpdates(true);
+        m_updateChecker->checkForUpdates(true, beta);
 }
 
 void UpdateCheckController::maybeCheckAutomatically()
@@ -205,8 +278,9 @@ void UpdateCheckController::maybeCheckAutomatically()
      */
     settings.setValue(SettingsKeys::UpdateLastCheck, now);
 
+    m_betaCheckInFlight = false;
     if (m_updateChecker)
-        m_updateChecker->checkForUpdates(false);
+        m_updateChecker->checkForUpdates(false, false);
 }
 
 QString UpdateCheckController::displayVersion(QString version)

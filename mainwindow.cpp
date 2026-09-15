@@ -432,7 +432,8 @@ void MainWindow::setupApplicationCommands()
     handlers.diagnostics = [this]() { showDiagnostics(); };
     handlers.checkForUpdates = [this]() {
         if (updateCheckController)
-            updateCheckController->checkNow();
+            updateCheckController->checkNow(
+                QApplication::keyboardModifiers().testFlag(Qt::AltModifier));
     };
     handlers.exportSettings = [this]() { exportSettings(); };
     handlers.importSettings = [this]() { importSettings(); };

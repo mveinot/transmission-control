@@ -32,22 +32,24 @@ void UpdateChecker::setCurrentVersion(const QString &version)
     m_currentVersion = version.trimmed();
 }
 
-void UpdateChecker::checkForUpdates(bool userInitiated)
+void UpdateChecker::checkForUpdates(bool userInitiated, bool beta)
 {
-    // The initiating mode travels with the reply so completion can suppress
+    // The initiating mode and channel travel with the reply so completion can suppress
     // routine automatic-check UI without changing the transport API.
-    QNetworkRequest request(manifestUrl());
+    QNetworkRequest request(manifestUrl(beta));
     request.setRawHeader("Accept", "application/json");
     request.setRawHeader("Cache-Control", "no-cache");
     request.setRawHeader("User-Agent", "Planetary");
 
     QNetworkReply *reply = m_network->get(request);
     reply->setProperty("userInitiated", userInitiated);
+    reply->setProperty("beta", beta);
 }
 
-QUrl UpdateChecker::manifestUrl()
+QUrl UpdateChecker::manifestUrl(bool beta)
 {
-    return QUrl(QStringLiteral("https://planetary.mvgrafx.net/updates/v1/stable.json"));
+    return QUrl(QStringLiteral("https://planetary.mvgrafx.net/updates/v1/%1.json")
+                   .arg(beta ? QStringLiteral("beta") : QStringLiteral("stable")));
 }
 
 void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
@@ -56,6 +58,7 @@ void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
 
     const bool userInitiated =
         reply->property("userInitiated").toBool();
+    const bool beta = reply->property("beta").toBool();
 
     if (reply->error() != QNetworkReply::NoError) {
         emit updateCheckFailed(reply->errorString(), userInitiated);
@@ -64,7 +67,8 @@ void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
 
     Manifest manifest;
     QString errorMessage;
-    if (!parseManifest(reply->readAll(), &manifest, &errorMessage)) {
+    if (!parseManifest(reply->readAll(), &manifest, &errorMessage,
+                       beta ? QStringLiteral("beta") : QStringLiteral("stable"))) {
         emit updateCheckFailed(errorMessage, userInitiated);
         return;
     }
@@ -72,6 +76,8 @@ void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
     if (isVersionNewer(manifest.displayVersion, m_currentVersion)) {
         emit updateAvailable(m_currentVersion,
                              manifest.displayVersion,
+                             manifest.downloadUrl,
+                             manifest.sha256,
                              manifest.releaseNotesUrl,
                              manifest.releaseNotesMarkdown,
                              userInitiated);
@@ -86,7 +92,8 @@ void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
 
 bool UpdateChecker::parseManifest(const QByteArray &data,
                                   Manifest *manifest,
-                                  QString *errorMessage)
+                                  QString *errorMessage,
+                                  const QString &expectedChannel)
 {
     const auto fail = [errorMessage](const QString &message) {
         if (errorMessage)
@@ -109,7 +116,7 @@ bool UpdateChecker::parseManifest(const QByteArray &data,
         return fail(tr("Invalid update response."));
 
     if (object.value(QStringLiteral("channel")).toString()
-        != QStringLiteral("stable")) {
+        != expectedChannel) {
         return fail(tr("Invalid update response."));
     }
 

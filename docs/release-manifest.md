@@ -5,7 +5,9 @@ Planetary checks for stable updates using the JSON manifest at:
 `https://planetary.mvgrafx.net/updates/v1/stable.json`
 
 The endpoint is versioned independently of the application. The current client
-supports schema version 1 and the `stable` channel.
+supports schema version 1 and the `stable` and `beta` channels. Normal update
+checks use `stable.json`; holding Option while choosing **Check for Updates**
+selects `beta.json` for an intentional beta check.
 
 ## Example
 
@@ -31,15 +33,15 @@ Newlines in Markdown must be escaped as `\n` in the JSON string.
 | Field | Required | Format and behavior |
 | --- | --- | --- |
 | `schemaVersion` | Yes | Integer. Must be `1`. |
-| `channel` | Yes | String. Must be `stable`. |
+| `channel` | Yes | String. Must match the requested channel (`stable` or `beta`). |
 | `version` | Yes | Numeric `major.minor.patch` string, such as `2.0.0`. |
 | `build` | Yes | Non-negative integer. |
 | `displayVersion` | Yes | Must exactly equal `version` followed by `.` and `build`, such as `2.0.0.376`. |
 | `minimumMacOSVersion` | Yes | Numeric `major.minor` string, such as `13.0`. The current client validates and records this value but does not use it to suppress the update notification. |
-| `downloadUrl` | Yes | Valid HTTPS URL for the release artifact. The current client validates this URL but does not download or install the artifact. |
+| `downloadUrl` | Yes | Valid HTTPS URL for the release artifact. The **Download Release** button downloads this artifact to the user's Downloads folder, verifies `sha256`, and opens it. Installation remains user-assisted. |
 | `releaseNotesUrl` | Yes | Valid HTTPS URL opened by the **Open Release Page** button. |
 | `releaseNotesMarkdown` | No | Markdown release notes, limited to 256 KiB. Planetary renders GitHub-dialect Markdown with raw HTML disabled. If this field is absent or blank, the dialog displays a link to `releaseNotesUrl`. |
-| `sha256` | Yes | The artifact's SHA-256 digest as exactly 64 hexadecimal characters. Planetary normalizes it to lowercase. The current client validates the format but does not verify the artifact because it does not download it. |
+| `sha256` | Yes | The artifact's SHA-256 digest as exactly 64 hexadecimal characters. Planetary normalizes it to lowercase and verifies the downloaded artifact before opening it. |
 
 Unknown fields are ignored, allowing optional metadata to be added without
 breaking schema version 1 clients.

@@ -5,6 +5,29 @@ APP_NAME="Planetary"
 DEFAULT_BRANCH="main"
 VERSION_FILE="PLANETARY_VERSION"
 REMOTE_NAME="origin"
+BETA_RELEASE=false
+
+usage() {
+    echo "Usage: $0 [--beta]"
+    echo "  --beta  create a GitHub-conventional beta tag (vX.Y.Z.B-beta)"
+}
+
+for argument in "$@"; do
+    case "$argument" in
+        --beta)
+            BETA_RELEASE=true
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown argument: $argument"
+            usage
+            exit 1
+            ;;
+    esac
+done
 
 ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 cd "$ROOT_DIR"
@@ -25,7 +48,7 @@ echo "$VERSION_FILE is empty"
 exit 1
 fi
 
-if [[ ! "$BASE_VERSION" =~ ^[0-9]+.[0-9]+.[0-9]+$ ]]; then
+if [[ ! "$BASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 echo "$VERSION_FILE must contain major.minor.patch, e.g. 0.9.0"
 echo "Found: $BASE_VERSION"
 exit 1
@@ -65,12 +88,18 @@ fi
 
 VERSION="${BASE_VERSION}.${BUILD_NUMBER}"
 TAG="v${VERSION}"
+if [[ "$BETA_RELEASE" == true ]]; then
+TAG="${TAG}-beta"
+fi
 COMMIT="$(git rev-parse --short HEAD)"
 
 echo "Base version:  $BASE_VERSION"
 echo "Build number:  $BUILD_NUMBER"
 echo "Full version:  $VERSION"
 echo "Release tag:   $TAG"
+if [[ "$BETA_RELEASE" == true ]]; then
+echo "Release type:  beta (mark the GitHub release as pre-release)"
+fi
 echo "Commit:        $COMMIT"
 
 LOCAL_TAG_EXISTS=false
@@ -138,4 +167,3 @@ git push "$REMOTE_NAME" "$TAG"
 echo
 echo "Created and pushed release tag:"
 echo "$TAG"
-

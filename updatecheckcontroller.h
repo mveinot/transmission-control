@@ -16,7 +16,7 @@ public:
     explicit UpdateCheckController(QWidget *parentWidget, QObject *parent = nullptr);
 
     void setup();
-    void checkNow();
+    void checkNow(bool beta = false);
     void maybeCheckAutomatically();
 
 signals:
@@ -25,6 +25,7 @@ signals:
 private:
     QWidget *m_parentWidget = nullptr;
     UpdateChecker *m_updateChecker = nullptr;
+    bool m_betaCheckInFlight = false;
 
     static QString displayVersion(QString version);
 };
