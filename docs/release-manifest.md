@@ -7,7 +7,8 @@ Planetary checks for stable updates using the JSON manifest at:
 The endpoint is versioned independently of the application. The current client
 supports schema version 1 and the `stable` and `beta` channels. Normal update
 checks use `stable.json`; holding Option while choosing **Check for Updates**
-selects `beta.json` for an intentional beta check.
+toggles the persisted update channel and checks `beta.json` (or returns to
+`stable.json`).
 
 ## Example
 

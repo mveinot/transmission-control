@@ -289,10 +289,16 @@ void UpdateCheckController::setup()
             });
 }
 
-void UpdateCheckController::checkNow(bool beta)
+void UpdateCheckController::checkNow(bool optionClick)
 {
     setup();
 
+    QSettings settings;
+    bool beta = settings.value(SettingsKeys::UpdateBetaChannel, false).toBool();
+    if (optionClick) {
+        beta = !beta;
+        settings.setValue(SettingsKeys::UpdateBetaChannel, beta);
+    }
     m_betaCheckInFlight = beta;
     if (m_updateChecker)
         m_updateChecker->checkForUpdates(true, beta);
@@ -327,9 +333,10 @@ void UpdateCheckController::maybeCheckAutomatically()
      */
     settings.setValue(SettingsKeys::UpdateLastCheck, now);
 
-    m_betaCheckInFlight = false;
+    m_betaCheckInFlight = QSettings().value(
+        SettingsKeys::UpdateBetaChannel, false).toBool();
     if (m_updateChecker)
-        m_updateChecker->checkForUpdates(false, false);
+        m_updateChecker->checkForUpdates(false, m_betaCheckInFlight);
 }
 
 QString UpdateCheckController::displayVersion(QString version)

@@ -3,9 +3,11 @@
 #include <QFile>
 #include <QStringList>
 #include <QTextStream>
+#include <QSettings>
 
 #include "dialogabout.h"
 #include "ui_dialogabout.h"
+#include "settingskeys.h"
 
 static QString readTextFile(const QString &path)
 {
@@ -100,7 +102,7 @@ DialogAbout::~DialogAbout()
 
 QString DialogAbout::buildAboutHtml() const
 {
-    return QString(
+    QString html = QString(
                "<h2>Planetary</h2>"
                "<p>A native Qt Transmission remote client.</p>"
                "<p>Version: %1</p>"
@@ -111,6 +113,10 @@ QString DialogAbout::buildAboutHtml() const
                "<a href=\"mailto:planetary@mvgrafx.net\">Contact Support</a></p>"
                ).arg(QCoreApplication::applicationVersion().toHtmlEscaped(),
                      QStringLiteral(__DATE__).toHtmlEscaped());
+    if (QSettings().value(SettingsKeys::UpdateBetaChannel, false).toBool())
+        html.replace(QStringLiteral("<p>Build date:"),
+                     QStringLiteral("<p>Beta update channel enabled</p><p>Build date:"));
+    return html;
 }
 
 bool DialogAbout::eventFilter(QObject *watched, QEvent *event)

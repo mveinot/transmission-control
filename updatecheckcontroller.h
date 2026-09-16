@@ -16,7 +16,7 @@ public:
     explicit UpdateCheckController(QWidget *parentWidget, QObject *parent = nullptr);
 
     void setup();
-    void checkNow(bool beta = false);
+    void checkNow(bool optionClick = false);
     void maybeCheckAutomatically();
 
 signals:

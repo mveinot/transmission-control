@@ -38,6 +38,7 @@ inline constexpr const char *WatchFolderProcessedFingerprints =
     "watchFolder/processedFingerprints";
 inline constexpr const char *UpdateCheckAutomatically =     "updates/checkAutomatically";
 inline constexpr const char *UpdateLastCheck =              "updates/lastCheck";
+inline constexpr const char *UpdateBetaChannel =            "updates/betaChannel";
 inline constexpr const char *MainWindowToolBarVisible =     "mainWindow/toolBarVisible";
 inline constexpr const char *MainWindowStatusBarVisible =   "mainWindow/statusBarVisible";
 inline constexpr const char *MainWindowDetailsPaneVisible = "mainWindow/detailsPaneVisible";
