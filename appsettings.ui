@@ -188,6 +188,13 @@
               </property>
              </widget>
             </item>
+            <item>
+             <widget class="QCheckBox" name="hideDockIcon">
+              <property name="text">
+               <string>Hide Dock icon when in tray</string>
+              </property>
+             </widget>
+            </item>
            </layout>
           </widget>
          </item>

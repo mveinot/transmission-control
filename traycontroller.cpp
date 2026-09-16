@@ -86,6 +86,11 @@ void TrayController::applySettings()
 {
     updateTrayIconVisibility();
 
+#if defined(Q_OS_MACOS)
+    if (m_window && !m_window->isVisible())
+        setMacApplicationDockIconVisible(!hideDockIconEnabled());
+#endif
+
     // If the tray feature is disabled while the main window is hidden, make
     // the window visible again so the app cannot become an unreachable
     // background process with no tray icon and no visible window.
@@ -139,7 +144,7 @@ bool TrayController::handleCloseEvent(QCloseEvent *event)
 #if defined(Q_OS_MACOS)
         // The status item remains available in accessory mode, allowing the
         // application to run without occupying the Dock while its window is hidden.
-        setMacApplicationDockIconVisible(false);
+        setMacApplicationDockIconVisible(hideDockIconEnabled() ? false : true);
 #endif
         return true;
     }
@@ -203,6 +208,13 @@ bool TrayController::trayIconEnabled() const
 {
     QSettings settings;
     return settings.value(SettingsKeys::ShowTrayIcon, true).toBool();
+}
+
+bool TrayController::hideDockIconEnabled() const
+{
+    QSettings settings;
+    return trayIconEnabled()
+        && settings.value(SettingsKeys::HideDockIcon, false).toBool();
 }
 
 bool TrayController::shouldCloseToTray() const

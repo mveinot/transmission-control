@@ -19,6 +19,7 @@ inline constexpr const char *ShowTorrentFileOptionsDialog =
 inline constexpr const char *ShowMagnetLinkOptionsDialog =
     "torrentAdd/showOptionsForMagnetLinks";
 inline constexpr const char *ShowTrayIcon =                 "app/tray/showIcon";
+inline constexpr const char *HideDockIcon =                 "app/tray/hideDockIcon";
 inline constexpr const char *ShowNotifications =            "app/notifications/showNotifications";
 inline constexpr const char *NotifyTorrentAdded =             "app/notifications/torrentAdded";
 inline constexpr const char *NotifyTorrentCompleted =         "app/notifications/torrentCompleted";

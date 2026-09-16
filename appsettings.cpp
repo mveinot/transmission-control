@@ -55,6 +55,12 @@ AppSettings::AppSettings(QWidget *parent)
 
     connect(ui->enableNotifications, &QCheckBox::toggled,
             this, &AppSettings::updateNotificationOptionAvailability);
+    connect(ui->showTrayIcon, &QCheckBox::toggled,
+            this, [this](bool enabled) {
+                ui->hideDockIcon->setEnabled(enabled);
+                if (!enabled)
+                    ui->hideDockIcon->setChecked(false);
+            });
     connect(ui->enableDesktopNotifications, &QCheckBox::toggled,
             this, &AppSettings::updateNotificationOptionAvailability);
     connect(ui->colorThemeCombo, &QComboBox::currentIndexChanged,
@@ -300,6 +306,10 @@ void AppSettings::loadSettings()
     ui->showTrayIcon->setChecked(
         settings.value(SettingsKeys::ShowTrayIcon, true).toBool()
         );
+    ui->hideDockIcon->setChecked(
+        settings.value(SettingsKeys::HideDockIcon, false).toBool()
+        && ui->showTrayIcon->isChecked());
+    ui->hideDockIcon->setEnabled(ui->showTrayIcon->isChecked());
 
     ui->enableNotifications->setChecked(
         settings.value(
@@ -391,6 +401,9 @@ void AppSettings::saveSettings()
 
     settings.setValue(SettingsKeys::ShowTrayIcon,
                       ui->showTrayIcon->isChecked());
+    settings.setValue(SettingsKeys::HideDockIcon,
+                      ui->showTrayIcon->isChecked()
+                      && ui->hideDockIcon->isChecked());
 
     settings.setValue(SettingsKeys::ShowNotifications,
                       ui->enableNotifications->isChecked());

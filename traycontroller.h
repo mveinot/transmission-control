@@ -37,6 +37,7 @@ signals:
 
 private:
     bool trayIconEnabled() const;
+    bool hideDockIconEnabled() const;
     bool shouldCloseToTray() const;
     void updateTrayIconVisibility();
     void updateTorrentCountActions();
