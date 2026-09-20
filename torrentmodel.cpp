@@ -275,6 +275,16 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
         case PeersConnectedColumn:
             return t.getPeersSummary();
 
+        case PriorityColumn:
+            if (!t.hasBandwidthPriority())
+                return QStringLiteral("—");
+            switch (t.getBandwidthPriority()) {
+            case -1: return QStringLiteral("Low");
+            case 1: return QStringLiteral("High");
+            case 0: return QStringLiteral("Normal");
+            default: return QStringLiteral("Unknown");
+            }
+
         default:
             return {};
         }
@@ -356,6 +366,9 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
         case PeersConnectedColumn:
             return t.getPeersSortValue();
 
+        case PriorityColumn:
+            return t.hasBandwidthPriority() ? t.getBandwidthPriority() : -2;
+
         default:
             return {};
         }
@@ -376,6 +389,7 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
         case UploadedEverColumn:
         case SeedsColumn:
         case PeersConnectedColumn:
+        case PriorityColumn:
             return static_cast<int>(Qt::AlignRight | Qt::AlignVCenter);
 
         default:
@@ -449,6 +463,9 @@ QVariant TorrentModel::headerData(int section,
 
         case PeersConnectedColumn:
             return "Peers";
+
+        case PriorityColumn:
+            return "Priority";
 
         default:
             return {};

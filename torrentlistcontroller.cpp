@@ -89,6 +89,7 @@ const QVector<TorrentColumnDefinition> &torrentColumnDefinitions()
         { TorrentModel::DownloadDirColumn, "downloadDir", false, true },
         { TorrentModel::SeedsColumn, "seeds", false, true },
         { TorrentModel::PeersConnectedColumn, "peers", false, true },
+        { TorrentModel::PriorityColumn, "priority", false, true },
     };
 
     return definitions;
@@ -1220,6 +1221,21 @@ void TorrentListController::setColumnVisible(int column, bool visible)
         return;
 
     m_tableView->setColumnHidden(column, !visible);
+
+    // Header state saved before a newly-added column existed can restore a
+    // zero-width section for it.  Unhiding such a section makes the menu item
+    // appear checked, but leaves nothing to scroll to.  Give it the normal
+    // header width the first time it is made visible.
+    if (visible) {
+        if (QHeaderView *header = m_tableView->horizontalHeader()) {
+            if (header->sectionSize(column) <= 0) {
+                const int width = qMax(header->defaultSectionSize(),
+                                       header->sectionSizeHint(column));
+                header->resizeSection(column, width);
+            }
+        }
+    }
+
     saveViewState();
 }
 

@@ -72,6 +72,8 @@ torrent::torrent(const QJsonValue &val)
     peersSendingToUs = obj.value("peersSendingToUs").toInt();
     peersGettingFromUs = obj.value("peersGettingFromUs").toInt();
     queuePosition = obj.value("queuePosition").toInt();
+    bandwidthPriorityKnown = obj.contains(QStringLiteral("bandwidthPriority"));
+    bandwidthPriority = obj.value(QStringLiteral("bandwidthPriority")).toInt();
     desiredAvailable = static_cast<qint64>(obj.value("desiredAvailable").toDouble());
     leftUntilDone = static_cast<qint64>(obj.value("leftUntilDone").toDouble());
     labelsKnown = obj.contains(QStringLiteral("labels"));
@@ -199,6 +201,8 @@ bool torrent::isVerificationStatus() const
     return status == Status::WaitingToVerify || status == Status::Verifying;
 }
 int torrent::getQueuePosition() const { return queuePosition; };
+bool torrent::hasBandwidthPriority() const { return bandwidthPriorityKnown; }
+int torrent::getBandwidthPriority() const { return bandwidthPriority; }
 
 QString torrent::statusToString(Status status)
 {
@@ -628,6 +632,8 @@ bool torrent::sameDisplayData(const torrent &other) const
            && totalSeeders == other.totalSeeders
            && totalLeechers == other.totalLeechers
            && queuePosition == other.queuePosition
+           && bandwidthPriority == other.bandwidthPriority
+           && bandwidthPriorityKnown == other.bandwidthPriorityKnown
            && desiredAvailable == other.desiredAvailable
            && leftUntilDone == other.leftUntilDone
            && primaryTrackerHost == other.primaryTrackerHost

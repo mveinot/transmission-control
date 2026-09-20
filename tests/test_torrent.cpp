@@ -45,6 +45,7 @@ private slots:
     void mapsTransmissionStatuses();
     void verificationTakesPrecedenceOverRetainedError();
     void sameDisplayDataIncludesQueuePosition();
+    void parsesBandwidthPriority();
 };
 
 void TestTorrent::parsesBasicFields()
@@ -118,6 +119,19 @@ void TestTorrent::sameDisplayDataIncludesQueuePosition()
     const torrent second(makeTorrentValue(1, "Same", 4, 0.5, 2));
 
     QVERIFY(!first.sameDisplayData(second));
+}
+
+void TestTorrent::parsesBandwidthPriority()
+{
+    QJsonObject value = makeTorrentValue(1, "Priority", 4, 0.5, 1).toObject();
+    value.insert(QStringLiteral("bandwidthPriority"), -1);
+
+    const torrent item(value);
+    QVERIFY(item.hasBandwidthPriority());
+    QCOMPARE(item.getBandwidthPriority(), -1);
+
+    value.remove(QStringLiteral("bandwidthPriority"));
+    QVERIFY(!torrent(value).hasBandwidthPriority());
 }
 
 QTEST_MAIN(TestTorrent)

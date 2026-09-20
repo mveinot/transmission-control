@@ -35,6 +35,7 @@ public:
         DownloadDirColumn,
         SeedsColumn,
         PeersConnectedColumn,
+        PriorityColumn,
         ColumnCount
     };
 

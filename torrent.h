@@ -71,6 +71,8 @@ public:
     int getHealthScore() const;
     QString getHealthDetails() const;
     int getQueuePosition() const;
+    bool hasBandwidthPriority() const;
+    int getBandwidthPriority() const;
     bool sameDisplayData(const torrent &other) const;
     TorrentKey getKey() const;
     QJsonArray getFiles() const;
@@ -111,6 +113,8 @@ private:
     int totalSeeders = -1;
     int totalLeechers = -1;
     int queuePosition = 0;
+    int bandwidthPriority = 0;
+    bool bandwidthPriorityKnown = false;
     qint64 desiredAvailable = 0;
     qint64 leftUntilDone = 0;
     QString primaryTrackerHost;
