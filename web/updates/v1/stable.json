@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "channel": "stable",
-  "version": "2.2.0",
-  "build": 413,
-  "displayVersion": "2.2.0.413",
+  "version": "2.3.0",
+  "build": 425,
+  "displayVersion": "2.3.0.425",
   "minimumMacOSVersion": "13.0",
-  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.2.0.413/Planetary-2.2.0.413-macOS-universal.dmg",
-  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.2.0.413",
-  "releaseNotesMarkdown": "**Full Changelog**: https://github.com/mveinot/transmission-control/compare/v2.1.0.396...v2.2.0.413\n\nNotable changes:\n\n* Themes are now distributed as a single file (a number of themes are available for download on the web site)\n* Update to latest GeoIP DB\n* Add torrent by web URL\n* Ability to rename torrent folder on add",
-  "sha256": "c095f6ae31c23eb767e4bb25feaddc890fca5c8baf45353633123fa413af690d"
+  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.3.0.425/Planetary-2.3.0.425-macOS-universal.dmg",
+  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.3.0.425",
+  "releaseNotesMarkdown": "**Full Changelog**: https://github.com/mveinot/transmission-control/compare/v2.2.0.413...v2.3.0.425\n\nNotable changes:\n\n* Added an optional torrent Priority column to the main torrent view\n* Added a beta update channel, including persisted channel selection\n* Added release download progress and assisted update downloads\n* Added an option to hide the Dock icon when Planetary is minimized to the tray",
+  "sha256": "704ad3b026db85567c66813866a444349fda66664ced8dcc0d54e63486db690a"
 }
