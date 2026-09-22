@@ -1,7 +1,5 @@
 #include "torrentfilemodel.h"
 
-#include "iconthememanager.h"
-
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QLocale>
@@ -36,10 +34,6 @@ int TorrentFileModel::Node::row() const
 TorrentFileModel::TorrentFileModel(QObject *parent)
     : QAbstractItemModel(parent), m_root(std::make_unique<Node>())
 {
-    connect(&AppIcons::IconThemeManager::instance(),
-            &AppIcons::IconThemeManager::themeChanged,
-            this,
-            [this]() { refreshIcons(m_root.get()); });
 }
 
 QModelIndex TorrentFileModel::index(int row, int column, const QModelIndex &parent) const
@@ -85,25 +79,12 @@ QVariant TorrentFileModel::data(const QModelIndex &index, int role) const
         return node->isFile() ? QVariant(node->fileIndex) : QVariant();
     if (role == WantedRole)
         return node->isFile() ? QVariant(node->wanted) : QVariant();
+    if (role == WantedStateRole && index.column() == NameColumn)
+        return node->wantedState;
     if (role == PriorityRole)
         return node->isFile() ? QVariant(node->priority) : QVariant();
     if (role == PathRole)
         return node->path;
-
-    if (role == Qt::DecorationRole && index.column() == NameColumn) {
-        switch (node->state) {
-        case TransferState::Complete:
-            return AppIcons::IconThemeManager::instance().icon(AppIcons::Id::StatusComplete);
-        case TransferState::Transferring:
-            return AppIcons::IconThemeManager::instance().icon(AppIcons::Id::StatusDownloading);
-        case TransferState::Skipped:
-            return AppIcons::IconThemeManager::instance().icon(AppIcons::Id::StatusStopped);
-        case TransferState::Mixed:
-            return AppIcons::IconThemeManager::instance().icon(AppIcons::Id::StatusActive);
-        case TransferState::Unknown:
-            return AppIcons::IconThemeManager::instance().icon(AppIcons::Id::StatusUnknown);
-        }
-    }
 
     if (role == Qt::ToolTipRole && index.column() == NameColumn) {
         switch (node->state) {
@@ -218,6 +199,7 @@ void TorrentFileModel::reconcile(const QVector<TorrentFile> &files)
         node->length = incoming.length;
         node->bytesCompleted = incoming.bytesCompleted;
         node->wanted = incoming.wanted;
+        node->wantedState = incoming.wanted ? Qt::Checked : Qt::Unchecked;
         node->priority = incoming.priority;
         node->state = !incoming.wanted ? TransferState::Skipped
             : (complete(incoming.length, incoming.bytesCompleted)
@@ -299,6 +281,7 @@ void TorrentFileModel::appendFile(const TorrentFile &file)
     node->length = file.length;
     node->bytesCompleted = file.bytesCompleted;
     node->wanted = file.wanted;
+    node->wantedState = file.wanted ? Qt::Checked : Qt::Unchecked;
     node->priority = file.priority;
     node->state = !file.wanted ? TransferState::Skipped
         : (complete(file.length, file.bytesCompleted)
@@ -312,9 +295,16 @@ void TorrentFileModel::updateAggregates(Node *node)
     if (!node || node->isFile())
         return;
     bool completed = false, transferring = false, skipped = false, unknown = false;
+    bool wanted = false, unwanted = false;
     QSet<QString> priorities;
     for (auto &child : node->children) {
         updateAggregates(child.get());
+        if (child->wantedState == Qt::Checked)
+            wanted = true;
+        else if (child->wantedState == Qt::Unchecked)
+            unwanted = true;
+        else
+            wanted = unwanted = true;
         switch (child->state) {
         case TransferState::Complete: completed = true; break;
         case TransferState::Transferring: transferring = true; break;
@@ -333,6 +323,8 @@ void TorrentFileModel::updateAggregates(Node *node)
               : (completed || skipped ? TransferState::Mixed : TransferState::Unknown)));
     node->effectivePriority = priorities.size() == 1 ? *priorities.constBegin()
         : (priorities.size() > 1 ? fileViewText("Mixed") : QString());
+    node->wantedState = wanted && unwanted ? Qt::PartiallyChecked
+        : (wanted ? Qt::Checked : Qt::Unchecked);
 }
 
 TorrentFileModel::Node *TorrentFileModel::nodeForIndex(const QModelIndex &index) const
@@ -348,25 +340,6 @@ void TorrentFileModel::collectFileIndices(const Node *node, QList<int> *indices)
     }
     for (const auto &child : node->children)
         collectFileIndices(child.get(), indices);
-}
-
-void TorrentFileModel::refreshIcons(Node *parentNode)
-{
-    if (!parentNode || parentNode->children.empty())
-        return;
-
-    Node *first = parentNode->children.front().get();
-    Node *last = parentNode->children.back().get();
-    emit dataChanged(createIndex(0, NameColumn, first),
-                     createIndex(static_cast<int>(parentNode->children.size()) - 1,
-                                 NameColumn,
-                                 last),
-                     QVector<int> {Qt::DecorationRole});
-
-    for (const auto &child : parentNode->children) {
-        if (!child->isFile())
-            refreshIcons(child.get());
-    }
 }
 
 QList<int> TorrentFileModel::fileIndices(const QModelIndex &index) const

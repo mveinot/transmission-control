@@ -32,6 +32,7 @@ public:
         KindRole,
         FileIndexRole,
         WantedRole,
+        WantedStateRole,
         PriorityRole,
         PathRole
     };
@@ -67,6 +68,7 @@ private:
         qint64 length = 0;
         qint64 bytesCompleted = 0;
         bool wanted = true;
+        Qt::CheckState wantedState = Qt::Unchecked;
         int priority = 0;
         TransferState state = TransferState::Unknown;
         QString effectivePriority;
@@ -87,7 +89,6 @@ private:
     Node *findFolder(Node *parent, const QString &name) const;
     void updateAggregates(Node *node);
     void collectFileIndices(const Node *node, QList<int> *indices) const;
-    void refreshIcons(Node *parentNode);
     bool sameStructure(const QVector<TorrentFile> &files) const;
     static QString priorityText(int priority);
 };

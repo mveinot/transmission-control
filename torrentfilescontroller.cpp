@@ -17,14 +17,109 @@
 #include <QLineEdit>
 #include <QMenu>
 #include <QMessageBox>
+#include <QMouseEvent>
+#include <QPainter>
 #include <QPersistentModelIndex>
 #include <QScrollBar>
 #include <QSet>
 #include <QSortFilterProxyModel>
+#include <QStyleOptionButton>
 #include <QTreeView>
 #include <QUrl>
 #include <algorithm>
 #include <utility>
+
+namespace {
+
+constexpr int WantedCheckboxGutter = 20;
+
+class WantedCheckboxDelegate final : public QStyledItemDelegate
+{
+public:
+    explicit WantedCheckboxDelegate(TorrentFilesController *controller,
+                                    QTreeView *treeView,
+                                    QObject *parent = nullptr)
+        : QStyledItemDelegate(parent), m_controller(controller)
+        , m_treeView(treeView)
+    {
+    }
+
+    void paint(QPainter *painter,
+               const QStyleOptionViewItem &option,
+               const QModelIndex &index) const override
+    {
+        if (index.column() != TorrentFileModel::NameColumn) {
+            QStyledItemDelegate::paint(painter, option, index);
+            return;
+        }
+
+        QStyleOptionViewItem adjusted = option;
+        int depth = 0;
+        for (QModelIndex parent = index.parent(); parent.isValid(); parent = parent.parent())
+            ++depth;
+        const int viewportLeft = option.widget
+            ? option.widget->contentsRect().left()
+            : option.rect.left();
+        const int nameLeft = viewportLeft + WantedCheckboxGutter
+            + depth * (m_treeView ? m_treeView->indentation() : 0);
+        adjusted.rect.setLeft(nameLeft);
+        // The checkbox is painted manually in a fixed leading gutter. Keep
+        // the base delegate from painting any automatic indicator.
+        adjusted.features &= ~QStyleOptionViewItem::HasCheckIndicator;
+        QStyledItemDelegate::paint(painter, adjusted, index);
+
+        QStyleOptionButton checkbox;
+        checkbox.initFrom(option.widget);
+        const int checkboxLeft = option.widget
+            ? option.widget->contentsRect().left() + 4
+            : option.rect.left() + 4;
+        checkbox.rect = QRect(checkboxLeft,
+                              option.rect.center().y() - 8,
+                              16, 16);
+        checkbox.state |= QStyle::State_Enabled;
+        const Qt::CheckState state = static_cast<Qt::CheckState>(
+            index.data(TorrentFileModel::WantedStateRole).toInt());
+        if (state == Qt::Checked)
+            checkbox.state |= QStyle::State_On;
+        else if (state == Qt::PartiallyChecked)
+            checkbox.state |= QStyle::State_NoChange;
+        else
+            checkbox.state |= QStyle::State_Off;
+        option.widget->style()->drawPrimitive(
+            QStyle::PE_IndicatorCheckBox, &checkbox, painter, option.widget);
+    }
+
+    bool editorEvent(QEvent *event,
+                     QAbstractItemModel *model,
+                     const QStyleOptionViewItem &option,
+                     const QModelIndex &index) override
+    {
+        if (index.column() != TorrentFileModel::NameColumn || !m_controller)
+            return QStyledItemDelegate::editorEvent(event, model, option, index);
+
+        if (event->type() == QEvent::MouseButtonRelease) {
+            const auto *mouse = static_cast<const QMouseEvent *>(event);
+            const int checkboxLeft = option.widget
+                ? option.widget->contentsRect().left()
+                : option.rect.left();
+            const QRect checkboxRect(checkboxLeft,
+                                     option.rect.top(),
+                                     WantedCheckboxGutter,
+                                     option.rect.height());
+            if (checkboxRect.contains(mouse->position().toPoint())) {
+                m_controller->toggleWanted(index);
+                return true;
+            }
+        }
+        return QStyledItemDelegate::editorEvent(event, model, option, index);
+    }
+
+private:
+    TorrentFilesController *m_controller = nullptr;
+    QTreeView *m_treeView = nullptr;
+};
+
+} // namespace
 
 TorrentFilesController::TorrentFilesController(QTreeView *fileTreeWidget,
                                                QLineEdit *filterEdit,
@@ -69,6 +164,9 @@ void TorrentFilesController::setup()
         new PercentFillDelegate(TorrentFileModel::PercentColumn,
                                 TorrentFileModel::SortRole,
                                 fileTreeWidget));
+    fileTreeWidget->setItemDelegateForColumn(
+        TorrentFileModel::NameColumn,
+        new WantedCheckboxDelegate(this, fileTreeWidget, fileTreeWidget));
 
     columnController = std::make_unique<TableColumnController>(
         fileTreeWidget->header(),
@@ -111,6 +209,28 @@ void TorrentFilesController::setup()
 }
 
 bool TorrentFilesController::hasSelection() const { return selectionActive; }
+
+void TorrentFilesController::toggleWanted(const QModelIndex &index)
+{
+    if (!isValidTorrentKey(torrentKey) || !client || !proxyModel || !fileModel)
+        return;
+
+    const QModelIndex nameIndex = index.siblingAtColumn(TorrentFileModel::NameColumn);
+    const QList<int> indices = fileIndicesForIndex(nameIndex);
+    if (indices.isEmpty())
+        return;
+
+    const Qt::CheckState current = static_cast<Qt::CheckState>(
+        nameIndex.data(TorrentFileModel::WantedStateRole).toInt());
+    const bool wanted = current == Qt::Unchecked;
+    pendingFileMutationMethods = {QStringLiteral("torrent-set")};
+    client->setTorrentFilesWanted(torrentKey, indices, wanted);
+    emit statusMessageRequested(
+        wanted
+            ? tr("Marking %1 file(s) as wanted...").arg(indices.size())
+            : tr("Skipping %1 file(s)...").arg(indices.size()),
+        3000);
+}
 
 void TorrentFilesController::updateSelectionState()
 {

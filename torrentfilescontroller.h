@@ -46,6 +46,7 @@ public:
     void restoreViewState();
     void setLoading();
     bool hasSelection() const;
+    void toggleWanted(const QModelIndex &index);
 
 signals:
     void statusMessageRequested(const QString &message, int timeoutMs);
