@@ -100,6 +100,7 @@ private:
     // never proxy row space.
     TorrentKey currentTorrentKey() const;
     void refreshCurrentTorrentTabData();
+    void updateFilesTabTitle(int fileCount = -1);
     void updatePollingDetailView();
     TorrentAddController *torrentAddController = nullptr;
     void addTorrentFromFile();

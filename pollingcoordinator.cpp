@@ -120,6 +120,16 @@ void PollingCoordinator::requestSelectedTorrent(bool includeSummary)
 
     if (includeSummary && m_requests.torrentDetails)
         m_requests.torrentDetails(m_selectedTorrent);
+
+    // The file list also provides the count shown on the Files tab. Fetch an
+    // initial snapshot when a torrent is selected even if another detail tab
+    // is visible, while leaving periodic refreshes scoped to the active view.
+    if (includeSummary
+        && m_detailView != DetailView::Files
+        && !m_fileRefreshSuppressed
+        && m_requests.torrentFiles) {
+        m_requests.torrentFiles(m_selectedTorrent);
+    }
     requestVisibleTorrentData();
 }
 

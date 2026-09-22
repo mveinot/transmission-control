@@ -219,6 +219,8 @@ bool jsonBoolAny(const QJsonObject &object,
 
 void MainWindow::clearGeneralTab()
 {
+    updateFilesTabTitle();
+
     if (torrentGeneralController)
         torrentGeneralController->clear();
 
@@ -234,6 +236,20 @@ void MainWindow::clearGeneralTab()
 
     if (torrentPeersController)
         torrentPeersController->clear();
+}
+
+void MainWindow::updateFilesTabTitle(int fileCount)
+{
+    if (!ui || !ui->tabWidget || !ui->fileList)
+        return;
+
+    const int tabIndex = ui->tabWidget->indexOf(ui->fileList);
+    if (tabIndex < 0)
+        return;
+
+    ui->tabWidget->setTabText(
+        tabIndex,
+        fileCount >= 0 ? tr("Files (%1)").arg(fileCount) : tr("Files"));
 }
 
 void MainWindow::copyFromFocusedWidget()
@@ -1123,6 +1139,7 @@ MainWindow::MainWindow(QWidget *parent)
                     files.key,
                     files.downloadDirectory);
                 torrentFilesController->populate(files);
+                updateFilesTabTitle(files.files.size());
             });
 
     connect(client, &TorrentBackend::torrentPeersReceived,
