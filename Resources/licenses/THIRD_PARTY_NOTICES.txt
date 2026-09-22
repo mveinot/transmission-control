@@ -27,3 +27,8 @@ flag-icons
 Copyright (c) 2013 Panayiotis Lipiridis.
 Licensed under the MIT License.
 https://github.com/lipis/flag-icons
+
+Dad jokes
+Joke collection from yesinteractive/dadjokes.
+Licensed under the MIT License.
+https://github.com/yesinteractive/dadjokes

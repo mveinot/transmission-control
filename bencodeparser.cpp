@@ -5,7 +5,11 @@
 
 namespace {
 
-constexpr int MaximumNestingDepth = 256;
+constexpr int MaximumNestingDepth = 128;
+constexpr qsizetype MaximumInputBytes = 128 * 1024 * 1024;
+constexpr qsizetype MaximumValueCount = 500'000;
+constexpr qsizetype MaximumContainerEntries = 250'000;
+constexpr qint64 MaximumByteStringBytes = 64 * 1024 * 1024;
 
 bool isAsciiDigit(char ch)
 {
@@ -18,6 +22,14 @@ bool BencodeParser::parse(const QByteArray &data,
                           BencodeValue *result,
                           QString *errorString)
 {
+    if (data.size() > MaximumInputBytes) {
+        if (result)
+            *result = BencodeValue();
+        if (errorString)
+            *errorString = QStringLiteral("Bencode input exceeds the 128 MiB limit");
+        return false;
+    }
+
     if (result)
         *result = BencodeValue();
 
@@ -54,6 +66,9 @@ BencodeParser::BencodeParser(const QByteArray &data)
 
 bool BencodeParser::parseValue(BencodeValue *result)
 {
+    if (!consumeValue())
+        return false;
+
     // Container parsing is recursive, so reject hostile nesting before adding
     // another stack frame.
     if (m_depth >= MaximumNestingDepth) {
@@ -89,6 +104,17 @@ bool BencodeParser::parseValue(BencodeValue *result)
     return parsed;
 }
 
+bool BencodeParser::consumeValue()
+{
+    if (m_valueCount >= MaximumValueCount) {
+        setError(QStringLiteral("Maximum bencode value count exceeded"));
+        return false;
+    }
+
+    ++m_valueCount;
+    return true;
+}
+
 bool BencodeParser::parseInteger(BencodeValue *result)
 {
     ++m_offset; // i
@@ -100,12 +126,21 @@ bool BencodeParser::parseInteger(BencodeValue *result)
         return false;
     }
 
-    if (currentChar() == '-')
+    const bool negative = currentChar() == '-';
+    if (negative)
         ++m_offset;
 
     if (atEnd() || !isAsciiDigit(currentChar())) {
         setError(QStringLiteral("Invalid integer at offset %1").arg(start));
         return false;
+    }
+
+    if (currentChar() == '0') {
+        ++m_offset;
+        if (negative || atEnd() || currentChar() != 'e') {
+            setError(QStringLiteral("Invalid integer at offset %1").arg(start));
+            return false;
+        }
     }
 
     while (!atEnd() && isAsciiDigit(currentChar()))
@@ -168,6 +203,12 @@ bool BencodeParser::parseByteString(BencodeValue *result)
         return false;
     }
 
+    if (length > MaximumByteStringBytes) {
+        setError(QStringLiteral("Byte string at offset %1 exceeds the 64 MiB limit")
+                     .arg(lengthStart));
+        return false;
+    }
+
     const QByteArray bytes = m_data.mid(m_offset, length);
     m_offset += length;
 
@@ -182,8 +223,15 @@ bool BencodeParser::parseList(BencodeValue *result)
     ++m_offset; // l
 
     BencodeValue::List list;
+    qsizetype entryCount = 0;
 
     while (!atEnd() && currentChar() != 'e') {
+        if (entryCount >= MaximumContainerEntries) {
+            setError(QStringLiteral("Maximum list entry count exceeded"));
+            return false;
+        }
+        ++entryCount;
+
         BencodeValue item;
 
         if (!parseValue(&item))
@@ -210,14 +258,29 @@ bool BencodeParser::parseDictionary(BencodeValue *result)
     ++m_offset; // d
 
     BencodeValue::Dictionary dictionary;
+    QByteArray previousKey;
+    qsizetype entryCount = 0;
 
     while (!atEnd() && currentChar() != 'e') {
+        if (entryCount >= MaximumContainerEntries) {
+            setError(QStringLiteral("Maximum dictionary entry count exceeded"));
+            return false;
+        }
+        ++entryCount;
+
         BencodeValue keyValue;
 
+        if (!consumeValue())
+            return false;
         if (!parseByteString(&keyValue))
             return false;
 
         const QByteArray key = keyValue.toByteArray();
+        if (entryCount > 1 && key <= previousKey) {
+            setError(QStringLiteral("Dictionary keys are not strictly sorted"));
+            return false;
+        }
+        previousKey = key;
 
         BencodeValue value;
 

@@ -59,5 +59,6 @@
         <file>icons/ui/glass/status-unknown.png</file>
         <file>icons/ui/glass/status-verifying.png</file>
         <file>licenses/gpl-2.0.txt</file>
+        <file>dadjokes.txt</file>
     </qresource>
 </RCC>

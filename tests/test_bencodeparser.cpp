@@ -15,6 +15,10 @@ private slots:
     void rejectsTrailingData();
     void rejectsOverflowingByteStringLength();
     void rejectsExcessiveNesting();
+    void rejectsNonCanonicalIntegers();
+    void rejectsUnsortedDictionaryKeys();
+    void rejectsExcessiveContainerEntries();
+    void rejectsExcessiveValueCount();
     void parsesSingleFileTorrentMetadata();
     void parsesMultiFileTorrentMetadata();
 };
@@ -89,6 +93,48 @@ void TestBencodeParser::rejectsExcessiveNesting()
 
     QVERIFY(!BencodeParser::parse(data, &value, &error));
     QVERIFY(error.contains(QStringLiteral("Maximum nesting depth")));
+}
+
+void TestBencodeParser::rejectsNonCanonicalIntegers()
+{
+    BencodeValue value;
+    QString error;
+
+    QVERIFY(!BencodeParser::parse("i03e", &value, &error));
+    QVERIFY(!BencodeParser::parse("i-0e", &value, &error));
+}
+
+void TestBencodeParser::rejectsUnsortedDictionaryKeys()
+{
+    BencodeValue value;
+    QString error;
+
+    QVERIFY(!BencodeParser::parse("d1:b1:x1:a1:ye", &value, &error));
+    QVERIFY(!BencodeParser::parse("d1:a1:x1:a1:ye", &value, &error));
+}
+
+void TestBencodeParser::rejectsExcessiveContainerEntries()
+{
+    QByteArray data("l");
+    data += QByteArrayLiteral("i0e").repeated(250'001);
+    data += 'e';
+
+    BencodeValue value;
+    QString error;
+    QVERIFY(!BencodeParser::parse(data, &value, &error));
+    QVERIFY(error.contains(QStringLiteral("Maximum list entry count")));
+}
+
+void TestBencodeParser::rejectsExcessiveValueCount()
+{
+    QByteArray data("l");
+    data += QByteArrayLiteral("d1:a1:x1:b1:ye").repeated(125'001);
+    data += 'e';
+
+    BencodeValue value;
+    QString error;
+    QVERIFY(!BencodeParser::parse(data, &value, &error));
+    QVERIFY(error.contains(QStringLiteral("Maximum bencode value count")));
 }
 
 void TestBencodeParser::parsesSingleFileTorrentMetadata()

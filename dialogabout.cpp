@@ -4,6 +4,7 @@
 #include <QStringList>
 #include <QTextStream>
 #include <QSettings>
+#include <QRandomGenerator>
 
 #include "dialogabout.h"
 #include "ui_dialogabout.h"
@@ -132,10 +133,35 @@ bool DialogAbout::eventFilter(QObject *watched, QEvent *event)
 
 void DialogAbout::triggerEasterEgg()
 {
+    QFile jokesFile(QStringLiteral(":/dadjokes.txt"));
+    QStringList jokes;
+
+    if (jokesFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        const QStringList lines = QString::fromUtf8(jokesFile.readAll())
+                                       .split(QChar('\n'), Qt::SkipEmptyParts);
+        for (const QString &line : lines) {
+            const int separator = line.indexOf(QStringLiteral("<>"));
+            if (separator < 0)
+                continue;
+
+            const QString setup = line.left(separator).trimmed();
+            const QString punchline = line.mid(separator + 2).trimmed();
+            if (!setup.isEmpty() && !punchline.isEmpty()) {
+                jokes.append(setup.toHtmlEscaped()
+                             + QStringLiteral("<br />")
+                             + punchline.toHtmlEscaped());
+            }
+        }
+    }
+
+    const QString joke = jokes.isEmpty()
+        ? QStringLiteral("The joke resource could not be loaded.")
+        : jokes.at(QRandomGenerator::global()->bounded(jokes.size()));
+
     ui->textAbout->setHtml(QString(
                                "<h2>Intergalactic. Planetary.</h2>"
                                "<p>Congrats on finding the not very well hidden easter egg!</p>"
                                "<hr />"
-                               "<p>Caffeine level: Unhealthy</p>"
-                               ));
+                               "<p>%1</p>"
+                               ).arg(joke));
 }

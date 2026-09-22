@@ -25,10 +25,12 @@ private:
 
     bool atEnd() const;
     char currentChar() const;
+    bool consumeValue();
     void setError(const QString &message);
 
     const QByteArray &m_data;
     qsizetype m_offset = 0;
     int m_depth = 0;
+    qsizetype m_valueCount = 0;
     QString m_errorString;
 };
