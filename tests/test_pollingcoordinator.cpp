@@ -14,6 +14,7 @@ private slots:
     void suppressesFileRefreshDuringSelection();
     void slowRequestsRespectCadenceAndCapability();
     void periodicPollingAnnouncesRefresh();
+    void failedPollingSchedulesRetry();
 };
 
 void TestPollingCoordinator::commandRefreshesAreCoalesced()
@@ -174,6 +175,30 @@ void TestPollingCoordinator::periodicPollingAnnouncesRefresh()
     QTRY_VERIFY(listRequests >= 1);
     QVERIFY(started.size() >= 1);
     QCOMPARE(started.first().first().toBool(), false);
+}
+
+void TestPollingCoordinator::failedPollingSchedulesRetry()
+{
+    int listRequests = 0;
+    PollingCoordinator::Requests requests;
+    requests.torrentList = [&]() { ++listRequests; };
+
+    PollingCoordinator coordinator(requests);
+    QSignalSpy retrySpy(
+        &coordinator,
+        &PollingCoordinator::connectionRetryScheduled);
+
+    coordinator.handleBackendUpdateFailed(QStringLiteral("connection refused"));
+    QCOMPARE(retrySpy.size(), 1);
+    QCOMPARE(retrySpy.first().first().toInt(), 1);
+    QCOMPARE(listRequests, 0);
+
+    QTRY_VERIFY_WITH_TIMEOUT(listRequests >= 1, 1500);
+
+    coordinator.handleBackendUpdateFinished();
+    coordinator.handleBackendUpdateFailed(QStringLiteral("connection refused"));
+    QCOMPARE(retrySpy.size(), 2);
+    QCOMPARE(retrySpy.last().first().toInt(), 1);
 }
 
 QTEST_GUILESS_MAIN(TestPollingCoordinator)

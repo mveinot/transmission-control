@@ -14,10 +14,15 @@ PollingCoordinator::PollingCoordinator(
     , m_requests(std::move(requests))
     , m_pollTimer(new QTimer(this))
     , m_commandRefreshTimer(new QTimer(this))
+    , m_retryTimer(new QTimer(this))
     , m_slowRefreshIntervalMs(qMax<qint64>(1, slowRefreshIntervalMs))
 {
     m_commandRefreshTimer->setSingleShot(true);
     m_commandRefreshTimer->setInterval(qMax(0, commandDebounceMs));
+    m_retryTimer->setSingleShot(true);
+    connect(m_retryTimer, &QTimer::timeout, this, [this]() {
+        requestTorrentList(ListRefreshMode::ShowLoading);
+    });
 
     connect(m_pollTimer, &QTimer::timeout,
             this, [this]() {
@@ -48,7 +53,7 @@ int PollingCoordinator::pollingInterval() const
 
 void PollingCoordinator::startPolling()
 {
-    if (!m_pollTimer->isActive())
+    if (!m_pollTimer->isActive() && !m_retryTimer->isActive())
         m_pollTimer->start();
 }
 
@@ -120,13 +125,46 @@ void PollingCoordinator::requestSelectedTorrent(bool includeSummary)
 
 void PollingCoordinator::handleTorrentListReceived()
 {
+    handleBackendUpdateFinished();
     refreshSlowData();
     requestVisibleTorrentData();
+}
+
+void PollingCoordinator::handleBackendUpdateFailed(const QString &message)
+{
+    Q_UNUSED(message)
+    if (m_retryTimer->isActive())
+        return;
+
+    m_pollTimer->stop();
+    scheduleConnectionRetry();
+}
+
+void PollingCoordinator::handleBackendUpdateFinished()
+{
+    const bool wasRetrying = m_retryAttempt > 0 || m_retryTimer->isActive();
+    m_retryTimer->stop();
+    m_retryAttempt = 0;
+
+    if (!m_pollTimer->isActive())
+        m_pollTimer->start();
+
+    Q_UNUSED(wasRetrying)
+}
+
+void PollingCoordinator::requestReconnect()
+{
+    m_retryTimer->stop();
+    m_retryAttempt = 0;
+    m_pollTimer->stop();
+    requestTorrentList(ListRefreshMode::ShowLoading);
 }
 
 void PollingCoordinator::resetForServerChange()
 {
     m_commandRefreshTimer->stop();
+    m_retryTimer->stop();
+    m_retryAttempt = 0;
     m_pendingCommandDetailsRefresh = false;
     m_lastFreeSpaceRefreshMs = 0;
     m_lastTrackerMetadataRefreshMs = 0;
@@ -135,6 +173,15 @@ void PollingCoordinator::resetForServerChange()
     m_fileRefreshSuppressed = false;
     if (m_requests.cancelTorrentDetails)
         m_requests.cancelTorrentDetails();
+}
+
+void PollingCoordinator::scheduleConnectionRetry()
+{
+    const int exponent = qMin(m_retryAttempt, 5);
+    const int delaySeconds = qMin(60, 1 << exponent);
+    ++m_retryAttempt;
+    m_retryTimer->start(delaySeconds * 1000);
+    emit connectionRetryScheduled(delaySeconds);
 }
 
 void PollingCoordinator::setRemoteDownloadDirectory(

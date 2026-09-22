@@ -50,6 +50,7 @@ void StatusBarController::setup()
     m_statusBar->addPermanentWidget(m_intervalLabel);
 
     makeLabelClickable(m_serverLabel, tr("Open server setup"));
+    makeLabelClickable(m_activityLabel, tr("Reconnect to the torrent server"));
     makeLabelClickable(m_rateLabel, tr("Open quick speed limits"));
     makeLabelClickable(m_freeSpaceLabel, tr("Refresh free-space information"));
     makeLabelClickable(m_speedModeLabel, tr("Toggle alternative speed mode"));
@@ -171,6 +172,14 @@ void StatusBarController::setFilterSummary(const QString &summary)
     refreshFilterLabel();
 }
 
+void StatusBarController::setConnectionRetry(int delaySeconds)
+{
+    if (delaySeconds <= 0)
+        setActivityText(tr("Reconnecting…"));
+    else
+        setActivityText(tr("Reconnecting in %1…").arg(delaySeconds));
+}
+
 QLabel *StatusBarController::makeSectionLabel(const QString &text) const
 {
     auto *label = new QLabel(text, m_statusBar);
@@ -196,6 +205,11 @@ bool StatusBarController::eventFilter(QObject *watched, QEvent *event)
         auto *mouseEvent = static_cast<QMouseEvent *>(event);
 
         if (mouseEvent->button() == Qt::LeftButton) {
+            if (watched == m_activityLabel) {
+                emit connectionRetryRequested();
+                return true;
+            }
+
             if (watched == m_serverLabel) {
                 emit serverSetupRequested();
                 return true;

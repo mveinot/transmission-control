@@ -11,6 +11,7 @@
 #include <QJsonValue>
 #include <QPoint>
 #include <QEvent>
+#include <QSet>
 #include <Qt>
 #include "foldermapping.h"
 #include "torrentbackend.h"
@@ -116,6 +117,7 @@ private:
     void handleServerActivated();
     void applyAppSettings();
     void showApplicationSettings();
+    void showThemeManager();
     void setupApplicationCommands();
     void setupViewMenu();
     void setupActivityDock();
@@ -167,6 +169,7 @@ private:
     bool activityConnectionEstablished = false;
     bool activityConnectionFailed = false;
     QStringList pendingLaunchArguments;
+    QSet<QString> pendingDownloadedTorrentFiles;
 
 protected:
     void closeEvent(QCloseEvent *event) override;

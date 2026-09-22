@@ -34,6 +34,7 @@ public:
     void setServerName(const QString &serverName);
     void setTorrentResultCount(int visibleCount, int totalCount);
     void setFilterSummary(const QString &summary);
+    void setConnectionRetry(int delaySeconds);
 
 signals:
     void alternativeSpeedToggleRequested();
@@ -41,6 +42,7 @@ signals:
     void serverSetupRequested();
     void speedLimitsDialogRequested();
     void appSettingsRequested();
+    void connectionRetryRequested();
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;

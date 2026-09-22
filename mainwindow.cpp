@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "thememanagerdialog.h"
 #include "./ui_mainwindow.h"
 #include "torrentgeneralcontroller.h"
 #include "torrentfilescontroller.h"
@@ -85,6 +86,7 @@
 #include <QUrlQuery>
 #include <QVBoxLayout>
 #include <functional>
+#include <memory>
 #include <algorithm>
 #include <utility>
 #include <initializer_list>
@@ -359,6 +361,7 @@ void MainWindow::setupApplicationCommands()
     actions.queueBottom = ui->moveBottomAction;
     actions.closeWindow = ui->actionClose_Window;
     actions.applicationSettings = ui->actionSettings;
+    actions.manageThemes = ui->actionManage_Themes;
     actions.manageServers = ui->actionServer_Setup;
     actions.serverSettings = ui->actionTransmission_Settings;
     actions.alternativeSpeed = ui->actionAlternative_Speed_Mode;
@@ -421,6 +424,7 @@ void MainWindow::setupApplicationCommands()
     };
     handlers.applicationSettings =
         [this]() { showApplicationSettings(); };
+    handlers.manageThemes = [this]() { showThemeManager(); };
     handlers.manageServers = [this]() { onServerSetupTriggered(); };
     handlers.serverSettings = [this]() { showSessionSettings(); };
     handlers.alternativeSpeed =
@@ -622,6 +626,19 @@ MainWindow::MainWindow(QWidget *parent)
         [this]() { return client->capabilities().freeSpaceQuery; };
     pollingCoordinator =
         new PollingCoordinator(std::move(pollingRequests), this);
+    connect(client, &TorrentBackend::updateFailed,
+            pollingCoordinator,
+            &PollingCoordinator::handleBackendUpdateFailed);
+    connect(client, &TorrentBackend::updateFinished,
+            pollingCoordinator,
+            &PollingCoordinator::handleBackendUpdateFinished);
+    connect(pollingCoordinator,
+            &PollingCoordinator::connectionRetryScheduled,
+            this,
+            [this](int delaySeconds) {
+                if (statusBarController)
+                    statusBarController->setConnectionRetry(delaySeconds);
+            });
     torrentModel = new TorrentModel(this);
 
     connect(pollingCoordinator,
@@ -646,6 +663,32 @@ MainWindow::MainWindow(QWidget *parent)
     }
 
     torrentAddController = new TorrentAddController(client, this, this);
+
+    const auto removeDownloadedTorrent = [this](const QString &path) {
+        if (pendingDownloadedTorrentFiles.remove(path) > 0)
+            QFile::remove(path);
+    };
+    connect(client, &TorrentBackend::torrentFileAddSucceeded,
+            this, removeDownloadedTorrent);
+    connect(client, &TorrentBackend::torrentFileAddFailed,
+            this, [removeDownloadedTorrent](const QString &path,
+                                             const QString &) {
+                removeDownloadedTorrent(path);
+            });
+    connect(torrentAddController, &TorrentAddController::addCancelled,
+            this, [this]() {
+                const QSet<QString> paths = pendingDownloadedTorrentFiles;
+                pendingDownloadedTorrentFiles.clear();
+                for (const QString &path : paths)
+                    QFile::remove(path);
+            });
+    connect(torrentAddController, &TorrentAddController::addFailed,
+            this, [this](const QString &) {
+                const QSet<QString> paths = pendingDownloadedTorrentFiles;
+                pendingDownloadedTorrentFiles.clear();
+                for (const QString &path : paths)
+                    QFile::remove(path);
+            });
 
     // setupUi() must precede controller construction because controllers retain
     // pointers to widgets owned by the generated UI tree.
@@ -1232,6 +1275,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    for (const QString &path : std::as_const(pendingDownloadedTorrentFiles))
+        QFile::remove(path);
+
     delete ui;
 }
 
@@ -1294,6 +1340,12 @@ void MainWindow::showApplicationSettings()
     applyAppSettings();
     if (watchFolderController)
         watchFolderController->loadSettings();
+}
+
+void MainWindow::showThemeManager()
+{
+    ThemeManagerDialog dialog(this);
+    dialog.exec();
 }
 
 TorrentKey MainWindow::currentTorrentKey() const
@@ -1650,12 +1702,40 @@ void MainWindow::addTorrentFromUrl()
     if (statusBarController)
         statusBarController->showMessage(tr("Downloading torrent file..."), 5000);
 
+    auto temporary = std::make_shared<QTemporaryFile>(
+        QDir::tempPath() + QStringLiteral("/planetary-torrent-XXXXXX.torrent"));
+    temporary->setAutoRemove(false);
+    if (!temporary->open()) {
+        if (statusBarController)
+            statusBarController->showMessage(
+                tr("Could not prepare a temporary torrent file: %1")
+                    .arg(temporary->errorString()), 6000);
+        network->deleteLater();
+        return;
+    }
+
+    const QString filePath = temporary->fileName();
+    auto writeFailed = std::make_shared<bool>(false);
+
     QNetworkReply *reply = network->get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, network]() {
+    connect(reply, &QNetworkReply::readyRead, this,
+            [reply, temporary, writeFailed]() {
+                while (reply->bytesAvailable() > 0) {
+                    const QByteArray chunk = reply->read(64 * 1024);
+                    if (chunk.isEmpty())
+                        break;
+                    if (temporary->write(chunk) != chunk.size())
+                        *writeFailed = true;
+                }
+            });
+    connect(reply, &QNetworkReply::finished, this,
+            [this, reply, network, temporary, writeFailed, filePath]() {
         reply->deleteLater();
         network->deleteLater();
 
         if (reply->error() != QNetworkReply::NoError) {
+            temporary->close();
+            QFile::remove(filePath);
             if (statusBarController)
                 statusBarController->showMessage(
                     tr("Could not download torrent file: %1")
@@ -1663,29 +1743,28 @@ void MainWindow::addTorrentFromUrl()
             return;
         }
 
-        const QByteArray data = reply->readAll();
-        if (data.isEmpty()) {
+        while (reply->bytesAvailable() > 0) {
+            const QByteArray chunk = reply->read(64 * 1024);
+            if (chunk.isEmpty())
+                break;
+            if (temporary->write(chunk) != chunk.size())
+                *writeFailed = true;
+        }
+        temporary->close();
+
+        if (*writeFailed || temporary->size() == 0) {
+            QFile::remove(filePath);
             if (statusBarController)
                 statusBarController->showMessage(
-                    tr("The downloaded torrent file was empty."), 5000);
+                    *writeFailed
+                        ? tr("Could not save the downloaded torrent file.")
+                        : tr("The downloaded torrent file was empty."),
+                    5000);
             return;
         }
 
-        QTemporaryFile temporary(
-            QDir::tempPath() + QStringLiteral("/planetary-torrent-XXXXXX.torrent"));
-        temporary.setAutoRemove(false);
-        if (!temporary.open() || temporary.write(data) != data.size()) {
-            if (statusBarController)
-                statusBarController->showMessage(
-                    tr("Could not save downloaded torrent file: %1")
-                        .arg(temporary.errorString()), 6000);
-            return;
-        }
-
-        const QString filePath = temporary.fileName();
-        temporary.close();
+        pendingDownloadedTorrentFiles.insert(filePath);
         torrentAddController->addTorrentFile(filePath);
-        QFile::remove(filePath);
     });
 }
 
@@ -1880,6 +1959,12 @@ void MainWindow::setupConnectionStatusIndicator()
 {
     statusBarController = new StatusBarController(ui->statusbar, client, this);
     statusBarController->setup();
+    // Clicking the activity indicator cancels any pending backoff and starts
+    // a fresh read-only connection attempt immediately.
+    connect(statusBarController,
+            &StatusBarController::connectionRetryRequested,
+            pollingCoordinator,
+            &PollingCoordinator::requestReconnect);
     statusBarController->setServerName(client->serverDisplayName());
 
     connect(statusBarController, &StatusBarController::alternativeSpeedToggleRequested,

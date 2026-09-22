@@ -615,6 +615,7 @@
    <addaction name="separator"/>
     <addaction name="actionServer_Setup"/>
     <addaction name="actionSettings"/>
+    <addaction name="actionManage_Themes"/>
     <addaction name="actionTransmission_Settings"/>
     <addaction name="separator"/>
     <addaction name="actionExport_Settings"/>
@@ -805,6 +806,11 @@
   <action name="actionSettings">
    <property name="text">
     <string>Settings…</string>
+   </property>
+  </action>
+  <action name="actionManage_Themes">
+   <property name="text">
+    <string>Manage Themes…</string>
    </property>
   </action>
   <action name="moveTopAction">

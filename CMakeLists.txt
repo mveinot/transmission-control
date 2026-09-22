@@ -180,6 +180,8 @@ set(PROJECT_SOURCES
         diagnosticsdialog.h
         diagnosticsdialog.cpp
         ${PLANETARY_THEME_SOURCES}
+        thememanagerdialog.h
+        thememanagerdialog.cpp
         ${PLANETARY_TS_FILES}
 )
 

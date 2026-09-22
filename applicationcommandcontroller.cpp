@@ -100,6 +100,9 @@ void ApplicationCommandController::setupPlatformMenus()
             QAction::ApplicationSpecificRole);
         m_actions.applicationSettings->setShortcut(QKeySequence::Preferences);
     }
+    if (m_actions.manageThemes) {
+        m_actions.manageThemes->setMenuRole(QAction::ApplicationSpecificRole);
+    }
     if (m_actions.manageServers) {
         m_actions.manageServers->setMenuRole(
             QAction::ApplicationSpecificRole);
@@ -211,6 +214,7 @@ void ApplicationCommandController::connectCommands()
     connectAction(m_actions.deleteTorrent, m_handlers.deleteTorrent);
     connectAction(m_actions.applicationSettings,
                   m_handlers.applicationSettings);
+    connectAction(m_actions.manageThemes, m_handlers.manageThemes);
     connectAction(m_actions.manageServers, m_handlers.manageServers);
     connectAction(m_actions.serverSettings, m_handlers.serverSettings);
     connectAction(m_actions.statistics, m_handlers.statistics);

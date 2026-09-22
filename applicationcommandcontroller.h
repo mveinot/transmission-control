@@ -37,6 +37,7 @@ public:
         QAction *queueBottom = nullptr;
         QAction *closeWindow = nullptr;
         QAction *applicationSettings = nullptr;
+        QAction *manageThemes = nullptr;
         QAction *manageServers = nullptr;
         QAction *serverSettings = nullptr;
         QAction *alternativeSpeed = nullptr;
@@ -69,6 +70,7 @@ public:
         std::function<void()> reannounce;
         std::function<void()> deleteTorrent;
         std::function<void()> applicationSettings;
+        std::function<void()> manageThemes;
         std::function<void()> manageServers;
         std::function<void()> serverSettings;
         std::function<void(bool)> alternativeSpeed;

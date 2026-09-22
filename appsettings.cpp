@@ -75,11 +75,6 @@ AppSettings::AppSettings(QWidget *parent)
                 AppIcons::IconThemeManager::instance().setThemeId(
                 ui->iconThemeCombo->currentData().toString());
             });
-    connect(ui->refreshThemePacks, &QPushButton::clicked,
-            this, [this]() {
-                AppThemes::ThemeRegistry::instance().rescanExternalThemes();
-                populateThemeOptions();
-            });
     connect(ui->buttonTestNotification, &QPushButton::clicked,
             this, &AppSettings::testNotificationRequested);
     connect(ui->enableExternalCommand, &QCheckBox::toggled,

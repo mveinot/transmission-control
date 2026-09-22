@@ -63,6 +63,9 @@ public:
     void setFileRefreshSuppressed(bool suppressed);
     void requestSelectedTorrent(bool includeSummary);
     void handleTorrentListReceived();
+    void handleBackendUpdateFailed(const QString &message);
+    void handleBackendUpdateFinished();
+    void requestReconnect();
 
     void resetForServerChange();
     void setRemoteDownloadDirectory(const QString &path,
@@ -73,11 +76,13 @@ public:
 
 signals:
     void torrentListRefreshStarted(bool serverChanged);
+    void connectionRetryScheduled(int delaySeconds);
 
 private:
     Requests m_requests;
     QTimer *m_pollTimer = nullptr;
     QTimer *m_commandRefreshTimer = nullptr;
+    QTimer *m_retryTimer = nullptr;
     TorrentKey m_selectedTorrent;
     DetailView m_detailView = DetailView::None;
     QString m_remoteDownloadDirectory;
@@ -87,8 +92,10 @@ private:
     bool m_detailsPaneVisible = true;
     bool m_fileRefreshSuppressed = false;
     bool m_pendingCommandDetailsRefresh = false;
+    int m_retryAttempt = 0;
 
     void requestVisibleTorrentData();
+    void scheduleConnectionRetry();
 };
 
 #endif // POLLINGCOORDINATOR_H
