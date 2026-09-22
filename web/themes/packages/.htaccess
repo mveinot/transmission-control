@@ -1,6 +1,5 @@
 # Planetary theme packs are ZIP containers with a custom application
 # extension. Keep the extension intact when browsers download them.
-Options -Indexes
 AddType application/octet-stream .planetarytheme
 
 <IfModule mod_headers.c>
