@@ -15,6 +15,7 @@ class QFormLayout;
 class QGroupBox;
 class QLabel;
 class QLineEdit;
+class QPlainTextEdit;
 class QSpinBox;
 class QTreeWidget;
 class QTreeWidgetItem;
@@ -33,9 +34,10 @@ public:
 
 private slots:
     void handlePropertiesReceived(const TorrentProperties &properties);
+    void handleTrackersReceived(const TorrentTrackers &trackers);
     void handleCommandSucceeded(const QString &method);
     void handleCommandFailed(const QString &method, const QString &message);
-    void applyChanges();
+    bool applyChanges();
     void accept() override;
 
 private:
@@ -48,6 +50,8 @@ private:
                          const QString &key,
                          const QJsonValue &value);
     TorrentPropertyChanges editedProperties() const;
+    QStringList editedTrackerUrls() const;
+    bool applyTrackerChanges();
 
     static QString jsonValueTypeName(const QJsonValue &value);
     static QString jsonValueDisplayText(const QJsonValue &value);
@@ -78,6 +82,11 @@ private:
 
     QLineEdit *m_labelsEdit = nullptr;
     QLineEdit *m_groupEdit = nullptr;
+
+    QPlainTextEdit *m_trackersEdit = nullptr;
+    QLabel *m_trackersNote = nullptr;
+    QStringList m_trackerUrls;
+    bool m_trackersLoaded = false;
 
     QTreeWidget *m_rawTreeWidget = nullptr;
 };

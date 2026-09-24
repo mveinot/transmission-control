@@ -16,6 +16,9 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QLocale>
+#include <QMessageBox>
+#include <QPlainTextEdit>
+#include <QSet>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QTabWidget>
@@ -23,6 +26,7 @@
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
+#include <QUrl>
 
 namespace {
 constexpr int GlobalMode = 0;
@@ -78,6 +82,8 @@ TorrentPropertiesDialog::TorrentPropertiesDialog(TorrentBackend *client,
 
     connect(m_client, &TorrentBackend::torrentPropertiesReceived,
             this, &TorrentPropertiesDialog::handlePropertiesReceived);
+    connect(m_client, &TorrentBackend::torrentTrackersReceived,
+            this, &TorrentPropertiesDialog::handleTrackersReceived);
 
     connect(m_client, &TorrentBackend::commandSucceeded,
             this, &TorrentPropertiesDialog::handleCommandSucceeded);
@@ -91,6 +97,7 @@ TorrentPropertiesDialog::TorrentPropertiesDialog(TorrentBackend *client,
 
         m_statusLabel->setText(tr("Loading torrent properties…"));
         m_client->getTorrentProperties(m_torrentKey);
+        m_client->getTorrentTrackers(m_torrentKey);
     });
 }
 
@@ -227,6 +234,20 @@ void TorrentPropertiesDialog::buildUi()
 
     tabs->addTab(labelsTab, tr("Labels"));
 
+    auto *trackersTab = new QWidget(tabs);
+    auto *trackersLayout = new QVBoxLayout(trackersTab);
+    m_trackersEdit = new QPlainTextEdit(trackersTab);
+    m_trackersEdit->setPlaceholderText(
+        tr("Paste one tracker URL per line"));
+    m_trackersEdit->setLineWrapMode(QPlainTextEdit::NoWrap);
+    trackersLayout->addWidget(m_trackersEdit, 1);
+    m_trackersNote = new QLabel(
+        tr("One tracker URL per line. Changes are applied with Apply or OK."),
+        trackersTab);
+    m_trackersNote->setWordWrap(true);
+    trackersLayout->addWidget(m_trackersNote);
+    tabs->addTab(trackersTab, tr("Trackers"));
+
     auto *rawTab = new QWidget(tabs);
     auto *rawLayout = new QVBoxLayout(rawTab);
 
@@ -303,6 +324,11 @@ void TorrentPropertiesDialog::applyBackendCapabilities()
 
     setFormFieldVisible(m_labelsEdit, capabilities.labels);
     setFormFieldVisible(m_groupEdit, capabilities.groups);
+
+    if (m_trackersNote && !capabilities.trackerEditing) {
+        m_trackersNote->setText(
+            tr("Tracker editing is not supported by the selected backend."));
+    }
 }
 
 void TorrentPropertiesDialog::setControlsEnabled(bool enabled)
@@ -321,7 +347,8 @@ void TorrentPropertiesDialog::setControlsEnabled(bool enabled)
         m_seedIdleModeCombo,
         m_seedIdleLimitSpinBox,
         m_labelsEdit,
-        m_groupEdit
+        m_groupEdit,
+        m_trackersEdit
     };
 
     for (QWidget *widget : widgets) {
@@ -351,6 +378,8 @@ void TorrentPropertiesDialog::setControlsEnabled(bool enabled)
         enabled && capabilities.torrentShareLimits);
     m_labelsEdit->setEnabled(enabled && capabilities.labels);
     m_groupEdit->setEnabled(enabled && capabilities.groups);
+    m_trackersEdit->setEnabled(enabled && capabilities.trackerEditing
+                               && m_trackersLoaded);
 
     if (m_downloadLimitSpinBox)
         m_downloadLimitSpinBox->setEnabled(
@@ -385,6 +414,26 @@ void TorrentPropertiesDialog::handlePropertiesReceived(const TorrentProperties &
     setControlsEnabled(true);
 
     m_statusLabel->setText(tr("Properties loaded."));
+}
+
+void TorrentPropertiesDialog::handleTrackersReceived(const TorrentTrackers &trackers)
+{
+    if (trackers.key != m_torrentKey)
+        return;
+
+    m_trackerUrls.clear();
+    QStringList lines;
+    for (const TorrentTracker &tracker : trackers.trackers) {
+        const QString url = tracker.announceUrl.trimmed();
+        if (url.isEmpty())
+            continue;
+        m_trackerUrls.append(url);
+        lines.append(url);
+    }
+    m_trackersLoaded = true;
+    m_trackersEdit->setPlainText(lines.join(QLatin1Char('\n')));
+    if (m_loaded)
+        m_trackersEdit->setEnabled(m_client->capabilities().trackerEditing);
 }
 
 void TorrentPropertiesDialog::populateControls(const TorrentProperties &properties)
@@ -526,19 +575,76 @@ TorrentPropertyChanges TorrentPropertiesDialog::editedProperties() const
     return properties;
 }
 
-void TorrentPropertiesDialog::applyChanges()
+QStringList TorrentPropertiesDialog::editedTrackerUrls() const
+{
+    QStringList urls;
+    QSet<QString> seen;
+    const QStringList lines = m_trackersEdit->toPlainText().split(
+        QLatin1Char('\n'), Qt::SkipEmptyParts);
+    for (const QString &line : lines) {
+        const QString url = line.trimmed();
+        if (url.isEmpty() || seen.contains(url))
+            continue;
+        const QUrl parsed(url);
+        if (!parsed.isValid() || parsed.scheme().isEmpty())
+            continue;
+        seen.insert(url);
+        urls.append(url);
+    }
+    return urls;
+}
+
+bool TorrentPropertiesDialog::applyTrackerChanges()
+{
+    if (!m_trackersLoaded || !m_client->capabilities().trackerEditing)
+        return true;
+
+    const QStringList desired = editedTrackerUrls();
+    if (!desired.isEmpty() && desired.size() != m_trackersEdit->toPlainText()
+                                                  .split(QLatin1Char('\n'), Qt::SkipEmptyParts)
+                                                  .size()) {
+        m_statusLabel->setText(tr("Invalid or duplicate tracker lines were ignored."));
+    }
+    if (desired.isEmpty() && !m_trackerUrls.isEmpty()) {
+        const auto result = QMessageBox::warning(
+            this, tr("Remove All Trackers?"),
+            tr("The tracker list is empty. This will remove all trackers from the torrent."),
+            QMessageBox::Yes | QMessageBox::Cancel,
+            QMessageBox::Cancel);
+        if (result != QMessageBox::Yes)
+            return false;
+    }
+
+    const int common = qMin(m_trackerUrls.size(), desired.size());
+    for (int i = 0; i < common; ++i) {
+        if (m_trackerUrls.at(i) != desired.at(i))
+            m_client->editTorrentTracker(m_torrentKey, i, desired.at(i));
+    }
+    for (int i = m_trackerUrls.size() - 1; i >= desired.size(); --i)
+        m_client->removeTorrentTracker(m_torrentKey, i);
+    for (int i = common; i < desired.size(); ++i)
+        m_client->addTorrentTracker(m_torrentKey, desired.at(i));
+
+    m_trackerUrls = desired;
+    return true;
+}
+
+bool TorrentPropertiesDialog::applyChanges()
 {
     if (!m_client || !isValidTorrentKey(m_torrentKey) || !m_loaded)
-        return;
+        return false;
 
     m_statusLabel->setText(tr("Applying torrent properties…"));
+    if (!applyTrackerChanges())
+        return false;
     m_client->setTorrentProperties(m_torrentKey, editedProperties());
+    return true;
 }
 
 void TorrentPropertiesDialog::accept()
 {
-    applyChanges();
-    QDialog::accept();
+    if (applyChanges())
+        QDialog::accept();
 }
 
 void TorrentPropertiesDialog::handleCommandSucceeded(const QString &method)
@@ -550,6 +656,8 @@ void TorrentPropertiesDialog::handleCommandSucceeded(const QString &method)
 
     if (m_client && isValidTorrentKey(m_torrentKey))
         m_client->getTorrentProperties(m_torrentKey);
+    if (m_client && isValidTorrentKey(m_torrentKey))
+        m_client->getTorrentTrackers(m_torrentKey);
 }
 
 void TorrentPropertiesDialog::handleCommandFailed(const QString &method,
