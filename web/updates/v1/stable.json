@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "channel": "stable",
-  "version": "2.3.0",
-  "build": 425,
-  "displayVersion": "2.3.0.425",
+  "version": "2.4.0",
+  "build": 439,
+  "displayVersion": "2.4.0.439",
   "minimumMacOSVersion": "13.0",
-  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.3.0.425/Planetary-2.3.0.425-macOS-universal.dmg",
-  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.3.0.425",
-  "releaseNotesMarkdown": "**Full Changelog**: https://github.com/mveinot/transmission-control/compare/v2.2.0.413...v2.3.0.425\n\nNotable changes:\n\n* Added an optional torrent Priority column to the main torrent view\n* Added a beta update channel, including persisted channel selection\n* Added release download progress and assisted update downloads\n* Added an option to hide the Dock icon when Planetary is minimized to the tray",
-  "sha256": "704ad3b026db85567c66813866a444349fda66664ced8dcc0d54e63486db690a"
+  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.4.0.439/Planetary-2.4.0.439-macOS-universal.dmg",
+  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.4.0.439",
+  "releaseNotesMarkdown": "**Full Changelog**: https://github.com/mveinot/transmission-control/compare/v2.3.0.425...v2.4.0.439\n\nNotable changes:\n\n* Hardened the .torrent parser\n* Added the Theme Manager with external theme pack management\n* Added a checkbox for each file in the Files list to toggle wanted state\n* Added bulk tracker editing in the torrent properties dialog\n* Added several new themes to the website\n* Updated bundled libmaxminddb to the latest release",
+  "sha256": "8f00e94aa5b188da009684734f20e435fa475789ef650d1f9a209e961443c7c4"
 }
