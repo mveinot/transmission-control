@@ -76,6 +76,7 @@ private slots:
     void scansLoadsFallsBackAndRescans();
 #ifdef PLANETARY_HAVE_MINIZ
     void archiveIndexesAndExtractsLazily();
+    void importsAndDeletesThemePacks();
 #endif
 };
 
@@ -177,6 +178,9 @@ void TestThemeRegistry::exampleColorThemeManifestsLoad()
         QStringLiteral("rose-pine"),
         QStringLiteral("solarized-dark"),
         QStringLiteral("solarized-light"),
+        QStringLiteral("terminal-amber"),
+        QStringLiteral("terminal-cga"),
+        QStringLiteral("terminal-green"),
         QStringLiteral("tokyo-night-storm")
     };
 
@@ -245,6 +249,36 @@ void TestThemeRegistry::archiveIndexesAndExtractsLazily()
     QVERIFY(QFileInfo::exists(
         registry.iconTheme(QStringLiteral("packed"))
             .iconPath(AppIcons::Id::ActionStart)));
+}
+
+void TestThemeRegistry::importsAndDeletesThemePacks()
+{
+    const QString sourcePath = QFINDTESTDATA(
+        "../web/themes/packages/terminal-green.planetarytheme");
+    QVERIFY(!sourcePath.isEmpty());
+
+    QTemporaryDir temporaryDirectory;
+    QVERIFY(temporaryDirectory.isValid());
+    const QString sourceCopy = QDir(temporaryDirectory.path()).filePath(
+        QStringLiteral("source.planetarytheme"));
+    QVERIFY(QFile::copy(sourcePath, sourceCopy));
+
+    const QString themeDirectory = QDir(temporaryDirectory.path()).filePath(
+        QStringLiteral("installed"));
+    AppThemes::ThemeRegistry registry(themeDirectory, nullptr,
+                                      QDir(temporaryDirectory.path()).filePath(
+                                          QStringLiteral("cache")));
+    QString error;
+    QVERIFY2(registry.importThemePack(sourceCopy, &error), qPrintable(error));
+    QVERIFY(registry.contains(QStringLiteral("terminal-green")));
+    const QString installedPath = registry.externalThemePath(
+        QStringLiteral("terminal-green"));
+    QVERIFY(QFileInfo::exists(installedPath));
+    QVERIFY2(registry.removeExternalTheme(QStringLiteral("terminal-green"),
+                                          &error),
+             qPrintable(error));
+    QVERIFY(!registry.contains(QStringLiteral("terminal-green")));
+    QVERIFY(!QFileInfo::exists(installedPath));
 }
 #endif
 

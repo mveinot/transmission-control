@@ -13,6 +13,10 @@ manifest directly from the pack when **Refresh Theme Packs** is used and only
 extracts its assets into the application cache when that theme is selected.
 On supported desktops, opening or double-clicking a `.planetarytheme` file
 installs it into this directory and refreshes Planetary's theme registry.
+The **Manage Themes** dialog can also import a pack into this directory or
+delete an installed external pack. Built-in themes cannot be deleted; removing
+an external theme removes all of its components and makes Planetary fall back
+to its built-in theme if it was selected.
 
 The directory name is retained for compatibility with the first external icon
 theme format. A package may now contain icons, colours, or both. Planetary

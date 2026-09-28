@@ -21,6 +21,8 @@ public:
     explicit ThemeManagerDialog(QWidget *parent = nullptr);
 
 private:
+    void importThemePack();
+    void deleteSelectedTheme();
     void populateThemes();
     void showTheme(int row);
     void updatePreview(const AppThemes::Theme &theme);

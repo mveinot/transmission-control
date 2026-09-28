@@ -2,6 +2,8 @@
 
 #include "appcolors.h"
 #include "icontheme.h"
+#include "themearchive.h"
+#include "thememanifest.h"
 #include "themeregistry.h"
 #include "theme.h"
 
@@ -15,6 +17,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSplitter>
@@ -143,6 +146,12 @@ ThemeManagerDialog::ThemeManagerDialog(QWidget *parent)
     root->addWidget(splitter, 1);
 
     auto *actions = new QHBoxLayout;
+    auto *import = new QPushButton(tr("Import Theme Pack…"), this);
+    import->setToolTip(tr("Copy a .planetarytheme package into Planetary's theme folder"));
+    actions->addWidget(import);
+    auto *deleteTheme = new QPushButton(tr("Delete Theme"), this);
+    deleteTheme->setToolTip(tr("Remove the selected external theme from Planetary"));
+    actions->addWidget(deleteTheme);
     auto *refresh = new QPushButton(tr("Refresh Theme Packs"), this);
     refresh->setToolTip(tr("Scan the installed theme-pack directory for new or removed themes"));
     actions->addWidget(refresh);
@@ -158,6 +167,10 @@ ThemeManagerDialog::ThemeManagerDialog(QWidget *parent)
 
     connect(m_themeList, &QListWidget::currentRowChanged,
             this, &ThemeManagerDialog::showTheme);
+    connect(import, &QPushButton::clicked,
+            this, &ThemeManagerDialog::importThemePack);
+    connect(deleteTheme, &QPushButton::clicked,
+            this, &ThemeManagerDialog::deleteSelectedTheme);
     connect(refresh, &QPushButton::clicked, this, [this]() {
         AppThemes::ThemeRegistry::instance().rescanExternalThemes();
         populateThemes();
@@ -171,6 +184,100 @@ ThemeManagerDialog::ThemeManagerDialog(QWidget *parent)
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
     populateThemes();
+}
+
+void ThemeManagerDialog::importThemePack()
+{
+    auto &registry = AppThemes::ThemeRegistry::instance();
+    const QString sourcePath = QFileDialog::getOpenFileName(
+        this, tr("Import Theme Pack"), registry.themeDirectory(),
+        tr("Planetary Theme Packs (*.planetarytheme)"));
+    if (sourcePath.isEmpty())
+        return;
+
+    const AppThemes::ThemeArchiveManifest archive =
+        AppThemes::ThemeArchive::readManifest(sourcePath);
+    if (!archive.succeeded()) {
+        QMessageBox::warning(this, tr("Import Theme Pack"),
+                             tr("Planetary could not read this theme pack:\n\n%1")
+                                 .arg(archive.error));
+        return;
+    }
+    const AppThemes::ThemeManifestResult manifest =
+        AppThemes::ThemeManifestParser::parseData(
+            archive.data, registry.themeDirectory(), false);
+    if (!manifest.succeeded()) {
+        QMessageBox::warning(this, tr("Import Theme Pack"),
+                             tr("This theme pack has an invalid manifest:\n\n%1")
+                                 .arg(manifest.error));
+        return;
+    }
+
+    const QString existingSource =
+        registry.externalThemePath(manifest.theme.id());
+    QString prompt = tr("Import “%1” into Planetary's theme folder?")
+                         .arg(manifest.theme.displayName());
+    if (!existingSource.isEmpty())
+        prompt += tr("\n\nAn existing theme with this identifier will be replaced.");
+    if (QMessageBox::question(this, tr("Import Theme Pack"), prompt,
+                              QMessageBox::Yes | QMessageBox::Cancel,
+                              QMessageBox::Yes)
+        != QMessageBox::Yes) {
+        return;
+    }
+
+    QString error;
+    if (!registry.importThemePack(sourcePath, &error)) {
+        QMessageBox::warning(this, tr("Import Theme Pack"),
+                             tr("Planetary could not import this theme pack:\n\n%1")
+                                 .arg(error));
+        return;
+    }
+
+    populateThemes();
+    for (int row = 0; row < m_themeList->count(); ++row) {
+        if (m_themeList->item(row)->data(Qt::UserRole).toString()
+            == manifest.theme.id()) {
+            m_themeList->setCurrentRow(row);
+            break;
+        }
+    }
+    m_statusLabel->setText(tr("Imported theme pack: %1")
+                               .arg(manifest.theme.displayName()));
+}
+
+void ThemeManagerDialog::deleteSelectedTheme()
+{
+    if (!m_themeList->currentItem())
+        return;
+
+    auto &registry = AppThemes::ThemeRegistry::instance();
+    const QString themeId =
+        m_themeList->currentItem()->data(Qt::UserRole).toString();
+    const AppThemes::Theme theme = registry.theme(themeId);
+    if (!theme.isValid() || theme.isBuiltIn()) {
+        m_statusLabel->setText(tr("Built-in themes cannot be deleted."));
+        return;
+    }
+
+    const QMessageBox::StandardButton choice = QMessageBox::warning(
+        this, tr("Delete Theme"),
+        tr("Delete “%1”? This removes its installed theme pack and any icon or colour components it provides. If it is currently selected, Planetary will fall back to its built-in theme.")
+            .arg(theme.displayName()),
+        QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel);
+    if (choice != QMessageBox::Yes)
+        return;
+
+    QString error;
+    if (!registry.removeExternalTheme(themeId, &error)) {
+        QMessageBox::warning(this, tr("Delete Theme"),
+                             tr("Planetary could not delete this theme:\n\n%1")
+                                 .arg(error));
+        return;
+    }
+
+    populateThemes();
+    m_statusLabel->setText(tr("Deleted theme: %1").arg(theme.displayName()));
 }
 
 void ThemeManagerDialog::populateThemes()

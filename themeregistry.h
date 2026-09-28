@@ -41,6 +41,9 @@ public:
 
     bool registerTheme(const Theme &theme);
     bool unregisterTheme(const QString &themeId);
+    bool importThemePack(const QString &sourcePath, QString *error = nullptr);
+    bool removeExternalTheme(const QString &themeId, QString *error = nullptr);
+    QString externalThemePath(const QString &themeId) const;
     void rescanExternalThemes();
 
 signals:
@@ -64,6 +67,7 @@ private:
     mutable QHash<QString, Theme> m_themes;
     QStringList m_themeOrder;
     QSet<QString> m_scannedThemeIds;
+    QHash<QString, QString> m_externalSources;
     QHash<QString, ArchiveSource> m_archiveSources;
     mutable QSet<QString> m_failedArchiveIds;
     mutable QSet<QString> m_materializedArchiveIds;

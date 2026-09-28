@@ -9,6 +9,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QFileInfoList>
+#include <QSaveFile>
 #include <QSet>
 #include <QStandardPaths>
 #include <QTemporaryDir>
@@ -24,6 +25,38 @@ AppIcons::IconTheme::IconFiles builtInIconFiles()
                      AppIcons::semanticName(iconId) + QStringLiteral(".png"));
     }
     return files;
+}
+
+bool removeExternalPath(const QString &rootPath,
+                        const QString &sourcePath,
+                        QString *error)
+{
+    const QString root = QFileInfo(rootPath).absoluteFilePath();
+    const QFileInfo sourceInfo(sourcePath);
+    const QString source = sourceInfo.absoluteFilePath();
+    const QString prefix = QDir::cleanPath(root) + QDir::separator();
+    if (source.isEmpty() || source == root || !source.startsWith(prefix)) {
+        if (error)
+            *error = QStringLiteral("Theme source is outside the theme directory");
+        return false;
+    }
+
+    if (sourceInfo.fileName() == QStringLiteral("theme.json")
+        && sourceInfo.absolutePath() != root) {
+        if (!QDir(sourceInfo.absolutePath()).removeRecursively()) {
+            if (error)
+                *error = QStringLiteral("Could not remove the theme directory");
+            return false;
+        }
+        return true;
+    }
+
+    if (!QFile::remove(source)) {
+        if (error)
+            *error = QStringLiteral("Could not remove the theme package");
+        return false;
+    }
+    return true;
 }
 
 } // namespace
@@ -204,11 +237,138 @@ bool ThemeRegistry::unregisterTheme(const QString &themeId)
     m_themes.remove(canonical);
     m_themeOrder.removeAll(canonical);
     m_scannedThemeIds.remove(canonical);
+    m_externalSources.remove(canonical);
     m_archiveSources.remove(canonical);
     m_failedArchiveIds.remove(canonical);
     m_materializedArchiveIds.remove(canonical);
     emit registryChanged(canonical);
     return true;
+}
+
+QString ThemeRegistry::externalThemePath(const QString &themeId) const
+{
+    return m_externalSources.value(canonicalId(themeId));
+}
+
+bool ThemeRegistry::importThemePack(const QString &sourcePath, QString *error)
+{
+    const QFileInfo sourceInfo(sourcePath);
+    if (!sourceInfo.isFile()
+        || sourceInfo.suffix().compare(QStringLiteral("planetarytheme"),
+                                       Qt::CaseInsensitive) != 0) {
+        if (error)
+            *error = QStringLiteral("Select a .planetarytheme file");
+        return false;
+    }
+    if (m_themeDirectory.isEmpty() || !QDir().mkpath(m_themeDirectory)) {
+        if (error)
+            *error = QStringLiteral("Could not create the theme directory");
+        return false;
+    }
+
+    const ThemeArchiveManifest archive =
+        ThemeArchive::readManifest(sourceInfo.absoluteFilePath());
+    if (!archive.succeeded()) {
+        if (error)
+            *error = archive.error;
+        return false;
+    }
+    const ThemeManifestResult manifest = ThemeManifestParser::parseData(
+        archive.data, m_themeDirectory, false);
+    if (!manifest.succeeded()) {
+        if (error)
+            *error = manifest.error;
+        return false;
+    }
+
+    const QString themeId = canonicalId(manifest.theme.id());
+    const Theme existing = m_themes.value(themeId);
+    if (existing.isBuiltIn()) {
+        if (error)
+            *error = QStringLiteral("That theme id is reserved by Planetary");
+        return false;
+    }
+
+    const QString destinationPath =
+        QDir(m_themeDirectory).filePath(sourceInfo.fileName());
+    const QFileInfo destinationInfo(destinationPath);
+    if (destinationInfo.exists()
+        && destinationInfo.canonicalFilePath() == sourceInfo.canonicalFilePath()) {
+        rescanExternalThemes();
+        return true;
+    }
+
+    QFile source(sourceInfo.absoluteFilePath());
+    QSaveFile destination(destinationPath);
+    if (!source.open(QIODevice::ReadOnly)
+        || !destination.open(QIODevice::WriteOnly)) {
+        if (error)
+            *error = QStringLiteral("Could not copy the theme pack");
+        return false;
+    }
+    QByteArray buffer(256 * 1024, Qt::Uninitialized);
+    while (true) {
+        const qint64 bytesRead = source.read(buffer.data(), buffer.size());
+        if (bytesRead == 0)
+            break;
+        if (bytesRead < 0
+            || destination.write(buffer.constData(), bytesRead) != bytesRead) {
+            destination.cancelWriting();
+            if (error)
+                *error = QStringLiteral("Could not copy the theme pack");
+            return false;
+        }
+    }
+    if (!destination.commit()) {
+        if (error)
+            *error = QStringLiteral("Could not finish installing the theme pack");
+        return false;
+    }
+
+    const QString previousSource = m_externalSources.value(themeId);
+    if (!previousSource.isEmpty()
+        && QFileInfo(previousSource).absoluteFilePath()
+               != QFileInfo(destinationPath).absoluteFilePath()) {
+        QString removeError;
+        if (!removeExternalPath(m_themeDirectory, previousSource, &removeError)) {
+            if (error)
+                *error = removeError;
+            return false;
+        }
+    }
+
+    rescanExternalThemes();
+    return contains(themeId);
+}
+
+bool ThemeRegistry::removeExternalTheme(const QString &themeId, QString *error)
+{
+    const QString canonical = canonicalId(themeId);
+    const Theme existing = m_themes.value(canonical);
+    if (!existing.isValid() || existing.isBuiltIn()) {
+        if (error)
+            *error = QStringLiteral("Built-in themes cannot be deleted");
+        return false;
+    }
+
+    const QString source = m_externalSources.value(canonical);
+    if (source.isEmpty()) {
+        if (error)
+            *error = QStringLiteral("The theme source could not be located");
+        return false;
+    }
+
+    QString removeError;
+    if (!removeExternalPath(m_themeDirectory, source, &removeError)) {
+        if (error)
+            *error = removeError;
+        return false;
+    }
+    const auto archiveIt = m_archiveSources.constFind(canonical);
+    if (archiveIt != m_archiveSources.constEnd() && !archiveIt->cachePath.isEmpty())
+        QDir(archiveIt->cachePath).removeRecursively();
+    rescanExternalThemes();
+    return !contains(canonical);
 }
 
 void ThemeRegistry::rescanExternalThemes()
@@ -254,6 +414,7 @@ void ThemeRegistry::rescanExternalThemes()
     }
 
     QSet<QString> discoveredIds;
+    QHash<QString, QString> discoveredSources;
     QHash<QString, ArchiveSource> discoveredArchives;
     for (const Candidate &candidate : candidates) {
         ThemeManifestResult result;
@@ -319,6 +480,7 @@ void ThemeRegistry::rescanExternalThemes()
             m_archiveSources.remove(themeId);
         }
         discoveredIds.insert(themeId);
+        discoveredSources.insert(themeId, candidate.path);
         if (changed)
             emit registryChanged(themeId);
     }
@@ -327,6 +489,7 @@ void ThemeRegistry::rescanExternalThemes()
     for (const QString &themeId : removedIds)
         unregisterTheme(themeId);
     m_scannedThemeIds = discoveredIds;
+    m_externalSources = discoveredSources;
     m_archiveSources = discoveredArchives;
 }
 
