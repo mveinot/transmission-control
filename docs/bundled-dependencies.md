@@ -7,7 +7,7 @@ Homebrew, vcpkg, or separately prepared library prefix is required.
 
 | Component | Version | CMake target |
 | --- | --- | --- |
-| libmaxminddb | 1.13.3 | `Planetary::maxminddb` |
+| libmaxminddb | 1.14.0 | `Planetary::maxminddb` |
 | miniz | 3.1.2 | `Planetary::miniz` |
 
 Each component directory contains an `UPSTREAM.md` recording its tag, source

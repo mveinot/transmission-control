@@ -41,7 +41,7 @@ set_target_properties(planetary_maxminddb PROPERTIES
     POSITION_INDEPENDENT_CODE YES
 )
 target_compile_definitions(planetary_maxminddb PRIVATE
-    PACKAGE_VERSION="1.13.3"
+    PACKAGE_VERSION="1.14.0"
 )
 if(NOT PLANETARY_MMDB_BIG_ENDIAN)
     target_compile_definitions(planetary_maxminddb PRIVATE MMDB_LITTLE_ENDIAN=1)
