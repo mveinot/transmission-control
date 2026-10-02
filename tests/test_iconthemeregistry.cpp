@@ -178,10 +178,14 @@ void TestThemeRegistry::exampleColorThemeManifestsLoad()
         QStringLiteral("rose-pine"),
         QStringLiteral("solarized-dark"),
         QStringLiteral("solarized-light"),
+        QStringLiteral("maritime-radar"),
+        QStringLiteral("obsidian-neon"),
+        QStringLiteral("paper-console"),
         QStringLiteral("terminal-amber"),
         QStringLiteral("terminal-cga"),
         QStringLiteral("terminal-green"),
-        QStringLiteral("tokyo-night-storm")
+        QStringLiteral("tokyo-night-storm"),
+        QStringLiteral("verdant-crt")
     };
 
     for (const QString &themeId : expectedIds) {
