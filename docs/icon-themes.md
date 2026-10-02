@@ -91,6 +91,19 @@ entries are supported.
 - `icons` maps semantic icon IDs to image paths relative to the directory
   containing the manifest. Absolute paths and paths outside that directory are
   rejected. Qt-supported raster and SVG formats can be used.
+- `pressedIcons` is an optional top-level object mapping semantic icon IDs to
+  relative image paths, just like `icons`. For example, alongside
+  `"icons": {"action-start": "icons/start.png"}`, add
+  `"pressedIcons": {"action-start": "icons/start-pressed.png"}`.
+  Keep normal artwork in `icons` so older builds can load the theme while
+  ignoring the additional section. No format version change is needed.
+  Unknown top-level sections are ignored to allow future optional extensions.
+  Pressed artwork is shown only while a toolbar
+  button is held down (including keyboard activation), rather than when an
+  action is checked. Menus and other glyphs use the normal artwork.
+  If pressed artwork is omitted or cannot be loaded, the button uses its normal
+  artwork. Fallback icons use the pressed artwork of the theme supplying their
+  normal icon, if available.
 - `style` is optional and may contain a `stylesheet` path relative to the
   manifest. It must be paired with a `colors` component and is applied when
   that colour theme is selected. Stylesheets are limited to 256 KiB.

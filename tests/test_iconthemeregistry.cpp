@@ -1,9 +1,11 @@
 #include "appicons.h"
+#include "iconthememanager.h"
 #include "themearchive.h"
 #include "thememanifest.h"
 #include "themeregistry.h"
 
 #include <QApplication>
+#include <QAction>
 #include <QBuffer>
 #include <QColor>
 #include <QDir>
@@ -16,6 +18,8 @@
 #include <QSignalSpy>
 #include <QStandardPaths>
 #include <QTemporaryDir>
+#include <QToolBar>
+#include <QToolButton>
 #include <QtTest>
 
 #ifdef PLANETARY_HAVE_MINIZ
@@ -74,11 +78,90 @@ private slots:
     void exampleColorThemeManifestsLoad();
     void stylesheetManifestLoads();
     void scansLoadsFallsBackAndRescans();
+    void optionalPressedIcons();
+    void toolbarPressedIcons();
 #ifdef PLANETARY_HAVE_MINIZ
     void archiveIndexesAndExtractsLazily();
     void importsAndDeletesThemePacks();
 #endif
 };
+
+void TestThemeRegistry::optionalPressedIcons()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QVERIFY(writeIcon(directory.filePath("normal.png"), Qt::red));
+    QVERIFY(writeIcon(directory.filePath("pressed.png"), Qt::blue));
+    QJsonObject icons {
+        {"action-start", "normal.png"},
+        {"action-stop", "normal.png"},
+        {"action-start-all", "normal.png"}
+    };
+    auto root = manifest("pressed-test", "Pressed test", icons);
+    root.insert("pressedIcons", QJsonObject {{"action-start", "pressed.png"},
+                                            {"action-start-all", "missing.png"}});
+    root.insert("futureExtension", QJsonObject {{"enabled", true}});
+    QVERIFY(writeManifest(directory.path(), root));
+    const auto parsed = AppThemes::ThemeManifestParser::parseFile(
+        directory.filePath("theme.json"));
+    QVERIFY2(parsed.error.isEmpty(), qPrintable(parsed.error));
+    AppThemes::ThemeRegistry registry(directory.path());
+    QVERIFY(registry.registerTheme(parsed.theme));
+    QCOMPARE(iconColor(registry.icon("pressed-test", AppIcons::Id::ActionStart)), QColor(Qt::red));
+    QCOMPARE(iconColor(registry.icon("pressed-test", AppIcons::Id::ActionStart, true)), QColor(Qt::blue));
+    QCOMPARE(iconColor(registry.icon("pressed-test", AppIcons::Id::ActionStop, true)), QColor(Qt::red));
+    QCOMPARE(iconColor(registry.icon("pressed-test", AppIcons::Id::ActionStartAll, true)), QColor(Qt::red));
+
+    // Removing optional sections leaves the same normal artwork for old builds.
+    QVERIFY(writeManifest(directory.path(), manifest("pressed-test", "Pressed test", icons)));
+    const auto legacy = AppThemes::ThemeManifestParser::parseFile(directory.filePath("theme.json"));
+    QVERIFY2(legacy.error.isEmpty(), qPrintable(legacy.error));
+    QVERIFY(registry.registerTheme(legacy.theme));
+    QCOMPARE(iconColor(registry.icon("pressed-test", AppIcons::Id::ActionStart, true)), QColor(Qt::red));
+
+    root.insert("pressedIcons", QJsonObject {{"action-start", "../escape.png"}});
+    QVERIFY(writeManifest(directory.path(), root));
+    QVERIFY(!AppThemes::ThemeManifestParser::parseFile(directory.filePath("theme.json")).error.isEmpty());
+}
+
+void TestThemeRegistry::toolbarPressedIcons()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QVERIFY(writeIcon(directory.filePath("normal.png"), Qt::red));
+    QVERIFY(writeIcon(directory.filePath("pressed.png"), Qt::blue));
+    auto &registry = AppThemes::ThemeRegistry::instance();
+    QVERIFY(registry.registerTheme(AppThemes::Theme(
+        "toolbar-pressed-test", "Toolbar pressed test",
+        AppIcons::IconTheme("toolbar-pressed-test", "Toolbar pressed test",
+                            directory.path(), {{AppIcons::Id::ActionStart, "normal.png"}},
+                            "glass", false, {{AppIcons::Id::ActionStart, "pressed.png"}}),
+        std::nullopt)));
+    auto &manager = AppIcons::IconThemeManager::instance();
+    const QString previous = manager.themeId();
+    manager.setThemeId("toolbar-pressed-test");
+    QToolBar toolbar;
+    auto *action = toolbar.addAction("Start");
+    manager.bindAction(action, AppIcons::Id::ActionStart);
+    auto *button = qobject_cast<QToolButton *>(toolbar.widgetForAction(action));
+    QVERIFY(button);
+    toolbar.resize(toolbar.sizeHint());
+    QPixmap rendered(toolbar.size());
+    button->setDown(true);
+    toolbar.render(&rendered);
+    QCOMPARE(iconColor(button->icon()), QColor(Qt::blue));
+    QCOMPARE(iconColor(action->icon()), QColor(Qt::red));
+    button->setDown(false);
+    toolbar.render(&rendered);
+    QCOMPARE(iconColor(button->icon()), QColor(Qt::red));
+    button->setDown(true);
+    manager.setThemeId("glass");
+    toolbar.render(&rendered);
+    QCOMPARE(button->icon().pixmap(16, 16).toImage(),
+             registry.icon("glass", AppIcons::Id::ActionStart).pixmap(16, 16).toImage());
+    manager.setThemeId(previous);
+    registry.unregisterTheme("toolbar-pressed-test");
+}
 
 void TestThemeRegistry::semanticNamesRoundTrip()
 {

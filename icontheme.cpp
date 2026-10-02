@@ -11,11 +11,13 @@ IconTheme::IconTheme(QString id,
                      QString basePath,
                      IconFiles iconFiles,
                      QString fallbackThemeId,
-                     bool builtIn)
+                     bool builtIn,
+                     IconFiles pressedIconFiles)
     : m_id(id.trimmed().toLower())
     , m_displayName(std::move(displayName))
     , m_basePath(std::move(basePath))
     , m_iconFiles(std::move(iconFiles))
+    , m_pressedIconFiles(std::move(pressedIconFiles))
     , m_fallbackThemeId(fallbackThemeId.trimmed().toLower())
     , m_builtIn(builtIn)
 {
@@ -55,6 +57,7 @@ bool IconTheme::operator==(const IconTheme &other) const
 {
     return m_id == other.m_id && m_displayName == other.m_displayName
         && m_basePath == other.m_basePath && m_iconFiles == other.m_iconFiles
+        && m_pressedIconFiles == other.m_pressedIconFiles
         && m_fallbackThemeId == other.m_fallbackThemeId
         && m_builtIn == other.m_builtIn;
 }
@@ -64,9 +67,10 @@ bool IconTheme::hasIcon(Id iconId) const
     return m_iconFiles.contains(iconId) && !m_iconFiles.value(iconId).isEmpty();
 }
 
-QString IconTheme::iconPath(Id iconId) const
+QString IconTheme::iconPath(Id iconId, bool pressed) const
 {
-    const QString fileName = m_iconFiles.value(iconId);
+    const QString fileName = pressed ? m_pressedIconFiles.value(iconId)
+                                     : m_iconFiles.value(iconId);
     if (fileName.isEmpty())
         return QString();
 

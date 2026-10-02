@@ -44,18 +44,15 @@ std::optional<AppColors::Mode> colorMode(const QString &name)
     return std::nullopt;
 }
 
-std::optional<AppIcons::IconTheme> parseIcons(const QJsonValue &value,
-                                               const QString &id,
-                                               const QString &name,
-                                               const QString &basePath,
-                                               const QString &fallback,
-                                               QString *error)
+AppIcons::IconTheme::IconFiles parseIconFiles(const QJsonValue &value,
+                                             const QString &section,
+                                             QString *error)
 {
     if (value.isUndefined())
-        return std::nullopt;
+        return {};
     if (!value.isObject()) {
-        *error = QStringLiteral("icons must be an object");
-        return std::nullopt;
+        *error = QStringLiteral("%1 must be an object").arg(section);
+        return {};
     }
 
     AppIcons::IconTheme::IconFiles icons;
@@ -65,26 +62,43 @@ std::optional<AppIcons::IconTheme> parseIcons(const QJsonValue &value,
             AppIcons::idFromSemanticName(it.key());
         if (!iconId) {
             *error = QStringLiteral("Unknown semantic icon id: %1").arg(it.key());
-            return std::nullopt;
+            return {};
         }
         if (!it.value().isString()) {
-            *error = QStringLiteral("Icon path for %1 must be a string")
-                         .arg(it.key());
-            return std::nullopt;
+            *error = QStringLiteral("Icon path for %1 in %2 must be a string")
+                         .arg(it.key(), section);
+            return {};
         }
-
         const QString path = it.value().toString().trimmed();
         if (!isSafeRelativePath(path)) {
             *error = QStringLiteral("Icon path for %1 must stay inside the theme directory")
                          .arg(it.key());
-            return std::nullopt;
+            return {};
         }
         icons.insert(*iconId, QDir::cleanPath(path));
     }
+    return icons;
+}
+
+std::optional<AppIcons::IconTheme> parseIcons(const QJsonValue &value,
+                                             const QJsonValue &pressedValue,
+                                             const QString &id,
+                                             const QString &name,
+                                             const QString &basePath,
+                                             const QString &fallback,
+                                             QString *error)
+{
+    const auto icons = parseIconFiles(value, QStringLiteral("icons"), error);
+    if (!error->isEmpty())
+        return std::nullopt;
+    const auto pressedIcons = parseIconFiles(pressedValue, QStringLiteral("pressedIcons"), error);
+    if (!error->isEmpty())
+        return std::nullopt;
 
     if (icons.isEmpty())
         return std::nullopt;
-    return AppIcons::IconTheme(id, name, basePath, icons, fallback, false);
+    return AppIcons::IconTheme(id, name, basePath, icons, fallback, false,
+                               pressedIcons);
 }
 
 std::optional<AppColors::ColorTheme> parseColors(const QJsonValue &value,
@@ -222,6 +236,7 @@ ThemeManifestResult ThemeManifestParser::parseData(
     QString componentError;
     const std::optional<AppIcons::IconTheme> icons =
         parseIcons(root.value(QStringLiteral("icons")),
+                   root.value(QStringLiteral("pressedIcons")),
                    id, name, basePath, fallback, &componentError);
     if (!componentError.isEmpty())
         return failure(componentError);

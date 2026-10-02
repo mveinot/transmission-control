@@ -37,7 +37,8 @@ public:
     QString defaultIconThemeId() const;
     QString defaultColorThemeId() const;
     QString themeDirectory() const;
-    QIcon icon(const QString &themeId, AppIcons::Id iconId) const;
+    QIcon icon(const QString &themeId, AppIcons::Id iconId,
+               bool pressed = false) const;
 
     bool registerTheme(const Theme &theme);
     bool unregisterTheme(const QString &themeId);

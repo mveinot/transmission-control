@@ -22,7 +22,8 @@ public:
               QString basePath,
               IconFiles iconFiles,
               QString fallbackThemeId = QString(),
-              bool builtIn = false);
+              bool builtIn = false,
+              IconFiles pressedIconFiles = {});
 
     bool isValid() const;
     QString id() const;
@@ -33,13 +34,14 @@ public:
     bool operator==(const IconTheme &other) const;
 
     bool hasIcon(Id iconId) const;
-    QString iconPath(Id iconId) const;
+    QString iconPath(Id iconId, bool pressed = false) const;
 
 private:
     QString m_id;
     QString m_displayName;
     QString m_basePath;
     IconFiles m_iconFiles;
+    IconFiles m_pressedIconFiles;
     QString m_fallbackThemeId;
     bool m_builtIn = false;
 };

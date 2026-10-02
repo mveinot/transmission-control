@@ -10,6 +10,7 @@
 #include <QPixmap>
 #include <QSettings>
 #include <QToolButton>
+#include <QToolBar>
 
 namespace {
 
@@ -124,8 +125,31 @@ bool IconThemeManager::eventFilter(QObject *watched, QEvent *event)
         return QObject::eventFilter(watched, event);
 
     const Id iconId = m_boundActions.value(action);
+    // Read the actual button state at paint time: this covers mouse, keyboard,
+    // dragging off the button, and programmatic presses without altering QAction.
+    if (event->type() == QEvent::Paint && button->parentWidget()
+        && qobject_cast<QToolBar *>(button->parentWidget())) {
+        QIcon desired;
+        if (button->isEnabled() && button->isDown()) {
+            const QString cacheKey = m_themeId + QStringLiteral(":pressed:")
+                                     + QString::number(static_cast<int>(iconId));
+            auto cached = m_iconCache.constFind(cacheKey);
+            if (cached == m_iconCache.cend()) {
+                desired = AppThemes::ThemeRegistry::instance().icon(m_themeId, iconId, true);
+                m_iconCache.insert(cacheKey, desired);
+            } else {
+                desired = cached.value();
+            }
+        } else {
+            desired = button->isEnabled() && button->underMouse()
+                          ? hoverIcon(iconId) : icon(iconId);
+        }
+        if (button->icon().cacheKey() != desired.cacheKey())
+            button->setIcon(desired);
+        return QObject::eventFilter(watched, event);
+    }
     if (event->type() == QEvent::Enter && button->isEnabled()) {
-        button->setIcon(hoverOnlyIcon(icon(iconId)));
+        button->setIcon(hoverIcon(iconId));
     } else if (event->type() == QEvent::Leave) {
         button->setIcon(icon(iconId));
     }
@@ -145,7 +169,14 @@ QIcon IconThemeManager::icon(Id iconId) const
 
 QIcon IconThemeManager::hoverIcon(Id iconId) const
 {
-    return hoverOnlyIcon(icon(iconId));
+    const QString cacheKey = m_themeId + QStringLiteral(":hover:")
+                             + QString::number(static_cast<int>(iconId));
+    auto cached = m_iconCache.constFind(cacheKey);
+    if (cached != m_iconCache.cend())
+        return cached.value();
+    const QIcon result = hoverOnlyIcon(icon(iconId));
+    m_iconCache.insert(cacheKey, result);
+    return result;
 }
 
 QIcon IconThemeManager::icon(Id iconId, const QString &themeId) const

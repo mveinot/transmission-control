@@ -187,7 +187,8 @@ QString ThemeRegistry::themeDirectory() const
     return m_themeDirectory;
 }
 
-QIcon ThemeRegistry::icon(const QString &themeId, AppIcons::Id iconId) const
+QIcon ThemeRegistry::icon(const QString &themeId, AppIcons::Id iconId,
+                         bool pressed) const
 {
     QString candidate = resolvedIconThemeId(themeId);
     QSet<QString> visited;
@@ -197,8 +198,14 @@ QIcon ThemeRegistry::icon(const QString &themeId, AppIcons::Id iconId) const
         const AppIcons::IconTheme current = iconTheme(candidate);
         if (current.hasIcon(iconId)) {
             const QIcon result(current.iconPath(iconId));
-            if (!result.isNull())
+            if (!result.isNull()) {
+                if (pressed && !current.iconPath(iconId, true).isEmpty()) {
+                    const QIcon pressedIcon(current.iconPath(iconId, true));
+                    if (!pressedIcon.isNull())
+                        return pressedIcon;
+                }
                 return result;
+            }
         }
         candidate = canonicalId(current.fallbackThemeId());
     }
