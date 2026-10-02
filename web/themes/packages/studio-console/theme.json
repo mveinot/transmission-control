@@ -1,0 +1,64 @@
+{
+  "formatVersion": 1,
+  "id": "studio-console",
+  "name": "Studio Console",
+  "fallback": "glass",
+  "icons": {
+    "action-add-torrent": "icons/action-add-torrent.png",
+    "action-add-magnet": "icons/action-add-magnet.png",
+    "action-start": "icons/action-start.png",
+    "action-stop": "icons/action-stop.png",
+    "action-start-all": "icons/action-start-all.png",
+    "action-stop-all": "icons/action-stop-all.png",
+    "action-force-start": "icons/action-force-start.png",
+    "action-verify": "icons/action-verify.png",
+    "action-reannounce": "icons/action-reannounce.png",
+    "action-delete": "icons/action-delete.png"
+  },
+  "pressedIcons": {
+    "action-add-torrent": "icons/pressed/action-add-torrent.png",
+    "action-add-magnet": "icons/pressed/action-add-magnet.png",
+    "action-start": "icons/pressed/action-start.png",
+    "action-stop": "icons/pressed/action-stop.png",
+    "action-start-all": "icons/pressed/action-start-all.png",
+    "action-stop-all": "icons/pressed/action-stop-all.png",
+    "action-force-start": "icons/pressed/action-force-start.png",
+    "action-verify": "icons/pressed/action-verify.png",
+    "action-reannounce": "icons/pressed/action-reannounce.png",
+    "action-delete": "icons/pressed/action-delete.png"
+  },
+  "colors": {
+    "mode": "dark",
+    "palette": {
+      "window": "#25282b",
+      "window-text": "#e6e3dc",
+      "base": "#191b1e",
+      "alternate-base": "#2d3034",
+      "tool-tip-base": "#3b3b38",
+      "tool-tip-text": "#f4ede0",
+      "text": "#e6e3dc",
+      "button": "#393c3f",
+      "button-text": "#f1ede4",
+      "bright-text": "#ffffff",
+      "highlight": "#8a7358",
+      "highlighted-text": "#fff8e8",
+      "link": "#7da9ad",
+      "link-visited": "#b49a80",
+      "placeholder-text": "#999a98",
+      "accent": "#c49a65"
+    },
+    "semantic": {
+      "download": "#83b9bf",
+      "upload": "#d0a36d",
+      "success": "#9eae8f",
+      "warning": "#d6ad60",
+      "error": "#c97569",
+      "inactive": "#898d8f",
+      "verification": "#9b9db1",
+      "queued": "#b49a80",
+      "piece-complete": "#b88d5e",
+      "piece-remaining": "#202226",
+      "piece-border": "#5f6263"
+    }
+  }
+}
