@@ -60,7 +60,7 @@ icons safely fall back through the built-in theme set.
 ## Platforms
 
 The distributed macOS build is universal for Apple Silicon and Intel and
-supports macOS 13 or later. The source also builds on Windows and Linux, though
+supports macOS 14.4 or later. The source also builds on Windows and Linux, though
 those platforms have not yet received the same packaging and refinement work.
 
 Planetary began as a modern C++/Qt reimplementation of
