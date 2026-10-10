@@ -5,6 +5,7 @@
 #include <QDoubleSpinBox>
 #include <QLineEdit>
 #include <QLabel>
+#include <QListWidget>
 #include <QPushButton>
 #include <QSpinBox>
 
@@ -72,6 +73,7 @@ private slots:
     void togglesEnableDependentControls();
     void blocklistUpdateUsesDisplayedSettings();
     void unchangedBlocklistUpdatesWithoutSaving();
+    void removesSavedUserDefinedFolderFromStagedList();
 };
 
 void TestSessionSettingsDialog::unchangedSettingsProduceNoChanges()
@@ -206,6 +208,27 @@ void TestSessionSettingsDialog::unchangedBlocklistUpdatesWithoutSaving()
     const QJsonObject changes = updateSpy.takeFirst().at(0).toJsonObject();
     QVERIFY(changes.isEmpty());
     QCOMPARE(result->text(), QStringLiteral("Updating..."));
+}
+
+void TestSessionSettingsDialog::removesSavedUserDefinedFolderFromStagedList()
+{
+    SessionSettingsDialog dialog;
+    dialog.setUserDefinedFolders({QStringLiteral("/media/manual"),
+                                  QStringLiteral("/archive/manual")});
+
+    auto *list = requiredChild<QListWidget>(dialog, "listUserDefinedFolders");
+    auto *removeButton = requiredChild<QPushButton>(
+        dialog, "buttonRemoveUserDefinedFolder");
+    QCOMPARE(list->count(), 2);
+    QVERIFY(!removeButton->isEnabled());
+
+    list->setCurrentRow(0);
+    QVERIFY(removeButton->isEnabled());
+    removeButton->click();
+
+    QCOMPARE(dialog.userDefinedFolders(),
+             QStringList{QStringLiteral("/archive/manual")});
+    QCOMPARE(list->count(), 1);
 }
 
 QTEST_MAIN(TestSessionSettingsDialog)

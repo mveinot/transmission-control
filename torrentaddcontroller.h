@@ -23,6 +23,8 @@ public:
                                   QObject *parent = nullptr);
 
     void setDefaultDownloadDir(const QString &downloadDir);
+    QStringList userDefinedDownloadDirs() const;
+    bool setUserDefinedDownloadDirs(const QStringList &downloadDirs);
 
 public slots:
     void addTorrentFile(const QString &filePath);
@@ -36,7 +38,9 @@ signals:
     void addFailed(const QString &message);
 
 private:
-    struct PendingRename {
+    struct PendingAdd {
+        QString downloadDir;
+        bool userDefinedDownloadDir = false;
         QString originalName;
         QString newName;
     };
@@ -45,7 +49,8 @@ private:
     QWidget *m_dialogParent = nullptr;
 
     QString m_defaultDownloadDir;
-    QQueue<PendingRename> m_pendingRenames;
+    QStringList m_knownDownloadDirs;
+    QQueue<PendingAdd> m_pendingAdds;
 
     bool deleteTorrentFileOnSuccessfulAdd() const;
     bool showOptionsDialog(TorrentAddDialog::SourceType sourceType) const;
@@ -55,10 +60,24 @@ private:
                           const QString &source);
 
     QString savedDownloadDir() const;
+    QString lastAcceptedDownloadDir() const;
+    QStringList acceptedDownloadDirs() const;
     bool savedStartPaused() const;
     QString downloadDirSettingKey() const;
+    QString lastAcceptedDownloadDirSettingKey() const;
+    QString acceptedDownloadDirsSettingKey() const;
 
-    void saveOptions(const QString &downloadDir, bool startPaused);
+    void saveOptions(bool startPaused);
+    void submitAdd(TorrentAddDialog::SourceType sourceType,
+                   const QString &source,
+                   const QString &downloadDir,
+                   bool startPaused,
+                   const QList<int> &unwantedFileIndices = {},
+                   const QList<int> &lowPriorityFileIndices = {},
+                   const QList<int> &highPriorityFileIndices = {},
+                   bool userDefinedDownloadDir = false,
+                   const QString &originalName = {},
+                   const QString &newName = {});
 };
 
 #endif // TORRENTADDCONTROLLER_H

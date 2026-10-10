@@ -2,8 +2,11 @@
 
 #include <QSettings>
 #include <QSignalSpy>
+#include <QComboBox>
 #include <QTemporaryDir>
 #include <QTemporaryFile>
+
+#include <algorithm>
 
 #include "settingskeys.h"
 #include "torrentaddcontroller.h"
@@ -108,6 +111,8 @@ private slots:
     void init();
     void skipsMagnetOptionsDialog();
     void skipsTorrentFileOptionsDialog();
+    void remembersDestinationOnlyAfterServerConfirmation();
+    void destinationComboOffersKnownFoldersAndAllowsFreeText();
 
 private:
     QTemporaryDir m_settingsDirectory;
@@ -177,6 +182,56 @@ void TestTorrentAddController::skipsTorrentFileOptionsDialog()
     QVERIFY(backend.lastPaused);
     QVERIFY(backend.lastDeleteFileOnSuccess);
     QCOMPARE(startedSpy.count(), 1);
+}
+
+void TestTorrentAddController::remembersDestinationOnlyAfterServerConfirmation()
+{
+    QSettings settings;
+    settings.setValue(SettingsKeys::ShowMagnetLinkOptionsDialog, false);
+    settings.setValue(SettingsKeys::TorrentAddDownloadDir,
+                      QStringLiteral("/downloads/confirmed"));
+
+    RecordingTorrentBackend backend;
+    TorrentAddController controller(&backend, nullptr);
+    controller.addMagnetLink(QStringLiteral("magnet:?xt=urn:btih:abcdef"));
+
+    QStringList keysBeforeConfirmation = settings.allKeys();
+    QVERIFY(std::none_of(keysBeforeConfirmation.cbegin(),
+                         keysBeforeConfirmation.cend(),
+                         [](const QString &key) {
+                             return key.endsWith(QStringLiteral("-lastAccepted"));
+                         }));
+
+    emit backend.torrentAdded(QStringLiteral("confirmed-id"),
+                              QStringLiteral("Confirmed torrent"));
+
+    const QStringList keys = settings.allKeys();
+    const auto lastAcceptedKey = std::find_if(
+        keys.cbegin(), keys.cend(), [](const QString &key) {
+            return key.endsWith(QStringLiteral("-lastAccepted"));
+        });
+    QVERIFY(lastAcceptedKey != keys.cend());
+    QCOMPARE(settings.value(*lastAcceptedKey).toString(),
+             QStringLiteral("/downloads/confirmed"));
+
+    QVERIFY(std::none_of(keys.cbegin(), keys.cend(), [](const QString &key) {
+        return key.endsWith(QStringLiteral("-acceptedPaths"));
+    }));
+}
+
+void TestTorrentAddController::destinationComboOffersKnownFoldersAndAllowsFreeText()
+{
+    TorrentAddDialog dialog;
+    dialog.setDownloadDirs({QStringLiteral("/data/media"),
+                            QStringLiteral("/data/archive")});
+    dialog.setDownloadDir(QStringLiteral("/custom/path"));
+
+    QComboBox *combo = dialog.findChild<QComboBox *>(
+        QStringLiteral("comboDownloadDir"));
+    QVERIFY(combo);
+    QVERIFY(combo->isEditable());
+    QCOMPARE(combo->count(), 2);
+    QCOMPARE(dialog.downloadDir(), QStringLiteral("/custom/path"));
 }
 
 QTEST_MAIN(TestTorrentAddController)

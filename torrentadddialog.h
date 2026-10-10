@@ -31,6 +31,7 @@ public:
 
     void setSource(SourceType type, const QString &source);
     void setDownloadDir(const QString &downloadDir);
+    void setDownloadDirs(const QStringList &downloadDirs);
     void setStartPaused(bool paused);
     void setRememberOptions(bool remember);
     void setTorrentMetadata(const TorrentMetadata &metadata);
@@ -39,6 +40,7 @@ public:
     SourceType sourceType() const;
     QString source() const;
     QString downloadDir() const;
+    bool downloadDirWasEnteredFreeForm() const;
     bool startPaused() const;
     bool rememberOptions() const;
     QString topLevelFolderName() const;
@@ -54,6 +56,7 @@ private:
     QString m_source;
 
     bool m_updatingPriorities = false;
+    bool m_downloadDirWasEnteredFreeForm = false;
 
     void setupContentsTree();
     void addTorrentFileItem(const TorrentFileMetadata &file,

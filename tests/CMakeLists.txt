@@ -228,6 +228,8 @@ add_planetary_test(test_torrentaddcontroller
     ${CMAKE_SOURCE_DIR}/bencodeparser.h
     ${CMAKE_SOURCE_DIR}/bencodevalue.cpp
     ${CMAKE_SOURCE_DIR}/bencodevalue.h
+    ${CMAKE_SOURCE_DIR}/torrent.cpp
+    ${CMAKE_SOURCE_DIR}/torrent.h
     ${CMAKE_SOURCE_DIR}/torrentbackend.h
 )
 

@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QJsonObject>
 #include <QString>
+#include <QStringList>
 
 class QLabel;
 class QPushButton;
@@ -25,6 +26,8 @@ public:
     ~SessionSettingsDialog() override;
 
     void setSessionSettings(const QJsonObject &settings);
+    void setUserDefinedFolders(const QStringList &folders);
+    QStringList userDefinedFolders() const;
     void configureBackend(const QString &backendName,
                           const TorrentBackendCapabilities &capabilities);
     QJsonObject changedSettings() const;
@@ -48,10 +51,12 @@ private:
     QLabel *portTestResultLabel = nullptr;
     QWidget *portTestContainer = nullptr;
     bool supportsDisabledEncryption = false;
+    QStringList savedUserDefinedFolders;
 
     void populateEncryptionCombo(const QString &currentValue);
     void setComboCurrentData(const QString &value);
     void updateEnabledStates();
+    void updateUserDefinedFolderList();
     void setupPortTestControls();
     bool blocklistUpdateRunning = false;
 };

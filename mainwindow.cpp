@@ -2363,6 +2363,10 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     SessionSettingsDialog dialog(this);
     dialog.configureBackend(client->backendName(), client->capabilities());
     dialog.setSessionSettings(sessionSettings);
+    if (torrentAddController) {
+        dialog.setUserDefinedFolders(
+            torrentAddController->userDefinedDownloadDirs());
+    }
 
     connect(&dialog, &SessionSettingsDialog::portTestRequested,
             client, &TorrentBackend::testPortForwarding);
@@ -2385,12 +2389,17 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
     if (dialog.exec() != QDialog::Accepted)
         return;
 
+    const bool userFoldersChanged = torrentAddController
+        && torrentAddController->setUserDefinedDownloadDirs(
+            dialog.userDefinedFolders());
     const QJsonObject changes = dialog.changedSettings();
 
     if (changes.isEmpty()) {
         if (statusBarController) {
             statusBarController->showMessage(
-                tr("No server settings changed"),
+                userFoldersChanged
+                    ? tr("Saved folder list updated")
+                    : tr("No server settings changed"),
                 3000
                 );
         }

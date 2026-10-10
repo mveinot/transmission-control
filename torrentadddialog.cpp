@@ -5,6 +5,7 @@
 #include <QHash>
 #include <QHeaderView>
 #include <QLocale>
+#include <QLineEdit>
 #include <QObject>
 #include <QStringList>
 #include <QTreeWidgetItem>
@@ -99,6 +100,14 @@ TorrentAddDialog::TorrentAddDialog(QWidget *parent)
 
     setupContentsTree();
     ui->groupContents->hide();
+    ui->comboDownloadDir->lineEdit()->setClearButtonEnabled(true);
+    connect(ui->comboDownloadDir->lineEdit(), &QLineEdit::textEdited,
+            this, [this]() { m_downloadDirWasEnteredFreeForm = true; });
+    connect(ui->comboDownloadDir, qOverload<int>(&QComboBox::currentIndexChanged),
+            this, [this](int index) {
+                if (index >= 0)
+                    m_downloadDirWasEnteredFreeForm = false;
+            });
 
     ui->editSource->setTextMargins(0, 0, 0, 0);
     ui->editSource->setCursorPosition(0);
@@ -155,7 +164,29 @@ void TorrentAddDialog::setSource(SourceType type, const QString &source)
 
 void TorrentAddDialog::setDownloadDir(const QString &downloadDir)
 {
-    ui->editDownloadDir->setText(downloadDir);
+    const int index = ui->comboDownloadDir->findText(downloadDir);
+    if (index >= 0)
+        ui->comboDownloadDir->setCurrentIndex(index);
+    else
+        ui->comboDownloadDir->setEditText(downloadDir);
+    m_downloadDirWasEnteredFreeForm = false;
+}
+
+void TorrentAddDialog::setDownloadDirs(const QStringList &downloadDirs)
+{
+    const QString currentText = ui->comboDownloadDir->currentText();
+    ui->comboDownloadDir->clear();
+
+    for (const QString &downloadDir : downloadDirs) {
+        const QString normalized = downloadDir.trimmed();
+        if (!normalized.isEmpty()
+            && ui->comboDownloadDir->findText(normalized) < 0) {
+            ui->comboDownloadDir->addItem(normalized);
+        }
+    }
+
+    ui->comboDownloadDir->setEditText(currentText);
+    m_downloadDirWasEnteredFreeForm = false;
 }
 
 void TorrentAddDialog::setStartPaused(bool paused)
@@ -374,7 +405,13 @@ QString TorrentAddDialog::source() const
 
 QString TorrentAddDialog::downloadDir() const
 {
-    return ui->editDownloadDir->text().trimmed();
+    return ui->comboDownloadDir->currentText().trimmed();
+}
+
+bool TorrentAddDialog::downloadDirWasEnteredFreeForm() const
+{
+    return m_downloadDirWasEnteredFreeForm
+        && ui->comboDownloadDir->currentIndex() < 0;
 }
 
 bool TorrentAddDialog::startPaused() const

@@ -6,9 +6,11 @@
 
 #include <QCryptographicHash>
 #include <QFileInfo>
+#include <QSet>
 #include <QSettings>
 #include <QWidget>
 
+#include <algorithm>
 #include <utility>
 
 namespace {
@@ -49,21 +51,56 @@ TorrentAddController::TorrentAddController(TorrentBackend *client,
     , m_dialogParent(dialogParent)
 {
     if (m_client) {
+        connect(m_client, &TorrentBackend::serverChanged,
+                this, [this]() { m_knownDownloadDirs.clear(); });
+        connect(m_client, &TorrentBackend::torrentsReceived,
+                this, [this](const QVector<torrent> &torrents) {
+                    QSet<QString> uniqueDirs;
+                    for (const torrent &item : torrents) {
+                        const QString downloadDir = item.getDownloadDir().trimmed();
+                        if (!downloadDir.isEmpty())
+                            uniqueDirs.insert(downloadDir);
+                    }
+                    m_knownDownloadDirs = uniqueDirs.values();
+                    std::sort(m_knownDownloadDirs.begin(), m_knownDownloadDirs.end(),
+                              [](const QString &lhs, const QString &rhs) {
+                                  return lhs.compare(rhs, Qt::CaseInsensitive) < 0;
+                              });
+                });
         connect(m_client, &TorrentBackend::torrentAdded,
                 this, [this](const TorrentKey &key, const QString &) {
-                    if (m_pendingRenames.isEmpty())
+                    if (m_pendingAdds.isEmpty())
                         return;
 
-                    const PendingRename rename = m_pendingRenames.dequeue();
-                    if (rename.originalName != rename.newName)
-                        m_client->renameTorrentPath(key, rename.originalName,
-                                                    rename.newName);
+                    const PendingAdd pending = m_pendingAdds.dequeue();
+                    if (!pending.downloadDir.isEmpty()) {
+                        QSettings settings;
+                        if (pending.userDefinedDownloadDir) {
+                            QStringList acceptedDirs =
+                                settings.value(acceptedDownloadDirsSettingKey())
+                                    .toStringList();
+                            acceptedDirs.removeAll(pending.downloadDir);
+                            acceptedDirs.prepend(pending.downloadDir);
+                            settings.setValue(acceptedDownloadDirsSettingKey(),
+                                              acceptedDirs);
+                        }
+                        settings.setValue(lastAcceptedDownloadDirSettingKey(),
+                                          pending.downloadDir);
+                        settings.setValue(downloadDirSettingKey(),
+                                          pending.downloadDir);
+                    }
+
+                    if (!pending.newName.isEmpty()
+                        && pending.originalName != pending.newName) {
+                        m_client->renameTorrentPath(key, pending.originalName,
+                                                    pending.newName);
+                    }
                 });
         connect(m_client, &TorrentBackend::commandFailed,
                 this, [this](const QString &method, const QString &) {
                     if (method == QStringLiteral("torrent-add")
-                        && !m_pendingRenames.isEmpty())
-                        m_pendingRenames.dequeue();
+                        && !m_pendingAdds.isEmpty())
+                        m_pendingAdds.dequeue();
                 });
     }
 }
@@ -183,7 +220,16 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
         dialog.setTorrentMetadata(TorrentMetadataParser::parseTorrentFile(source));
     }
 
-    const QString rememberedDownloadDir = savedDownloadDir();
+    QStringList downloadDirs = m_knownDownloadDirs;
+    for (const QString &downloadDir : acceptedDownloadDirs()) {
+        if (!downloadDirs.contains(downloadDir))
+            downloadDirs.append(downloadDir);
+    }
+    dialog.setDownloadDirs(downloadDirs);
+
+    QString rememberedDownloadDir = lastAcceptedDownloadDir();
+    if (rememberedDownloadDir.isEmpty())
+        rememberedDownloadDir = savedDownloadDir();
 
     if (!rememberedDownloadDir.isEmpty())
         dialog.setDownloadDir(rememberedDownloadDir);
@@ -199,6 +245,9 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
     }
 
     const QString downloadDir = dialog.downloadDir();
+    const bool userDefinedDownloadDir =
+        dialog.downloadDirWasEnteredFreeForm()
+        && !m_knownDownloadDirs.contains(downloadDir);
     const bool startPaused = dialog.startPaused();
     const QString renamedFolder = dialog.topLevelFolderName();
 
@@ -212,25 +261,23 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
     }
 
     if (dialog.rememberOptions())
-        saveOptions(downloadDir, startPaused);
+        saveOptions(startPaused);
 
     switch (sourceType) {
     case TorrentAddDialog::SourceType::TorrentFile:
-        if (!renamedFolder.isEmpty())
-            m_pendingRenames.enqueue({
-                TorrentMetadataParser::parseTorrentFile(source).name,
-                renamedFolder});
-        m_client->addTorrentFile(source,
-                                 downloadDir,
-                                 startPaused,
-                                 dialog.unwantedFileIndices(),
-                                 dialog.lowPriorityFileIndices(),
-                                 dialog.highPriorityFileIndices(),
-                                 deleteTorrentFileOnSuccessfulAdd());
+        submitAdd(sourceType, source, downloadDir, startPaused,
+                  dialog.unwantedFileIndices(),
+                  dialog.lowPriorityFileIndices(),
+                  dialog.highPriorityFileIndices(),
+                  userDefinedDownloadDir,
+                  renamedFolder.isEmpty()
+                      ? QString()
+                      : TorrentMetadataParser::parseTorrentFile(source).name,
+                  renamedFolder);
         break;
 
     case TorrentAddDialog::SourceType::MagnetLink:
-        m_client->addMagnetLink(source, downloadDir, startPaused);
+        submitAdd(sourceType, source, downloadDir, startPaused);
         break;
     }
 
@@ -253,21 +300,7 @@ bool TorrentAddController::addUsingDefaults(
 
     const bool startPaused = savedStartPaused();
 
-    switch (sourceType) {
-    case TorrentAddDialog::SourceType::TorrentFile:
-        m_client->addTorrentFile(source,
-                                 downloadDir,
-                                 startPaused,
-                                 {},
-                                 {},
-                                 {},
-                                 deleteTorrentFileOnSuccessfulAdd());
-        break;
-
-    case TorrentAddDialog::SourceType::MagnetLink:
-        m_client->addMagnetLink(source, downloadDir, startPaused);
-        break;
-    }
+    submitAdd(sourceType, source, downloadDir, startPaused);
 
     emit addStarted();
     return true;
@@ -276,7 +309,26 @@ bool TorrentAddController::addUsingDefaults(
 QString TorrentAddController::savedDownloadDir() const
 {
     QSettings settings;
-    return settings.value(downloadDirSettingKey()).toString();
+    const QString currentServerValue =
+        settings.value(downloadDirSettingKey()).toString();
+    if (!currentServerValue.isEmpty())
+        return currentServerValue;
+
+    // Migrate the original global Transmission default once to the currently
+    // selected server, so it does not leak into every server profile.
+    constexpr auto migrationKey = "torrentAdd/downloadDirServerMigrationComplete";
+    if (m_client && m_client->backendName() == QStringLiteral("Transmission")
+        && !settings.value(migrationKey, false).toBool()) {
+        const QString legacyValue = settings.value(
+            QString::fromLatin1(SettingsKeys::TorrentAddDownloadDir)).toString();
+        if (!legacyValue.isEmpty()) {
+            settings.setValue(downloadDirSettingKey(), legacyValue);
+            settings.remove(QString::fromLatin1(SettingsKeys::TorrentAddDownloadDir));
+        }
+        settings.setValue(migrationKey, true);
+        return legacyValue;
+    }
+    return {};
 }
 
 bool TorrentAddController::savedStartPaused() const
@@ -295,10 +347,7 @@ QString TorrentAddController::downloadDirSettingKey() const
 
     // Destination paths belong to the remote daemon, not the local machine.
     // Scope them by backend and endpoint so switching servers cannot reuse an
-    // incompatible path. Keep Transmission on the legacy key for migration.
-    if (m_client->backendName() == QStringLiteral("Transmission"))
-        return baseKey;
-
+    // incompatible path.
     const QByteArray identity =
         (m_client->backendName() + QLatin1Char('\n') +
          m_client->endpointUrl()).toUtf8();
@@ -308,13 +357,95 @@ QString TorrentAddController::downloadDirSettingKey() const
     return baseKey + QStringLiteral("/servers/") + digest;
 }
 
-void TorrentAddController::saveOptions(const QString &downloadDir, bool startPaused)
+QString TorrentAddController::lastAcceptedDownloadDir() const
 {
     QSettings settings;
-    settings.setValue(downloadDirSettingKey(), downloadDir);
-    // Preferences and the add dialog intentionally share this default; the
-    // dialog may override it for subsequent additions when options are saved.
+    return settings.value(lastAcceptedDownloadDirSettingKey()).toString();
+}
+
+QStringList TorrentAddController::acceptedDownloadDirs() const
+{
+    QSettings settings;
+    return settings.value(acceptedDownloadDirsSettingKey()).toStringList();
+}
+
+QStringList TorrentAddController::userDefinedDownloadDirs() const
+{
+    return acceptedDownloadDirs();
+}
+
+bool TorrentAddController::setUserDefinedDownloadDirs(
+    const QStringList &downloadDirs)
+{
+    QStringList normalized;
+    for (const QString &downloadDir : downloadDirs) {
+        const QString trimmed = downloadDir.trimmed();
+        if (!trimmed.isEmpty() && !normalized.contains(trimmed))
+            normalized.append(trimmed);
+    }
+
+    const QStringList current = acceptedDownloadDirs();
+    if (current == normalized)
+        return false;
+
+    QSettings settings;
+    settings.setValue(acceptedDownloadDirsSettingKey(), normalized);
+
+    const QString lastAccepted = lastAcceptedDownloadDir();
+    if (!lastAccepted.isEmpty() && !normalized.contains(lastAccepted)
+        && !m_knownDownloadDirs.contains(lastAccepted)) {
+        settings.remove(lastAcceptedDownloadDirSettingKey());
+        if (settings.value(downloadDirSettingKey()).toString() == lastAccepted)
+            settings.remove(downloadDirSettingKey());
+    }
+
+    return true;
+}
+
+QString TorrentAddController::lastAcceptedDownloadDirSettingKey() const
+{
+    return downloadDirSettingKey() + QStringLiteral("-lastAccepted");
+}
+
+QString TorrentAddController::acceptedDownloadDirsSettingKey() const
+{
+    return downloadDirSettingKey() + QStringLiteral("-acceptedPaths");
+}
+
+void TorrentAddController::saveOptions(bool startPaused)
+{
+    QSettings settings;
+    // Destination paths are saved only after server confirmation; this
+    // checkbox continues to govern the start-paused preference.
     settings.setValue(SettingsKeys::StartTorrentPaused, startPaused);
+}
+
+void TorrentAddController::submitAdd(
+    TorrentAddDialog::SourceType sourceType,
+    const QString &source,
+    const QString &downloadDir,
+    bool startPaused,
+    const QList<int> &unwantedFileIndices,
+    const QList<int> &lowPriorityFileIndices,
+    const QList<int> &highPriorityFileIndices,
+    bool userDefinedDownloadDir,
+    const QString &originalName,
+    const QString &newName)
+{
+    m_pendingAdds.enqueue({downloadDir, userDefinedDownloadDir,
+                            originalName, newName});
+
+    switch (sourceType) {
+    case TorrentAddDialog::SourceType::TorrentFile:
+        m_client->addTorrentFile(source, downloadDir, startPaused,
+                                 unwantedFileIndices, lowPriorityFileIndices,
+                                 highPriorityFileIndices,
+                                 deleteTorrentFileOnSuccessfulAdd());
+        break;
+    case TorrentAddDialog::SourceType::MagnetLink:
+        m_client->addMagnetLink(source, downloadDir, startPaused);
+        break;
+    }
 }
 
 void TorrentAddController::addTorrentFileUsingDefaults(const QString &filePath)

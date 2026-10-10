@@ -99,12 +99,12 @@
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QLineEdit" name="editDownloadDir">
+       <widget class="QComboBox" name="comboDownloadDir">
+        <property name="editable">
+         <bool>true</bool>
+        </property>
         <property name="placeholderText">
          <string>Remote daemon download path</string>
-        </property>
-        <property name="clearButtonEnabled">
-         <bool>true</bool>
         </property>
        </widget>
       </item>

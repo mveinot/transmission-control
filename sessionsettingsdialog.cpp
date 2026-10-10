@@ -7,6 +7,7 @@
 #include <QHBoxLayout>
 #include <QJsonValue>
 #include <QLabel>
+#include <QListWidget>
 #include <QPushButton>
 #include <QVariant>
 #include <QWidget>
@@ -157,12 +158,50 @@ SessionSettingsDialog::SessionSettingsDialog(QWidget *parent)
     connect(ui->checkIdleSeedingLimit, &QCheckBox::toggled,
             this, &SessionSettingsDialog::updateEnabledStates);
 
+    connect(ui->listUserDefinedFolders, &QListWidget::itemSelectionChanged,
+            this, [this]() {
+                ui->buttonRemoveUserDefinedFolder->setEnabled(
+                    !ui->listUserDefinedFolders->selectedItems().isEmpty());
+            });
+    connect(ui->buttonRemoveUserDefinedFolder, &QPushButton::clicked,
+            this, [this]() {
+                const int row = ui->listUserDefinedFolders->currentRow();
+                if (row < 0 || row >= savedUserDefinedFolders.size())
+                    return;
+                savedUserDefinedFolders.removeAt(row);
+                updateUserDefinedFolderList();
+            });
+
     updateEnabledStates();
+    updateUserDefinedFolderList();
 }
 
 SessionSettingsDialog::~SessionSettingsDialog()
 {
     delete ui;
+}
+
+void SessionSettingsDialog::setUserDefinedFolders(const QStringList &folders)
+{
+    savedUserDefinedFolders.clear();
+    for (const QString &folder : folders) {
+        const QString normalized = folder.trimmed();
+        if (!normalized.isEmpty() && !savedUserDefinedFolders.contains(normalized))
+            savedUserDefinedFolders.append(normalized);
+    }
+    updateUserDefinedFolderList();
+}
+
+QStringList SessionSettingsDialog::userDefinedFolders() const
+{
+    return savedUserDefinedFolders;
+}
+
+void SessionSettingsDialog::updateUserDefinedFolderList()
+{
+    ui->listUserDefinedFolders->clear();
+    ui->listUserDefinedFolders->addItems(savedUserDefinedFolders);
+    ui->buttonRemoveUserDefinedFolder->setEnabled(false);
 }
 
 void SessionSettingsDialog::setupPortTestControls()
