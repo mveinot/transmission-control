@@ -24,6 +24,22 @@ fail() {
   exit 1
 }
 
+version_is_at_most() {
+  awk -v version="$1" -v ceiling="$2" 'BEGIN {
+    version_count = split(version, version_parts, ".")
+    ceiling_count = split(ceiling, ceiling_parts, ".")
+    for (i = 1; i <= 3; ++i) {
+      version_part = i <= version_count ? version_parts[i] + 0 : 0
+      ceiling_part = i <= ceiling_count ? ceiling_parts[i] + 0 : 0
+      if (version_part < ceiling_part)
+        exit 0
+      if (version_part > ceiling_part)
+        exit 1
+    }
+    exit 0
+  }'
+}
+
 if [[ ! "$BUILD_JOBS" =~ ^[1-9][0-9]*$ ]]; then
   fail "BUILD_JOBS must be a positive integer: $BUILD_JOBS"
 fi
@@ -63,7 +79,14 @@ verify_macho() {
 
   while IFS= read -r artifact_minos; do
     minos_count=$((minos_count + 1))
-    if [[ "$artifact_minos" != "$MACOS_DEPLOYMENT_TARGET" ]]; then
+    if ! version_is_at_most "$artifact_minos" "$MACOS_DEPLOYMENT_TARGET"; then
+      fail "$artifact_path requires macOS $artifact_minos, newer than the app minimum $MACOS_DEPLOYMENT_TARGET"
+    fi
+    # The app executable establishes the actual minimum OS version. Bundled
+    # frameworks and plugins may target older macOS releases; they remain
+    # compatible with the app's newer minimum and should not fail validation.
+    if [[ "$artifact_path" == "$APP_EXECUTABLE" \
+      && "$artifact_minos" != "$MACOS_DEPLOYMENT_TARGET" ]]; then
       fail "$artifact_path targets macOS $artifact_minos, expected $MACOS_DEPLOYMENT_TARGET"
     fi
   done < <(vtool -show-build "$artifact_path" | awk '$1 == "minos" { print $2 }')
