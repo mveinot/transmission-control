@@ -4,6 +4,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QCloseEvent>
+#include <QCursor>
 #include <QIcon>
 #include <QMainWindow>
 #include <QMenu>
@@ -55,11 +56,18 @@ void TrayController::setup()
     connect(m_quitAction, &QAction::triggered,
             this, &TrayController::quitApplication);
 
-    rebuildTrayMenu();
-    m_trayIcon->setContextMenu(m_trayMenu);
+    connect(m_trayIcon, &QSystemTrayIcon::activated,
+            this, [this](QSystemTrayIcon::ActivationReason reason) {
+                if (reason == QSystemTrayIcon::Trigger
+                    || reason == QSystemTrayIcon::DoubleClick) {
+                    showMainWindow();
+                } else if (reason == QSystemTrayIcon::Context
+                           && m_trayMenu) {
+                    m_trayMenu->popup(QCursor::pos());
+                }
+            });
 
-    // Do not restore the main window from a plain tray icon click.
-    // The user-facing restore path is the explicit "Show Planetary" tray menu action.
+    rebuildTrayMenu();
 
     updateTrayIconVisibility();
 }
