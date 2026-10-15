@@ -230,9 +230,20 @@ bool WindowLayoutController::restoreWindowState()
 {
     if (!m_window)
         return false;
+
     const QByteArray state =
         QSettings().value(SettingsKeys::MainWindowState).toByteArray();
-    return !state.isEmpty() && m_window->restoreState(state, 2);
+    const bool restoredState =
+        !state.isEmpty() && m_window->restoreState(state, 2);
+
+    // restoreState() can adjust the window to accommodate restored docks, so
+    // restore the saved outer geometry last.
+    const QByteArray geometry =
+        QSettings().value(SettingsKeys::MainWindowGeometry).toByteArray();
+    if (!geometry.isEmpty())
+        m_window->restoreGeometry(geometry);
+
+    return restoredState;
 }
 
 void WindowLayoutController::saveState() const
@@ -259,6 +270,8 @@ void WindowLayoutController::saveState() const
             SettingsKeys::MainWindowToolBarStyle,
             static_cast<int>(m_widgets.toolBar->toolButtonStyle()));
     }
+    settings.setValue(SettingsKeys::MainWindowGeometry,
+                      m_window->saveGeometry());
     settings.setValue(SettingsKeys::MainWindowState,
                       m_window->saveState(2));
     settings.sync();

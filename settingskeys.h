@@ -49,6 +49,7 @@ inline constexpr const char *MainWindowFilterSidebarWidth =
     "mainWindow/filterSidebarWidth";
 inline constexpr const char *MainWindowToolBarStyle =       "mainWindow/toolBarButtonStyle";
 inline constexpr const char *MainWindowState =              "mainWindow/stateV2";
+inline constexpr const char *MainWindowGeometry =           "mainWindow/geometry";
 inline constexpr const char *TorrentTableHeaderState =
     "ui/torrentTable/horizontalHeaderState/v4";
 inline constexpr const char *TorrentTableVerticalHeaderState =

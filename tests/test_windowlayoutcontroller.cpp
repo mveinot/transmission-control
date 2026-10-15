@@ -65,6 +65,8 @@ void TestWindowLayoutController::restoresAndPersistsVisibility()
     window.addToolBar(&toolBar);
     QStatusBar statusBar(&window);
     window.setStatusBar(&statusBar);
+    window.resize(600, 500);
+    window.move(23, 42);
 
     QSplitter contentSplitter(Qt::Vertical, &window);
     QWidget upperPane(&contentSplitter);
@@ -113,6 +115,18 @@ void TestWindowLayoutController::restoresAndPersistsVisibility()
     QCOMPARE(settings.value(
                  SettingsKeys::MainWindowFilterSidebarVisible).toBool(),
              false);
+    QVERIFY(!settings.value(SettingsKeys::MainWindowGeometry)
+                 .toByteArray().isEmpty());
+
+    QMainWindow restoredWindow;
+    QToolBar restoredToolBar(&restoredWindow);
+    restoredToolBar.setObjectName(QStringLiteral("testToolBar"));
+    restoredWindow.addToolBar(&restoredToolBar);
+    QStatusBar restoredStatusBar(&restoredWindow);
+    restoredWindow.setStatusBar(&restoredStatusBar);
+    WindowLayoutController restoredController(&restoredWindow, {});
+    QVERIFY(restoredController.restoreWindowState());
+    QCOMPARE(restoredWindow.size(), window.size());
 }
 
 int main(int argc, char **argv)
