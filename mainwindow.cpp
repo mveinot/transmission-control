@@ -2433,11 +2433,23 @@ void MainWindow::handleSessionSettingsReceived(const QJsonObject &sessionSetting
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
-    if (event->type() == QEvent::KeyPress && torrentAddController) {
+    if (event->type() == QEvent::KeyPress) {
         auto *keyEvent = static_cast<QKeyEvent *>(event);
         auto *targetWidget = qobject_cast<QWidget *>(watched);
 
+#ifdef Q_OS_MACOS
         if (!keyEvent->isAutoRepeat()
+            && keyEvent->key() == Qt::Key_M
+            && keyEvent->modifiers() == Qt::ControlModifier
+            && targetWidget
+            && targetWidget->window() == this) {
+            showMinimized();
+            return true;
+        }
+#endif
+
+        if (torrentAddController
+            && !keyEvent->isAutoRepeat()
             && keyEvent->matches(QKeySequence::Paste)
             && targetWidget
             && targetWidget->window() == this

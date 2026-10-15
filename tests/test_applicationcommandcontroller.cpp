@@ -46,6 +46,7 @@ struct CommandFixture
     QAction queueBottom {&window};
     QAction closeWindow {&window};
     QAction applicationSettings {&window};
+    QAction manageThemes {&window};
     QAction manageServers {&window};
     QAction serverSettings {&window};
     QAction alternativeSpeed {&window};
@@ -67,33 +68,34 @@ struct CommandFixture
 
     ApplicationCommandController::Actions actions()
     {
-        return {
-            &openTorrent,
-            &addMagnet,
-            &startSelected,
-            &stopSelected,
-            &startAll,
-            &stopAll,
-            &forceStart,
-            &verify,
-            &reannounce,
-            &deleteTorrent,
-            &queueTop,
-            &queueUp,
-            &queueDown,
-            &queueBottom,
-            &closeWindow,
-            &applicationSettings,
-            &manageServers,
-            &serverSettings,
-            &alternativeSpeed,
-            &statistics,
-            &about,
-            &quit,
-            &checkForUpdates,
-            &exportSettings,
-            &importSettings
-        };
+        ApplicationCommandController::Actions result;
+        result.openTorrent = &openTorrent;
+        result.addMagnet = &addMagnet;
+        result.startSelected = &startSelected;
+        result.stopSelected = &stopSelected;
+        result.startAll = &startAll;
+        result.stopAll = &stopAll;
+        result.forceStart = &forceStart;
+        result.verify = &verify;
+        result.reannounce = &reannounce;
+        result.deleteTorrent = &deleteTorrent;
+        result.queueTop = &queueTop;
+        result.queueUp = &queueUp;
+        result.queueDown = &queueDown;
+        result.queueBottom = &queueBottom;
+        result.closeWindow = &closeWindow;
+        result.applicationSettings = &applicationSettings;
+        result.manageThemes = &manageThemes;
+        result.manageServers = &manageServers;
+        result.serverSettings = &serverSettings;
+        result.alternativeSpeed = &alternativeSpeed;
+        result.statistics = &statistics;
+        result.about = &about;
+        result.quit = &quit;
+        result.checkForUpdates = &checkForUpdates;
+        result.exportSettings = &exportSettings;
+        result.importSettings = &importSettings;
+        return result;
     }
 
     ApplicationCommandController::Menus menus()
@@ -126,6 +128,23 @@ void TestApplicationCommandController::routesCommandsOnce()
         fixture.menus(),
         handlers);
     controller.setup();
+
+#ifdef Q_OS_MACOS
+    QMenu *windowMenu = nullptr;
+    for (QAction *action : fixture.window.menuBar()->actions()) {
+        if (action->menu() && action->text() == QStringLiteral("Window")) {
+            windowMenu = action->menu();
+            break;
+        }
+    }
+    QVERIFY(windowMenu);
+    QCOMPARE(windowMenu->actions().first()->text(), QStringLiteral("Minimize"));
+    QCOMPARE(windowMenu->actions().first()->shortcut(),
+             QKeySequence(QStringLiteral("Ctrl+M")));
+    QCOMPARE(windowMenu->actions().first()->shortcutContext(),
+             Qt::ApplicationShortcut);
+    QVERIFY(fixture.window.actions().contains(windowMenu->actions().first()));
+#endif
 
     fixture.openTorrent.trigger();
     fixture.startSelected.trigger();

@@ -86,6 +86,24 @@ void ApplicationCommandController::setupPlatformMenus()
     }
 
 #ifdef Q_OS_MACOS
+    if (m_window && m_menus.menuBar) {
+        auto *windowMenu = new QMenu(tr("Window"), m_window);
+        QAction *minimizeAction = windowMenu->addAction(tr("Minimize"));
+        // Qt maps its Ctrl modifier to the physical Command key on macOS;
+        // Meta would bind this to the physical Control key instead.
+        minimizeAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+M")));
+        minimizeAction->setShortcutContext(Qt::ApplicationShortcut);
+        // Menu-only shortcuts can be missed by macOS's native menu handling;
+        // register it on the main window as well as displaying it in Window.
+        m_window->addAction(minimizeAction);
+        connect(minimizeAction, &QAction::triggered,
+                m_window, &QWidget::showMinimized);
+        if (m_menus.help)
+            m_menus.menuBar->insertMenu(m_menus.help->menuAction(), windowMenu);
+        else
+            m_menus.menuBar->addMenu(windowMenu);
+    }
+
     // Qt relocates these Designer actions into the standard application menu.
     if (m_actions.about)
         m_actions.about->setMenuRole(QAction::AboutRole);
