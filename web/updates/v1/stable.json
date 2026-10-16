@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "channel": "stable",
-  "version": "2.5.0",
-  "build": 447,
-  "displayVersion": "2.5.0.447",
+  "version": "2.5.2",
+  "build": 455,
+  "displayVersion": "2.5.2.455",
   "minimumMacOSVersion": "14.4",
-  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.5.0.447/Planetary-2.5.0.447-macOS-universal.dmg",
-  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.5.0.447",
-  "releaseNotesMarkdown": "**Full Changelog**: https://github.com/mveinot/transmission-control/compare/v2.4.0.439...v2.5.0.447\n\nNotable changes:\n\n* Icon themes support pressed button state\n* Updated to Qt 6.12.0, raising the minimum supported macOS version to 14.4\n* Added download-folder location memory and dropdown selection",
-  "sha256": "b902107a34eceedb430b7739e2d8c66cf10555a998aa84449cea32bc78c0687c"
+  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.5.2.455/Planetary-2.5.2.455-macOS-universal.dmg",
+  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.5.2.455",
+  "releaseNotesMarkdown": "**Full Changelog**: https://github.com/mveinot/transmission-control/compare/v2.5.0.447...v2.5.2.455\n\nBugfix and minor feature release:\n\n* Save and restore window size on exit and app start\n* Honour standard macOS CMD+M shortcut for minimize\n* When closed to tray icon, left click on tray icon restores app\n* Fix error that can occur when trying to set Planetary as the default app for torrent files when the previous default app is no longer installed",
+  "sha256": "ae6454a1baf25db2efd721b5d581ac0a6738dcdbbb4fa352016a14c039870e86"
 }
