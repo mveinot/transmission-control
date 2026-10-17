@@ -75,8 +75,8 @@ mkdir %DIST_DIR%\Planetary\licenses
 
 copy /Y Resources\geoip\country.mmdb %DIST_DIR%\Planetary\geoip\
 copy /Y LICENSE %DIST_DIR%\Planetary\licenses\
-copy /Y Resources\licenses\gpl-3.0.txt %DIST_DIR%\Planetary\licenses\
 copy /Y Resources\licenses\THIRD_PARTY_NOTICES.txt %DIST_DIR%\Planetary\licenses\
+copy /Y Resources\licenses\qt-open-source-license.txt %DIST_DIR%\Planetary\licenses\
 copy /Y Resources\licenses\flag-icons.txt %DIST_DIR%\Planetary\licenses\
 copy /Y %BUILD_DIR%\generated\licenses\* %DIST_DIR%\Planetary\licenses\
 

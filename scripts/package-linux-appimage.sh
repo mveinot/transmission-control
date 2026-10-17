@@ -116,11 +116,6 @@ else
   exit 1
 fi
 
-if [[ -f "${ROOT_DIR}/Resources/geoip/dbip-country-lite-2026-06.mmdb" ]]; then
-  cp "${ROOT_DIR}/Resources/geoip/dbip-country-lite-2026-06.mmdb" \
-     "${APPDIR}/usr/share/planetary/geoip/"
-fi
-
 if [[ -f "${ROOT_DIR}/LICENSE" ]]; then
   cp "${ROOT_DIR}/LICENSE" \
      "${APPDIR}/usr/share/planetary/licenses/"

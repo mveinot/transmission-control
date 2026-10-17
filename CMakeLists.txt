@@ -215,7 +215,6 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         Resources/icons/planetary_menu.png
         Resources/icons/planetary_tray_linux.png
         Resources/geoip/country.mmdb
-        Resources/licenses/gpl-2.0.txt
     )
 
 set_target_properties(Planetary PROPERTIES
@@ -343,20 +342,23 @@ else()
     message(WARNING "LICENSE file not found at ${APP_LICENSE_FILE}")
 endif()
 
-set(GPL3_LICENSE_FILE
-    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/gpl-3.0.txt"
-)
-
-if(EXISTS "${GPL3_LICENSE_FILE}")
-    set_source_files_properties("${GPL3_LICENSE_FILE}" PROPERTIES
-        MACOSX_PACKAGE_LOCATION "Resources/licenses"
-    )
-    target_sources(Planetary PRIVATE "${GPL3_LICENSE_FILE}")
-endif()
-
 set(THIRD_PARTY_NOTICES_FILE
     "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/THIRD_PARTY_NOTICES.txt"
 )
+
+set(QT_OPEN_SOURCE_LICENSE_FILE
+    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/qt-open-source-license.txt"
+)
+
+if(EXISTS "${QT_OPEN_SOURCE_LICENSE_FILE}")
+    set_source_files_properties("${QT_OPEN_SOURCE_LICENSE_FILE}" PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources/licenses"
+    )
+
+    target_sources(Planetary PRIVATE
+        "${QT_OPEN_SOURCE_LICENSE_FILE}"
+    )
+endif()
 
 if(EXISTS "${THIRD_PARTY_NOTICES_FILE}")
     set_source_files_properties("${THIRD_PARTY_NOTICES_FILE}" PROPERTIES
@@ -482,8 +484,8 @@ install(FILES
 
 install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
-    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/gpl-3.0.txt"
     "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/THIRD_PARTY_NOTICES.txt"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/qt-open-source-license.txt"
     "${CMAKE_CURRENT_SOURCE_DIR}/Resources/licenses/flag-icons.txt"
     ${PLANETARY_THIRD_PARTY_LICENSE_FILES}
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/planetary/licenses"
