@@ -5,18 +5,14 @@ REM --------------------------------------------------
 REM Configuration
 REM --------------------------------------------------
 
-set QT_ROOT=C:\Qt\6.12.0\msvc2022_64
-set BUILD_DIR=build-release
-set DIST_DIR=dist
+if not defined QT_ROOT set "QT_ROOT=C:\Qt\6.12.0\msvc2022_64"
+set "BUILD_DIR=build-release"
+set "DIST_DIR=dist"
 
-REM --------------------------------------------------
-REM Bump version
-REM --------------------------------------------------
-
-powershell -ExecutionPolicy Bypass -File make_version.ps1
-
-if errorlevel 1 (
-echo Version bump failed
+if not exist "%QT_ROOT%\bin\windeployqt.exe" (
+echo Qt deployment tool not found: "%QT_ROOT%\bin\windeployqt.exe"
+echo Set QT_ROOT to the Qt kit to use, for example:
+echo   set QT_ROOT=C:\Qt\6.12.0\msvc2022_64
 exit /b 1
 )
 
@@ -34,7 +30,7 @@ REM --------------------------------------------------
 REM Configure
 REM --------------------------------------------------
 
-cmake -S . -B %BUILD_DIR% ^
+cmake -S . -B "%BUILD_DIR%" ^
 -DCMAKE_BUILD_TYPE=Release ^
 -DCMAKE_PREFIX_PATH="%QT_ROOT%"
 
@@ -44,7 +40,7 @@ REM --------------------------------------------------
 REM Build
 REM --------------------------------------------------
 
-cmake --build %BUILD_DIR% --config Release
+cmake --build "%BUILD_DIR%" --config Release --target Planetary
 
 if errorlevel 1 exit /b 1
 
@@ -54,7 +50,7 @@ REM --------------------------------------------------
 
 mkdir %DIST_DIR%\Planetary
 
-copy %BUILD_DIR%\Release\Planetary.exe %DIST_DIR%\Planetary\
+copy "%BUILD_DIR%\Release\Planetary.exe" "%DIST_DIR%\Planetary\"
 
 REM --------------------------------------------------
 REM Deploy Qt runtime
@@ -62,7 +58,7 @@ REM --------------------------------------------------
 
 "%QT_ROOT%\bin\windeployqt.exe" ^
 --release ^
-%DIST_DIR%\Planetary\Planetary.exe
+"%DIST_DIR%\Planetary\Planetary.exe"
 
 if errorlevel 1 exit /b 1
 
@@ -73,12 +69,12 @@ REM --------------------------------------------------
 mkdir %DIST_DIR%\Planetary\geoip
 mkdir %DIST_DIR%\Planetary\licenses
 
-copy /Y Resources\geoip\country.mmdb %DIST_DIR%\Planetary\geoip\
-copy /Y LICENSE %DIST_DIR%\Planetary\licenses\
-copy /Y Resources\licenses\THIRD_PARTY_NOTICES.txt %DIST_DIR%\Planetary\licenses\
-copy /Y Resources\licenses\qt-open-source-license.txt %DIST_DIR%\Planetary\licenses\
-copy /Y Resources\licenses\flag-icons.txt %DIST_DIR%\Planetary\licenses\
-copy /Y %BUILD_DIR%\generated\licenses\* %DIST_DIR%\Planetary\licenses\
+copy /Y "Resources\geoip\country.mmdb" "%DIST_DIR%\Planetary\geoip\"
+copy /Y "LICENSE" "%DIST_DIR%\Planetary\licenses\"
+copy /Y "Resources\licenses\THIRD_PARTY_NOTICES.txt" "%DIST_DIR%\Planetary\licenses\"
+copy /Y "Resources\licenses\qt-open-source-license.txt" "%DIST_DIR%\Planetary\licenses\"
+copy /Y "Resources\licenses\flag-icons.txt" "%DIST_DIR%\Planetary\licenses\"
+copy /Y "%BUILD_DIR%\generated\licenses\*" "%DIST_DIR%\Planetary\licenses\"
 
 REM --------------------------------------------------
 REM Create ZIP
