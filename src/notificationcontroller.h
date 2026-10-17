@@ -11,6 +11,7 @@
 #include <functional>
 
 #include "torrentkey.h"
+#include "activityevent.h"
 
 class torrent;
 
@@ -41,7 +42,7 @@ public:
 
 signals:
     void activityEventObserved(const QString &event, const QString &details,
-                               const QString &server);
+                               const QString &server, ActivityLevel level);
     void statusMessageRequested(const QString &message, int timeoutMs = 3000);
 
 private:

@@ -4,6 +4,8 @@
 #include <QObject>
 #include <QString>
 
+#include "activityevent.h"
+
 class TorrentBackend;
 class TorrentAddController;
 class WatchFolderManager;
@@ -27,7 +29,8 @@ signals:
     void statusMessageRequested(const QString &message, int timeoutMs);
     void torrentListRefreshRequested();
     // Activity events are completed with the profile display name by MainWindow.
-    void activityEventRequested(const QString &event, const QString &details);
+    void activityEventRequested(const QString &event, const QString &details,
+                                ActivityLevel level);
 
 private:
     WatchFolderManager *m_manager = nullptr;

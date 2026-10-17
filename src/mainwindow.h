@@ -18,6 +18,7 @@
 #include "torrentsortproxymodel.h"
 #include "torrentmodel.h"
 #include "geoipservice.h"
+#include "activityevent.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -126,7 +127,9 @@ private:
     void selectAllInFocusedWidget();
     void focusTorrentSearch();
     void focusFileSearch();
-    void recordActivity(const QString &event, const QString &details, const QString &server);
+    void recordActivity(const QString &event, const QString &details,
+                        const QString &server,
+                        ActivityLevel level = ActivityLevel::Info);
 
     // Session settings are fetched asynchronously. These flags identify which
     // user interaction, if any, should consume the next settings response.

@@ -109,6 +109,12 @@ add_planetary_test(test_torrent
 )
 use_planetary_test_support(test_torrent planetary_test_torrent)
 
+add_planetary_test(test_activitylogmodel
+    test_activitylogmodel.cpp
+    ${PLANETARY_SOURCE_DIR}/activitylogmodel.cpp
+    ${PLANETARY_SOURCE_DIR}/activitylogmodel.h
+)
+
 add_planetary_test_with_theme_support(test_torrentmodel
     test_torrentmodel.cpp
 )

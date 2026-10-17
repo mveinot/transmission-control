@@ -31,11 +31,11 @@ void WatchFolderController::setup()
 
                 emit activityEventRequested(
                     tr("Torrent file detected"),
-                    fileInfo.absoluteFilePath());
+                    fileInfo.absoluteFilePath(), ActivityLevel::Info);
 
                 emit activityEventRequested(
                     tr("Sending torrent to %1").arg(m_client->backendName()),
-                    fileInfo.fileName());
+                    fileInfo.fileName(), ActivityLevel::Info);
 
                 m_torrentAddController->addTorrentFileUsingDefaults(filePath);
             });
@@ -54,6 +54,8 @@ void WatchFolderController::setup()
     connect(m_manager, &WatchFolderManager::warningMessage,
             this, [this](const QString &message) {
                 emit statusMessageRequested(message, 5000);
+                emit activityEventRequested(tr("Watch folder warning"), message,
+                                            ActivityLevel::Warning);
             });
 
     connect(m_manager, &WatchFolderManager::torrentFileReady,
@@ -123,6 +125,10 @@ void WatchFolderController::handleTorrentFileAddFailed(const QString &filePath,
             .arg(QFileInfo(filePath).fileName(), message),
         5000
         );
+    emit activityEventRequested(
+        tr("Watch folder retry"),
+        tr("Will retry %1: %2").arg(QFileInfo(filePath).fileName(), message),
+        ActivityLevel::Warning);
 }
 
 bool WatchFolderController::shouldTreatFailureAsProcessed(const QString &message) const

@@ -25,12 +25,27 @@ QVariant ActivityLogModel::data(const QModelIndex &index, int role) const
     const Entry &entry = m_entries.at(index.row());
     if (role == Qt::ToolTipRole)
         return entry.details;
+    if (role == LevelRole)
+        return static_cast<int>(entry.level);
+    if (role == StreamRole)
+        return static_cast<int>(entry.level == ActivityLevel::Warning
+                                    || entry.level == ActivityLevel::Error
+                                ? ActivityLogFilterProxyModel::Filter::WarningsAndErrors
+                                : ActivityLogFilterProxyModel::Filter::Activity);
     if (role != Qt::DisplayRole)
         return {};
 
     switch (index.column()) {
     case TimeColumn:
         return QLocale().toString(entry.timestamp.time(), QLocale::ShortFormat);
+    case LevelColumn:
+        switch (entry.level) {
+        case ActivityLevel::Info: return tr("Info");
+        case ActivityLevel::Torrent: return tr("Torrent");
+        case ActivityLevel::Warning: return tr("Warning");
+        case ActivityLevel::Error: return tr("Error");
+        }
+        return {};
     case EventColumn:
         return entry.event;
     case DetailsColumn:
@@ -49,6 +64,7 @@ QVariant ActivityLogModel::headerData(int section, Qt::Orientation orientation, 
 
     switch (section) {
     case TimeColumn: return tr("Time");
+    case LevelColumn: return tr("Level");
     case EventColumn: return tr("Event");
     case DetailsColumn: return tr("Details");
     case ServerColumn: return tr("Server");
@@ -57,7 +73,7 @@ QVariant ActivityLogModel::headerData(int section, Qt::Orientation orientation, 
 }
 
 void ActivityLogModel::addEvent(const QString &event, const QString &details,
-                                const QString &server)
+                                const QString &server, ActivityLevel level)
 {
     if (m_entries.size() >= MaximumEntries) {
         beginRemoveRows({}, 0, 0);
@@ -67,8 +83,41 @@ void ActivityLogModel::addEvent(const QString &event, const QString &details,
 
     const int row = m_entries.size();
     beginInsertRows({}, row, row);
-    m_entries.append({QDateTime::currentDateTime(), event, details, server});
+    m_entries.append({QDateTime::currentDateTime(), event, details, server, level});
     endInsertRows();
+}
+
+ActivityLogFilterProxyModel::ActivityLogFilterProxyModel(QObject *parent)
+    : QSortFilterProxyModel(parent)
+{
+    setFilterRole(ActivityLogModel::StreamRole);
+}
+
+void ActivityLogFilterProxyModel::setFilter(Filter filter)
+{
+    if (m_filter == filter)
+        return;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
+    beginFilterChange();
+    m_filter = filter;
+    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+#else
+    m_filter = filter;
+    invalidateFilter();
+#endif
+}
+
+bool ActivityLogFilterProxyModel::filterAcceptsRow(
+    int sourceRow, const QModelIndex &sourceParent) const
+{
+    if (m_filter == Filter::All)
+        return true;
+
+    const QModelIndex index = sourceModel()->index(
+        sourceRow, ActivityLogModel::LevelColumn, sourceParent);
+    const auto stream = static_cast<Filter>(
+        sourceModel()->data(index, ActivityLogModel::StreamRole).toInt());
+    return stream == m_filter;
 }
 
 void ActivityLogModel::clear()

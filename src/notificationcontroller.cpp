@@ -230,7 +230,7 @@ void NotificationController::handleTorrentAdded(const TorrentKey &torrentKey,
 {
     emit activityEventObserved(tr("Torrent added"),
                                name.isEmpty() ? tr("The torrent server accepted a new torrent.") : name,
-                               m_serverName);
+                               m_serverName, ActivityLevel::Torrent);
 
     if (isValidTorrentKey(torrentKey))
         m_directlyNotifiedAddedTorrentKeys.insert(torrentKey);
@@ -270,7 +270,8 @@ void NotificationController::processTorrentList(const QVector<torrent> &torrents
 
         if (previousIt == m_knownTorrentStates.constEnd()) {
             if (m_directlyNotifiedAddedTorrentKeys.remove(key) == 0) {
-                emit activityEventObserved(tr("Torrent added"), torrentItem.getName(), m_serverName);
+                emit activityEventObserved(tr("Torrent added"), torrentItem.getName(),
+                                           m_serverName, ActivityLevel::Torrent);
                 if (eventEnabled(SettingsKeys::NotifyTorrentAdded)) {
                     dispatchEvent(tr("Torrent added"), torrentItem.getName(),
                                   contextForTorrent(QStringLiteral("torrent_added"), torrentItem,
@@ -282,7 +283,8 @@ void NotificationController::processTorrentList(const QVector<torrent> &torrents
 
         const TorrentState &previous = previousIt.value();
         if (!previous.complete && current.complete) {
-            emit activityEventObserved(tr("Torrent finished"), torrentItem.getName(), m_serverName);
+            emit activityEventObserved(tr("Torrent finished"), torrentItem.getName(),
+                                       m_serverName, ActivityLevel::Torrent);
             if (eventEnabled(SettingsKeys::NotifyTorrentCompleted)) {
                 dispatchEvent(tr("Torrent finished"), torrentItem.getName(),
                           contextForTorrent(QStringLiteral("torrent_completed"), torrentItem,
@@ -294,7 +296,8 @@ void NotificationController::processTorrentList(const QVector<torrent> &torrents
             const QString details = current.errorString.isEmpty()
                                         ? torrentItem.getName()
                                         : tr("%1\n%2").arg(torrentItem.getName(), current.errorString);
-            emit activityEventObserved(tr("Torrent error"), details, m_serverName);
+            emit activityEventObserved(tr("Torrent error"), details, m_serverName,
+                                       ActivityLevel::Error);
             if (eventEnabled(SettingsKeys::NotifyTorrentError))
                 dispatchEvent(tr("Torrent error"), details,
                               contextForTorrent(QStringLiteral("torrent_error"), torrentItem,
@@ -302,7 +305,8 @@ void NotificationController::processTorrentList(const QVector<torrent> &torrents
         }
 
         if (!previous.stalled && current.stalled && !current.complete) {
-            emit activityEventObserved(tr("Torrent stalled"), torrentItem.getName(), m_serverName);
+            emit activityEventObserved(tr("Torrent stalled"), torrentItem.getName(),
+                                       m_serverName, ActivityLevel::Warning);
             if (eventEnabled(SettingsKeys::NotifyTorrentStalled))
                 dispatchEvent(tr("Torrent stalled"), torrentItem.getName(),
                               contextForTorrent(QStringLiteral("torrent_stalled"), torrentItem,

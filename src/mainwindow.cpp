@@ -530,8 +530,29 @@ void MainWindow::setupActivityDock()
                               QDockWidget::DockWidgetFloatable);
 
     activityLogModel = new ActivityLogModel(activityDock);
+    auto *activityFilterModel = new ActivityLogFilterProxyModel(activityDock);
+    activityFilterModel->setSourceModel(activityLogModel);
+    auto *activityContent = new QWidget(activityDock);
+    auto *activityLayout = new QVBoxLayout(activityContent);
+    activityLayout->setContentsMargins(0, 0, 0, 0);
+    activityLayout->setSpacing(4);
+    auto *filterRow = new QWidget(activityContent);
+    auto *filterLayout = new QHBoxLayout(filterRow);
+    filterLayout->setContentsMargins(6, 4, 6, 0);
+    auto *filterLabel = new QLabel(tr("Show:"), filterRow);
+    auto *filterCombo = new QComboBox(filterRow);
+    filterCombo->addItem(tr("All activity"),
+                         static_cast<int>(ActivityLogFilterProxyModel::Filter::All));
+    filterCombo->addItem(tr("Activity"),
+                         static_cast<int>(ActivityLogFilterProxyModel::Filter::Activity));
+    filterCombo->addItem(tr("Warnings & Errors"),
+                         static_cast<int>(ActivityLogFilterProxyModel::Filter::WarningsAndErrors));
+    filterLayout->addWidget(filterLabel);
+    filterLayout->addWidget(filterCombo);
+    filterLayout->addStretch();
+    activityLayout->addWidget(filterRow);
     activityTable = new QTableView(activityDock);
-    activityTable->setModel(activityLogModel);
+    activityTable->setModel(activityFilterModel);
     activityTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     activityTable->setSelectionMode(QAbstractItemView::ExtendedSelection);
     activityTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -541,6 +562,8 @@ void MainWindow::setupActivityDock()
     activityTable->horizontalHeader()->setStretchLastSection(false);
     activityTable->horizontalHeader()->setSectionResizeMode(ActivityLogModel::TimeColumn,
                                                              QHeaderView::ResizeToContents);
+    activityTable->horizontalHeader()->setSectionResizeMode(ActivityLogModel::LevelColumn,
+                                                             QHeaderView::ResizeToContents);
     activityTable->horizontalHeader()->setSectionResizeMode(ActivityLogModel::EventColumn,
                                                              QHeaderView::ResizeToContents);
     activityTable->horizontalHeader()->setSectionResizeMode(ActivityLogModel::DetailsColumn,
@@ -548,7 +571,14 @@ void MainWindow::setupActivityDock()
     activityTable->horizontalHeader()->setSectionResizeMode(ActivityLogModel::ServerColumn,
                                                              QHeaderView::ResizeToContents);
     activityTable->setContextMenuPolicy(Qt::CustomContextMenu);
-    activityDock->setWidget(activityTable);
+    activityLayout->addWidget(activityTable);
+    activityDock->setWidget(activityContent);
+    connect(filterCombo, qOverload<int>(&QComboBox::currentIndexChanged),
+            this, [activityFilterModel, filterCombo](int index) {
+                activityFilterModel->setFilter(
+                    static_cast<ActivityLogFilterProxyModel::Filter>(
+                        filterCombo->itemData(index).toInt()));
+            });
     addDockWidget(Qt::BottomDockWidgetArea, activityDock);
 
     QAction *toggleAction = activityDock->toggleViewAction();
@@ -574,7 +604,9 @@ void MainWindow::setupActivityDock()
                     for (const QModelIndex &rowIndex : rows) {
                         QStringList columns;
                         for (int column = 0; column < ActivityLogModel::ColumnCount; ++column)
-                            columns << activityLogModel->index(rowIndex.row(), column).data().toString();
+                            columns << activityTable->model()
+                                           ->index(rowIndex.row(), column)
+                                           .data().toString();
                         lines << columns.join(QLatin1Char('\t'));
                     }
                     QApplication::clipboard()->setText(lines.join(QLatin1Char('\n')));
@@ -595,7 +627,7 @@ void MainWindow::setupActivityDock()
 }
 
 void MainWindow::recordActivity(const QString &event, const QString &details,
-                                const QString &server)
+                                const QString &server, ActivityLevel level)
 {
     if (!activityLogModel)
         return;
@@ -603,7 +635,7 @@ void MainWindow::recordActivity(const QString &event, const QString &details,
     const bool wasAtBottom = activityTable &&
         activityTable->verticalScrollBar()->value() >=
             activityTable->verticalScrollBar()->maximum();
-    activityLogModel->addEvent(event, details, server);
+    activityLogModel->addEvent(event, details, server, level);
     if (wasAtBottom && activityTable)
         activityTable->scrollToBottom();
 }
@@ -807,11 +839,12 @@ MainWindow::MainWindow(QWidget *parent)
             this, [this]() { pollingCoordinator->requestTorrentList(); });
 
     connect(watchFolderController, &WatchFolderController::activityEventRequested,
-            this, [this](const QString &event, const QString &details) {
+            this, [this](const QString &event, const QString &details,
+                         ActivityLevel level) {
                 recordActivity(
                     event,
                     details,
-                    serverSelectionController->currentDisplayText());
+                    serverSelectionController->currentDisplayText(), level);
             });
 
     watchFolderController->loadSettings();
@@ -840,7 +873,10 @@ MainWindow::MainWindow(QWidget *parent)
             });
 
     connect(notificationController, &NotificationController::activityEventObserved,
-            this, &MainWindow::recordActivity);
+            this, [this](const QString &event, const QString &details,
+                         const QString &server, ActivityLevel level) {
+                recordActivity(event, details, server, level);
+            });
 
     connect(client, &TorrentBackend::torrentAdded,
             notificationController, &NotificationController::handleTorrentAdded);
@@ -1035,6 +1071,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(torrentAddController, &TorrentAddController::addFailed,
             this, [this](const QString &message) {
+                recordActivity(tr("Torrent add failed"), message,
+                               ui->comboServers->currentText(), ActivityLevel::Error);
                 if (statusBarController)
                     statusBarController->showMessage(message, 5000);
             });
@@ -1078,7 +1116,8 @@ MainWindow::MainWindow(QWidget *parent)
         if (sessionOverviewWidget)
             sessionOverviewWidget->markDisconnected();
         if (!activityConnectionFailed) {
-            recordActivity(tr("Connection lost"), message, ui->comboServers->currentText());
+            recordActivity(tr("Connection lost"), message,
+                           ui->comboServers->currentText(), ActivityLevel::Error);
             activityConnectionFailed = true;
         }
     });
@@ -1199,6 +1238,8 @@ MainWindow::MainWindow(QWidget *parent)
             &ServerSelectionController::activationFailed,
             this,
             [this](const QString &message) {
+                recordActivity(tr("Server switch failed"), message,
+                               ui->comboServers->currentText(), ActivityLevel::Error);
                 if (statusBarController)
                     statusBarController->showMessage(message, 5000);
             });
@@ -1221,11 +1262,44 @@ MainWindow::MainWindow(QWidget *parent)
                     return;
                 }
 
+                const QString server = ui->comboServers->currentText();
+                if (method == QStringLiteral("torrent-start")) {
+                    recordActivity(tr("Torrents started"),
+                                   tr("One or more torrents were started."),
+                                   server, ActivityLevel::Torrent);
+                } else if (method == QStringLiteral("torrent-start-now")) {
+                    recordActivity(tr("Torrents started immediately"),
+                                   tr("One or more torrents were moved to the front of the queue and started."),
+                                   server, ActivityLevel::Torrent);
+                } else if (method == QStringLiteral("torrent-stop")) {
+                    recordActivity(tr("Torrents stopped"),
+                                   tr("One or more torrents were stopped."),
+                                   server, ActivityLevel::Torrent);
+                } else if (method == QStringLiteral("torrent-verify")) {
+                    recordActivity(tr("Torrent verification started"),
+                                   tr("Verification was requested for one or more torrents."),
+                                   server, ActivityLevel::Torrent);
+                } else if (method == QStringLiteral("torrent-reannounce")) {
+                    recordActivity(tr("Tracker reannounce requested"),
+                                   tr("One or more torrents were asked to reannounce."),
+                                   server, ActivityLevel::Torrent);
+                } else if (method.startsWith(QStringLiteral("queue-move-"))) {
+                    recordActivity(tr("Torrent queue order changed"), method,
+                                   server, ActivityLevel::Torrent);
+                } else if (method == QStringLiteral("torrent-set")) {
+                    recordActivity(tr("Torrent settings changed"),
+                                   tr("Settings were updated for one or more torrents."),
+                                   server, ActivityLevel::Torrent);
+                }
+
                 const auto refreshTorrentState = [this](bool refreshDetails) {
                     pollingCoordinator->scheduleCommandRefresh(refreshDetails);
                 };
 
                 if (method == QStringLiteral("torrent-set-location")) {
+                    recordActivity(tr("Torrent location changed"),
+                                   tr("One or more torrents were moved to a new location."),
+                                   server, ActivityLevel::Torrent);
                     if (statusBarController) {
                         statusBarController->showMessage(
                             tr("Torrent location updated."),
@@ -1238,6 +1312,9 @@ MainWindow::MainWindow(QWidget *parent)
                 }
 
                 if (method == QStringLiteral("torrent-rename-path")) {
+                    recordActivity(tr("Torrent path renamed"),
+                                   tr("The top-level torrent folder was renamed."),
+                                   server, ActivityLevel::Torrent);
                     if (statusBarController) {
                         statusBarController->showMessage(
                             tr("Torrent path renamed."),
@@ -1256,6 +1333,11 @@ MainWindow::MainWindow(QWidget *parent)
 
                 if (method == QStringLiteral("torrent-add")
                     || method == QStringLiteral("torrent-remove")) {
+                    if (method == QStringLiteral("torrent-remove")) {
+                        recordActivity(tr("Torrent removed"),
+                                       tr("One or more torrents were removed."),
+                                       server, ActivityLevel::Torrent);
+                    }
                     refreshTorrentState(false);
                     return;
                 }
@@ -1281,8 +1363,9 @@ MainWindow::MainWindow(QWidget *parent)
                         alternativeSpeedSettingsAvailable,
                         confirmedAlternativeSpeedEnabled);
 
-                if (statusBarController)
-                    statusBarController->showMessage(message, 5000);
+                recordActivity(tr("RPC command failed"),
+                               tr("%1: %2").arg(method, message),
+                               ui->comboServers->currentText(), ActivityLevel::Error);
             });
 
 
