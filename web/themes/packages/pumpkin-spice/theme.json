@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "id": "pumpkin-spice",
+  "name": "Pumpkin Spice",
+  "colors": {
+    "mode": "dark",
+    "palette": {
+      "window": "#241914",
+      "window-text": "#f2e2ce",
+      "base": "#17100d",
+      "alternate-base": "#30221a",
+      "tool-tip-base": "#3b281d",
+      "tool-tip-text": "#fff0da",
+      "text": "#f2e2ce",
+      "button": "#493126",
+      "button-text": "#f6e5cf",
+      "bright-text": "#fff8ec",
+      "highlight": "#b95723",
+      "highlighted-text": "#fff8ec",
+      "link": "#e6ad66",
+      "link-visited": "#d28a79",
+      "placeholder-text": "#a58c77",
+      "accent": "#ed8a36"
+    },
+    "semantic": {
+      "download": "#67b4a2",
+      "upload": "#f09a42",
+      "success": "#9fb86c",
+      "warning": "#f1c15d",
+      "error": "#e87561",
+      "inactive": "#9b8777",
+      "verification": "#c19ad0",
+      "queued": "#cb8050",
+      "piece-complete": "#ed8a36",
+      "piece-remaining": "#38291f",
+      "piece-border": "#624534"
+    }
+  }
+}
