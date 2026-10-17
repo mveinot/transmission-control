@@ -26,6 +26,12 @@ build-macos-universal-release/
 build-macos-universal-qt612-release/
 build-macos-src-layout-check/
 dmg-root/
+/Planetary.AppDir/
+/build-appimage/
+/build-system/
+/dist/
+/install/
+/tools/
 !core/
 tags
 .DS_Store
@@ -81,4 +87,3 @@ CMakeLists.txt.user*
 # --------
 *.dll
 *.exe
-
