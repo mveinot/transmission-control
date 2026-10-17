@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "channel": "beta",
-  "version": "2.2.2",
-  "build": 420,
-  "displayVersion": "2.2.2.420",
-  "minimumMacOSVersion": "13.0",
-  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.2.2.420-beta/Planetary-2.2.2.420-macOS-universal.dmg",
-  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.2.2.420-beta",
-  "releaseNotesMarkdown": "Further testing beta channel and release logic",
-  "sha256": "f14c8827c455e2c8f44bd6bfc33cf26142ef26408eead375c9f5a91ba132eee5"
+  "version": "2.5.3",
+  "build": 467,
+  "displayVersion": "2.5.3.467",
+  "minimumMacOSVersion": "14.4",
+  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.5.3.467-beta/Planetary-2.5.3.467-macOS-universal.dmg",
+  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.5.3.467-beta",
+  "releaseNotesMarkdown": "**Full Changelog**: https://github.com/mveinot/transmission-control/compare/v2.5.2.455...v2.5.3.467-beta\n\nBeta release - significant reorganization, code cleanup and some refactoring\n\n* Fix tray icon in Linux version so it is visible\n* Centralize source components under src/ folder\n* Change app license to GPLv3 or later\n* Update bundled GeoIP DB\n* Clean up build process for test suite\n* Enhance event reporting in the activity log: multiple selectable streams for information or warning/error\n* Improvements to some build/release related scripts",
+  "sha256": "b076bc435c03aa190cd0cb7ab833ff846a466e0adfae21b3202da8cb04579fab"
 }
