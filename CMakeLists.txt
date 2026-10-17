@@ -255,6 +255,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         elidedtexttooltipdelegate.h elidedtexttooltipdelegate.cpp
         torrentmodel.h torrentmodel.cpp
         Resources/icons/planetary_menu.png
+        Resources/icons/planetary_tray_linux.png
         geoipservice.h geoipservice.cpp
         Resources/geoip/country.mmdb
         singleinstanceguard.h singleinstanceguard.cpp

@@ -31,8 +31,13 @@ void TrayController::setup()
 
     m_trayIcon = new QSystemTrayIcon(this);
 
-    QIcon menuBarIcon(QStringLiteral(":/icons/planetary_menu.png"));
+    QIcon menuBarIcon;
+#if defined(Q_OS_LINUX)
+    menuBarIcon = QIcon(QStringLiteral(":/icons/planetary_tray_linux.png"));
+#else
+    menuBarIcon = QIcon(QStringLiteral(":/icons/planetary_menu.png"));
     menuBarIcon.setIsMask(true);
+#endif
 
     m_trayIcon->setIcon(menuBarIcon);
     m_trayIcon->setToolTip(QApplication::applicationName());
@@ -61,13 +66,22 @@ void TrayController::setup()
                 if (reason == QSystemTrayIcon::Trigger
                     || reason == QSystemTrayIcon::DoubleClick) {
                     showMainWindow();
-                } else if (reason == QSystemTrayIcon::Context
-                           && m_trayMenu) {
+                }
+#if !defined(Q_OS_LINUX)
+                else if (reason == QSystemTrayIcon::Context
+                         && m_trayMenu) {
                     m_trayMenu->popup(QCursor::pos());
                 }
+#endif
             });
 
     rebuildTrayMenu();
+
+#if defined(Q_OS_LINUX)
+    // KDE/StatusNotifier handles the context menu through the tray item's
+    // registered menu rather than reliably emitting QSystemTrayIcon::Context.
+    m_trayIcon->setContextMenu(m_trayMenu);
+#endif
 
     updateTrayIconVisibility();
 }
