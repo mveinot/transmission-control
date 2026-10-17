@@ -12,6 +12,30 @@ usage() {
     echo "  --beta  create a GitHub-conventional beta tag (vX.Y.Z.B-beta)"
 }
 
+push_tag_with_retry() {
+    local tag="$1"
+    local max_attempts=4
+    local attempt=1
+    local delay=2
+
+    while (( attempt <= max_attempts )); do
+        echo "Pushing tag $tag (attempt $attempt/$max_attempts)..."
+        if git push "$REMOTE_NAME" "$tag"; then
+            return 0
+        fi
+
+        if (( attempt == max_attempts )); then
+            echo "Push failed after $max_attempts attempts."
+            return 1
+        fi
+
+        echo "Push failed; retrying in ${delay}s."
+        sleep "$delay"
+        delay=$((delay * 2))
+        attempt=$((attempt + 1))
+    done
+}
+
 for argument in "$@"; do
     case "$argument" in
         --beta)
@@ -109,20 +133,24 @@ if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
 LOCAL_TAG_EXISTS=true
 fi
 
-if git ls-remote --exit-code --tags "$REMOTE_NAME" "refs/tags/${TAG}" >/dev/null 2>&1; then
+REMOTE_TAG_OUTPUT=""
+if REMOTE_TAG_OUTPUT="$(git ls-remote --exit-code --tags "$REMOTE_NAME" "refs/tags/${TAG}" 2>&1)"; then
 REMOTE_TAG_EXISTS=true
+else
+REMOTE_TAG_STATUS=$?
+if [[ "$REMOTE_TAG_STATUS" -eq 2 ]]; then
+REMOTE_TAG_EXISTS=false
+else
+echo "Could not check whether tag $TAG exists on ${REMOTE_NAME}:"
+echo "$REMOTE_TAG_OUTPUT"
+exit 1
+fi
 fi
 
 if [[ "$LOCAL_TAG_EXISTS" == true ]]; then
 LOCAL_TAG_COMMIT="$(git rev-list -n 1 "$TAG")"
 else
 LOCAL_TAG_COMMIT=""
-fi
-
-if [[ "$REMOTE_TAG_EXISTS" == true ]]; then
-REMOTE_TAG_COMMIT="$(git ls-remote --tags "$REMOTE_NAME" "refs/tags/${TAG}" | awk '{print $1}')"
-else
-REMOTE_TAG_COMMIT=""
 fi
 
 if [[ "$LOCAL_TAG_EXISTS" == true && "$LOCAL_TAG_COMMIT" != "$(git rev-parse HEAD)" ]]; then
@@ -141,7 +169,7 @@ fi
 
 if [[ "$LOCAL_TAG_EXISTS" == true && "$REMOTE_TAG_EXISTS" == false ]]; then
 echo "Tag exists locally but not on ${REMOTE_NAME}. Pushing: $TAG"
-git push "$REMOTE_NAME" "$TAG"
+push_tag_with_retry "$TAG"
 echo "Pushed existing local tag: $TAG"
 exit 0
 fi
@@ -162,7 +190,7 @@ fi
 
 git tag -a "$TAG" -m "${APP_NAME} ${TAG}" -m "Commit: ${COMMIT}"
 
-git push "$REMOTE_NAME" "$TAG"
+push_tag_with_retry "$TAG"
 
 echo
 echo "Created and pushed release tag:"
