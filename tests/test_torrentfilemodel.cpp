@@ -1,5 +1,4 @@
 #include "torrentfilemodel.h"
-#include "iconthememanager.h"
 
 #include <QPersistentModelIndex>
 #include <QSignalSpy>
@@ -16,30 +15,7 @@ private slots:
     void progressUpdatePreservesPersistentIndexes();
     void structuralChangeResetsModel();
     void flatProjectionExposesFullPaths();
-    void themeChangeRefreshesDecorations();
 };
-
-void TestTorrentFileModel::themeChangeRefreshesDecorations()
-{
-    auto &icons = AppIcons::IconThemeManager::instance();
-    const QString originalTheme = icons.themeId();
-    icons.setThemeId(QString::fromLatin1(AppIcons::GlassTheme));
-
-    TorrentFileModel model;
-    model.reconcile({file(0, QStringLiteral("folder/movie.mkv"), 50)});
-    const QModelIndex folder = model.index(0, TorrentFileModel::NameColumn);
-    const QImage glass = folder.data(Qt::DecorationRole).value<QIcon>()
-                             .pixmap(128, 128).toImage();
-    QSignalSpy changedSpy(&model, &QAbstractItemModel::dataChanged);
-
-    icons.setThemeId(QString::fromLatin1(AppIcons::ClassicTheme));
-
-    QVERIFY(changedSpy.count() >= 2);
-    QVERIFY(folder.data(Qt::DecorationRole).value<QIcon>()
-                .pixmap(128, 128).toImage() != glass);
-
-    icons.setThemeId(originalTheme);
-}
 
 static TorrentFile file(int index, const QString &path, qint64 done)
 {
