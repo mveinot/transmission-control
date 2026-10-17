@@ -79,8 +79,11 @@
              <height>28</height>
             </size>
            </property>
-           <property name="styleSheet">
-            <string notr="true">font-weight: 600;</string>
+           <property name="font">
+            <font>
+             <weight>600</weight>
+             <bold>true</bold>
+            </font>
            </property>
            <property name="text">
             <string>Filters</string>
@@ -129,8 +132,11 @@
            </property>
            <item>
             <widget class="QLabel" name="labelServerSelector">
-             <property name="styleSheet">
-              <string notr="true">font-weight: 600;</string>
+             <property name="font">
+              <font>
+               <weight>600</weight>
+               <bold>true</bold>
+              </font>
              </property>
              <property name="text">
               <string>Server:</string>

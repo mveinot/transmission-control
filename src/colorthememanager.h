@@ -30,7 +30,7 @@ private:
     void applyTheme();
 
     QString m_themeId;
-    bool m_stylesheetEnabled = true;
+    bool m_stylesheetEnabled = false;
 };
 
 } // namespace AppColors

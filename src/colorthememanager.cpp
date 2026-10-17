@@ -5,7 +5,9 @@
 
 #include <QApplication>
 #include <QDebug>
+#ifdef PLANETARY_ENABLE_THEME_STYLESHEETS
 #include <QFile>
+#endif
 #include <QGuiApplication>
 #include <QSettings>
 #include <QStyleHints>
@@ -25,8 +27,7 @@ ColorThemeManager::ColorThemeManager()
     m_themeId = registry.resolvedColorThemeId(
         QSettings().value(SettingsKeys::ColorTheme,
                           QString::fromLatin1(SystemTheme)).toString());
-    // Keep stylesheet support implemented for future use, but do not activate
-    // it from normal application paths until the widget treatment is ready.
+    // Theme QSS is compiled out in normal builds.
     m_stylesheetEnabled = false;
     connect(&registry, &AppThemes::ThemeRegistry::registryChanged,
             this, [this](const QString &themeId) {
@@ -60,7 +61,11 @@ QString ColorThemeManager::themeId() const
 
 bool ColorThemeManager::stylesheetEnabled() const
 {
+#ifdef PLANETARY_ENABLE_THEME_STYLESHEETS
     return m_stylesheetEnabled;
+#else
+    return false;
+#endif
 }
 
 QColor ColorThemeManager::color(Role role) const
@@ -84,24 +89,28 @@ void ColorThemeManager::setThemeId(const QString &themeId)
 
 void ColorThemeManager::setStylesheetEnabled(bool enabled)
 {
+#ifdef PLANETARY_ENABLE_THEME_STYLESHEETS
     if (enabled == m_stylesheetEnabled)
         return;
 
     m_stylesheetEnabled = enabled;
     applyTheme();
     emit themeChanged(m_themeId);
+#else
+    Q_UNUSED(enabled);
+#endif
 }
 
 void ColorThemeManager::applyTheme()
 {
-    const AppThemes::Theme registeredTheme =
-        AppThemes::ThemeRegistry::instance().theme(m_themeId);
     const ColorTheme theme =
         AppThemes::ThemeRegistry::instance().colorTheme(m_themeId);
 
-    // Clear any previous theme's stylesheet and explicit palette before asking
-    // Qt to resolve native colours for the new Light/Dark/System mode.
+    // Clear the explicit palette before asking Qt to resolve native colours
+    // for the new Light/Dark/System mode.
+#ifdef PLANETARY_ENABLE_THEME_STYLESHEETS
     qApp->setStyleSheet(QString());
+#endif
     QApplication::setPalette(QPalette());
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
@@ -125,6 +134,9 @@ void ColorThemeManager::applyTheme()
         QApplication::setPalette(theme.appliedTo(QPalette()));
     }
 
+#ifdef PLANETARY_ENABLE_THEME_STYLESHEETS
+    const AppThemes::Theme registeredTheme =
+        AppThemes::ThemeRegistry::instance().theme(m_themeId);
     if (!m_stylesheetEnabled || !registeredTheme.hasStyleSheet())
         return;
 
@@ -143,6 +155,7 @@ void ColorThemeManager::applyTheme()
         return;
     }
     qApp->setStyleSheet(QString::fromUtf8(contents));
+#endif
 }
 
 } // namespace AppColors

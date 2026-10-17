@@ -76,7 +76,7 @@ private slots:
     void standardDirectoryUsesApplicationDataLocation();
     void exampleThemeManifestIsComplete();
     void exampleColorThemeManifestsLoad();
-    void stylesheetManifestLoads();
+    void stylesheetManifestIsIgnored();
     void scansLoadsFallsBackAndRescans();
     void optionalPressedIcons();
     void toolbarPressedIcons();
@@ -369,7 +369,7 @@ void TestThemeRegistry::importsAndDeletesThemePacks()
 }
 #endif
 
-void TestThemeRegistry::stylesheetManifestLoads()
+void TestThemeRegistry::stylesheetManifestIsIgnored()
 {
     QTemporaryDir temporaryDirectory;
     QVERIFY(temporaryDirectory.isValid());
@@ -403,8 +403,8 @@ void TestThemeRegistry::stylesheetManifestLoads()
             AppThemes::ThemeManifestParser::FileName)));
     QVERIFY2(result.succeeded(), qPrintable(result.error));
     QVERIFY(result.theme.hasColorTheme());
-    QVERIFY(result.theme.hasStyleSheet());
-    QCOMPARE(result.theme.styleSheetPath(), stylesheet.fileName());
+    QVERIFY(!result.theme.hasStyleSheet());
+    QVERIFY(result.theme.styleSheetPath().isEmpty());
 }
 
 void TestThemeRegistry::scansLoadsFallsBackAndRescans()

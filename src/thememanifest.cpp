@@ -247,6 +247,7 @@ ThemeManifestResult ThemeManifestParser::parseData(
     if (!componentError.isEmpty())
         return failure(componentError);
 
+#ifdef PLANETARY_ENABLE_THEME_STYLESHEETS
     QString styleSheetPath;
     const QJsonValue styleValue = root.value(QStringLiteral("style"));
     if (!styleValue.isUndefined()) {
@@ -275,8 +276,15 @@ ThemeManifestResult ThemeManifestParser::parseData(
         }
         styleSheetPath = styleInfo.absoluteFilePath();
     }
+#endif
 
+#ifdef PLANETARY_ENABLE_THEME_STYLESHEETS
     const Theme theme(id, name, icons, colors, false, styleSheetPath);
+#else
+    // Keep accepting theme packs containing a future stylesheet component,
+    // but do not load, validate, or activate QSS in current builds.
+    const Theme theme(id, name, icons, colors);
+#endif
     if (!theme.isValid())
         return failure(QStringLiteral("Theme must define icons, colors, or both"));
     return {theme, QString()};

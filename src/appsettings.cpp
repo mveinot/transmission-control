@@ -112,7 +112,6 @@ AppSettings::AppSettings(QWidget *parent)
         AppColors::ColorThemeManager::instance().setThemeId(
             m_initialColorTheme);
         AppIcons::IconThemeManager::instance().setThemeId(m_initialIconTheme);
-        AppColors::ColorThemeManager::instance().setStylesheetEnabled(false);
     });
 
     connect(ui->buttonBrowseWatchFolder, &QPushButton::clicked,
@@ -364,9 +363,6 @@ void AppSettings::saveSettings()
     auto &colorManager = AppColors::ColorThemeManager::instance();
     colorManager.setThemeId(selectedColorTheme());
     settings.setValue(SettingsKeys::ColorTheme, colorManager.themeId());
-    // Theme stylesheets are intentionally disabled while the QSS treatment is
-    // being revised; palette-based colour themes remain active.
-    settings.setValue(SettingsKeys::ApplyThemeStylesheet, false);
     const QString iconTheme = ui->iconThemeCombo->currentData().toString();
     auto &iconManager = AppIcons::IconThemeManager::instance();
     iconManager.setThemeId(iconTheme);

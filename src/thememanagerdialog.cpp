@@ -13,6 +13,7 @@
 #include <QDir>
 #include <QFileDialog>
 #include <QFormLayout>
+#include <QFont>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -36,8 +37,6 @@ QString componentText(const AppThemes::Theme &theme)
         components << QObject::tr("Icons");
     if (theme.hasColorTheme())
         components << QObject::tr("Colours");
-    if (theme.hasStyleSheet())
-        components << QObject::tr("Stylesheet");
     return components.join(QStringLiteral("  •  "));
 }
 
@@ -71,8 +70,6 @@ ThemeManagerDialog::ThemeManagerDialog(QWidget *parent)
     m_themeList->setFrameShadow(QFrame::Sunken);
     m_themeList->setLineWidth(2);
     m_themeList->setObjectName(QStringLiteral("themeListPanel"));
-    m_themeList->setStyleSheet(QStringLiteral(
-        "#themeListPanel { border: 2px solid palette(mid); }"));
     m_themeList->setToolTip(tr("Installed built-in and external themes"));
 
     auto *preview = new QFrame(splitter);
@@ -80,8 +77,6 @@ ThemeManagerDialog::ThemeManagerDialog(QWidget *parent)
     preview->setFrameShadow(QFrame::Sunken);
     preview->setLineWidth(2);
     preview->setObjectName(QStringLiteral("themePreviewPanel"));
-    preview->setStyleSheet(QStringLiteral(
-        "#themePreviewPanel { border: 2px solid palette(mid); }"));
     auto *previewLayout = new QVBoxLayout(preview);
     previewLayout->setContentsMargins(14, 8, 8, 8);
 
@@ -420,7 +415,9 @@ void ThemeManagerDialog::updatePreview(const AppThemes::Theme &theme)
     uiLayout->setSpacing(6);
 
     auto *menuBar = new QLabel(tr("File    Edit    View    Transfers    Help"), m_uiPreview);
-    menuBar->setStyleSheet(QStringLiteral("font-weight:600;"));
+    QFont menuFont = menuBar->font();
+    menuFont.setBold(true);
+    menuBar->setFont(menuFont);
     menuBar->setPalette(palette);
     uiLayout->addWidget(menuBar);
 
@@ -478,8 +475,12 @@ void ThemeManagerDialog::updatePreview(const AppThemes::Theme &theme)
         auto *stateLabel = new QLabel(state, row);
         stateLabel->setPalette(palette);
         stateLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        stateLabel->setStyleSheet(QStringLiteral("font-weight:600; color:%1;")
-                                      .arg(stateColor.name()));
+        QPalette statePalette = stateLabel->palette();
+        statePalette.setColor(QPalette::WindowText, stateColor);
+        stateLabel->setPalette(statePalette);
+        QFont stateFont = stateLabel->font();
+        stateFont.setBold(true);
+        stateLabel->setFont(stateFont);
         rowLayout->addWidget(nameLabel);
         rowLayout->addWidget(stateLabel);
         uiLayout->addWidget(row);
