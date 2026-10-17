@@ -14,6 +14,8 @@ endif()
 
 project(Planetary VERSION ${PLANETARY_VERSION_BASE} LANGUAGES C CXX)
 
+set(PLANETARY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
+
 if(APPLE)
     enable_language(OBJCXX)
 endif()
@@ -118,71 +120,37 @@ set_source_files_properties(
 )
 
 set(PLANETARY_THEME_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/appicons.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/appicons.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/appcolors.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/appcolors.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/icontheme.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/icontheme.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/colortheme.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/colortheme.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/theme.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/theme.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/thememanifest.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/thememanifest.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/themearchive.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/themearchive.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/themeregistry.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/themeregistry.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/iconthememanager.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/iconthememanager.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/colorthememanager.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/colorthememanager.cpp"
+    "${PLANETARY_SOURCE_DIR}/appicons.h"
+    "${PLANETARY_SOURCE_DIR}/appicons.cpp"
+    "${PLANETARY_SOURCE_DIR}/appcolors.h"
+    "${PLANETARY_SOURCE_DIR}/appcolors.cpp"
+    "${PLANETARY_SOURCE_DIR}/icontheme.h"
+    "${PLANETARY_SOURCE_DIR}/icontheme.cpp"
+    "${PLANETARY_SOURCE_DIR}/colortheme.h"
+    "${PLANETARY_SOURCE_DIR}/colortheme.cpp"
+    "${PLANETARY_SOURCE_DIR}/theme.h"
+    "${PLANETARY_SOURCE_DIR}/theme.cpp"
+    "${PLANETARY_SOURCE_DIR}/thememanifest.h"
+    "${PLANETARY_SOURCE_DIR}/thememanifest.cpp"
+    "${PLANETARY_SOURCE_DIR}/themearchive.h"
+    "${PLANETARY_SOURCE_DIR}/themearchive.cpp"
+    "${PLANETARY_SOURCE_DIR}/themeregistry.h"
+    "${PLANETARY_SOURCE_DIR}/themeregistry.cpp"
+    "${PLANETARY_SOURCE_DIR}/iconthememanager.h"
+    "${PLANETARY_SOURCE_DIR}/iconthememanager.cpp"
+    "${PLANETARY_SOURCE_DIR}/colorthememanager.h"
+    "${PLANETARY_SOURCE_DIR}/colorthememanager.cpp"
+)
+
+file(GLOB PLANETARY_APPLICATION_SOURCES CONFIGURE_DEPENDS
+    "${PLANETARY_SOURCE_DIR}/*.cpp"
+    "${PLANETARY_SOURCE_DIR}/*.h"
+    "${PLANETARY_SOURCE_DIR}/*.ui"
 )
 
 set(PROJECT_SOURCES
-        main.cpp
-        mainwindow.cpp
-        mainwindow.h
-        mainwindow.ui
-        transmissionbackend.h
-        transmissionbackend.cpp
-        transmissionprotocol.h
-        transmissionprotocol.cpp
-        qbittorrentbackend.h
-        qbittorrentbackend.cpp
-        delugebackend.h
-        delugebackend.cpp
-        torrentbackendrouter.h
-        torrentbackendrouter.cpp
-        torrentbackend.h
-        torrentbackendfactory.h
-        torrentbackendfactory.cpp
-        serverprofile.h
-        serverprofile.cpp
-        serverselectioncontroller.h
-        serverselectioncontroller.cpp
-        pollingcoordinator.h
-        pollingcoordinator.cpp
-        applicationcommandcontroller.h
-        applicationcommandcontroller.cpp
-        applicationlocale.h
-        applicationlocale.cpp
-        windowlayoutcontroller.h
-        windowlayoutcontroller.cpp
-    torrentkey.h
-    torrentdomain.h
-        torrent.h
-        torrent.cpp
-        dialogabout.cpp
-        dialogabout.h
-        dialogabout.ui
-        diagnosticsdialog.h
-        diagnosticsdialog.cpp
-        ${PLANETARY_THEME_SOURCES}
-        thememanagerdialog.h
-        thememanagerdialog.cpp
-        ${PLANETARY_TS_FILES}
+    ${PLANETARY_APPLICATION_SOURCES}
+    ${PLANETARY_TS_FILES}
 )
 
 # The MACOSX_BUNDLE_ICON_FILE variable is added to the Info.plist
@@ -220,7 +188,7 @@ set(PLANETARY_VERSION_FULL
 message(STATUS "Planetary version: ${PLANETARY_VERSION_FULL}")
 
 configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/version.h.in"
+    "${PLANETARY_SOURCE_DIR}/version.h.in"
     "${CMAKE_CURRENT_BINARY_DIR}/generated/version.h"
     @ONLY
 )
@@ -243,62 +211,12 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         Resources/resources.qrc
         Resources/flags.qrc
         ${app_icon_macos}
-        appsettings.ui
-        appsettings.h
-        appsettings.cpp
         Resources/icons/planetary.png
-        torrentsortproxymodel.h torrentsortproxymodel.cpp
-        serverconfig.h serverconfig.cpp serverconfig.ui
-        serversetupwizard.h serversetupwizard.cpp
-        serverconnectionprobe.h serverconnectionprobe.cpp
-        percentfilldelegate.h percentfilldelegate.cpp
-        elidedtexttooltipdelegate.h elidedtexttooltipdelegate.cpp
-        torrentmodel.h torrentmodel.cpp
         Resources/icons/planetary_menu.png
         Resources/icons/planetary_tray_linux.png
-        geoipservice.h geoipservice.cpp
         Resources/geoip/country.mmdb
-        singleinstanceguard.h singleinstanceguard.cpp
-        settingskeys.h
-        sessionsettingsdialog.h sessionsettingsdialog.cpp sessionsettingsdialog.ui
-        statisticsdialog.h statisticsdialog.cpp
-        torrentadddialog.h torrentadddialog.cpp torrentadddialog.ui
-        torrentaddcontroller.h torrentaddcontroller.cpp
-        watchfoldermanager.h watchfoldermanager.cpp
-        watchfoldercontroller.h watchfoldercontroller.cpp
-        updatechecker.h updatechecker.cpp
-        updatecheckcontroller.h updatecheckcontroller.cpp
         Resources/licenses/gpl-2.0.txt
-        settingsimportexport.h settingsimportexport.cpp
-        foldermapping.h
-        foldermappingsdialog.h foldermappingsdialog.cpp foldermappingsdialog.ui
-        bencodevalue.h bencodevalue.cpp
-        bencodeparser.h bencodeparser.cpp
-        torrentmetadataparser.h torrentmetadataparser.cpp
-        pieceprogressbarwidget.h pieceprogressbarwidget.cpp
-        pieceprogresscontroller.h pieceprogresscontroller.cpp
-        torrentdetailstabcontroller.h torrentdetailstabcontroller.cpp
-        torrentfilemodel.h torrentfilemodel.cpp
-        torrentfilescontroller.h torrentfilescontroller.cpp
-        peerreconciler.h peerreconciler.cpp
-        torrentpeerscontroller.h torrentpeerscontroller.cpp
-        torrenttrackerscontroller.h torrenttrackerscontroller.cpp
-        torrentlistcontroller.h torrentlistcontroller.cpp
-        tablecolumncontroller.h tablecolumncontroller.cpp
-        tableplaceholdercontroller.h tableplaceholdercontroller.cpp
-        torrentfiltercontroller.h torrentfiltercontroller.cpp
-        torrentgeneralcontroller.h torrentgeneralcontroller.cpp
-        traycontroller.h traycontroller.cpp
-        notificationcontroller.h notificationcontroller.cpp
-        activitylogmodel.h activitylogmodel.cpp
-        statusbarcontroller.h statusbarcontroller.cpp
-        sessionoverviewwidget.h sessionoverviewwidget.cpp
-        torrentpropertiesdialog.h torrentpropertiesdialog.cpp
     )
-
-target_include_directories(Planetary PRIVATE
-    "${CMAKE_CURRENT_BINARY_DIR}/generated"
-)
 
 set_target_properties(Planetary PROPERTIES
     MACOSX_BUNDLE TRUE
@@ -329,20 +247,25 @@ target_sources(Planetary PRIVATE
     "${PLANETARY_GENERATED_TRANSLATIONS_CPP}"
 )
 
+target_include_directories(Planetary PRIVATE
+    "${PLANETARY_SOURCE_DIR}"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated"
+)
+
 if(APPLE)
     target_sources(Planetary PRIVATE
-        macapplicationbackend.h
-        macapplicationbackend.mm
-        macnotificationbackend.h
-        macnotificationbackend.mm
-        macdefaulthandlerbackend.h
-        macdefaulthandlerbackend.mm
+        "${PLANETARY_SOURCE_DIR}/macapplicationbackend.h"
+        "${PLANETARY_SOURCE_DIR}/macapplicationbackend.mm"
+        "${PLANETARY_SOURCE_DIR}/macnotificationbackend.h"
+        "${PLANETARY_SOURCE_DIR}/macnotificationbackend.mm"
+        "${PLANETARY_SOURCE_DIR}/macdefaulthandlerbackend.h"
+        "${PLANETARY_SOURCE_DIR}/macdefaulthandlerbackend.mm"
     )
 
     set_source_files_properties(
-        macapplicationbackend.mm
-        macnotificationbackend.mm
-        macdefaulthandlerbackend.mm
+        "${PLANETARY_SOURCE_DIR}/macapplicationbackend.mm"
+        "${PLANETARY_SOURCE_DIR}/macnotificationbackend.mm"
+        "${PLANETARY_SOURCE_DIR}/macdefaulthandlerbackend.mm"
         PROPERTIES
         COMPILE_FLAGS "-fobjc-arc"
     )

@@ -902,7 +902,7 @@
   </action>
  </widget>
  <resources>
-  <include location="Resources/resources.qrc"/>
+  <include location="../Resources/resources.qrc"/>
  </resources>
  <connections/>
 </ui>

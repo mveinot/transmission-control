@@ -24,6 +24,7 @@ build/
 build-release/
 build-macos-universal-release/
 build-macos-universal-qt612-release/
+build-macos-src-layout-check/
 dmg-root/
 !core/
 tags

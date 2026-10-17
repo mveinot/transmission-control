@@ -3,7 +3,6 @@ set -euo pipefail
 
 APP_NAME="Planetary"
 EXECUTABLE_NAME="Planetary"
-VERSION_FILE="version.h"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${ROOT_DIR}/build-appimage"
@@ -23,16 +22,6 @@ case "$ARCH" in
     ;;
 esac
 
-VERSION="$(grep -E '^#define[[:space:]]+__PLANETARY_VERSION__' "${ROOT_DIR}/${VERSION_FILE}" \
-  | sed -E 's/.*"([^"]+)".*/\1/')"
-
-if [[ -z "$VERSION" ]]; then
-  echo "Could not extract __PLANETARY_VERSION__ from ${VERSION_FILE}"
-  exit 1
-fi
-
-echo "Packaging ${APP_NAME} ${VERSION} for Linux ${APPIMAGE_ARCH}"
-
 mkdir -p "$DIST_DIR"
 
 rm -rf "$BUILD_DIR" "$APPDIR"
@@ -41,6 +30,17 @@ mkdir -p "$BUILD_DIR" "$APPDIR"
 cmake -S "$ROOT_DIR" -B "$BUILD_DIR" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX=/usr
+
+VERSION_FILE="${BUILD_DIR}/generated/version.h"
+VERSION="$(grep -E '^#define[[:space:]]+__PLANETARY_VERSION__' "$VERSION_FILE" \
+  | sed -E 's/.*"([^"]+)".*/\1/')"
+
+if [[ -z "$VERSION" ]]; then
+  echo "Could not extract __PLANETARY_VERSION__ from ${VERSION_FILE}"
+  exit 1
+fi
+
+echo "Packaging ${APP_NAME} ${VERSION} for Linux ${APPIMAGE_ARCH}"
 
 cmake --build "$BUILD_DIR" --config Release -j"$(nproc)"
 
