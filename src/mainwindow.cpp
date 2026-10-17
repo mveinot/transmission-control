@@ -671,11 +671,21 @@ MainWindow::MainWindow(QWidget *parent)
     proxy = new TorrentSortProxyModel(this);
     proxy->setSourceModel(torrentModel);
 
-    // GeoIP failure is non-fatal: GeoIpService retains its compiled fallback.
+    // GeoIP failure is non-fatal, but must not fabricate peer countries.
     geoIpService = new GeoIpService(this);
 
     if (!geoIpService->loadDefaultDatabase()) {
-        qWarning() << "GeoIP database could not be loaded; using fallback lookup";
+        qWarning() << "GeoIP database could not be loaded; country lookups will be unknown";
+        const QString loadError = geoIpService->databaseInfo().errorMessage;
+        QTimer::singleShot(0, this, [this, loadError]() {
+            QMessageBox::warning(
+                this,
+                tr("GeoIP Database Unavailable"),
+                tr("Planetary could not load its bundled country database. "
+                   "Peer country locations will be shown as unknown until the "
+                   "database is available.\n\n%1")
+                    .arg(loadError));
+        });
     }
 
     torrentAddController = new TorrentAddController(client, this, this);

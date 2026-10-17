@@ -6,60 +6,9 @@
 #include <QFileInfo>
 #include <QHostAddress>
 #include <QTimeZone>
-#include <QSet>
 #include <QStringList>
-#include <QStandardPaths>
 
 namespace {
-
-
-QString normalizedPath(const QString &path)
-{
-    if (path.trimmed().isEmpty())
-        return {};
-
-    return QDir::cleanPath(QFileInfo(path).absoluteFilePath());
-}
-
-void appendUniquePath(QStringList *paths, QSet<QString> *seen, const QString &path)
-{
-    const QString cleanPath = normalizedPath(path);
-
-    if (cleanPath.isEmpty())
-        return;
-
-#ifdef Q_OS_WIN
-    const QString key = cleanPath.toCaseFolded();
-#else
-    const QString key = cleanPath;
-#endif
-
-    if (seen->contains(key))
-        return;
-
-    seen->insert(key);
-    paths->append(cleanPath);
-}
-
-void appendDatabaseFilesFromDirectory(QStringList *paths,
-                                      QSet<QString> *seen,
-                                      const QString &directoryPath)
-{
-    const QDir directory(directoryPath);
-
-    if (!directory.exists())
-        return;
-
-    const QStringList fileNames = directory.entryList(
-        QStringList() << QStringLiteral("*.mmdb"),
-        QDir::Files | QDir::Readable,
-        QDir::Name
-        );
-
-    for (const QString &fileName : fileNames)
-        appendUniquePath(paths, seen, directory.filePath(fileName));
-}
-
 
 #ifdef PLANETARY_HAVE_MAXMINDDB
 QString mmdbCString(const char *text)
@@ -70,31 +19,6 @@ QString mmdbCString(const char *text)
     return QString::fromUtf8(text);
 }
 #endif
-
-struct DummyCountry
-{
-    const char *code;
-    const char *name;
-};
-
-// some dummy country values if the database could not be loaded
-const QList<DummyCountry> DummyCountries {
-    { "CA", "Canada" },
-    { "US", "United States" },
-    { "GB", "United Kingdom" },
-    { "DE", "Germany" },
-    { "FR", "France" },
-    { "NL", "Netherlands" },
-    { "SE", "Sweden" },
-    { "NO", "Norway" },
-    { "JP", "Japan" },
-    { "AU", "Australia" },
-    { "BR", "Brazil" },
-    { "IN", "India" },
-    { "ES", "Spain" },
-    { "IT", "Italy" },
-    { "PL", "Poland" }
-};
 
 }
 
@@ -123,58 +47,24 @@ GeoIpService::~GeoIpService()
 
 QStringList GeoIpService::candidateDatabasePaths()
 {
-    QStringList paths;
-    QSet<QString> seen;
-
     const QString appDir = QCoreApplication::applicationDirPath();
+    QString databasePath;
 
-    const QStringList preferredFileNames {
-        QStringLiteral("country.mmdb"),
-        QStringLiteral("dbip-country-lite.mmdb"),
-        QStringLiteral("dbip-country-lite-2026-06.mmdb")
-    };
-
-    QStringList candidateDirectories {
-        // macOS bundle layout: Planetary.app/Contents/MacOS -> Planetary.app/Contents/Resources
-        QDir(appDir).filePath(QStringLiteral("../Resources/geoip")),
-
-        // Windows / portable layouts beside the executable.
-        QDir(appDir).filePath(QStringLiteral("geoip")),
-        QDir(appDir).filePath(QStringLiteral("Resources/geoip")),
-        QDir(appDir).filePath(QStringLiteral("resources/geoip")),
-
-        // Linux install layouts relative to bin/.
-        QDir(appDir).filePath(QStringLiteral("../share/planetary/geoip")),
-        QDir(appDir).filePath(QStringLiteral("../share/Planetary/geoip")),
-
-        // Developer/source-tree convenience when launched from the project root.
-        QDir(QDir::currentPath()).filePath(QStringLiteral("Resources/geoip"))
-    };
-
-    for (const QString &location : QStandardPaths::standardLocations(QStandardPaths::AppDataLocation))
-        candidateDirectories.append(QDir(location).filePath(QStringLiteral("geoip")));
-
-    for (const QString &location : QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation)) {
-        candidateDirectories.append(QDir(location).filePath(QStringLiteral("planetary/geoip")));
-        candidateDirectories.append(QDir(location).filePath(QStringLiteral("Planetary/geoip")));
-    }
-
-#ifndef Q_OS_MACOS
-    candidateDirectories.append(QStringLiteral("/usr/local/share/planetary/geoip"));
-    candidateDirectories.append(QStringLiteral("/usr/share/planetary/geoip"));
-    candidateDirectories.append(QStringLiteral("/opt/planetary/share/geoip"));
+#ifdef Q_OS_MACOS
+    // Planetary.app/Contents/MacOS -> Planetary.app/Contents/Resources/geoip
+    databasePath = QDir(appDir).filePath(
+        QStringLiteral("../Resources/geoip/country.mmdb"));
+#elif defined(Q_OS_WIN)
+    // Portable Windows distribution: Planetary.exe beside geoip/country.mmdb.
+    databasePath = QDir(appDir).filePath(
+        QStringLiteral("geoip/country.mmdb"));
+#else
+    // Linux install and AppImage layout: bin/Planetary -> share/planetary/geoip.
+    databasePath = QDir(appDir).filePath(
+        QStringLiteral("../share/planetary/geoip/country.mmdb"));
 #endif
 
-    for (const QString &directory : candidateDirectories) {
-        const QDir dir(directory);
-
-        for (const QString &fileName : preferredFileNames)
-            appendUniquePath(&paths, &seen, dir.filePath(fileName));
-
-        appendDatabaseFilesFromDirectory(&paths, &seen, directory);
-    }
-
-    return paths;
+    return {QDir::cleanPath(QFileInfo(databasePath).absoluteFilePath())};
 }
 
 bool GeoIpService::loadDefaultDatabase()
@@ -207,6 +97,8 @@ bool GeoIpService::loadDefaultDatabase()
     dbInfo.maxMindDbSupport = false;
 #endif
     dbInfo.fallbackLookupActive = true;
+    if (!candidates.isEmpty())
+        dbInfo.path = candidates.first();
 
 #ifndef PLANETARY_HAVE_MAXMINDDB
     dbInfo.errorMessage = tr("Planetary was built without libmaxminddb support.");
@@ -353,8 +245,6 @@ GeoIpResult GeoIpService::lookup(const QString &ipAddress)
         result.isPrivateAddress = true;
     } else if (isDatabaseLoaded()) {
         result = lookupInDatabase(key);
-    } else {
-        result = dummyLookup(key);
     }
 
     // Cache misses and private-address classifications too; peer snapshots
@@ -418,25 +308,6 @@ GeoIpResult GeoIpService::lookupInDatabase(const QString &ipAddress) const
 #else
     Q_UNUSED(ipAddress);
 #endif
-
-    return result;
-}
-
-GeoIpResult GeoIpService::dummyLookup(const QString &ipAddress) const
-{
-    GeoIpResult result;
-
-    if (DummyCountries.isEmpty())
-        return result;
-
-    const uint hash = qHash(ipAddress);
-    const int index = static_cast<int>(hash % DummyCountries.size());
-
-    const DummyCountry &country = DummyCountries.at(index);
-
-    result.countryCode = QString::fromLatin1(country.code);
-    result.countryName = QString::fromLatin1(country.name);
-    result.found = true;
 
     return result;
 }

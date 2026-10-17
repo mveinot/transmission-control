@@ -81,7 +81,6 @@ private:
 #endif
 
     GeoIpResult lookupInDatabase(const QString &ipAddress) const;
-    GeoIpResult dummyLookup(const QString &ipAddress) const;
 
     static bool isPrivateOrLocalAddress(const QString &ipAddress);
     void updateCacheEntryCount();
