@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "id": "autumn-ledger",
+  "name": "Autumn Ledger",
+  "colors": {
+    "mode": "light",
+    "palette": {
+      "window": "#eee2cc",
+      "window-text": "#3c3027",
+      "base": "#fbf5e9",
+      "alternate-base": "#e7d8bd",
+      "tool-tip-base": "#fff8eb",
+      "tool-tip-text": "#3c3027",
+      "text": "#3c3027",
+      "button": "#ddc9a7",
+      "button-text": "#3c3027",
+      "bright-text": "#fffaf0",
+      "highlight": "#a94f35",
+      "highlighted-text": "#fffaf0",
+      "link": "#45694b",
+      "link-visited": "#80566d",
+      "placeholder-text": "#897965",
+      "accent": "#c77d2e"
+    },
+    "semantic": {
+      "download": "#376b82",
+      "upload": "#a94f35",
+      "success": "#4e7045",
+      "warning": "#a96822",
+      "error": "#a43e36",
+      "inactive": "#91836e",
+      "verification": "#705b8b",
+      "queued": "#99723e",
+      "piece-complete": "#c77d2e",
+      "piece-remaining": "#f2e6d1",
+      "piece-border": "#b8a482"
+    }
+  }
+}
