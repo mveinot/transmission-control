@@ -2,7 +2,7 @@
 Type=Application
 Name=Planetary
 Comment=Transmission remote client
-Exec=/home/vmark/.local/bin/Planetary %U
+Exec=Planetary %U
 Icon=planetary
 Terminal=false
 Categories=Network;FileTransfer;P2P;Qt;

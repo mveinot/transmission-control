@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Planetary
+Comment=Transmission remote client
+Exec=Planetary %U
+Icon=planetary
+Terminal=false
+Categories=Network;FileTransfer;P2P;Qt;
+MimeType=application/x-bittorrent;application/vnd.mvgrafx.planetary-theme;x-scheme-handler/magnet;
+StartupNotify=true

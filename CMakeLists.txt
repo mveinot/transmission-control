@@ -163,6 +163,14 @@ set(app_icon_macos "${CMAKE_CURRENT_SOURCE_DIR}/Resources/icons/planetary.icns")
 set_source_files_properties(${app_icon_macos} PROPERTIES
     MACOSX_PACKAGE_LOCATION "Resources")
 
+set(PLANETARY_APPSTREAM_FILE
+    "${CMAKE_CURRENT_BINARY_DIR}/net.mvgrafx.Planetary.metainfo.xml")
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/packaging/linux/net.mvgrafx.Planetary.metainfo.xml.in"
+    "${PLANETARY_APPSTREAM_FILE}"
+    @ONLY
+)
+
 set(PLANETARY_VERSION_BUILD "0")
 
 find_package(Git QUIET)
@@ -469,6 +477,11 @@ install(FILES
 install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/packaging/linux/planetary.desktop"
     DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications"
+)
+
+install(FILES
+    "${PLANETARY_APPSTREAM_FILE}"
+    DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/metainfo"
 )
 
 install(FILES

@@ -8,6 +8,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${ROOT_DIR}/build-appimage"
 APPDIR="${ROOT_DIR}/${APP_NAME}.AppDir"
 DIST_DIR="${ROOT_DIR}/dist"
+APPIMAGE_DESKTOP_SOURCE="${ROOT_DIR}/packaging/linux/planetary-appimage.desktop"
 
 ARCH="$(uname -m)"
 case "$ARCH" in
@@ -42,35 +43,21 @@ fi
 
 echo "Packaging ${APP_NAME} ${VERSION} for Linux ${APPIMAGE_ARCH}"
 
-cmake --build "$BUILD_DIR" --config Release -j"$(nproc)"
+# The AppImage only needs the application; building the test suite here adds
+# substantial time and does not affect the packaged runtime.
+cmake --build "$BUILD_DIR" --config Release --target Planetary -j"$(nproc)"
 
 DESTDIR="$APPDIR" cmake --install "$BUILD_DIR"
 
-mkdir -p "${APPDIR}/usr/share/applications"
-mkdir -p "${APPDIR}/usr/share/icons/hicolor/256x256/apps"
-mkdir -p "${APPDIR}/usr/share/planetary/geoip"
-mkdir -p "${APPDIR}/usr/share/planetary/licenses"
-
-if [[ -f "${ROOT_DIR}/packaging/linux/planetary.desktop" ]]; then
-  cp "${ROOT_DIR}/packaging/linux/planetary.desktop" \
-     "${APPDIR}/usr/share/applications/planetary.desktop"
-  cp "${ROOT_DIR}/packaging/linux/planetary.desktop" \
-     "${APPDIR}/planetary.desktop"
-else
-  cat > "${APPDIR}/planetary.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=Planetary
-Comment=Qt Transmission remote client
-Exec=${EXECUTABLE_NAME}
-Icon=planetary
-Categories=Network;FileTransfer;P2P;Qt;
-Terminal=false
-StartupNotify=true
-EOF
-  cp "${APPDIR}/planetary.desktop" \
-     "${APPDIR}/usr/share/applications/planetary.desktop"
+if [[ ! -f "$APPIMAGE_DESKTOP_SOURCE" ]]; then
+  echo "Missing AppImage desktop file: $APPIMAGE_DESKTOP_SOURCE"
+  exit 1
 fi
+
+mkdir -p "${APPDIR}/usr/share/applications"
+cp "$APPIMAGE_DESKTOP_SOURCE" "${APPDIR}/planetary.desktop"
+cp "$APPIMAGE_DESKTOP_SOURCE" \
+   "${APPDIR}/usr/share/applications/planetary.desktop"
 
 #if [[ -f "${ROOT_DIR}/Resources/icons/planetary.png" ]]; then
   #cp "${ROOT_DIR}/Resources/icons/planetary.png" \
@@ -148,6 +135,16 @@ fi
 
 export VERSION="$VERSION"
 export ARCH="$APPIMAGE_ARCH"
+# Fedora's Qt 6 packages expose the Wayland platform plugin as libqwayland.so.
+# Request it explicitly while retaining the XCB plugin for X11 sessions.
+export EXTRA_PLATFORM_PLUGINS="libqwayland.so"
+# The bundled linuxdeploy-plugin-qt currently ships an older strip that cannot
+# read RELR sections emitted by newer distributions such as Fedora 44.
+# Skipping stripping is safe for the bundle and avoids corrupting deployment.
+export NO_STRIP=1
+# Its bundled patchelf is likewise too old for these ELF files.  AppRun sets
+# LD_LIBRARY_PATH for the bundle, so no rpath rewrite is required here.
+export PATCHELF="${PATCHELF:-/usr/bin/true}"
 
 "$LINUXDEPLOY" \
   --appdir "$APPDIR" \
@@ -157,9 +154,9 @@ export ARCH="$APPIMAGE_ARCH"
   --plugin qt \
   --output appimage
 
-OUTPUT_APPIMAGE="${APP_NAME}-${VERSION}-linux-${APPIMAGE_ARCH}.AppImage"
+OUTPUT_APPIMAGE="${APP_NAME}-${VERSION}-${APPIMAGE_ARCH}.AppImage"
 
-FOUND_APPIMAGE="$(find "$ROOT_DIR" -maxdepth 1 -type f -name "*.AppImage" | head -n 1 || true)"
+FOUND_APPIMAGE="$(find "$ROOT_DIR" -maxdepth 1 -type f -name "${APP_NAME}*.AppImage" -newer "$BUILD_DIR" -print -quit || true)"
 
 if [[ -z "$FOUND_APPIMAGE" ]]; then
   echo "Could not find generated AppImage"
