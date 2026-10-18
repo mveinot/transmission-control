@@ -42,7 +42,10 @@
       </div>
       <div class="hero-visual" aria-label="Planetary application screenshot">
         <div class="app-glow"></div>
-        <img src="assets/screen2.png" alt="Planetary showing a list of torrents and detailed file information">
+        <picture>
+          <source type="image/webp" srcset="assets/responsive/screen2-800.webp 800w, assets/responsive/screen2-1600.webp 1600w" sizes="(max-width: 720px) calc(100vw - 28px), (max-width: 980px) calc(100vw - 48px), (max-width: 1320px) 52vw, 700px">
+          <img src="assets/screen2.png" width="3516" height="2106" fetchpriority="high" decoding="async" alt="Planetary showing a list of torrents and detailed file information">
+        </picture>
       </div>
     </section>
 
@@ -131,13 +134,19 @@
       <div class="theme-gallery">
         <figure class="screenshot-card">
           <a href="assets/screen5.png">
-            <img src="assets/screen5.png" alt="Planetary using the cyan-on-black Elflord colour scheme with glossy blue icons" loading="lazy">
+            <picture>
+              <source type="image/webp" srcset="assets/responsive/screen5-800.webp 800w, assets/responsive/screen5-1600.webp 1600w" sizes="(max-width: 720px) calc(100vw - 28px), (max-width: 1200px) calc(50vw - 33px), 580px">
+              <img src="assets/screen5.png" width="3348" height="1952" alt="Planetary using the cyan-on-black Elflord colour scheme with glossy blue icons" loading="lazy" decoding="async">
+            </picture>
           </a>
           <figcaption><strong>Elflord</strong> colours paired with Polar Night icons</figcaption>
         </figure>
         <figure class="screenshot-card">
           <a href="assets/screen6.png">
-            <img src="assets/screen6.png" alt="Planetary using a warm light colour scheme with richly rendered Celestial Enamel icons" loading="lazy">
+            <picture>
+              <source type="image/webp" srcset="assets/responsive/screen6-800.webp 800w, assets/responsive/screen6-1600.webp 1600w" sizes="(max-width: 720px) calc(100vw - 28px), (max-width: 1200px) calc(50vw - 33px), 580px">
+              <img src="assets/screen6.png" width="3348" height="1952" alt="Planetary using a warm light colour scheme with richly rendered Celestial Enamel icons" loading="lazy" decoding="async">
+            </picture>
           </a>
           <figcaption><strong>Gruvbox Light</strong> paired with Celestial Enamel icons</figcaption>
         </figure>
@@ -160,19 +169,25 @@
       <div class="screenshot-grid">
         <figure class="screenshot-card screenshot-large">
           <a href="assets/screen2.png">
-            <img src="assets/screen2.png" alt="Planetary torrent list and files panel" loading="lazy">
+            <picture>
+              <source type="image/webp" srcset="assets/responsive/screen2-800.webp 800w, assets/responsive/screen2-1600.webp 1600w" sizes="(max-width: 720px) calc(100vw - 28px), (max-width: 1200px) calc(50vw - 33px), 580px">
+              <img src="assets/screen2.png" width="3516" height="2106" alt="Planetary torrent list and files panel" loading="lazy" decoding="async">
+            </picture>
           </a>
           <figcaption>Files, progress, filters, and core transfer controls</figcaption>
         </figure>
         <figure class="screenshot-card">
           <a href="assets/screen3.webp">
-            <img src="assets/screen3.webp" alt="Planetary peer list with country flags" loading="lazy">
+            <img src="assets/screen3.webp" width="1800" height="1045" alt="Planetary peer list with country flags" loading="lazy" decoding="async">
           </a>
           <figcaption>Peer details with optional local GeoIP lookup</figcaption>
         </figure>
         <figure class="screenshot-card">
           <a href="assets/screen4.png">
-            <img src="assets/screen4.png" alt="Planetary application interface" loading="lazy">
+            <picture>
+              <source type="image/webp" srcset="assets/responsive/screen4-800.webp 800w, assets/responsive/screen4-1600.webp 1600w" sizes="(max-width: 720px) calc(100vw - 28px), (max-width: 1200px) calc(50vw - 33px), 580px">
+              <img src="assets/screen4.png" width="3348" height="1944" alt="Planetary application interface" loading="lazy" decoding="async">
+            </picture>
           </a>
           <figcaption>A native desktop interface for everyday management</figcaption>
         </figure>

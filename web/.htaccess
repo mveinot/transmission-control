@@ -1,0 +1,8 @@
+# These assets use stable URLs and are small enough to refresh daily when
+# updated; do not cache HTML or release manifests with these rules.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/png "access plus 1 day"
+    ExpiresByType image/webp "access plus 1 day"
+    ExpiresByType text/css "access plus 1 day"
+</IfModule>
