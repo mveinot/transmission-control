@@ -11,17 +11,21 @@ C++ with Qt and is free, open-source, and telemetry-free.
 ## Features
 
 - Manage multiple Transmission, qBittorrent, and Deluge servers and switch
-  between them from the same window.
+  between them from the same window; import or export server profiles.
 - Add transfers from local `.torrent` files, remote torrent URLs, magnet links,
   the clipboard, registered file handlers, or watched folders.
-- Choose whether torrent and magnet additions show the options dialog, select
-  files and priorities before adding, and rename a torrent's top-level folder.
+- Select files and priorities before adding; rename a torrent's top-level folder
+  when adding it or later where the server supports it.
+- Change which files are wanted and their priorities, and edit a torrent's
+  tracker list where supported.
 - Inspect files, piece progress, peers, trackers, properties, session details,
   and aggregate transfer statistics.
 - Start, stop, verify, reannounce, relocate, remove, and reorder torrents, with
   backend-specific controls exposed where supported.
 - Filter by status, tracker, or folder; search torrents and their file trees;
-  and work with labels and groups.
+  organize torrents with labels and groups, and customize the visible columns.
+- Follow connection and authentication recovery in the activity log, with
+  event levels and filters for routine activity, warnings, and errors.
 - See rates, free space, alternate-speed status, and connection state in the
   main window, with total, downloading, and seeding counts also available from
   the notification-area menu.
@@ -39,8 +43,10 @@ assets.
 
 External themes can provide icons, colours, or both. They may be installed as
 folders or as single-file `.planetarytheme` packages; opening a package installs
-it and makes its components available under **Settings → Appearance**. Missing
-icons safely fall back through the built-in theme set.
+it and makes its components available under **Settings → Appearance**. Themes
+can also be imported or removed through **Planetary → Manage Themes**. Icon and
+colour selections update immediately, and missing icons safely fall back
+through the built-in theme set.
 
 ## Screenshots
 
@@ -60,8 +66,9 @@ icons safely fall back through the built-in theme set.
 ## Platforms
 
 The distributed macOS build is universal for Apple Silicon and Intel and
-supports macOS 14.4 or later. The source also builds on Windows and Linux, though
-those platforms have not yet received the same packaging and refinement work.
+supports macOS 14.4 or later. The project also includes packaging workflows for
+a Windows portable archive and installer, and a Linux AppImage. Consult the
+release page for currently published downloads and platform-specific status.
 
 Planetary began as a modern C++/Qt reimplementation of
 [Transmission Remote GUI](https://github.com/transmission-remote-gui/transgui)
