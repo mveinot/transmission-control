@@ -30,7 +30,8 @@ body {
 }
 
 a { color: inherit; }
-img { max-width: 100%; }
+img { max-width: 100%; height: auto; }
+picture { display: block; }
 
 .site-header {
   position: sticky;
