@@ -254,6 +254,13 @@ target_sources(Planetary PRIVATE
     "${PLANETARY_GENERATED_TRANSLATIONS_CPP}"
 )
 
+if(WIN32)
+    target_sources(Planetary PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/planetary.rc")
+    set_property(SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/planetary.rc"
+        APPEND PROPERTY OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows/planetary.ico")
+    target_include_directories(Planetary PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/packaging/windows")
+endif()
+
 target_include_directories(Planetary PRIVATE
     "${PLANETARY_SOURCE_DIR}"
     "${CMAKE_CURRENT_BINARY_DIR}/generated"

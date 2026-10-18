@@ -1,126 +1,155 @@
 # Windows packaging handoff
 
-This document is a handoff for continuing Planetary's Windows distribution work
-on a real Windows system or Windows VM. The current Linux workspace has not run
-the Windows build or deployment script.
+## Current Windows toolchain
 
-## Current state
+Planetary's Windows release uses the same toolchain as the working Qt Creator kit:
 
-The source builds on Windows through CMake and uses Qt Widgets. The current
-release script is:
+- Qt 6.12.0 LLVM-MinGW x64: `C:\Qt\6.12.0\llvm-mingw_64`;
+- LLVM-MinGW 22.1.7: `C:\Qt\Tools\llvm-mingw2217_64`;
+- CMake: `C:\Qt\Tools\CMake_64\bin\cmake.exe`;
+- CMake generator: `MinGW Makefiles`;
+- Git, available on PATH for version metadata.
 
-```text
-scripts/windows-release.bat
-```
+MSVC and Visual Studio Build Tools are not required for this configuration.
+Do not mix this build with the MSVC or GCC MinGW Qt libraries.
 
-It now:
+## Build and package
 
-- uses `C:\Qt\6.12.0\msvc2022_64` as the default Qt kit;
-- allows the kit to be overridden with `QT_ROOT`;
-- verifies that `%QT_ROOT%\bin\windeployqt.exe` exists;
-- configures with CMake;
-- builds only the `Planetary` target;
-- copies `Planetary.exe` into a staging directory;
-- runs `windeployqt --release`;
-- copies the GeoIP database and license files;
-- creates `dist\Planetary-Windows.zip`.
+Run `scripts\windows-release.bat` from a command prompt. It locates the repository
+relative to the script, so the caller's current directory does not matter.
+The batch file invokes `scripts\windows-release.ps1` using Windows PowerShell.
 
-The version-bump step was removed because the referenced `make_version.ps1`
-does not exist. CMake already generates the application version from the
-repository version and Git metadata.
-
-## Recommended Windows environment
-
-Install:
-
-- Visual Studio Build Tools with the MSVC C++ workload;
-- Qt 6.12 MSVC 2022 x64;
-- CMake;
-- Git;
-- Inno Setup;
-- Windows SDK, for `signtool.exe`.
-
-Run from a Visual Studio Developer Command Prompt or an environment with MSVC
-available:
+Optional environment overrides:
 
 ```bat
-set QT_ROOT=C:\Qt\6.12.0\msvc2022_64
+set QT_ROOT=C:\Qt\6.12.0\llvm-mingw_64
+set LLVM_MINGW_ROOT=C:\Qt\Tools\llvm-mingw2217_64
+set CMAKE_EXE=C:\Qt\Tools\CMake_64\bin\cmake.exe
 scripts\windows-release.bat
 ```
 
-The first validation should be performed on a clean Windows VM without Qt or
-Visual Studio installed, using the generated ZIP only.
+The script configures Release with explicit Clang compilers and MinGW Makefiles,
+builds only Planetary, and stages it using the matching kit's `windeployqt --compiler-runtime`. It copies GeoIP data and all required license materials,
+checks essential staged files, and creates `dist\Planetary-Windows.zip`.
+Any failed tool, copy, or archive operation causes a nonzero exit status.
 
-## Immediate validation checklist
+Build files live in `build-release\llvm-mingw`; existing build trees are preserved.
+Only `dist\Planetary` is replaced during staging; other distribution artifacts are
+preserved. An older ZIP may remain if a run fails before archiving: only a zero
+exit status and the success message indicate a successful new release.
+CMake generates the application version from repository version and Git metadata.
 
-1. Confirm the batch file completes without errors.
-2. Confirm `dist\Planetary-Windows.zip` contains `Planetary.exe`.
-3. Launch the staged application on a clean VM.
-4. Confirm the GeoIP database loads from:
+## Validation checklist
 
-   ```text
-   geoip\country.mmdb
-   ```
+1. Confirm the release script exits successfully.
+2. Inspect the ZIP for `Planetary\Planetary.exe`, Qt DLLs, platform and image
+   plugins, translations, compiler runtime DLLs, GeoIP data, and licenses.
+3. Extract and launch the ZIP on a clean Windows VM without Qt or development
+   tools installed. Confirm LLVM-MinGW runtime dependencies are complete.
+4. Confirm GeoIP loads from `geoip\country.mmdb` relative to the executable.
+5. Test HTTPS update checking and HTTPS server connections on the clean VM.
+6. Inspect available TLS backends. A Qt OpenSSL plugin alone does not establish
+   that compatible OpenSSL runtime DLLs are deployed. If OpenSSL is needed,
+   record bundled DLL provenance and licenses and repeat HTTPS validation.
 
-5. Confirm Qt platform plugins, image plugins, and translations are present.
-6. Test HTTPS update checking and HTTPS server connections.
-7. Test both a machine with the VC++ runtime already installed and a clean
-   machine without it.
-8. Check whether OpenSSL DLLs are present and whether TLS works without Qt or
-   development tools installed.
+The scripted file checks do not replace startup and TLS tests on Windows.
+The VC++ Redistributable is not the compiler-runtime prerequisite for this
+LLVM-MinGW build; verify actual binary dependencies before adding prerequisites.
 
-## Runtime decisions still needed
+## Inno Setup 7 installer
 
-### Visual C++ runtime
+The installer source is `packaging\windows\Planetary.iss`.
+Build the portable release first, then compile from the repository root:
 
-`windeployqt` is the correct tool for Qt dependencies. Decide whether the
-release should:
+```powershell
+& 'C:\Program Files\Inno Setup 7\ISCC.exe' packaging\windows\Planetary.iss
+```
 
-- install the official Microsoft VC++ Redistributable as an installer
-  prerequisite; or
-- remain a portable ZIP with application-local runtime DLLs.
+The compiler reads `dist\Planetary` and the generated version in
+`build-release\llvm-mingw\planetary-version.txt`. Output is
+`dist\Planetary-<version>-Windows-x64-Setup.exe`.
+The source also accepts preprocessor overrides `/DStageDir=...`,
+`/DAppVersion=major.minor.patch.build`, and `/DInstallerOutputDir=...`.
+When overriding the staging directory, supply the version belonging to that payload.
 
-For an Inno Setup installer, prefer the official redistributable prerequisite
-because it can receive servicing updates. Do not copy arbitrary runtime DLLs
-from a developer machine without checking their deployment authorization.
+The installer supports Windows 10 or later on x64-compatible systems. It defaults
+to a per-user install and offers an all-users installation with elevation.
+It provides a Start Menu shortcut, an optional desktop shortcut, license and
+third-party notice pages, and optional .torrent/magnet handler registration.
+Windows controls the default-app selection; registration does not overwrite an
+existing handler or UserChoice. Choose Planetary in Windows Default Apps after
+installing if desired. The quoted open commands forward the file or URL as one
+argument to the application, including its existing single-instance handling.
 
-### OpenSSL
+The stable AppId identifies future upgrades. Keep it unchanged. Use the same
+install scope for upgrades; switching per-user/all-users can produce separate
+installations. Inno tracks installed files and registry entries for uninstall.
+Application settings and credentials are retained; no broad directory or settings
+removal is requested. Install, upgrade, uninstall, and association behavior still
+need an interactive Windows test; compilation alone does not validate them.
 
-Qt's TLS plugin is separate from the OpenSSL implementation. The deployed
-application may contain a Qt TLS plugin but still need OpenSSL runtime DLLs.
-Verify HTTPS on a clean machine. If required, bundle the compatible OpenSSL
-DLLs in the application directory and record their provenance/license.
+The package uses the validated Windows Schannel TLS backend. OpenSSL DLLs and
+its Qt backend are excluded; no OpenSSL or VC++ Redistributable prerequisite is
+installed for this LLVM-MinGW payload.
 
-## Inno Setup direction
+The default build is unsigned. Before production distribution, configure
+signing for the application payload, installer, and uninstaller. A trusted
+certificate or hosted signing service is required for publicly trusted signing.
+Do not modify files after signing. The Windows SDK is needed if using signtool,
+not for compiling with LLVM-MinGW.
 
-The likely production format is an Inno Setup installer built from the staged
-application directory. It should eventually provide:
-
-- application installation and clean uninstall;
-- Start Menu shortcut;
-- optional desktop shortcut;
-- `.torrent` file association;
-- `magnet:` URL association;
-- per-user or administrator installation choice;
-- VC++ Redistributable prerequisite handling;
-- version-aware upgrades;
-- license and third-party notice display;
-- signed installer and uninstaller.
-
-Keep the portable ZIP as a secondary artifact if it remains useful.
-
-## Signing
-
-No paid Microsoft Visual Studio subscription is required for signing. The
-Windows SDK provides `signtool.exe`, but public trust requires a trusted code
-signing certificate or a hosted signing service. A self-signed certificate is
-appropriate only for local testing.
-
-Sign the application binaries before embedding them in the installer, then
-sign the final installer and uninstaller. Do not modify signed files afterward.
-
-## Important scope boundary
+## Scope boundary
 
 Do not alter macOS behavior or packaging while implementing Windows support.
-Windows-specific changes should remain in the Windows release script,
-Windows packaging files, and appropriately guarded platform-specific code.
+Keep Windows-specific changes in Windows scripts, packaging files, and
+appropriately guarded platform-specific code.
+
+## Qt 6.12 LLVM-MinGW deployment quirk
+
+The installed deployment tool misclassifies this kit's plugins as debug when
+release mode is forced and reports a missing platform plugin. Leave deployment
+mode on automatic detection; the application is still built with CMake Release.
+The package explicitly checks libc++, libunwind, and the Schannel TLS plugin.
+
+## Local self-signed test build
+
+The initial signing test uses a workspace PFX, not a certificate trusted by Windows.
+No root trust was added. The certificate and private key are not repository files.
+Only the public .cer is a deliverable. Keep the private PFX and its password local.
+The public certificate can identify the signer but does not establish public trust.
+
+`scripts\windows-sign-file.ps1` accepts a file path and reads signing configuration
+from environment variables: PLANETARY_SIGNTOOL (full signtool.exe path),
+PLANETARY_SIGN_PFX (private certificate path), and PLANETARY_SIGN_PASSWORD.
+Do not commit or publish private keys or passwords.
+
+After staging, sign Planetary.exe, libc++.dll, and libunwind.dll with that helper.
+Preserve existing valid Qt and Microsoft signatures. Recreate the portable ZIP
+from the signed staging folder. A fresh windows-release.bat run replaces staged
+files, so signing must follow each release build.
+
+Compile with `/DSigningEnabled` and configure an Inno Sign Tool named `planetary`
+to invoke the signing helper with `$f` as its file argument. For example in PowerShell,
+after setting the environment variables above:
+
+```powershell
+$helper = Join-Path $PWD 'scripts\windows-sign-file.ps1'
+$command = 'planetary=powershell.exe -NoProfile -ExecutionPolicy Bypass -File $q' + $helper + '$q $f'
+& 'C:\Program Files\Inno Setup 7\ISCC.exe' /DSigningEnabled ('/S' + $command) packaging\windows\Planetary.iss
+```
+
+This signs Setup and the embedded uninstaller. Cached signed uninstallers are in
+`dist\signed-uninstaller`; clear this cache when changing signing identity so a
+previous identity is not reused. This local test has no timestamp configured and
+the certificate expires after one year. Trusted production signing should include
+a supported timestamp service and verification under Windows Authenticode policy.
+
+## Windows application icon
+
+`packaging/windows/planetary.ico` contains 16 through 256 pixel versions of the
+existing Planetary artwork. `planetary.rc` embeds it in the Windows executable,
+so Explorer, shortcuts, and pinned taskbar entries have a native icon. The Windows
+Qt application icon uses the existing PNG resource; other platforms retain their
+previous icon selection. Inno uses the same ICO for Setup and Uninstall.
+After installing an icon update, fully exit and relaunch Planetary. An existing
+pinned shortcut may need to be unpinned and pinned again to refresh Windows' cache.

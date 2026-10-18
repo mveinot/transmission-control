@@ -64,7 +64,11 @@ int main(int argc, char *argv[])
     // constructing any application windows.
     AppColors::ColorThemeManager::instance();
 
+#ifdef Q_OS_WIN
+    a.setWindowIcon(QIcon(":/icons/planetary-512px.png"));
+#else
     a.setWindowIcon(QIcon(":/icons/planetary.icns"));
+#endif
 
     QApplication::setQuitOnLastWindowClosed(false);
 
