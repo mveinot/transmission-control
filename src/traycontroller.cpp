@@ -5,6 +5,7 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QCursor>
+#include <QGuiApplication>
 #include <QIcon>
 #include <QMainWindow>
 #include <QMenu>
@@ -41,6 +42,31 @@ void TrayController::setup()
 
     m_trayIcon->setIcon(menuBarIcon);
     m_trayIcon->setToolTip(QApplication::applicationName());
+
+#if defined(Q_OS_MACOS)
+    // Closing to the tray hides the window but leaves the app as a regular
+    // Dock application when the user has not opted to hide its Dock icon.
+    // macOS then only reactivates the app when its Dock icon is clicked; Qt
+    // does not automatically re-show the hidden window in that case.
+    connect(qApp, &QGuiApplication::applicationStateChanged,
+            this, [this](Qt::ApplicationState state) {
+                if (state != Qt::ApplicationActive
+                    || !m_window
+                    || m_window->isVisible()
+                    || hideDockIconEnabled()) {
+                    return;
+                }
+
+                QTimer::singleShot(0, this, [this]() {
+                    if (qApp->applicationState() == Qt::ApplicationActive
+                        && m_window
+                        && !m_window->isVisible()
+                        && !hideDockIconEnabled()) {
+                        showMainWindow();
+                    }
+                });
+            });
+#endif
 
     m_trayMenu = new QMenu(m_window);
 
