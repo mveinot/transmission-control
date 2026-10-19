@@ -5,7 +5,7 @@ APP_NAME="Planetary"
 EXECUTABLE_NAME="Planetary"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BUILD_DIR="${ROOT_DIR}/build-appimage"
+BUILD_DIR="${ROOT_DIR}/${PLANETARY_LINUX_BUILD_DIR:-build-appimage}"
 APPDIR="${ROOT_DIR}/${APP_NAME}.AppDir"
 DIST_DIR="${ROOT_DIR}/dist"
 APPIMAGE_DESKTOP_SOURCE="${ROOT_DIR}/packaging/linux/planetary-appimage.desktop"
@@ -25,7 +25,7 @@ esac
 
 mkdir -p "$DIST_DIR"
 
-rm -rf "$BUILD_DIR" "$APPDIR"
+rm -rf "$APPDIR"
 mkdir -p "$BUILD_DIR" "$APPDIR"
 
 cmake -S "$ROOT_DIR" -B "$BUILD_DIR" \
@@ -120,6 +120,22 @@ fi
 
 LINUXDEPLOY="${ROOT_DIR}/tools/linuxdeploy-${APPIMAGE_ARCH}.AppImage"
 QT_PLUGIN="${ROOT_DIR}/tools/linuxdeploy-plugin-qt-${APPIMAGE_ARCH}.AppImage"
+LINUXDEPLOY_URL="${PLANETARY_LINUXDEPLOY_URL:-https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-${APPIMAGE_ARCH}.AppImage}"
+QT_PLUGIN_URL="${PLANETARY_LINUXDEPLOY_QT_PLUGIN_URL:-https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-${APPIMAGE_ARCH}.AppImage}"
+
+mkdir -p "${ROOT_DIR}/tools"
+
+if [[ ! -x "$LINUXDEPLOY" ]]; then
+  echo "Downloading linuxdeploy for ${APPIMAGE_ARCH}"
+  curl --fail --location --retry 3 --output "$LINUXDEPLOY" "$LINUXDEPLOY_URL"
+  chmod +x "$LINUXDEPLOY"
+fi
+
+if [[ ! -x "$QT_PLUGIN" ]]; then
+  echo "Downloading linuxdeploy Qt plugin for ${APPIMAGE_ARCH}"
+  curl --fail --location --retry 3 --output "$QT_PLUGIN" "$QT_PLUGIN_URL"
+  chmod +x "$QT_PLUGIN"
+fi
 
 if [[ ! -x "$LINUXDEPLOY" ]]; then
   echo "Missing or not executable: $LINUXDEPLOY"
@@ -138,6 +154,9 @@ export ARCH="$APPIMAGE_ARCH"
 # Fedora's Qt 6 packages expose the Wayland platform plugin as libqwayland.so.
 # Request it explicitly while retaining the XCB plugin for X11 sessions.
 export EXTRA_PLATFORM_PLUGINS="libqwayland.so"
+if [[ -n "${CMAKE_PREFIX_PATH:-}" ]]; then
+  export LD_LIBRARY_PATH="${CMAKE_PREFIX_PATH}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+fi
 # The bundled linuxdeploy-plugin-qt currently ships an older strip that cannot
 # read RELR sections emitted by newer distributions such as Fedora 44.
 # Skipping stripping is safe for the bundle and avoids corrupting deployment.
@@ -145,6 +164,7 @@ export NO_STRIP=1
 # Its bundled patchelf is likewise too old for these ELF files.  AppRun sets
 # LD_LIBRARY_PATH for the bundle, so no rpath rewrite is required here.
 export PATCHELF="${PATCHELF:-/usr/bin/true}"
+export APPIMAGE_EXTRACT_AND_RUN=1
 
 "$LINUXDEPLOY" \
   --appdir "$APPDIR" \

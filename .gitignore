@@ -22,6 +22,7 @@
 core
 build/
 build-release/
+build-linux-docker/
 build-macos-universal-release/
 build-macos-universal-qt612-release/
 build-macos-src-layout-check/
