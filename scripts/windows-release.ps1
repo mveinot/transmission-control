@@ -14,7 +14,7 @@ $make = Join-Path $compilerBin 'mingw32-make.exe'
 $buildDir = Join-Path $repoRoot 'build-release\llvm-mingw'
 $distDir = Join-Path $repoRoot 'dist'
 $stageDir = Join-Path $distDir 'Planetary'
-$zipPath = Join-Path $distDir 'Planetary-Windows.zip'
+$installerCompiler = if ($env:INNO_SETUP_COMPILER) { $env:INNO_SETUP_COMPILER } else { 'C:\Program Files\Inno Setup 7\ISCC.exe' }
 
 function Invoke-Checked {
     param([string]$Program, [string[]]$Arguments)
@@ -68,8 +68,36 @@ try {
             throw "Required staged file missing: $file"
         }
     }
-    Compress-Archive -LiteralPath $stageDir -DestinationPath $zipPath -Force
-    Write-Host "Release package created: $zipPath"
+
+    if ($env:PLANETARY_SIGN_THUMBPRINT) {
+        $signScript = Join-Path $PSScriptRoot 'windows-sign-file.ps1'
+        foreach ($file in @('Planetary.exe', 'libc++.dll', 'libunwind.dll')) {
+            $path = Join-Path $stageDir $file
+            Invoke-Checked 'powershell.exe' @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+                '-File', $signScript, $path)
+        }
+    } else {
+        Write-Warning 'PLANETARY_SIGN_THUMBPRINT is not set; creating an unsigned Windows package.'
+    }
+
+    if (Test-Path -LiteralPath $installerCompiler -PathType Leaf) {
+        $installerArgs = @()
+        if ($env:PLANETARY_SIGN_THUMBPRINT) {
+            $signScript = Join-Path $PSScriptRoot 'windows-sign-file.ps1'
+            $signCommand = 'planetary=powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $q' + $signScript + '$q $f'
+            $installerArgs += '/DSigningEnabled'
+            $installerArgs += "/S$signCommand"
+        }
+        $installerArgs += (Join-Path $repoRoot 'packaging\windows\Planetary.iss')
+        Invoke-Checked $installerCompiler $installerArgs
+        Write-Host "Installer created in: $distDir"
+    } elseif ($env:PLANETARY_SIGN_THUMBPRINT) {
+        throw "Inno Setup compiler not found: $installerCompiler"
+    } else {
+        Write-Warning "Inno Setup compiler not found; skipped installer build: $installerCompiler"
+    }
+
+    Write-Host "Windows application staging completed: $stageDir"
     exit 0
 } catch {
     Write-Error $_ -ErrorAction Continue
