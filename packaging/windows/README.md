@@ -30,22 +30,26 @@ scripts\windows-release.bat
 
 The script configures Release with explicit Clang compilers and MinGW Makefiles,
 builds only Planetary, and stages it using the matching kit's `windeployqt --compiler-runtime`. It copies GeoIP data and all required license materials,
-checks essential staged files, and creates `dist\Planetary-Windows.zip`.
-Any failed tool, copy, or archive operation causes a nonzero exit status.
+checks essential staged files, and creates the Inno Setup installer when Inno
+Setup 7 is installed. If `PLANETARY_SIGN_THUMBPRINT` identifies a certificate
+with a private key in `CurrentUser\My`, the application and LLVM-MinGW runtime
+DLLs are signed before installer creation; the installer and embedded
+uninstaller are signed as well. Any failed tool or copy operation causes a
+nonzero exit status.
 
 Build files live in `build-release\llvm-mingw`; existing build trees are preserved.
-Only `dist\Planetary` is replaced during staging; other distribution artifacts are
-preserved. An older ZIP may remain if a run fails before archiving: only a zero
-exit status and the success message indicate a successful new release.
+Only `dist\Planetary` is replaced during staging; other distribution artifacts
+are preserved. Only a zero exit status and the success message indicate a
+successful new release.
 CMake generates the application version from repository version and Git metadata.
 
 ## Validation checklist
 
 1. Confirm the release script exits successfully.
-2. Inspect the ZIP for `Planetary\Planetary.exe`, Qt DLLs, platform and image
+2. Inspect `dist\Planetary` for `Planetary.exe`, Qt DLLs, platform and image
    plugins, translations, compiler runtime DLLs, GeoIP data, and licenses.
-3. Extract and launch the ZIP on a clean Windows VM without Qt or development
-   tools installed. Confirm LLVM-MinGW runtime dependencies are complete.
+3. Install and launch the installer on a clean Windows VM without Qt or
+   development tools. Confirm LLVM-MinGW runtime dependencies are complete.
 4. Confirm GeoIP loads from `geoip\country.mmdb` relative to the executable.
 5. Test HTTPS update checking and HTTPS server connections on the clean VM.
 6. Inspect available TLS backends. A Qt OpenSSL plugin alone does not establish
@@ -59,7 +63,8 @@ LLVM-MinGW build; verify actual binary dependencies before adding prerequisites.
 ## Inno Setup 7 installer
 
 The installer source is `packaging\windows\Planetary.iss`.
-Build the portable release first, then compile from the repository root:
+After the release script stages the application, compile the installer
+separately from the repository root with:
 
 ```powershell
 & 'C:\Program Files\Inno Setup 7\ISCC.exe' packaging\windows\Planetary.iss
@@ -111,38 +116,44 @@ release mode is forced and reports a missing platform plugin. Leave deployment
 mode on automatic detection; the application is still built with CMake Release.
 The package explicitly checks libc++, libunwind, and the Schannel TLS plugin.
 
-## Local self-signed test build
+## Signing and remote Windows builds
 
-The initial signing test uses a workspace PFX, not a certificate trusted by Windows.
-No root trust was added. The certificate and private key are not repository files.
-Only the public .cer is a deliverable. Keep the private PFX and its password local.
-The public certificate can identify the signer but does not establish public trust.
+The current test certificate is self-signed. It can identify the signer and
+verify that the files have not changed, but Windows will not consider it a
+trusted publisher unless the user separately trusts that certificate. It is for
+testing only, not public release signing. A public release should use a trusted
+code-signing certificate and a supported timestamp service.
 
-`scripts\windows-sign-file.ps1` accepts a file path and reads signing configuration
-from environment variables: PLANETARY_SIGNTOOL (full signtool.exe path),
-PLANETARY_SIGN_PFX (private certificate path), and PLANETARY_SIGN_PASSWORD.
-Do not commit or publish private keys or passwords.
+Keep the private key/PFX and its password out of the repository. For store-based
+signing, the Windows build user must have a signing certificate with a private
+key in `Cert:\CurrentUser\My`. The scripts select it by public thumbprint
+(`PLANETARY_SIGN_THUMBPRINT`); routine builds then do not need the PFX password.
+Preserve existing valid Qt and Microsoft signatures. The self-signed test PFX
+has not yet been imported successfully, so leave the thumbprint unset to produce
+an unsigned validation package until a usable certificate is installed.
 
-After staging, sign Planetary.exe, libc++.dll, and libunwind.dll with that helper.
-Preserve existing valid Qt and Microsoft signatures. Recreate the portable ZIP
-from the signed staging folder. A fresh windows-release.bat run replaces staged
-files, so signing must follow each release build.
+From the Mac, a clean and already-pushed source revision can be built and its
+artifacts copied back with:
 
-Compile with `/DSigningEnabled` and configure an Inno Sign Tool named `planetary`
-to invoke the signing helper with `$f` as its file argument. For example in PowerShell,
-after setting the environment variables above:
-
-```powershell
-$helper = Join-Path $PWD 'scripts\windows-sign-file.ps1'
-$command = 'planetary=powershell.exe -NoProfile -ExecutionPolicy Bypass -File $q' + $helper + '$q $f'
-& 'C:\Program Files\Inno Setup 7\ISCC.exe' /DSigningEnabled ('/S' + $command) packaging\windows\Planetary.iss
+```sh
+PLANETARY_WINDOWS_SSH_TARGET='Mark@192.168.10.158' scripts/build-windows-remote.sh
 ```
 
-This signs Setup and the embedded uninstaller. Cached signed uninstallers are in
-`dist\signed-uninstaller`; clear this cache when changing signing identity so a
-previous identity is not reused. This local test has no timestamp configured and
-the certificate expires after one year. Trusted production signing should include
-a supported timestamp service and verification under Windows Authenticode policy.
+Set `PLANETARY_WINDOWS_REPO` if the Windows checkout is elsewhere. Set
+`PLANETARY_WINDOWS_SIGN_THUMBPRINT` to sign; when unset, the launcher builds an
+unsigned validation package. It refuses dirty local or remote checkouts, checks
+out the exact local commit on Windows, builds the Inno installer, writes a
+commit/version/signing/hash record, and copies the installer and record to
+`dist/windows/` locally.
+The remote Windows checkout remains detached at the revision just built; a
+future invocation selects its requested commit explicitly. No password is sent
+for ordinary builds.
+
+When changing signing identity, remove the old cache in
+`dist\signed-uninstaller` so Inno Setup cannot reuse an uninstaller signed by the
+previous identity. The test certificate has no timestamp and expires after one
+year. Verify signatures on Windows; because this test certificate is self-signed,
+standard trust-policy verification will report that the publisher is untrusted.
 
 ## Windows application icon
 
