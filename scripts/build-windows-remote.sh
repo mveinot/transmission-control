@@ -124,11 +124,13 @@ try {
 if (\$failed) { exit 1 }
 EOF
 )"
-encoded_script="$(printf '%s' "$remote_script" | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\r\n')"
-
 mkdir -p "$OUTPUT_DIR"
 log_path="$OUTPUT_DIR/remote-build.log"
-if ! ssh -T -o BatchMode=yes "$SSH_TARGET" powershell.exe -NoLogo -NoProfile -NonInteractive -OutputFormat Text -EncodedCommand "$encoded_script" 2>&1 | tee "$log_path"; then
+if ! printf '%s\n' "$remote_script" |
+    ssh -T -o BatchMode=yes "$SSH_TARGET" \
+      powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass \
+      -OutputFormat Text -Command - \
+      2>&1 | tee "$log_path"; then
   echo "Remote Windows build failed; see $log_path" >&2
   exit 1
 fi
