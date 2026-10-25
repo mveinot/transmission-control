@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG QT_VERSION=6.12.0
@@ -20,7 +20,7 @@ RUN apt-get update \
         libdbus-1-dev \
         libfontconfig1-dev \
         libfreetype-dev \
-        libglib2.0-0t64 \
+        libglib2.0-0 \
         libgl1-mesa-dev \
         libxkbcommon-dev \
         libxkbcommon-x11-0 \

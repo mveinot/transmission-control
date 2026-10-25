@@ -1,10 +1,10 @@
 # Linux release build container
 
-This image provides an Ubuntu 24.04 x86_64 build environment with Qt 6.12.0,
+This image provides an Ubuntu 22.04 x86_64 build environment with Qt 6.12.0,
 CMake, Ninja, and the system development packages required by Planetary. Qt is
 installed from the official Qt archive using the pinned `aqtinstall` version.
 
-The image is intended to be built and run on the Ubuntu 24.04 Docker host. From
+The image is intended to be built and run on the configured Ubuntu Docker host. From
 a checkout of Planetary on that host, run:
 
 ```sh
@@ -18,10 +18,10 @@ directory is kept between invocations for incremental builds. The first run
 downloads the official linuxdeploy and Qt plugin AppImages into the ignored
 `tools/` directory; subsequent runs reuse them.
 
-The image itself is pinned to Ubuntu 24.04, Qt 6.12.0, and aqtinstall 3.3.0.
+The image itself is pinned to Ubuntu 22.04, Qt 6.12.0, and aqtinstall 3.3.0.
 Ubuntu's package repository supplies the CMake/compiler/system packages. The
-resulting x86_64 AppImage is intended for Ubuntu 24.04 and newer; it is not a
-claim of compatibility with older glibc-based distributions. Packaging uses
+resulting x86_64 AppImage uses Ubuntu 22.04's glibc baseline and is intended for
+Ubuntu 22.04 and newer. Packaging uses
 the project's `scripts/package-linux-appimage.sh` workflow inside the container.
 
 This is a build environment, not a Windows cross-compiler. Windows packaging

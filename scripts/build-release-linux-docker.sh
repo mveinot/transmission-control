@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APP_NAME="Planetary"
-IMAGE_NAME="${PLANETARY_LINUX_BUILDER_IMAGE:-planetary-linux-builder:ubuntu24.04-qt6.12.0}"
+IMAGE_NAME="${PLANETARY_LINUX_BUILDER_IMAGE:-planetary-linux-builder:ubuntu22.04-qt6.12.0}"
 BUILD_DIR="${PLANETARY_LINUX_BUILD_DIR:-build-linux-docker}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -13,7 +13,7 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "Building ${APP_NAME} AppImage in Ubuntu 24.04 / Qt 6.12.0 container"
+echo "Building ${APP_NAME} AppImage in Ubuntu 22.04 / Qt 6.12.0 container"
 echo "Repo:      $ROOT_DIR"
 echo "Build dir: $BUILD_DIR"
 echo "Image:     $IMAGE_NAME"
