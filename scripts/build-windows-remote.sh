@@ -164,7 +164,7 @@ if ! ssh -T -o BatchMode=yes "$SSH_TARGET" \
   echo "Remote Windows build failed; see $log_path" >&2
   exit 1
 fi
-if ! grep -Fqx "WINDOWS_RELEASE_ARTIFACTS_READY=$RUN_ID" "$log_path"; then
+if ! tr -d '\r' < "$log_path" | grep -Fqx "WINDOWS_RELEASE_ARTIFACTS_READY=$RUN_ID"; then
   echo "Windows SSH command returned without confirming the release artifacts; see $log_path" >&2
   exit 1
 fi
@@ -178,8 +178,8 @@ for artifact in \
   "Windows-build-info.txt"; do
   scp -O "$SSH_TARGET:$REMOTE_DIST/$artifact" "$OUTPUT_DIR/"
 done
-if ! grep -Fqx "tag=$TAG" "$OUTPUT_DIR/Windows-build-info.txt" ||
-   ! grep -Fqx "commit=$COMMIT" "$OUTPUT_DIR/Windows-build-info.txt"; then
+if ! tr -d '\r' < "$OUTPUT_DIR/Windows-build-info.txt" | grep -Fqx "tag=$TAG" ||
+   ! tr -d '\r' < "$OUTPUT_DIR/Windows-build-info.txt" | grep -Fqx "commit=$COMMIT"; then
   echo "Windows build metadata does not match requested tag and commit." >&2
   exit 1
 fi
