@@ -7,6 +7,18 @@ the exact tag created by `scripts/tag-release.sh`:
 scripts/build-release-all.sh v2.5.3.485
 ```
 
+To retry selected platforms without rebuilding completed ones, pass one or more
+skip flags before the tag. For example, to retry only Windows:
+
+```sh
+scripts/build-release-all.sh --skip-macos --skip-linux v2.6.0.490
+```
+
+The available flags are `--skip-macos`, `--skip-windows`, and `--skip-linux`.
+At least one platform must remain selected. Each invocation gets a new output
+directory; skipped platforms are omitted from that run's artifact folders and
+combined checksum list.
+
 Use the `-beta` suffix for beta tags. The script verifies that the tag is pushed
 to `origin`, resolves to the same commit locally and remotely, and belongs to
 `origin/main`. It refuses a dirty or out-of-sync Mac checkout. It builds the
@@ -29,8 +41,8 @@ dist/release-builds/<tag>/<UTC-run-id>/
 ```
 
 If one platform fails, the output directory and logs are retained for diagnosis;
-the checksums file is written only after all three builds succeed. Reruns use a
-new run-id directory and do not overwrite previous attempts.
+the checksums file is written only after all selected builds succeed. Reruns
+use a new run-id directory and do not overwrite previous attempts.
 
 The current machine defaults are:
 

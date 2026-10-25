@@ -107,6 +107,7 @@ try {
         }
         @("tag=\$tag", "commit=\$commit", "version=\$version") |
             Set-Content -LiteralPath (Join-Path \$artifactDir 'Windows-build-info.txt') -Encoding ascii
+        Write-Output "WINDOWS_RELEASE_ARTIFACTS_READY=\$runId"
         Write-Output "WINDOWS_RELEASE_ARTIFACT_DIR=\$artifactDir"
         Write-Output "Windows release complete: Planetary \$version (\$tag / \$commit)"
     } finally {
@@ -124,14 +125,25 @@ try {
 if (\$failed) { exit 1 }
 EOF
 )"
+
+# Keep the SSH command line short. The bootstrap reads the encoded payload from
+# stdin and executes it as one ScriptBlock rather than line-by-line input.
+encoded_script="$(printf '%s' "$remote_script" | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\r\n')"
+bootstrap_script='$scriptText = [Text.Encoding]::Unicode.GetString([Convert]::FromBase64String([Console]::In.ReadToEnd().Trim())); & ([ScriptBlock]::Create($scriptText))'
+encoded_bootstrap="$(printf '%s' "$bootstrap_script" | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\r\n')"
+
 mkdir -p "$OUTPUT_DIR"
 log_path="$OUTPUT_DIR/remote-build.log"
-if ! printf '%s\n' "$remote_script" |
+if ! printf '%s' "$encoded_script" |
     ssh -T -o BatchMode=yes "$SSH_TARGET" \
       powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass \
-      -OutputFormat Text -Command - \
+      -OutputFormat Text -EncodedCommand "$encoded_bootstrap" \
       2>&1 | tee "$log_path"; then
   echo "Remote Windows build failed; see $log_path" >&2
+  exit 1
+fi
+if ! grep -Fqx "WINDOWS_RELEASE_ARTIFACTS_READY=$RUN_ID" "$log_path"; then
+  echo "Windows SSH command returned without confirming the release artifacts; see $log_path" >&2
   exit 1
 fi
 
