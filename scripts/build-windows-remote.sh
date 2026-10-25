@@ -20,8 +20,8 @@ if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(-beta)?$ ||
   echo "Invalid release-build parameters." >&2
   exit 2
 fi
-if [[ "$REMOTE_REPO" =~ [[:space:]] ]]; then
-  echo "PLANETARY_WINDOWS_REPO must not contain whitespace for scp compatibility." >&2
+if [[ "$REMOTE_REPO" =~ [[:space:]] || "$REMOTE_REPO" == *'"'* ]]; then
+  echo "PLANETARY_WINDOWS_REPO must not contain whitespace or quotes for SSH/SFTP compatibility." >&2
   exit 2
 fi
 
@@ -126,18 +126,33 @@ if (\$failed) { exit 1 }
 EOF
 )"
 
-# Keep the SSH command line short. The bootstrap reads the encoded payload from
-# stdin and executes it as one ScriptBlock rather than line-by-line input.
-encoded_script="$(printf '%s' "$remote_script" | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\r\n')"
-bootstrap_script='$scriptText = [Text.Encoding]::Unicode.GetString([Convert]::FromBase64String([Console]::In.ReadToEnd().Trim())); & ([ScriptBlock]::Create($scriptText))'
-encoded_bootstrap="$(printf '%s' "$bootstrap_script" | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\r\n')"
-
 mkdir -p "$OUTPUT_DIR"
 log_path="$OUTPUT_DIR/remote-build.log"
-if ! printf '%s' "$encoded_script" |
-    ssh -T -o BatchMode=yes "$SSH_TARGET" \
+upload_log_path="$OUTPUT_DIR/script-upload.log"
+local_script="$(mktemp "${TMPDIR:-/tmp}/planetary-windows-release.XXXXXX")"
+remote_sftp_script="/${REMOTE_REPO//\\//}/planetary-release-${RUN_ID}.ps1"
+remote_script_path="${REMOTE_REPO}\\planetary-release-${RUN_ID}.ps1"
+cleanup() {
+  if [[ -n "$remote_sftp_script" ]]; then
+    printf 'rm "%s"\n' "$remote_sftp_script" |
+      sftp -b - -oBatchMode=yes "$SSH_TARGET" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$local_script" ]]; then
+    rm -f "$local_script"
+  fi
+}
+trap cleanup EXIT
+printf '%s\n' "$remote_script" > "$local_script"
+
+if ! printf 'put "%s" "%s"\n' "$local_script" "$remote_sftp_script" |
+    sftp -b - -oBatchMode=yes "$SSH_TARGET" 2>&1 | tee "$upload_log_path"; then
+  echo "Could not stage the Windows release script over SFTP; see $upload_log_path" >&2
+  exit 1
+fi
+
+if ! ssh -T -o BatchMode=yes "$SSH_TARGET" \
       powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass \
-      -OutputFormat Text -EncodedCommand "$encoded_bootstrap" \
+      -OutputFormat Text -File "$remote_script_path" \
       2>&1 | tee "$log_path"; then
   echo "Remote Windows build failed; see $log_path" >&2
   exit 1
