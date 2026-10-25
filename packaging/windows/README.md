@@ -164,12 +164,11 @@ unattended signing; hardware tokens may require interactive authentication.
 
 The pipeline signs Planetary.exe and the LLVM runtime DLLs, preserving Qt and
 Microsoft vendor signatures. It then signs Setup and the embedded uninstaller,
-using a fresh uninstaller cache directory each build, and creates the signed
-portable ZIP. Outputs in dist:
+using a fresh uninstaller cache directory each build. The Inno Setup installer
+is the sole Windows distribution package. Outputs in dist:
 
 - Planetary-<version>-Windows-x64-Setup.exe
-- Planetary-Windows.zip
-- Planetary-Windows-hashes.json (SHA-256 for both packages)
+- Planetary-Windows-hashes.json (SHA-256 for the installer)
 
 The test certificate is self-signed and untrusted by default; the build accepts
 that trust result while rejecting missing or mismatched signatures. Production

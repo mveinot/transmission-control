@@ -16,8 +16,8 @@ Remote checkouts must be clean and on `main`; after each build they are returned
 to `main`.
 
 The build runs in order: macOS universal DMG (including signing and
-notarization), Windows installer and portable ZIP (signed using the Windows
-machine-local signing configuration), then Linux x86_64 AppImage using Docker
+notarization), Windows installer (signed using the Windows machine-local
+signing configuration), then Linux x86_64 AppImage using Docker
 on the Ubuntu 24.04 host. The script does not create a GitHub release or upload
 anything to GitHub or the website.
 

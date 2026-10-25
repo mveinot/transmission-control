@@ -99,7 +99,7 @@ try {
         \$artifactDir = Join-Path \$dist "release-results-\$runId"
         if (Test-Path -LiteralPath \$artifactDir) { throw "Release result directory already exists: \$artifactDir" }
         New-Item -ItemType Directory -Path \$artifactDir | Out-Null
-        \$files = @("Planetary-\$version-Windows-x64-Setup.exe", 'Planetary-Windows.zip', 'Planetary-Windows-hashes.json')
+        \$files = @("Planetary-\$version-Windows-x64-Setup.exe", 'Planetary-Windows-hashes.json')
         foreach (\$file in \$files) {
             \$source = Join-Path \$dist \$file
             if (-not (Test-Path -LiteralPath \$source -PathType Leaf)) { throw "Expected Windows artifact is missing: \$source" }
@@ -138,7 +138,6 @@ VERSION="${VERSION%-beta}"
 REMOTE_DIST="${REMOTE_REPO//\\//}/dist/release-results-$RUN_ID"
 for artifact in \
   "Planetary-$VERSION-Windows-x64-Setup.exe" \
-  "Planetary-Windows.zip" \
   "Planetary-Windows-hashes.json" \
   "Windows-build-info.txt"; do
   scp -O "$SSH_TARGET:$REMOTE_DIST/$artifact" "$OUTPUT_DIR/"

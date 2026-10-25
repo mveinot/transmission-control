@@ -121,7 +121,7 @@ if [[ ! -f "$MAC_DMG" ]]; then
 fi
 cp "$MAC_DMG" "$OUTPUT_DIR/macos/"
 
-echo "Building Windows installer and ZIP over SSH..."
+echo "Building Windows installer over SSH..."
 "$ROOT_DIR/scripts/build-windows-remote.sh" \
   "$TAG" "$tag_commit" "$RUN_ID" "$OUTPUT_DIR/windows" \
   2>&1 | tee "$OUTPUT_DIR/logs/windows.log"
@@ -134,7 +134,7 @@ echo "Building Linux AppImage over SSH..."
 printf 'tag=%s\ncommit=%s\nversion=%s\nrun_id=%s\n' \
   "$TAG" "$tag_commit" "$VERSION" "$RUN_ID" > "$OUTPUT_DIR/BUILD-INFO.txt"
 find "$OUTPUT_DIR/macos" "$OUTPUT_DIR/windows" "$OUTPUT_DIR/linux" \
-  -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.zip' -o -name '*.AppImage' \) \
+  -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' \) \
   -exec shasum -a 256 {} + > "$OUTPUT_DIR/SHA256SUMS.txt"
 
 echo "All platform builds succeeded."

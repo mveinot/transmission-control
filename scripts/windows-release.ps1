@@ -132,13 +132,10 @@ try {
     if ($signingEnabled -and -not (Get-AuthenticodeSignature -LiteralPath $installerPath).SignerCertificate) {
         throw 'Installer has no signature.'
     }
-    $zipPath = Join-Path $distDir 'Planetary-Windows.zip'
-    Compress-Archive -LiteralPath $stageDir -DestinationPath $zipPath -Force
-    @($installerPath, $zipPath) | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } |
+    Get-FileHash -LiteralPath $installerPath -Algorithm SHA256 |
         Select-Object @{Name='File';Expression={Split-Path $_.Path -Leaf}}, Hash |
         ConvertTo-Json | Set-Content -LiteralPath (Join-Path $distDir 'Planetary-Windows-hashes.json')
     Write-Host "Release complete: $installerPath"
-    Write-Host "Portable ZIP: $zipPath"
     exit 0
 } catch {
     Write-Error $_ -ErrorAction Continue
