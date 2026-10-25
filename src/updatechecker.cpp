@@ -7,6 +7,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QRegularExpression>
+#include <QSysInfo>
 
 namespace {
 constexpr int SupportedManifestSchemaVersion = 1;
@@ -52,6 +53,26 @@ QUrl UpdateChecker::manifestUrl(bool beta)
                    .arg(beta ? QStringLiteral("beta") : QStringLiteral("stable")));
 }
 
+QString UpdateChecker::currentPlatformKey()
+{
+#if defined(Q_OS_MACOS)
+    return QStringLiteral("macos-universal");
+#elif defined(Q_OS_WIN)
+    const QString architecture = QSysInfo::currentCpuArchitecture().toLower();
+    if (architecture == QStringLiteral("x86_64")
+        || architecture == QStringLiteral("amd64")) {
+        return QStringLiteral("windows-x86_64");
+    }
+#elif defined(Q_OS_LINUX)
+    const QString architecture = QSysInfo::currentCpuArchitecture().toLower();
+    if (architecture == QStringLiteral("x86_64")
+        || architecture == QStringLiteral("amd64")) {
+        return QStringLiteral("linux-x86_64");
+    }
+#endif
+    return {};
+}
+
 void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
 {
     reply->deleteLater();
@@ -68,8 +89,14 @@ void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
     Manifest manifest;
     QString errorMessage;
     if (!parseManifest(reply->readAll(), &manifest, &errorMessage,
-                       beta ? QStringLiteral("beta") : QStringLiteral("stable"))) {
+                       beta ? QStringLiteral("beta") : QStringLiteral("stable"),
+                       currentPlatformKey())) {
         emit updateCheckFailed(errorMessage, userInitiated);
+        return;
+    }
+
+    if (!manifest.platformArtifactAvailable) {
+        emit noPlatformUpdateAvailable(manifest.releaseNotesUrl, userInitiated);
         return;
     }
 
@@ -80,6 +107,7 @@ void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
                              manifest.sha256,
                              manifest.releaseNotesUrl,
                              manifest.releaseNotesMarkdown,
+                             manifest.packageType,
                              userInitiated);
         return;
     }
@@ -93,7 +121,8 @@ void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
 bool UpdateChecker::parseManifest(const QByteArray &data,
                                   Manifest *manifest,
                                   QString *errorMessage,
-                                  const QString &expectedChannel)
+                                  const QString &expectedChannel,
+                                  const QString &expectedPlatform)
 {
     const auto fail = [errorMessage](const QString &message) {
         if (errorMessage)
@@ -120,48 +149,78 @@ bool UpdateChecker::parseManifest(const QByteArray &data,
         return fail(tr("Invalid update response."));
     }
 
-    const QString version =
-        object.value(QStringLiteral("version")).toString().trimmed();
-    static const QRegularExpression semanticVersionPattern(
-        QStringLiteral("^\\d+\\.\\d+\\.\\d+$"));
-    if (!semanticVersionPattern.match(version).hasMatch())
-        return fail(tr("Update response did not include release information."));
-
-    const int build = object.value(QStringLiteral("build")).toInt(-1);
-    if (build < 0)
-        return fail(tr("Update response did not include release information."));
-
-    const QString displayVersion =
-        object.value(QStringLiteral("displayVersion")).toString().trimmed();
-    if (displayVersion != QStringLiteral("%1.%2").arg(version).arg(build))
-        return fail(tr("Invalid update response."));
-
-    const QString minimumMacOSVersion =
-        object.value(QStringLiteral("minimumMacOSVersion")).toString().trimmed();
-    static const QRegularExpression macOSVersionPattern(
-        QStringLiteral("^\\d+\\.\\d+$"));
-    if (!macOSVersionPattern.match(minimumMacOSVersion).hasMatch())
-        return fail(tr("Invalid update response."));
-
-    const QUrl downloadUrl(
-        object.value(QStringLiteral("downloadUrl")).toString().trimmed());
     const QUrl releaseNotesUrl(
         object.value(QStringLiteral("releaseNotesUrl")).toString().trimmed());
-    if (!isHttpsUrl(downloadUrl) || !isHttpsUrl(releaseNotesUrl))
+    if (!isHttpsUrl(releaseNotesUrl))
         return fail(tr("Update response did not include release information."));
 
     const QJsonValue releaseNotesValue =
         object.value(QStringLiteral("releaseNotesMarkdown"));
     if (!releaseNotesValue.isUndefined() && !releaseNotesValue.isString())
         return fail(tr("Invalid update response."));
-
     const QString releaseNotesMarkdown = releaseNotesValue.toString();
     constexpr qsizetype MaximumReleaseNotesLength = 256 * 1024;
     if (releaseNotesMarkdown.size() > MaximumReleaseNotesLength)
         return fail(tr("Invalid update response."));
 
+    const QString platform = expectedPlatform.trimmed().isEmpty()
+        ? QStringLiteral("macos-universal")
+        : expectedPlatform.trimmed();
+    const QJsonValue artifactsValue = object.value(QStringLiteral("artifacts"));
+    const bool hasArtifacts = !artifactsValue.isUndefined();
+    if (hasArtifacts && !artifactsValue.isObject())
+        return fail(tr("Invalid update response."));
+
+    QJsonObject artifactObject;
+    if (hasArtifacts) {
+        artifactObject = artifactsValue.toObject().value(platform).toObject();
+    } else if (platform == QStringLiteral("macos-universal")) {
+        // Older schema-v1 manifests contain only a macOS artifact.
+        artifactObject = object;
+    }
+
+    manifest->releaseNotesUrl = releaseNotesUrl;
+    manifest->releaseNotesMarkdown = releaseNotesMarkdown;
+    if (artifactObject.isEmpty()) {
+        manifest->platformArtifactAvailable = false;
+        if (errorMessage)
+            errorMessage->clear();
+        return true;
+    }
+
+    const QString version =
+        artifactObject.value(QStringLiteral("version")).toString().trimmed();
+    static const QRegularExpression semanticVersionPattern(
+        QStringLiteral("^\\d+\\.\\d+\\.\\d+$"));
+    if (!semanticVersionPattern.match(version).hasMatch())
+        return fail(tr("Update response did not include release information."));
+
+    const int build = artifactObject.value(QStringLiteral("build")).toInt(-1);
+    if (build < 0)
+        return fail(tr("Update response did not include release information."));
+
+    const QString displayVersion =
+        artifactObject.value(QStringLiteral("displayVersion")).toString().trimmed();
+    if (displayVersion != QStringLiteral("%1.%2").arg(version).arg(build))
+        return fail(tr("Invalid update response."));
+
+    const QString minimumMacOSVersion = platform == QStringLiteral("macos-universal")
+        ? artifactObject.value(QStringLiteral("minimumMacOSVersion")).toString().trimmed()
+        : QString();
+    if (platform == QStringLiteral("macos-universal")) {
+        static const QRegularExpression macOSVersionPattern(
+            QStringLiteral("^\\d+\\.\\d+$"));
+        if (!macOSVersionPattern.match(minimumMacOSVersion).hasMatch())
+            return fail(tr("Invalid update response."));
+    }
+
+    const QUrl downloadUrl(
+        artifactObject.value(QStringLiteral("downloadUrl")).toString().trimmed());
+    if (!isHttpsUrl(downloadUrl) || !isHttpsUrl(releaseNotesUrl))
+        return fail(tr("Update response did not include release information."));
+
     const QString sha256 =
-        object.value(QStringLiteral("sha256")).toString().trimmed().toLower();
+        artifactObject.value(QStringLiteral("sha256")).toString().trimmed().toLower();
     static const QRegularExpression sha256Pattern(
         QStringLiteral("^[0-9a-f]{64}$"));
     if (!sha256Pattern.match(sha256).hasMatch())
@@ -171,10 +230,33 @@ bool UpdateChecker::parseManifest(const QByteArray &data,
     manifest->build = build;
     manifest->displayVersion = displayVersion;
     manifest->minimumMacOSVersion = minimumMacOSVersion;
+    manifest->packageType = artifactObject.value(QStringLiteral("packageType")).toString().trimmed();
+    if (manifest->packageType.isEmpty()) {
+        manifest->packageType = platform == QStringLiteral("macos-universal")
+            ? QStringLiteral("dmg")
+            : platform == QStringLiteral("windows-x86_64")
+                ? QStringLiteral("installer")
+                : platform == QStringLiteral("linux-x86_64")
+                    ? QStringLiteral("appimage")
+                    : QString();
+    }
+    const QString expectedPackageType = platform == QStringLiteral("macos-universal")
+        ? QStringLiteral("dmg")
+        : platform == QStringLiteral("windows-x86_64")
+            ? QStringLiteral("installer")
+            : platform == QStringLiteral("linux-x86_64")
+                ? QStringLiteral("appimage")
+                : QString();
+    if (manifest->packageType.isEmpty()
+        || (!expectedPackageType.isEmpty()
+            && manifest->packageType != expectedPackageType)) {
+        return fail(tr("Invalid update response."));
+    }
     manifest->downloadUrl = downloadUrl;
     manifest->releaseNotesUrl = releaseNotesUrl;
     manifest->releaseNotesMarkdown = releaseNotesMarkdown;
     manifest->sha256 = sha256;
+    manifest->platformArtifactAvailable = true;
 
     if (errorMessage)
         errorMessage->clear();

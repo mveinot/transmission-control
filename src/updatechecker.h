@@ -21,10 +21,12 @@ public:
         int build = 0;
         QString displayVersion;
         QString minimumMacOSVersion;
+        QString packageType;
         QUrl downloadUrl;
         QUrl releaseNotesUrl;
         QString releaseNotesMarkdown;
         QString sha256;
+        bool platformArtifactAvailable = true;
     };
 
     explicit UpdateChecker(QObject *parent = nullptr);
@@ -38,7 +40,8 @@ public:
     static bool parseManifest(const QByteArray &data,
                               Manifest *manifest,
                               QString *errorMessage = nullptr,
-                              const QString &expectedChannel = QStringLiteral("stable"));
+                              const QString &expectedChannel = QStringLiteral("stable"),
+                              const QString &expectedPlatform = QStringLiteral("macos-universal"));
 
 signals:
     void updateAvailable(const QString &currentVersion,
@@ -47,12 +50,16 @@ signals:
                          const QString &sha256,
                          const QUrl &releaseUrl,
                          const QString &releaseNotesMarkdown,
+                         const QString &packageType,
                          bool userInitiated);
 
     void noUpdateAvailable(const QString &currentVersion,
                            const QString &latestVersion,
                            const QUrl &releaseUrl,
                            bool userInitiated);
+
+    void noPlatformUpdateAvailable(const QUrl &releaseUrl,
+                                   bool userInitiated);
 
     void updateCheckFailed(const QString &message,
                            bool userInitiated);
@@ -66,6 +73,7 @@ private:
     QString m_currentVersion;
 
     static QUrl manifestUrl(bool beta);
+    static QString currentPlatformKey();
     static QList<int> parseVersionParts(const QString &version);
 };
 

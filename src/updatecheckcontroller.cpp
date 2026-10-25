@@ -59,6 +59,7 @@ void UpdateCheckController::setup()
                    const QString &sha256,
                    const QUrl &releaseUrl,
                    const QString &releaseNotesMarkdown,
+                   const QString &packageType,
                    bool userInitiated) {
                 Q_UNUSED(userInitiated)
 
@@ -186,7 +187,7 @@ void UpdateCheckController::setup()
                         }
                     });
                     connect(reply, &QNetworkReply::finished, &dialog,
-                            [&, reply, downloadUrl, sha256, downloadButton,
+                            [&, reply, downloadUrl, sha256, packageType, downloadButton,
                              progress, file, hash, writeFailed, path]() {
                         reply->deleteLater();
                         downloadButton->setEnabled(true);
@@ -220,10 +221,32 @@ void UpdateCheckController::setup()
                                                  tr("Planetary could not save the downloaded release."));
                             return;
                         }
+                        if (packageType == QStringLiteral("appimage")) {
+                            const QFile::Permissions executablePermissions =
+                                QFileInfo(path).permissions()
+                                | QFileDevice::ExeOwner
+                                | QFileDevice::ExeGroup
+                                | QFileDevice::ExeOther;
+                            if (!QFile::setPermissions(path, executablePermissions)) {
+                                QMessageBox::warning(
+                                    &dialog, tr("Release Ready"),
+                                    tr("The AppImage was downloaded, but Planetary could not make it executable. You can change its permissions manually."));
+                                return;
+                            }
+                            QDesktopServices::openUrl(
+                                QUrl::fromLocalFile(QFileInfo(path).absolutePath()));
+                            QMessageBox::information(
+                                &dialog, tr("AppImage Ready"),
+                                tr("The executable AppImage was saved to Downloads. Close Planetary, then launch the downloaded file to run that version."));
+                            return;
+                        }
+
                         QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+                        const QString readyMessage = packageType == QStringLiteral("installer")
+                            ? tr("The Windows installer is open. Quit Planetary now so setup can replace application files?")
+                            : tr("The release disk image is open. Quit Planetary now so you can replace the application?");
                         const auto choice = QMessageBox::question(
-                            &dialog, tr("Release Ready"),
-                            tr("The release disk image is open. Quit Planetary now so you can replace the application?"),
+                            &dialog, tr("Release Ready"), readyMessage,
                             QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
                         if (choice == QMessageBox::Yes)
                             qApp->quit();
@@ -236,6 +259,26 @@ void UpdateCheckController::setup()
                 layout->addWidget(buttons);
 
                 if (dialog.exec() == QDialog::Accepted)
+                    QDesktopServices::openUrl(releaseUrl);
+            });
+
+    connect(m_updateChecker, &UpdateChecker::noPlatformUpdateAvailable,
+            this,
+            [this](const QUrl &releaseUrl, bool userInitiated) {
+                if (!userInitiated)
+                    return;
+
+                QMessageBox messageBox(m_parentWidget);
+                messageBox.setIcon(QMessageBox::Information);
+                messageBox.setWindowTitle(tr("No Platform Update Available"));
+                messageBox.setText(
+                    tr("There is no release package for this platform on the selected update channel."));
+                QPushButton *openButton =
+                    messageBox.addButton(tr("Open Release Page"),
+                                         QMessageBox::ActionRole);
+                messageBox.addButton(QMessageBox::Ok);
+                messageBox.exec();
+                if (messageBox.clickedButton() == openButton)
                     QDesktopServices::openUrl(releaseUrl);
             });
 
