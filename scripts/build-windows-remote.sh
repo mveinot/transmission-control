@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SSH_TARGET="${PLANETARY_WINDOWS_SSH_TARGET:-Mark@192.168.10.158}"
 REMOTE_REPO="${PLANETARY_WINDOWS_REPO:-C:\\Users\\Mark\\Documents\\transmission-control}"
+GIT_URL="${PLANETARY_RELEASE_GIT_URL:-https://github.com/mveinot/transmission-control.git}"
 
 if [[ $# -ne 4 ]]; then
   echo "Usage: $0 <tag> <commit> <run-id> <local-output-dir>" >&2
@@ -30,7 +31,10 @@ if [[ -n "$(git status --porcelain)" ]]; then
   echo "Refusing to build: local checkout has changes." >&2
   exit 2
 fi
-git fetch --quiet --tags origin main
+if ! git show-ref --verify --quiet refs/remotes/origin/main; then
+  echo "origin/main is unavailable; run this through build-release-all.sh." >&2
+  exit 1
+fi
 if [[ "$(git rev-parse "$TAG^{commit}")" != "$COMMIT" ]]; then
   echo "Local tag $TAG does not point to expected commit $COMMIT." >&2
   exit 1
@@ -47,6 +51,7 @@ ps_quote() {
 }
 
 quoted_repo="$(ps_quote "$REMOTE_REPO")"
+quoted_git_url="$(ps_quote "$GIT_URL")"
 quoted_tag="$(ps_quote "$TAG")"
 quoted_commit="$(ps_quote "$COMMIT")"
 quoted_run_id="$(ps_quote "$RUN_ID")"
@@ -57,6 +62,7 @@ remote_script="$(cat <<EOF
 \$failed = \$false
 try {
     \$repo = $quoted_repo
+    \$gitUrl = $quoted_git_url
     \$tag = $quoted_tag
     \$commit = $quoted_commit
     \$runId = $quoted_run_id
@@ -70,9 +76,9 @@ try {
     New-Item -ItemType Directory -Path (Join-Path \$repo 'dist') -Force | Out-Null
     \$orchestrationLock = [IO.File]::Open((Join-Path \$repo 'dist\\release-orchestrator.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
 
-    git fetch --quiet --prune --tags origin
+    git fetch --quiet --tags \$gitUrl '+refs/heads/main:refs/remotes/origin/main'
     if (\$LASTEXITCODE -ne 0) { throw 'Could not fetch Windows origin and tags.' }
-    git pull --quiet --ff-only origin main
+    git merge --quiet --ff-only origin/main
     if (\$LASTEXITCODE -ne 0) { throw 'Could not fast-forward Windows main from origin/main.' }
     \$remoteCommit = (git rev-parse "\$tag^{commit}").Trim()
     if (\$LASTEXITCODE -ne 0 -or \$remoteCommit -ne \$commit) { throw "Windows tag \$tag does not resolve to expected commit \$commit." }

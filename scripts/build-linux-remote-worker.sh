@@ -42,8 +42,8 @@ if ! flock -n 9; then
   exit 1
 fi
 
-git -C "$REPO" fetch --prune --tags origin
-git -C "$REPO" pull --ff-only origin main
+git -C "$REPO" fetch --tags "$GIT_URL" '+refs/heads/main:refs/remotes/origin/main'
+git -C "$REPO" merge --ff-only origin/main
 REMOTE_TAG_COMMIT="$(git -C "$REPO" rev-parse "$TAG^{commit}")"
 if [[ "$REMOTE_TAG_COMMIT" != "$EXPECTED_COMMIT" ]]; then
   echo "Linux tag $TAG resolves to $REMOTE_TAG_COMMIT; expected $EXPECTED_COMMIT." >&2

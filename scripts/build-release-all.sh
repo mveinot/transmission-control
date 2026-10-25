@@ -5,6 +5,7 @@ APP_NAME="Planetary"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUTPUT_ROOT="${PLANETARY_RELEASE_OUTPUT_ROOT:-$ROOT_DIR/dist/release-builds}"
 MAC_BUILD_DIR="${PLANETARY_MACOS_BUILD_DIR:-build-macos-universal-release}"
+GIT_URL="${PLANETARY_RELEASE_GIT_URL:-https://github.com/mveinot/transmission-control.git}"
 BUILD_MACOS=true
 BUILD_WINDOWS=true
 BUILD_LINUX=true
@@ -85,15 +86,15 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 2
 fi
 
-echo "Fetching main and tags from origin..."
-git fetch --tags origin
+echo "Fetching main and tags from GitHub over HTTPS..."
+git fetch --tags "$GIT_URL" '+refs/heads/main:refs/remotes/origin/main'
 if ! git merge-base --is-ancestor HEAD origin/main ||
    ! git merge-base --is-ancestor origin/main HEAD; then
   echo "Local main must be up to date with origin/main; fast-forward it first." >&2
   exit 1
 fi
 
-remote_tag_output="$(git ls-remote --tags origin "refs/tags/$TAG" "refs/tags/$TAG^{}")"
+remote_tag_output="$(git ls-remote --tags "$GIT_URL" "refs/tags/$TAG" "refs/tags/$TAG^{}")"
 if [[ -z "$remote_tag_output" ]]; then
   echo "Release tag is not present on origin: $TAG" >&2
   exit 1
@@ -106,7 +107,7 @@ if [[ -z "$remote_tag_commit" ]]; then
   echo "Could not resolve the remote tag commit for $TAG." >&2
   exit 1
 fi
-git fetch --no-tags origin "refs/tags/$TAG:refs/tags/$TAG"
+git fetch --no-tags "$GIT_URL" "refs/tags/$TAG:refs/tags/$TAG"
 tag_commit="$(git rev-parse "$TAG^{commit}")"
 if [[ "$tag_commit" != "$remote_tag_commit" ]]; then
   echo "Local and remote $TAG point to different commits." >&2

@@ -68,3 +68,8 @@ by Windows.
 The Linux host needs passwordless SSH access, Git, Docker access for the SSH
 user, and network access to fetch the public repository and Docker build
 dependencies. Both remote hosts need Git and access to `origin`.
+
+Release builds fetch the public repository over HTTPS by default to avoid
+depending on GitHub SSH availability; set `PLANETARY_RELEASE_GIT_URL` to
+override that URL. The normal Git remote remains unchanged, so this does not
+change how release tags are pushed.
