@@ -69,6 +69,8 @@ The distributed macOS build is universal for Apple Silicon and Intel and
 supports macOS 14.4 or later. The project also includes packaging workflows for
 a Windows portable archive and installer, and a Linux AppImage. Consult the
 release page for currently published downloads and platform-specific status.
+For the tagged macOS, Windows, and Linux release build workflow, see
+[the release build guide](packaging/RELEASE-BUILDS.md).
 
 Planetary began as a modern C++/Qt reimplementation of
 [Transmission Remote GUI](https://github.com/transmission-remote-gui/transgui)
