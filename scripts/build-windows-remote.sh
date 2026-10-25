@@ -36,7 +36,7 @@ ps_quote() {
 
 quoted_repo="$(ps_quote "$remote_repo")"
 quoted_commit="$(ps_quote "$commit")"
-quoted_thumbprint="$(ps_quote "${sign_thumbprint^^}")"
+quoted_thumbprint="$(ps_quote "$(printf '%s' "$sign_thumbprint" | tr '[:lower:]' '[:upper:]')")"
 remote_script="$(cat <<EOF
 \$ErrorActionPreference = 'Stop'
 \$ProgressPreference = 'SilentlyContinue'
@@ -57,7 +57,7 @@ try {
     if (\$LASTEXITCODE -ne 0) { throw 'Could not check out requested source commit.' }
 
     \$env:PLANETARY_SIGN_THUMBPRINT = \$thumbprint
-    & (Join-Path \$repo 'scripts\\windows-release.ps1')
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path \$repo 'scripts\\windows-release.ps1')
     if (\$LASTEXITCODE -ne 0) { throw 'Windows release build/package failed.' }
 
     \$dist = Join-Path \$repo 'dist'
@@ -66,7 +66,7 @@ try {
     if (-not (Test-Path -LiteralPath \$installer -PathType Leaf)) { throw "Expected installer is missing: \$installer" }
 
     \$record = Join-Path \$dist 'Planetary-Windows-build.txt'
-    @("commit=\$(git rev-parse HEAD)", "version=\$version", "thumbprint=\$thumbprint", "signed=\$([bool]\$thumbprint)", "qt=6.12.0") |
+    @("commit=\$(git rev-parse HEAD)", "version=\$version", "thumbprint=\$thumbprint", "signed=\$([bool](Get-AuthenticodeSignature -LiteralPath \$installer).SignerCertificate)", "qt=6.12.0") |
         Set-Content -LiteralPath \$record -Encoding ascii
     Get-FileHash -LiteralPath \$installer -Algorithm SHA256 |
         ForEach-Object { Add-Content -LiteralPath \$record -Value ("sha256=\$([IO.Path]::GetFileName(\$_.Path)) \$($_.Hash)") -Encoding ascii }

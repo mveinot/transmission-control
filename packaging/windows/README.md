@@ -1,5 +1,8 @@
 # Windows packaging handoff
 
+For copyable local and SSH build commands and a Codex CLI handoff, see
+[BUILD-HANDOFF.md](BUILD-HANDOFF.md).
+
 ## Current Windows toolchain
 
 Planetary's Windows release uses the same toolchain as the working Qt Creator kit:
@@ -118,42 +121,67 @@ The package explicitly checks libc++, libunwind, and the Schannel TLS plugin.
 
 ## Signing and remote Windows builds
 
-The current test certificate is self-signed. It can identify the signer and
-verify that the files have not changed, but Windows will not consider it a
-trusted publisher unless the user separately trusts that certificate. It is for
-testing only, not public release signing. A public release should use a trusted
-code-signing certificate and a supported timestamp service.
+Run a complete signed build, from any working directory:
 
-Keep the private key/PFX and its password out of the repository. For store-based
-signing, the Windows build user must have a signing certificate with a private
-key in `Cert:\CurrentUser\My`. The scripts select it by public thumbprint
-(`PLANETARY_SIGN_THUMBPRINT`); routine builds then do not need the PFX password.
-Preserve existing valid Qt and Microsoft signatures. The self-signed test PFX
-has not yet been imported successfully, so leave the thumbprint unset to produce
-an unsigned validation package until a usable certificate is installed.
-
-From the Mac, a clean and already-pushed source revision can be built and its
-artifacts copied back with:
-
-```sh
-PLANETARY_WINDOWS_SSH_TARGET='Mark@192.168.10.158' scripts/build-windows-remote.sh
+```powershell
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:\Users\Mark\Documents\transmission-control\scripts\windows-release.ps1
 ```
 
-Set `PLANETARY_WINDOWS_REPO` if the Windows checkout is elsewhere. Set
-`PLANETARY_WINDOWS_SIGN_THUMBPRINT` to sign; when unset, the launcher builds an
-unsigned validation package. It refuses dirty local or remote checkouts, checks
-out the exact local commit on Windows, builds the Inno installer, writes a
-commit/version/signing/hash record, and copies the installer and record to
-`dist/windows/` locally.
-The remote Windows checkout remains detached at the revision just built; a
-future invocation selects its requested commit explicitly. No password is sent
-for ordinary builds.
+From macOS/Linux over SSH (replace WINDOWS_HOST with this computer's address):
 
-When changing signing identity, remove the old cache in
-`dist\signed-uninstaller` so Inno Setup cannot reuse an uninstaller signed by the
-previous identity. The test certificate has no timestamp and expires after one
-year. Verify signatures on Windows; because this test certificate is self-signed,
-standard trust-policy verification will report that the publisher is untrusted.
+```sh
+ssh -T Mark@WINDOWS_HOST 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:\Users\Mark\Documents\transmission-control\scripts\windows-release.ps1'
+```
+
+Use `-CheckOnly` for a fast configuration check, `-Jobs 4` to limit compilation
+parallelism, or `-Unsigned` only when intentionally building an unsigned package.
+The batch entry point forwards the same options. Exit code 0 means success;
+errors from build, signing, deployment, or Inno propagate as nonzero exits.
+The process runs no installer and launches no GUI. Concurrent release builds in
+the same checkout are rejected by an exclusive lock in dist.
+
+Signing is required by default and validated before compilation. The default
+machine-local config is `scripts/windows-release.local.json` (ignored by Git).
+Copy `scripts/windows-release.example.json` and edit the paths on another machine.
+An alternate JSON path can be supplied with `-SigningConfig`. Supported config
+fields are PLANETARY_SIGN_PFX, PLANETARY_SIGN_PASSWORD_FILE,
+PLANETARY_SIGN_THUMBPRINT, PLANETARY_SIGNTOOL, and PLANETARY_TIMESTAMP_URL.
+The password file contains the raw PFX password on one line. Paths should be
+absolute. Environment variables can supply the same settings; local JSON values
+override them. Build tool overrides remain environment variables: QT_ROOT,
+LLVM_MINGW_ROOT, CMAKE_EXE, and INNO_SETUP_COMPILER.
+
+This computer uses a new self-signed test PFX and password file under
+`C:\Users\Mark\Documents\Codex\windows-signing`, outside the repository. The
+folder is restricted to the current Windows user, Administrators, and SYSTEM.
+Back up both files securely. No certificate trust settings were changed. The
+SSH user must be this Windows user or separately have access to signing material.
+The old test PFX was not overwritten; its password was unavailable.
+PFX signing works without importing a key into the user's certificate store.
+Alternatively, use PLANETARY_SIGN_THUMBPRINT to select a certificate with its
+private key in the SSH user's CurrentUser\My store. The key provider must support
+unattended signing; hardware tokens may require interactive authentication.
+
+The pipeline signs Planetary.exe and the LLVM runtime DLLs, preserving Qt and
+Microsoft vendor signatures. It then signs Setup and the embedded uninstaller,
+using a fresh uninstaller cache directory each build, and creates the signed
+portable ZIP. Outputs in dist:
+
+- Planetary-<version>-Windows-x64-Setup.exe
+- Planetary-Windows.zip
+- Planetary-Windows-hashes.json (SHA-256 for both packages)
+
+The test certificate is self-signed and untrusted by default; the build accepts
+that trust result while rejecting missing or mismatched signatures. Production
+signing needs a trusted certificate and a timestamp URL. With no timestamp URL,
+no timestamp is requested. Never commit PFX files, passwords, or the local config.
+
+The existing `scripts/build-windows-remote.sh` launcher additionally fetches and
+builds the exact pushed local commit and copies the installer back to the Mac.
+It requires clean local/remote checkouts and SSH key authentication. Set
+PLANETARY_WINDOWS_SSH_TARGET; the Windows local signing config is used unless a
+certificate-store thumbprint is supplied. The direct SSH command above builds
+the current Windows checkout without fetching or changing branches.
 
 ## Windows application icon
 

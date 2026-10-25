@@ -61,7 +61,11 @@ RestartApplications=no
 #ifdef SigningEnabled
 SignTool=planetary
 SignedUninstaller=yes
+#ifdef UninstallerSigningDir
+SignedUninstallerDir={#UninstallerSigningDir}
+#else
 SignedUninstallerDir={#InstallerOutputDir}\signed-uninstaller
+#endif
 #endif
 
 [Languages]

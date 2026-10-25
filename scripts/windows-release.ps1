@@ -1,3 +1,9 @@
+param(
+    [string]$SigningConfig = (Join-Path $PSScriptRoot 'windows-release.local.json'),
+    [switch]$Unsigned,
+    [switch]$CheckOnly,
+    [ValidateRange(1,128)][int]$Jobs = 4
+)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
@@ -22,15 +28,35 @@ function Invoke-Checked {
     if ($LASTEXITCODE -ne 0) { throw "$Program failed with exit code $LASTEXITCODE" }
 }
 
+$releaseLock = $null
 try {
+    New-Item -ItemType Directory -Path $distDir -Force | Out-Null
+    $releaseLock = [IO.File]::Open((Join-Path $distDir 'windows-release.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+    if (Test-Path -LiteralPath $SigningConfig -PathType Leaf) {
+        $config = Get-Content -LiteralPath $SigningConfig -Raw | ConvertFrom-Json
+        $allowed = @('PLANETARY_SIGN_PFX','PLANETARY_SIGN_PASSWORD_FILE','PLANETARY_SIGN_THUMBPRINT',
+            'PLANETARY_SIGNTOOL','PLANETARY_TIMESTAMP_URL')
+        foreach ($property in $config.PSObject.Properties) {
+            if ($property.Name -notin $allowed) { throw "Unknown local signing setting: $($property.Name)" }
+            [Environment]::SetEnvironmentVariable($property.Name, [string]$property.Value, 'Process')
+        }
+    }
+    $signingEnabled = -not $Unsigned
+    $signScript = Join-Path $PSScriptRoot 'windows-sign-file.ps1'
+    if (-not (Test-Path -LiteralPath $installerCompiler -PathType Leaf)) { throw "Inno Setup not found: $installerCompiler" }
+    if ($signingEnabled) {
+        Invoke-Checked 'powershell.exe' @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+            '-File', $signScript, '-FilePath', (Join-Path $stageDir 'Planetary.exe'), '-CheckOnly')
+    }
     foreach ($tool in @($cmake, $deployQt, $clang, $clangxx, $make)) {
         if (-not (Test-Path -LiteralPath $tool -PathType Leaf)) { throw "Required tool not found: $tool" }
     }
+    if ($CheckOnly) { Write-Host 'Release preflight passed.'; exit 0 }
     $env:PATH = "$compilerBin;$(Join-Path $qtRoot 'bin');$env:PATH"
     Invoke-Checked $cmake @('-S', $repoRoot, '-B', $buildDir, '-G', 'MinGW Makefiles',
         '-DCMAKE_BUILD_TYPE=Release', "-DCMAKE_PREFIX_PATH=$qtRoot",
         "-DCMAKE_C_COMPILER=$clang", "-DCMAKE_CXX_COMPILER=$clangxx", "-DCMAKE_MAKE_PROGRAM=$make")
-    Invoke-Checked $cmake @('--build', $buildDir, '--config', 'Release', '--target', 'Planetary', '--parallel')
+    Invoke-Checked $cmake @('--build', $buildDir, '--config', 'Release', '--target', 'Planetary', '--parallel', [string]$Jobs)
 
     $exe = Join-Path $buildDir 'Planetary.exe'
     if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw "Built executable not found: $exe" }
@@ -69,7 +95,7 @@ try {
         }
     }
 
-    if ($env:PLANETARY_SIGN_THUMBPRINT) {
+    if ($signingEnabled) {
         $signScript = Join-Path $PSScriptRoot 'windows-sign-file.ps1'
         foreach ($file in @('Planetary.exe', 'libc++.dll', 'libunwind.dll')) {
             $path = Join-Path $stageDir $file
@@ -77,12 +103,15 @@ try {
                 '-File', $signScript, $path)
         }
     } else {
-        Write-Warning 'PLANETARY_SIGN_THUMBPRINT is not set; creating an unsigned Windows package.'
+        Write-Warning 'Explicit -Unsigned mode: this package is not signed.'
     }
 
     if (Test-Path -LiteralPath $installerCompiler -PathType Leaf) {
         $installerArgs = @()
-        if ($env:PLANETARY_SIGN_THUMBPRINT) {
+        # Each build signs a fresh uninstaller; do not reuse cached signing identities.
+        $signCache = Join-Path $distDir ('signing-' + [guid]::NewGuid().ToString('N'))
+        $installerArgs += "/DUninstallerSigningDir=$signCache"
+        if ($signingEnabled) {
             $signScript = Join-Path $PSScriptRoot 'windows-sign-file.ps1'
             $signCommand = 'planetary=powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $q' + $signScript + '$q $f'
             $installerArgs += '/DSigningEnabled'
@@ -91,15 +120,30 @@ try {
         $installerArgs += (Join-Path $repoRoot 'packaging\windows\Planetary.iss')
         Invoke-Checked $installerCompiler $installerArgs
         Write-Host "Installer created in: $distDir"
-    } elseif ($env:PLANETARY_SIGN_THUMBPRINT) {
+    } elseif ($signingEnabled) {
         throw "Inno Setup compiler not found: $installerCompiler"
     } else {
         Write-Warning "Inno Setup compiler not found; skipped installer build: $installerCompiler"
     }
 
-    Write-Host "Windows application staging completed: $stageDir"
+    $version = (Get-Content -LiteralPath (Join-Path $buildDir 'planetary-version.txt') -Raw).Trim()
+    $installerPath = Join-Path $distDir "Planetary-$version-Windows-x64-Setup.exe"
+    if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) { throw 'Installer output missing.' }
+    if ($signingEnabled -and -not (Get-AuthenticodeSignature -LiteralPath $installerPath).SignerCertificate) {
+        throw 'Installer has no signature.'
+    }
+    $zipPath = Join-Path $distDir 'Planetary-Windows.zip'
+    Compress-Archive -LiteralPath $stageDir -DestinationPath $zipPath -Force
+    @($installerPath, $zipPath) | ForEach-Object { Get-FileHash -LiteralPath $_ -Algorithm SHA256 } |
+        Select-Object @{Name='File';Expression={Split-Path $_.Path -Leaf}}, Hash |
+        ConvertTo-Json | Set-Content -LiteralPath (Join-Path $distDir 'Planetary-Windows-hashes.json')
+    Write-Host "Release complete: $installerPath"
+    Write-Host "Portable ZIP: $zipPath"
     exit 0
 } catch {
     Write-Error $_ -ErrorAction Continue
     exit 1
+}
+finally {
+    if ($releaseLock) { $releaseLock.Dispose() }
 }

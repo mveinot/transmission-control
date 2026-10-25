@@ -91,3 +91,8 @@ CMakeLists.txt.user*
 
 # Native Windows application icon resource
 !/packaging/windows/planetary.rc
+
+# Machine-local signing configuration and credentials
+/scripts/windows-release.local.json
+*.pfx
+*.p12
