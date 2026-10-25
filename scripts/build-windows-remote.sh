@@ -136,8 +136,9 @@ mkdir -p "$OUTPUT_DIR"
 log_path="$OUTPUT_DIR/remote-build.log"
 upload_log_path="$OUTPUT_DIR/script-upload.log"
 local_script="$(mktemp "${TMPDIR:-/tmp}/planetary-windows-release.XXXXXX")"
-remote_sftp_script="/${REMOTE_REPO//\\//}/planetary-release-${RUN_ID}.ps1"
-remote_script_path="${REMOTE_REPO}\\planetary-release-${RUN_ID}.ps1"
+remote_staging_dir="${REMOTE_REPO%\\*}"
+remote_sftp_script="/${remote_staging_dir//\\//}/planetary-release-${RUN_ID}.ps1"
+remote_script_path="${remote_staging_dir}\\planetary-release-${RUN_ID}.ps1"
 cleanup() {
   if [[ -n "$remote_sftp_script" ]]; then
     printf 'rm "%s"\n' "$remote_sftp_script" |
