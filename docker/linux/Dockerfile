@@ -6,7 +6,7 @@ ARG AQTINSTALL_VERSION=3.3.0
 
 ENV QT_PREFIX=/opt/Qt/${QT_VERSION}/gcc_64
 ENV CMAKE_PREFIX_PATH=${QT_PREFIX}
-ENV PATH=${QT_PREFIX}/bin:${PATH}
+ENV PATH=/opt/aqt-venv/bin:${QT_PREFIX}/bin:${PATH}
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -37,7 +37,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m venv /opt/aqt-venv \
-    && /opt/aqt-venv/bin/pip install --no-cache-dir "aqtinstall==${AQTINSTALL_VERSION}" \
+    && /opt/aqt-venv/bin/pip install --no-cache-dir \
+        "aqtinstall==${AQTINSTALL_VERSION}" \
+        "cmake==3.31.6" \
     && /opt/aqt-venv/bin/aqt install-qt \
         --outputdir /opt/Qt \
         linux desktop "${QT_VERSION}" linux_gcc_64 \

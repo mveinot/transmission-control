@@ -18,8 +18,8 @@ directory is kept between invocations for incremental builds. The first run
 downloads the official linuxdeploy and Qt plugin AppImages into the ignored
 `tools/` directory; subsequent runs reuse them.
 
-The image itself is pinned to Ubuntu 22.04, Qt 6.12.0, and aqtinstall 3.3.0.
-Ubuntu's package repository supplies the CMake/compiler/system packages. The
+The image itself is pinned to Ubuntu 22.04, Qt 6.12.0, aqtinstall 3.3.0, and
+CMake 3.31.6. Ubuntu's package repository supplies the compiler/system packages. The
 resulting x86_64 AppImage uses Ubuntu 22.04's glibc baseline and is intended for
 Ubuntu 22.04 and newer. Packaging uses
 the project's `scripts/package-linux-appimage.sh` workflow inside the container.
