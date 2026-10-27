@@ -304,6 +304,8 @@ void AppSettings::loadSettings()
         settings.value(SettingsKeys::HideDockIcon, false).toBool()
         && ui->showTrayIcon->isChecked());
     ui->hideDockIcon->setEnabled(ui->showTrayIcon->isChecked());
+    ui->checkUpdatesAutomatically->setChecked(
+        settings.value(SettingsKeys::UpdateCheckAutomatically, true).toBool());
 
     ui->enableNotifications->setChecked(
         settings.value(
@@ -395,6 +397,8 @@ void AppSettings::saveSettings()
     settings.setValue(SettingsKeys::HideDockIcon,
                       ui->showTrayIcon->isChecked()
                       && ui->hideDockIcon->isChecked());
+    settings.setValue(SettingsKeys::UpdateCheckAutomatically,
+                      ui->checkUpdatesAutomatically->isChecked());
 
     settings.setValue(SettingsKeys::ShowNotifications,
                       ui->enableNotifications->isChecked());
