@@ -1,12 +1,40 @@
 {
   "schemaVersion": 1,
   "channel": "stable",
-  "version": "2.5.2",
-  "build": 455,
-  "displayVersion": "2.5.2.455",
+  "version": "2.6.2",
+  "build": 501,
+  "displayVersion": "2.6.2.501",
   "minimumMacOSVersion": "14.4",
-  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.5.2.455/Planetary-2.5.2.455-macOS-universal.dmg",
-  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.5.2.455",
-  "releaseNotesMarkdown": "**Full Changelog**: https://github.com/mveinot/transmission-control/compare/v2.5.0.447...v2.5.2.455\n\nBugfix and minor feature release:\n\n* Save and restore window size on exit and app start\n* Honour standard macOS CMD+M shortcut for minimize\n* When closed to tray icon, left click on tray icon restores app\n* Fix error that can occur when trying to set Planetary as the default app for torrent files when the previous default app is no longer installed",
-  "sha256": "ae6454a1baf25db2efd721b5d581ac0a6738dcdbbb4fa352016a14c039870e86"
+  "packageType": "dmg",
+  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.6.2.501/Planetary-2.6.2.501-macOS-universal.dmg",
+  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.6.2.501",
+  "releaseNotesMarkdown": "**Full Changelog**: https://github.com/mveinot/transmission-control/compare/v2.5.2.455...v2.6.2.501\n\nFirst non-beta release featuring Linux and Windows distributables\n\n- Linux image is built against a base of Ubuntu 22.04 for reasonable compatibility\n- Windows release is not signed and will likely require allowing it through Windows Defender\n\n* Fix Linux tray icon visibility issue\n* Reorganization of source files, simplification of test build process\n* Improve Windows release packaging\n* Fix dock icon behaviour regression\n* Implement GUI toggle for automated update check\n\nPlease report any issues with any of the platform releases",
+  "sha256": "ed381fe227302be6ba53c992b8182ac482388846e94b592bae9b62b19133d6c4",
+  "artifacts": {
+    "macos-universal": {
+      "version": "2.6.2",
+      "build": 501,
+      "displayVersion": "2.6.2.501",
+      "minimumMacOSVersion": "14.4",
+      "packageType": "dmg",
+      "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.6.2.501/Planetary-2.6.2.501-macOS-universal.dmg",
+      "sha256": "ed381fe227302be6ba53c992b8182ac482388846e94b592bae9b62b19133d6c4"
+    },
+    "linux-x86_64": {
+      "version": "2.6.2",
+      "build": 501,
+      "displayVersion": "2.6.2.501",
+      "packageType": "appimage",
+      "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.6.2.501/Planetary-2.6.2.501-x86_64.AppImage",
+      "sha256": "b3da2ea4af7b4298da73f5b2bc89eaf74a40ff63e4bb244217c6ad9343dc321e"
+    },
+    "windows-x86_64": {
+      "version": "2.6.2",
+      "build": 501,
+      "displayVersion": "2.6.2.501",
+      "packageType": "installer",
+      "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.6.2.501/Planetary-2.6.2.501-Windows-x64-Setup.exe",
+      "sha256": "0ca51263cc86c2d3818ba515813558962bff228affb813e7d6a6da4be232d664"
+    }
+  }
 }
