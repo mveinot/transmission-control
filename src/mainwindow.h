@@ -49,6 +49,8 @@ class ApplicationCommandController;
 class WindowLayoutController;
 class QNetworkAccessManager;
 class QNetworkReply;
+class QShowEvent;
+class QHideEvent;
 
 /*
  * Application composition root for the desktop UI. MainWindow owns the RPC
@@ -111,7 +113,7 @@ private:
     void saveTableViewState();
     void restoreTableViewState();
     int updateIntervalMs() const;
-    void applyUpdateInterval();
+    void applyUpdateInterval(bool showStatusMessage = true);
     void setupConnectionStatusIndicator();
     void setupDetailsPane();
     void showTorrentDetails(bool torrentSelected);
@@ -174,9 +176,12 @@ private:
     bool activityConnectionFailed = false;
     QStringList pendingLaunchArguments;
     QSet<QString> pendingDownloadedTorrentFiles;
+    bool closedToTray = false;
 
 protected:
     void closeEvent(QCloseEvent *event) override;
+    void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
     void changeEvent(QEvent *event) override;
     bool event(QEvent *event) override;
     bool eventFilter(QObject *watched, QEvent *event) override;

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>657</width>
-    <height>618</height>
+    <height>638</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -202,6 +202,16 @@
               </property>
               <property name="text">
                <string>Check for updates automatically</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="reducePollingWhenHidden">
+              <property name="toolTip">
+               <string>Poll less often while the window is closed to the tray. Normal polling resumes when you reopen it.</string>
+              </property>
+              <property name="text">
+               <string>Reduce server polling while closed to the tray</string>
               </property>
              </widget>
             </item>

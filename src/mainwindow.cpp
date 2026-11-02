@@ -61,6 +61,8 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QSettings>
+#include <QHideEvent>
+#include <QShowEvent>
 #include <QSignalBlocker>
 #include <QSize>
 #include <QSpinBox>
@@ -1507,6 +1509,30 @@ void MainWindow::closeEvent(QCloseEvent *event)
     QMainWindow::closeEvent(event);
 }
 
+void MainWindow::hideEvent(QHideEvent *event)
+{
+    QMainWindow::hideEvent(event);
+    if (!trayController || !trayController->isTrayVisible())
+        return;
+
+    closedToTray = true;
+    applyUpdateInterval(false);
+}
+
+void MainWindow::showEvent(QShowEvent *event)
+{
+    QMainWindow::showEvent(event);
+    if (!closedToTray)
+        return;
+
+    closedToTray = false;
+    applyUpdateInterval(false);
+    if (pollingCoordinator) {
+        pollingCoordinator->requestTorrentList();
+        pollingCoordinator->requestSelectedTorrent(true);
+    }
+}
+
 void MainWindow::onServerSetupTriggered()
 {
     ServerConfig sc(this);
@@ -2019,21 +2045,30 @@ int MainWindow::updateIntervalMs() const
     return boundedSeconds * 1000;
 }
 
-void MainWindow::applyUpdateInterval()
+void MainWindow::applyUpdateInterval(bool showStatusMessage)
 {
-    // Restart is unnecessary when changing an active QTimer interval; Qt
-    // reschedules it using the new value.
-    pollingCoordinator->setPollingInterval(updateIntervalMs());
+    QSettings settings;
+    const int normalIntervalMs = updateIntervalMs();
+    const bool reduceWhileHidden =
+        settings.value(SettingsKeys::ReducePollingWhenHidden, false).toBool();
+    const int effectiveIntervalMs = closedToTray && reduceWhileHidden
+        ? qMax(60 * 1000, normalIntervalMs * 6)
+        : normalIntervalMs;
+
+    // Changing the interval reschedules an active QTimer immediately.
+    pollingCoordinator->setPollingInterval(effectiveIntervalMs);
     pollingCoordinator->startPolling();
 
     if (statusBarController) {
         statusBarController->setUpdateIntervalSeconds(
-            pollingCoordinator->pollingInterval() / 1000);
-        statusBarController->showMessage(
-            tr("Update interval: %1 seconds")
-                .arg(pollingCoordinator->pollingInterval() / 1000),
-            3000
-            );
+            normalIntervalMs / 1000);
+        if (showStatusMessage) {
+            statusBarController->showMessage(
+                tr("Update interval: %1 seconds")
+                    .arg(normalIntervalMs / 1000),
+                3000
+                );
+        }
     }
 }
 
