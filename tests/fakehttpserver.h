@@ -3,6 +3,7 @@
 
 #include <QHash>
 #include <QHostAddress>
+#include <QTimer>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QUrl>
@@ -26,6 +27,7 @@ public:
         QByteArray reason = QByteArrayLiteral("OK");
         QHash<QByteArray, QByteArray> headers;
         QByteArray body;
+        int delayMs = 0;
     };
 
     using Responder = std::function<Response(const Request &)>;
@@ -116,9 +118,19 @@ private:
         }
         wire += QByteArrayLiteral("Connection: close\r\n\r\n")
                 + response.body;
-        socket->write(wire);
-        socket->disconnectFromHost();
         m_buffers.remove(socket);
+        if (response.delayMs > 0) {
+            QTimer::singleShot(response.delayMs, socket,
+                               [socket, wire]() {
+                if (socket->state() != QAbstractSocket::ConnectedState)
+                    return;
+                socket->write(wire);
+                socket->disconnectFromHost();
+            });
+        } else {
+            socket->write(wire);
+            socket->disconnectFromHost();
+        }
     }
 };
 

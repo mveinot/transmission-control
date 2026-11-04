@@ -127,6 +127,8 @@ private:
   bool m_authenticated = false;
   bool m_authenticationPending = false;
   bool m_listPendingAfterLogin = false;
+  bool m_torrentListRequestInFlight = false;
+  bool m_torrentListRefreshPending = false;
   bool m_sessionSettingsPendingAfterLogin = false;
   bool m_serverStateStatisticsPending = false;
   bool m_serverStateFreeSpacePending = false;
@@ -149,6 +151,7 @@ private:
   void queueOrSendAdd(const RequestContext &context);
   void sendAdd(const RequestContext &context);
   void failAdd(const RequestContext &context, const QString &reason);
+  void finishTorrentListRequest(bool allowPendingRefresh = true);
   void requestServerState();
   void failServerStateRequest(const QString &reason);
   void setServer(const QString &name, const QString &url,

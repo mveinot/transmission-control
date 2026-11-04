@@ -8,6 +8,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkRequest>
+#include <QTimer>
 #include <QUrl>
 #include <QUrlQuery>
 
@@ -239,6 +240,8 @@ void QBittorrentBackend::setServer(const QString &name, const QString &url,
   m_authenticated = false;
   m_authenticationPending = false;
   m_listPendingAfterLogin = false;
+  m_torrentListRequestInFlight = false;
+  m_torrentListRefreshPending = false;
   m_sessionSettingsPendingAfterLogin = false;
   m_serverStateStatisticsPending = false;
   m_serverStateFreeSpacePending = false;
@@ -434,14 +437,35 @@ void QBittorrentBackend::failAdd(const RequestContext &context,
 }
 
 void QBittorrentBackend::getTorrentList() {
+  if (m_torrentListRequestInFlight) {
+    m_torrentListRefreshPending = true;
+    return;
+  }
+
   if (!m_authenticated) {
     m_listPendingAfterLogin = true;
     authenticate();
     return;
   }
 
+  m_torrentListRequestInFlight = true;
   emit updateStarted();
   sendGet(RequestKind::TorrentList, QStringLiteral("/api/v2/torrents/info"));
+}
+
+void QBittorrentBackend::finishTorrentListRequest(bool allowPendingRefresh) {
+  if (!m_torrentListRequestInFlight)
+    return;
+
+  m_torrentListRequestInFlight = false;
+  const bool refreshPending = m_torrentListRefreshPending;
+  m_torrentListRefreshPending = false;
+  if (!allowPendingRefresh || !refreshPending)
+    return;
+
+  // Let the current completion signals unwind before beginning the coalesced
+  // follow-up poll. Additional calls before it starts are coalesced again.
+  QTimer::singleShot(0, this, [this]() { getTorrentList(); });
 }
 
 void QBittorrentBackend::getTorrentDetails(const TorrentKey &key) {
@@ -701,6 +725,8 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
       failServerStateRequest(reason);
       if (torrentListRetryWasPending)
         emit updateFinished();
+      if (torrentListRetryWasPending)
+        finishTorrentListRequest(false);
       return;
     }
 
@@ -842,6 +868,7 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
     if (context.kind == RequestKind::TorrentList) {
       emit updateFailed(tr("qBittorrent request failed: %1").arg(networkError));
       emit updateFinished();
+      finishTorrentListRequest();
     } else if (context.kind == RequestKind::ServerState) {
       failServerStateRequest(networkError);
     }
@@ -857,6 +884,7 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
           tr("qBittorrent returned invalid torrent list JSON: %1")
               .arg(parseError.errorString()));
       emit updateFinished();
+      finishTorrentListRequest();
     } else if (context.kind == RequestKind::ServerState) {
       failServerStateRequest(parseError.errorString());
     }
@@ -868,6 +896,7 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
       emit updateFailed(
           tr("qBittorrent returned an invalid torrent list response: expected a JSON array"));
       emit updateFinished();
+      finishTorrentListRequest();
       return;
     }
 
@@ -882,6 +911,7 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
             tr("qBittorrent returned an invalid torrent list response: entry %1 is not an object")
                 .arg(index + 1));
         emit updateFinished();
+        finishTorrentListRequest();
         return;
       }
 
@@ -893,6 +923,7 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
             tr("qBittorrent returned an invalid torrent list response: entry %1 has no valid hash")
                 .arg(index + 1));
         emit updateFinished();
+        finishTorrentListRequest();
         return;
       }
 
@@ -903,6 +934,7 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
     m_infoByKey = std::move(infoByKey);
     emit torrentsReceived(torrents);
     emit updateFinished();
+    finishTorrentListRequest();
     return;
   }
 

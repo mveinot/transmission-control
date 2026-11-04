@@ -16,6 +16,7 @@ private slots:
     void initTestCase();
     void protocolIsIdentified();
     void login204IsAcceptedAndListIsNormalized();
+    void concurrentListRefreshesAreCoalesced();
     void expiredReadAuthenticationIsRecovered();
     void commandsUseFormEncodedHashes();
     void selectedTorrentEndpointsAreProjected();
@@ -109,6 +110,54 @@ void TestQBittorrentBackend::login204IsAcceptedAndListIsNormalized()
     QCOMPARE(torrents.first().getKey(), QStringLiteral("hash-one"));
     QCOMPARE(torrents.first().getConnectedSeeds(), 5);
     QCOMPARE(torrents.first().getTotalSeeds(), 70);
+}
+
+void TestQBittorrentBackend::concurrentListRefreshesAreCoalesced()
+{
+    int listCount = 0;
+    FakeHttpServer server([&](const FakeHttpServer::Request &request) {
+        if (request.target.startsWith("/api/v2/auth/login")) {
+            return FakeHttpServer::Response{
+                200, "OK", {{"Set-Cookie", "SID=test; Path=/"}}, "Ok."};
+        }
+        if (request.target.startsWith("/api/v2/torrents/info")) {
+            ++listCount;
+            const QString name = listCount == 1
+                ? QStringLiteral("First snapshot")
+                : QStringLiteral("Follow-up snapshot");
+            const QByteArray body = QJsonDocument(
+                QJsonArray{QJsonObject{
+                    {"hash", "hash-one"}, {"name", name},
+                    {"state", "paused"}, {"total_size", 1000}}})
+                .toJson(QJsonDocument::Compact);
+            return FakeHttpServer::Response{
+                200, "OK", {{"Content-Type", "application/json"}}, body,
+                listCount == 1 ? 150 : 0};
+        }
+        return FakeHttpServer::Response{404, "Not Found", {}, {}};
+    });
+    QVERIFY(server.isListening());
+    configureServer(server.url());
+
+    QBittorrentBackend backend;
+    QVERIFY(backend.setServerProfile(
+        ServerProfileRepository().profileAtSettingsIndex(0)));
+    QSignalSpy received(&backend, &TorrentBackend::torrentsReceived);
+    QSignalSpy started(&backend, &TorrentBackend::updateStarted);
+    backend.getTorrentList();
+
+    QTRY_COMPARE(listCount, 1);
+    backend.getTorrentList();
+    backend.getTorrentList();
+    QTest::qWait(25);
+    QCOMPARE(listCount, 1);
+
+    QTRY_COMPARE(received.size(), 2);
+    QCOMPARE(listCount, 2);
+    QCOMPARE(started.size(), 2);
+    const QVector<torrent> latest =
+        qvariant_cast<QVector<torrent>>(received.last().first());
+    QCOMPARE(latest.first().getName(), QStringLiteral("Follow-up snapshot"));
 }
 
 void TestQBittorrentBackend::expiredReadAuthenticationIsRecovered()
