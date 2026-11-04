@@ -259,6 +259,8 @@ void NotificationController::processTorrentList(const QVector<torrent> &torrents
     // would report every pre-existing torrent as newly added or completed.
     if (!m_baselineLoaded) {
         m_knownTorrentStates = currentStates;
+        for (auto it = currentStates.cbegin(); it != currentStates.cend(); ++it)
+            m_directlyNotifiedAddedTorrentKeys.remove(it.key());
         m_baselineLoaded = true;
         return;
     }
