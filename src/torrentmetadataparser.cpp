@@ -7,6 +7,8 @@
 #include <QObject>
 #include <QStringList>
 
+#include <limits>
+
 namespace {
 
 QString valueToString(const BencodeValue *value)
@@ -153,6 +155,7 @@ TorrentMetadata TorrentMetadataParser::parseTorrentData(const QByteArray &data)
 
         metadata.multiFile = true;
         int index = 0;
+        qint64 totalSize = 0;
 
         for (const BencodeValue &fileValue : files->toList()) {
             if (!fileValue.isDictionary()) {
@@ -167,6 +170,20 @@ TorrentMetadata TorrentMetadataParser::parseTorrentData(const QByteArray &data)
                 return metadata;
             }
 
+            const qint64 length = lengthValue->toInteger();
+            if (length < 0) {
+                metadata.errorString = QObject::tr(
+                    "Torrent file entry has a negative length.");
+                return metadata;
+            }
+
+            if (length > std::numeric_limits<qint64>::max() - totalSize) {
+                metadata.errorString = QObject::tr(
+                    "Combined torrent file size exceeds the supported range.");
+                return metadata;
+            }
+            totalSize += length;
+
             const QString path = filePathFromDictionary(fileValue);
 
             if (path.isEmpty()) {
@@ -177,7 +194,7 @@ TorrentMetadata TorrentMetadataParser::parseTorrentData(const QByteArray &data)
             TorrentFileMetadata file;
             file.index = index++;
             file.path = path;
-            file.length = lengthValue->toInteger();
+            file.length = length;
 
             metadata.files.append(file);
         }
@@ -195,10 +212,17 @@ TorrentMetadata TorrentMetadataParser::parseTorrentData(const QByteArray &data)
         return metadata;
     }
 
+    const qint64 length = lengthValue->toInteger();
+    if (length < 0) {
+        metadata.errorString = QObject::tr(
+            "Single-file torrent metadata has a negative length.");
+        return metadata;
+    }
+
     TorrentFileMetadata file;
     file.index = 0;
     file.path = metadata.name;
-    file.length = lengthValue->toInteger();
+    file.length = length;
 
     metadata.files.append(file);
     return metadata;
