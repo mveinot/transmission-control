@@ -51,18 +51,22 @@ signals:
                          const QUrl &releaseUrl,
                          const QString &releaseNotesMarkdown,
                          const QString &packageType,
-                         bool userInitiated);
+                         bool userInitiated,
+                         bool beta);
 
     void noUpdateAvailable(const QString &currentVersion,
                            const QString &latestVersion,
                            const QUrl &releaseUrl,
-                           bool userInitiated);
+                           bool userInitiated,
+                           bool beta);
 
     void noPlatformUpdateAvailable(const QUrl &releaseUrl,
-                                   bool userInitiated);
+                                   bool userInitiated,
+                                   bool beta);
 
     void updateCheckFailed(const QString &message,
-                           bool userInitiated);
+                           bool userInitiated,
+                           bool beta);
 
 private slots:
     void handleReplyFinished(QNetworkReply *reply);

@@ -1,6 +1,43 @@
 #include <QtTest/QtTest>
 
+#include <QNetworkReply>
+
+#include <cstring>
+#include <utility>
+
 #include "updatechecker.h"
+
+class ManifestReply final : public QNetworkReply
+{
+public:
+    explicit ManifestReply(QByteArray data, QObject *parent = nullptr)
+        : QNetworkReply(parent), m_data(std::move(data))
+    {
+        setOpenMode(QIODevice::ReadOnly | QIODevice::Unbuffered);
+    }
+
+    void abort() override {}
+    qint64 bytesAvailable() const override
+    {
+        return m_data.size() - m_offset + QNetworkReply::bytesAvailable();
+    }
+
+protected:
+    qint64 readData(char *data, qint64 maxSize) override
+    {
+        if (m_offset >= m_data.size())
+            return -1;
+        const qint64 amount = qMin(maxSize, m_data.size() - m_offset);
+        std::memcpy(data, m_data.constData() + m_offset,
+                    static_cast<size_t>(amount));
+        m_offset += amount;
+        return amount;
+    }
+
+private:
+    QByteArray m_data;
+    qsizetype m_offset = 0;
+};
 
 class TestUpdateChecker : public QObject
 {
@@ -10,6 +47,7 @@ private slots:
     void versionComparison_data();
     void versionComparison();
     void parsesStableManifest();
+    void updateResultsKeepTheChannelOfTheirReply();
     void rejectsInvalidManifest_data();
     void rejectsInvalidManifest();
 };
@@ -81,6 +119,49 @@ void TestUpdateChecker::parsesStableManifest()
                                           &errorMessage),
              qPrintable(errorMessage));
     QVERIFY(manifestWithoutReleaseNotes.releaseNotesMarkdown.isEmpty());
+}
+
+void TestUpdateChecker::updateResultsKeepTheChannelOfTheirReply()
+{
+    const QByteArray stableManifest = R"json({
+        "schemaVersion": 1,
+        "channel": "stable",
+        "version": "2.0.0",
+        "build": 376,
+        "displayVersion": "2.0.0.376",
+        "minimumMacOSVersion": "13.0",
+        "downloadUrl": "https://example.com/Planetary.dmg",
+        "releaseNotesUrl": "https://example.com/releases/2.0.0.376",
+        "sha256": "fd0dd6fa10d9a3098f6ac554cf6419ee96b01a54e16e3b59b504fb6c5f4e0cf8"
+    })json";
+
+    UpdateChecker checker;
+    checker.setCurrentVersion(QStringLiteral("1.0.0"));
+    QSignalSpy available(&checker, &UpdateChecker::updateAvailable);
+    QVERIFY(available.isValid());
+
+    QByteArray betaManifest = stableManifest;
+    betaManifest.replace("\"stable\"", "\"beta\"");
+
+    // Deliver replies in the reverse order from which the corresponding
+    // channel checks would commonly be started.
+    auto *betaReply = new ManifestReply(betaManifest, &checker);
+    betaReply->setProperty("userInitiated", true);
+    betaReply->setProperty("beta", true);
+    QVERIFY(QMetaObject::invokeMethod(
+        &checker, "handleReplyFinished", Qt::DirectConnection,
+        Q_ARG(QNetworkReply *, betaReply)));
+
+    auto *stableReply = new ManifestReply(stableManifest, &checker);
+    stableReply->setProperty("userInitiated", true);
+    stableReply->setProperty("beta", false);
+    QVERIFY(QMetaObject::invokeMethod(
+        &checker, "handleReplyFinished", Qt::DirectConnection,
+        Q_ARG(QNetworkReply *, stableReply)));
+
+    QCOMPARE(available.size(), 2);
+    QCOMPARE(available.at(0).at(8).toBool(), true);
+    QCOMPARE(available.at(1).at(8).toBool(), false);
 }
 
 void TestUpdateChecker::rejectsInvalidManifest_data()

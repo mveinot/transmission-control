@@ -25,7 +25,6 @@ signals:
 private:
     QWidget *m_parentWidget = nullptr;
     UpdateChecker *m_updateChecker = nullptr;
-    bool m_betaCheckInFlight = false;
 
     static QString displayVersion(QString version);
 };

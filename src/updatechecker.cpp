@@ -82,7 +82,7 @@ void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
     const bool beta = reply->property("beta").toBool();
 
     if (reply->error() != QNetworkReply::NoError) {
-        emit updateCheckFailed(reply->errorString(), userInitiated);
+        emit updateCheckFailed(reply->errorString(), userInitiated, beta);
         return;
     }
 
@@ -91,12 +91,13 @@ void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
     if (!parseManifest(reply->readAll(), &manifest, &errorMessage,
                        beta ? QStringLiteral("beta") : QStringLiteral("stable"),
                        currentPlatformKey())) {
-        emit updateCheckFailed(errorMessage, userInitiated);
+        emit updateCheckFailed(errorMessage, userInitiated, beta);
         return;
     }
 
     if (!manifest.platformArtifactAvailable) {
-        emit noPlatformUpdateAvailable(manifest.releaseNotesUrl, userInitiated);
+        emit noPlatformUpdateAvailable(manifest.releaseNotesUrl,
+                                       userInitiated, beta);
         return;
     }
 
@@ -108,14 +109,16 @@ void UpdateChecker::handleReplyFinished(QNetworkReply *reply)
                              manifest.releaseNotesUrl,
                              manifest.releaseNotesMarkdown,
                              manifest.packageType,
-                             userInitiated);
+                             userInitiated,
+                             beta);
         return;
     }
 
     emit noUpdateAvailable(m_currentVersion,
                            manifest.displayVersion,
                            manifest.releaseNotesUrl,
-                           userInitiated);
+                           userInitiated,
+                           beta);
 }
 
 bool UpdateChecker::parseManifest(const QByteArray &data,

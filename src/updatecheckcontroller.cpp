@@ -60,11 +60,12 @@ void UpdateCheckController::setup()
                    const QUrl &releaseUrl,
                    const QString &releaseNotesMarkdown,
                    const QString &packageType,
-                   bool userInitiated) {
+                   bool userInitiated,
+                   bool beta) {
                 Q_UNUSED(userInitiated)
 
                 QDialog dialog(m_parentWidget);
-                dialog.setWindowTitle(m_betaCheckInFlight
+                dialog.setWindowTitle(beta
                                           ? tr("Beta Update Available")
                                           : tr("Update Available"));
                 dialog.resize(620, 480);
@@ -81,7 +82,7 @@ void UpdateCheckController::setup()
                 summaryLayout->addWidget(iconLabel);
 
                 const QString summary =
-                    (m_betaCheckInFlight
+                    (beta
                          ? tr("A newer beta version of Planetary is available.")
                          : tr("A newer version of Planetary is available.")).toHtmlEscaped();
                 QString versions =
@@ -264,7 +265,7 @@ void UpdateCheckController::setup()
 
     connect(m_updateChecker, &UpdateChecker::noPlatformUpdateAvailable,
             this,
-            [this](const QUrl &releaseUrl, bool userInitiated) {
+            [this](const QUrl &releaseUrl, bool userInitiated, bool) {
                 if (!userInitiated)
                     return;
 
@@ -287,7 +288,8 @@ void UpdateCheckController::setup()
             [this](const QString &currentVersion,
                    const QString &latestVersion,
                    const QUrl &releaseUrl,
-                   bool userInitiated) {
+                   bool userInitiated,
+                   bool) {
                 if (!userInitiated)
                     return;
 
@@ -315,7 +317,7 @@ void UpdateCheckController::setup()
 
     connect(m_updateChecker, &UpdateChecker::updateCheckFailed,
             this,
-            [this](const QString &message, bool userInitiated) {
+            [this](const QString &message, bool userInitiated, bool) {
                 if (userInitiated) {
                     QMessageBox::warning(
                         m_parentWidget,
@@ -342,7 +344,6 @@ void UpdateCheckController::checkNow(bool optionClick)
         beta = !beta;
         settings.setValue(SettingsKeys::UpdateBetaChannel, beta);
     }
-    m_betaCheckInFlight = beta;
     if (m_updateChecker)
         m_updateChecker->checkForUpdates(true, beta);
 }
@@ -376,10 +377,10 @@ void UpdateCheckController::maybeCheckAutomatically()
      */
     settings.setValue(SettingsKeys::UpdateLastCheck, now);
 
-    m_betaCheckInFlight = QSettings().value(
+    const bool beta = QSettings().value(
         SettingsKeys::UpdateBetaChannel, false).toBool();
     if (m_updateChecker)
-        m_updateChecker->checkForUpdates(false, m_betaCheckInFlight);
+        m_updateChecker->checkForUpdates(false, beta);
 }
 
 QString UpdateCheckController::displayVersion(QString version)
