@@ -20,8 +20,12 @@ bool isAsciiDigit(char ch)
 
 bool BencodeParser::parse(const QByteArray &data,
                           BencodeValue *result,
-                          QString *errorString)
+                          QString *errorString,
+                          QByteArray *rawInfoDictionary)
 {
+    if (rawInfoDictionary)
+        rawInfoDictionary->clear();
+
     if (data.size() > MaximumInputBytes) {
         if (result)
             *result = BencodeValue();
@@ -52,6 +56,9 @@ bool BencodeParser::parse(const QByteArray &data,
 
     if (result)
         *result = parsedValue;
+
+    if (rawInfoDictionary)
+        *rawInfoDictionary = parser.m_rawInfoDictionary;
 
     if (errorString)
         errorString->clear();
@@ -282,10 +289,14 @@ bool BencodeParser::parseDictionary(BencodeValue *result)
         }
         previousKey = key;
 
+        const qsizetype valueStart = m_offset;
         BencodeValue value;
 
         if (!parseValue(&value))
             return false;
+
+        if (m_depth == 1 && key == QByteArrayLiteral("info"))
+            m_rawInfoDictionary = m_data.mid(valueStart, m_offset - valueStart);
 
         dictionary.insert(key, value);
     }

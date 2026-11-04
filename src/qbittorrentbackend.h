@@ -103,6 +103,7 @@ private:
     QByteArray form;
     QString torrentFilePath;
     QString magnetLink;
+    QString torrentName;
     QString downloadDir;
     bool startPaused = false;
     bool deleteTorrentFileOnSuccess = false;

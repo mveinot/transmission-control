@@ -90,7 +90,8 @@ TorrentAddController::TorrentAddController(TorrentBackend *client,
                                           pending.downloadDir);
                     }
 
-                    if (!pending.newName.isEmpty()
+                    if (isValidTorrentKey(key)
+                        && !pending.newName.isEmpty()
                         && pending.originalName != pending.newName) {
                         m_client->renameTorrentPath(key, pending.originalName,
                                                     pending.newName);

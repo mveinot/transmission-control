@@ -2,6 +2,7 @@
 
 #include "bencodeparser.h"
 
+#include <QCryptographicHash>
 #include <QFile>
 #include <QObject>
 #include <QStringList>
@@ -82,8 +83,10 @@ TorrentMetadata TorrentMetadataParser::parseTorrentData(const QByteArray &data)
 
     BencodeValue root;
     QString errorString;
+    QByteArray rawInfoDictionary;
 
-    if (!BencodeParser::parse(data, &root, &errorString)) {
+    if (!BencodeParser::parse(data, &root, &errorString,
+                              &rawInfoDictionary)) {
         metadata.errorString = errorString;
         return metadata;
     }
@@ -98,6 +101,17 @@ TorrentMetadata TorrentMetadataParser::parseTorrentData(const QByteArray &data)
     if (!info || !info->isDictionary()) {
         metadata.errorString = QObject::tr("Torrent metadata is missing the info dictionary.");
         return metadata;
+    }
+
+    if (!rawInfoDictionary.isEmpty()) {
+        const BencodeValue *metaVersion = info->value("meta version");
+        const bool hasV1Pieces = info->value("pieces") != nullptr;
+        const QCryptographicHash::Algorithm algorithm =
+            metaVersion && metaVersion->toInteger() == 2 && !hasV1Pieces
+                ? QCryptographicHash::Sha256
+                : QCryptographicHash::Sha1;
+        metadata.infoHash = QString::fromLatin1(
+            QCryptographicHash::hash(rawInfoDictionary, algorithm).toHex());
     }
 
     metadata.name = dictionaryString(*info, "name.utf-8", "name");

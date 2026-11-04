@@ -13,6 +13,7 @@ struct TorrentFileMetadata
 struct TorrentMetadata
 {
     QString name;
+    QString infoHash;
     bool multiFile = false;
     QList<TorrentFileMetadata> files;
     QString errorString;

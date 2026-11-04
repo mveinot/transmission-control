@@ -12,7 +12,8 @@ class BencodeParser
 public:
     static bool parse(const QByteArray &data,
                       BencodeValue *result,
-                      QString *errorString = nullptr);
+                      QString *errorString = nullptr,
+                      QByteArray *rawInfoDictionary = nullptr);
 
 private:
     explicit BencodeParser(const QByteArray &data);
@@ -33,4 +34,5 @@ private:
     int m_depth = 0;
     qsizetype m_valueCount = 0;
     QString m_errorString;
+    QByteArray m_rawInfoDictionary;
 };

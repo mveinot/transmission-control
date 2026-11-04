@@ -1,4 +1,5 @@
 #include "qbittorrentbackend.h"
+#include "torrentmetadataparser.h"
 
 #include <QFile>
 #include <QFileInfo>
@@ -11,6 +12,7 @@
 #include <QUrlQuery>
 
 #include <algorithm>
+#include <cctype>
 #include <utility>
 
 namespace {
@@ -54,6 +56,89 @@ QByteArray formField(const QString &value) {
   // qBittorrent expects application/x-www-form-urlencoded data. QUrlQuery
   // follows URL-query rules and may leave a literal '+' ambiguous.
   return QUrl::toPercentEncoding(value);
+}
+
+QString torrentKeyFromMagnet(const QString &magnetLink) {
+  const QUrl url(magnetLink);
+  if (!url.isValid() ||
+      url.scheme().compare(QStringLiteral("magnet"), Qt::CaseInsensitive) != 0)
+    return {};
+
+  const auto items = QUrlQuery(url).queryItems();
+  QString btmhKey;
+  for (const auto &[name, value] : items) {
+    if (name.compare(QStringLiteral("xt"), Qt::CaseInsensitive) != 0)
+      continue;
+
+    constexpr auto prefix = "urn:btih:";
+    constexpr auto v2Prefix = "urn:btmh:";
+    if (value.startsWith(QLatin1StringView(v2Prefix), Qt::CaseInsensitive)) {
+      const QByteArray multihash = value.mid(
+          QLatin1StringView(v2Prefix).size()).toLatin1();
+      if (multihash.size() == 68) {
+        const QByteArray decoded = QByteArray::fromHex(multihash);
+        if (decoded.size() == 34
+            && static_cast<unsigned char>(decoded.at(0)) == 0x12
+            && static_cast<unsigned char>(decoded.at(1)) == 0x20) {
+          btmhKey = QString::fromLatin1(decoded.mid(2).toHex());
+        }
+      }
+      continue;
+    }
+
+    if (!value.startsWith(QLatin1StringView(prefix), Qt::CaseInsensitive))
+      continue;
+
+    const QByteArray encoded =
+        value.mid(QLatin1StringView(prefix).size()).toLatin1();
+    if (encoded.size() == 40) {
+      const QByteArray decoded = QByteArray::fromHex(encoded);
+      if (decoded.size() == 20)
+        return QString::fromLatin1(decoded.toHex());
+    }
+
+    if (encoded.size() == 32) {
+      QByteArray decoded;
+      quint32 buffer = 0;
+      int bits = 0;
+      for (const char rawCharacter : encoded) {
+        const char character = static_cast<char>(
+            std::toupper(static_cast<unsigned char>(rawCharacter)));
+        int value = -1;
+        if (character >= 'A' && character <= 'Z')
+          value = character - 'A';
+        else if (character >= '2' && character <= '7')
+          value = character - '2' + 26;
+        if (value < 0) {
+          decoded.clear();
+          break;
+        }
+
+        buffer = (buffer << 5) | static_cast<quint32>(value);
+        bits += 5;
+        if (bits >= 8) {
+          bits -= 8;
+          decoded.append(static_cast<char>((buffer >> bits) & 0xff));
+        }
+      }
+      if (decoded.size() == 20)
+        return QString::fromLatin1(decoded.toHex());
+    }
+  }
+
+  return btmhKey;
+}
+
+QString torrentNameFromMagnet(const QString &magnetLink) {
+  const QUrl url(magnetLink);
+  if (!url.isValid())
+    return {};
+
+  for (const auto &[name, value] : QUrlQuery(url).queryItems()) {
+    if (name.compare(QStringLiteral("dn"), Qt::CaseInsensitive) == 0)
+      return value;
+  }
+  return {};
 }
 
 QByteArray hashesForm(const QList<TorrentKey> &keys) {
@@ -680,6 +765,7 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
           QFile::remove(context.torrentFilePath);
         emit torrentFileAddSucceeded(context.torrentFilePath);
       }
+      emit torrentAdded(context.key, context.torrentName);
       emit commandSucceeded(QStringLiteral("torrent-add"));
       return;
     }
@@ -761,24 +847,55 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
   const QJsonDocument document = QJsonDocument::fromJson(body, &parseError);
   if (parseError.error != QJsonParseError::NoError)
   {
-    if (context.kind == RequestKind::ServerState)
+    if (context.kind == RequestKind::TorrentList) {
+      emit updateFailed(
+          tr("qBittorrent returned invalid torrent list JSON: %1")
+              .arg(parseError.errorString()));
+      emit updateFinished();
+    } else if (context.kind == RequestKind::ServerState) {
       failServerStateRequest(parseError.errorString());
+    }
     return;
   }
 
   if (context.kind == RequestKind::TorrentList) {
+    if (!document.isArray()) {
+      emit updateFailed(
+          tr("qBittorrent returned an invalid torrent list response: expected a JSON array"));
+      emit updateFinished();
+      return;
+    }
+
     QVector<torrent> torrents;
     const QJsonArray array = document.array();
     torrents.reserve(array.size());
-    m_infoByKey.clear();
-    for (const QJsonValue &value : array) {
+    QHash<TorrentKey, QVariantMap> infoByKey;
+    for (qsizetype index = 0; index < array.size(); ++index) {
+      const QJsonValue &value = array.at(index);
+      if (!value.isObject()) {
+        emit updateFailed(
+            tr("qBittorrent returned an invalid torrent list response: entry %1 is not an object")
+                .arg(index + 1));
+        emit updateFinished();
+        return;
+      }
+
       const QJsonObject source = value.toObject();
-      const QString key = source.value(QStringLiteral("hash")).toString();
-      if (key.isEmpty())
-        continue;
-      m_infoByKey.insert(key, source.toVariantMap());
+      const QJsonValue hashValue = source.value(QStringLiteral("hash"));
+      const QString key = hashValue.toString();
+      if (!hashValue.isString() || key.trimmed().isEmpty()) {
+        emit updateFailed(
+            tr("qBittorrent returned an invalid torrent list response: entry %1 has no valid hash")
+                .arg(index + 1));
+        emit updateFinished();
+        return;
+      }
+
+      infoByKey.insert(key, source.toVariantMap());
       torrents.append(torrent(normalizeTorrent(source)));
     }
+
+    m_infoByKey = std::move(infoByKey);
     emit torrentsReceived(torrents);
     emit updateFinished();
     return;
@@ -1224,6 +1341,10 @@ void QBittorrentBackend::addTorrentFile(const QString &filePath,
   RequestContext context;
   context.kind = RequestKind::AddTorrent;
   context.torrentFilePath = fileInfo.absoluteFilePath();
+  const TorrentMetadata metadata =
+      TorrentMetadataParser::parseTorrentFile(context.torrentFilePath);
+  context.key = metadata.infoHash;
+  context.torrentName = metadata.name;
   context.downloadDir = downloadDir;
   context.startPaused = paused;
   context.deleteTorrentFileOnSuccess = deleteFileOnSuccess;
@@ -1244,6 +1365,8 @@ void QBittorrentBackend::addMagnetLink(const QString &magnetLink,
   RequestContext context;
   context.kind = RequestKind::AddTorrent;
   context.magnetLink = magnetLink.trimmed();
+  context.key = torrentKeyFromMagnet(context.magnetLink);
+  context.torrentName = torrentNameFromMagnet(context.magnetLink);
   context.downloadDir = downloadDir;
   context.startPaused = paused;
 
