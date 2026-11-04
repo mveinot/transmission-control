@@ -572,8 +572,6 @@ void TorrentModel::applyUpdate(const QVector<torrent> &incoming)
         }
     }
 
-    rebuildIndex();
-
     /*
      * Insert new rows.
      *
@@ -585,11 +583,8 @@ void TorrentModel::applyUpdate(const QVector<torrent> &incoming)
 
             beginInsertRows(QModelIndex(), row, row);
             torrentVector.append(t);
-            endInsertRows();
-
             m_rowByKey.insert(t.getKey(), row);
+            endInsertRows();
         }
     }
-
-    rebuildIndex();
 }
