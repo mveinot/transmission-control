@@ -10,6 +10,8 @@
 class BencodeParser
 {
 public:
+    static constexpr qsizetype MaximumInputBytes = 128 * 1024 * 1024;
+
     static bool parse(const QByteArray &data,
                       BencodeValue *result,
                       QString *errorString = nullptr,

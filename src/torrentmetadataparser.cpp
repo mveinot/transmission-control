@@ -74,7 +74,29 @@ TorrentMetadata TorrentMetadataParser::parseTorrentFile(const QString &filePath)
         return metadata;
     }
 
-    return parseTorrentData(file.readAll());
+    const auto tooLarge = []() {
+        TorrentMetadata metadata;
+        metadata.errorString = QObject::tr(
+            "Bencode input exceeds the 128 MiB limit");
+        return metadata;
+    };
+
+    if (file.size() > BencodeParser::MaximumInputBytes)
+        return tooLarge();
+
+    QByteArray data = file.read(
+        static_cast<qint64>(BencodeParser::MaximumInputBytes) + 1);
+    if (file.error() != QFileDevice::NoError) {
+        TorrentMetadata metadata;
+        metadata.errorString = QObject::tr("Could not read torrent file: %1")
+                                   .arg(file.errorString());
+        return metadata;
+    }
+
+    if (data.size() > BencodeParser::MaximumInputBytes)
+        return tooLarge();
+
+    return parseTorrentData(data);
 }
 
 TorrentMetadata TorrentMetadataParser::parseTorrentData(const QByteArray &data)

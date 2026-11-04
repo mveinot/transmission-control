@@ -6,7 +6,6 @@
 namespace {
 
 constexpr int MaximumNestingDepth = 128;
-constexpr qsizetype MaximumInputBytes = 128 * 1024 * 1024;
 constexpr qsizetype MaximumValueCount = 500'000;
 constexpr qsizetype MaximumContainerEntries = 250'000;
 constexpr qint64 MaximumByteStringBytes = 64 * 1024 * 1024;
@@ -26,7 +25,7 @@ bool BencodeParser::parse(const QByteArray &data,
     if (rawInfoDictionary)
         rawInfoDictionary->clear();
 
-    if (data.size() > MaximumInputBytes) {
+    if (data.size() > BencodeParser::MaximumInputBytes) {
         if (result)
             *result = BencodeValue();
         if (errorString)
