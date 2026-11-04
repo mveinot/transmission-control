@@ -306,6 +306,7 @@ add_planetary_test(test_qbittorrentbackend
 )
 use_planetary_test_support(test_qbittorrentbackend planetary_test_torrent)
 use_planetary_test_support(test_qbittorrentbackend planetary_test_serverprofile)
+use_planetary_test_support(test_qbittorrentbackend planetary_test_bencode)
 
 if(APPLE)
     target_sources(test_notificationcontroller PRIVATE
