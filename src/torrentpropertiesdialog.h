@@ -85,7 +85,7 @@ private:
 
     QPlainTextEdit *m_trackersEdit = nullptr;
     QLabel *m_trackersNote = nullptr;
-    QStringList m_trackerUrls;
+    QVector<TorrentTracker> m_trackers;
     bool m_trackersLoaded = false;
 
     QTreeWidget *m_rawTreeWidget = nullptr;

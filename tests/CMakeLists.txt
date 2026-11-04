@@ -271,6 +271,8 @@ add_planetary_test(test_torrentaddcontroller
     ${PLANETARY_SOURCE_DIR}/torrentadddialog.cpp
     ${PLANETARY_SOURCE_DIR}/torrentadddialog.h
     ${PLANETARY_SOURCE_DIR}/torrentadddialog.ui
+    ${PLANETARY_SOURCE_DIR}/torrentpropertiesdialog.cpp
+    ${PLANETARY_SOURCE_DIR}/torrentpropertiesdialog.h
     ${PLANETARY_SOURCE_DIR}/torrentbackend.h
 )
 use_planetary_test_support(test_torrentaddcontroller planetary_test_bencode)

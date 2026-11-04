@@ -4,6 +4,7 @@
 #include <QSignalSpy>
 #include <QComboBox>
 #include <QCryptographicHash>
+#include <QPlainTextEdit>
 #include <QTemporaryDir>
 #include <QTemporaryFile>
 
@@ -12,6 +13,7 @@
 #include "settingskeys.h"
 #include "torrentaddcontroller.h"
 #include "torrentbackend.h"
+#include "torrentpropertiesdialog.h"
 
 class RecordingTorrentBackend final : public TorrentBackend
 {
@@ -20,7 +22,12 @@ public:
     QString serverDisplayName() const override { return QStringLiteral("Test"); }
     QString endpointUrl() const override { return QStringLiteral("http://localhost/rpc"); }
     QString protocolDescription() const override { return {}; }
-    TorrentBackendCapabilities capabilities() const override { return {}; }
+    TorrentBackendCapabilities capabilities() const override
+    {
+        TorrentBackendCapabilities result;
+        result.trackerEditing = trackerEditing;
+        return result;
+    }
 
     bool setServerProfile(const ServerProfile &) override { return true; }
     void init() override {}
@@ -81,8 +88,15 @@ public:
                                           bool,
                                           int) override {}
     void addTorrentTracker(const TorrentKey &, const QString &) override {}
-    void editTorrentTracker(const TorrentKey &, int, const QString &) override {}
-    void removeTorrentTracker(const TorrentKey &, int) override {}
+    void editTorrentTracker(const TorrentKey &, int trackerId,
+                            const QString &) override
+    {
+        editedTrackerIds.append(trackerId);
+    }
+    void removeTorrentTracker(const TorrentKey &, int trackerId) override
+    {
+        removedTrackerIds.append(trackerId);
+    }
     void renameTorrentPath(const TorrentKey &, const QString &, const QString &) override {}
     void setTorrentProperties(const TorrentKey &,
                               const TorrentPropertyChanges &) override {}
@@ -105,7 +119,10 @@ public:
     QString lastDownloadDir;
     bool lastPaused = false;
     bool lastDeleteFileOnSuccess = false;
+    bool trackerEditing = false;
     QList<quint64> addRequestIds;
+    QList<int> editedTrackerIds;
+    QList<int> removedTrackerIds;
 };
 
 class TestTorrentAddController : public QObject
@@ -119,6 +136,7 @@ private slots:
     void skipsTorrentFileOptionsDialog();
     void remembersDestinationOnlyAfterServerConfirmation();
     void outOfOrderAddCompletionsUseMatchingOptions();
+    void trackerEditsAndRemovalsUseBackendIds();
     void destinationComboOffersKnownFoldersAndAllowsFreeText();
 
 private:
@@ -267,6 +285,44 @@ void TestTorrentAddController::outOfOrderAddCompletionsUseMatchingOptions()
         QStringLiteral("first-id"), QStringLiteral("First"), {});
     QCOMPARE(settings.value(lastAcceptedKey).toString(),
              QStringLiteral("/downloads/first"));
+}
+
+void TestTorrentAddController::trackerEditsAndRemovalsUseBackendIds()
+{
+    RecordingTorrentBackend backend;
+    backend.trackerEditing = true;
+    const TorrentKey key = QStringLiteral("torrent-hash");
+    TorrentPropertiesDialog dialog(&backend, key);
+
+    TorrentProperties properties;
+    properties.key = key;
+    properties.name = QStringLiteral("Test torrent");
+    emit backend.torrentPropertiesReceived(properties);
+
+    TorrentTrackers trackers;
+    trackers.key = key;
+    TorrentTracker first;
+    first.id = 10;
+    first.announceUrl = QStringLiteral("https://tracker-one.example/announce");
+    TorrentTracker second;
+    second.id = 42;
+    second.announceUrl = QStringLiteral("https://tracker-two.example/announce");
+    TorrentTracker third;
+    third.id = 105;
+    third.announceUrl = QStringLiteral("https://tracker-three.example/announce");
+    trackers.trackers = {first, second, third};
+    emit backend.torrentTrackersReceived(trackers);
+
+    QPlainTextEdit *trackerEditor = dialog.findChild<QPlainTextEdit *>();
+    QVERIFY(trackerEditor);
+    trackerEditor->setPlainText(
+        QStringLiteral("https://tracker-one.example/announce\n"
+                       "https://replacement.example/announce"));
+    QVERIFY(QMetaObject::invokeMethod(&dialog, "accept",
+                                      Qt::DirectConnection));
+
+    QCOMPARE(backend.editedTrackerIds, QList<int>{42});
+    QCOMPARE(backend.removedTrackerIds, QList<int>{105});
 }
 
 void TestTorrentAddController::destinationComboOffersKnownFoldersAndAllowsFreeText()

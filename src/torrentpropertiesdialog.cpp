@@ -421,13 +421,13 @@ void TorrentPropertiesDialog::handleTrackersReceived(const TorrentTrackers &trac
     if (trackers.key != m_torrentKey)
         return;
 
-    m_trackerUrls.clear();
+    m_trackers.clear();
     QStringList lines;
     for (const TorrentTracker &tracker : trackers.trackers) {
         const QString url = tracker.announceUrl.trimmed();
         if (url.isEmpty())
             continue;
-        m_trackerUrls.append(url);
+        m_trackers.append(tracker);
         lines.append(url);
     }
     m_trackersLoaded = true;
@@ -605,7 +605,25 @@ bool TorrentPropertiesDialog::applyTrackerChanges()
                                                   .size()) {
         m_statusLabel->setText(tr("Invalid or duplicate tracker lines were ignored."));
     }
-    if (desired.isEmpty() && !m_trackerUrls.isEmpty()) {
+
+    const int common = qMin(m_trackers.size(), desired.size());
+    for (int i = 0; i < common; ++i) {
+        if (m_trackers.at(i).announceUrl.trimmed() != desired.at(i)
+            && m_trackers.at(i).id < 0) {
+            m_statusLabel->setText(
+                tr("Could not match a tracker to its server ID. No tracker changes were applied."));
+            return false;
+        }
+    }
+    for (int i = desired.size(); i < m_trackers.size(); ++i) {
+        if (m_trackers.at(i).id < 0) {
+            m_statusLabel->setText(
+                tr("Could not match a tracker to its server ID. No tracker changes were applied."));
+            return false;
+        }
+    }
+
+    if (desired.isEmpty() && !m_trackers.isEmpty()) {
         const auto result = QMessageBox::warning(
             this, tr("Remove All Trackers?"),
             tr("The tracker list is empty. This will remove all trackers from the torrent."),
@@ -615,17 +633,31 @@ bool TorrentPropertiesDialog::applyTrackerChanges()
             return false;
     }
 
-    const int common = qMin(m_trackerUrls.size(), desired.size());
     for (int i = 0; i < common; ++i) {
-        if (m_trackerUrls.at(i) != desired.at(i))
-            m_client->editTorrentTracker(m_torrentKey, i, desired.at(i));
+        if (m_trackers.at(i).announceUrl.trimmed() != desired.at(i)) {
+            m_client->editTorrentTracker(m_torrentKey, m_trackers.at(i).id,
+                                         desired.at(i));
+        }
     }
-    for (int i = m_trackerUrls.size() - 1; i >= desired.size(); --i)
-        m_client->removeTorrentTracker(m_torrentKey, i);
+    for (int i = m_trackers.size() - 1; i >= desired.size(); --i) {
+        m_client->removeTorrentTracker(m_torrentKey, m_trackers.at(i).id);
+    }
     for (int i = common; i < desired.size(); ++i)
         m_client->addTorrentTracker(m_torrentKey, desired.at(i));
 
-    m_trackerUrls = desired;
+    QVector<TorrentTracker> updatedTrackers;
+    updatedTrackers.reserve(desired.size());
+    for (int i = 0; i < common; ++i) {
+        TorrentTracker tracker = m_trackers.at(i);
+        tracker.announceUrl = desired.at(i);
+        updatedTrackers.append(tracker);
+    }
+    for (int i = common; i < desired.size(); ++i) {
+        TorrentTracker tracker;
+        tracker.announceUrl = desired.at(i);
+        updatedTrackers.append(tracker);
+    }
+    m_trackers = updatedTrackers;
     return true;
 }
 
