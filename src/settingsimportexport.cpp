@@ -5,6 +5,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QMap>
 #include <QMessageBox>
 #include <QSettings>
 #include <QVariant>
@@ -14,6 +15,15 @@ namespace {
 QJsonValue variantToJson(const QVariant &value)
 {
     switch (value.metaType().id()) {
+    case QMetaType::QByteArray: {
+        QJsonObject encoded;
+        encoded.insert(QStringLiteral("$planetaryType"),
+                       QStringLiteral("QByteArray"));
+        encoded.insert(QStringLiteral("base64"),
+                       QString::fromLatin1(value.toByteArray().toBase64()));
+        return encoded;
+    }
+
     case QMetaType::Bool:
         return value.toBool();
 
@@ -42,16 +52,25 @@ QJsonValue variantToJson(const QVariant &value)
     }
 }
 
-QVariant jsonToVariant(const QJsonValue &value)
+bool jsonToVariant(const QJsonValue &value, QVariant *result)
 {
-    if (value.isBool())
-        return value.toBool();
+    if (!result)
+        return false;
 
-    if (value.isDouble())
-        return value.toDouble();
+    if (value.isBool()) {
+        *result = value.toBool();
+        return true;
+    }
 
-    if (value.isString())
-        return value.toString();
+    if (value.isDouble()) {
+        *result = value.toDouble();
+        return true;
+    }
+
+    if (value.isString()) {
+        *result = value.toString();
+        return true;
+    }
 
     if (value.isArray()) {
         QStringList list;
@@ -61,10 +80,35 @@ QVariant jsonToVariant(const QJsonValue &value)
         for (const QJsonValue &item : array)
             list.append(item.toString());
 
-        return list;
+        *result = list;
+        return true;
     }
 
-    return {};
+    if (value.isObject()) {
+        const QJsonObject encoded = value.toObject();
+        if (encoded.value(QStringLiteral("$planetaryType")).toString()
+                != QStringLiteral("QByteArray")
+            || !encoded.value(QStringLiteral("base64")).isString()) {
+            return false;
+        }
+
+        const QByteArray base64 =
+            encoded.value(QStringLiteral("base64")).toString().toLatin1();
+        const QByteArray bytes = QByteArray::fromBase64(
+            base64, QByteArray::AbortOnBase64DecodingErrors);
+        if (bytes.toBase64() != base64)
+            return false;
+
+        *result = bytes;
+        return true;
+    }
+
+    if (value.isNull()) {
+        *result = QVariant();
+        return true;
+    }
+
+    return false;
 }
 
 } // namespace
@@ -77,7 +121,7 @@ bool exportSettings(QWidget *parent, const QString &filePath)
 
     QJsonObject root;
     root.insert(QStringLiteral("application"), QStringLiteral("Planetary"));
-    root.insert(QStringLiteral("formatVersion"), 1);
+    root.insert(QStringLiteral("formatVersion"), 2);
 
     QJsonObject values;
 
@@ -136,6 +180,20 @@ bool importSettings(QWidget *parent, const QString &filePath)
 
     const QJsonObject root = document.object();
 
+    const QJsonValue formatVersionValue =
+        root.value(QStringLiteral("formatVersion"));
+    const int formatVersion = formatVersionValue.isUndefined()
+        ? 1
+        : formatVersionValue.toInt(-1);
+    if (formatVersion < 1 || formatVersion > 2) {
+        QMessageBox::warning(
+            parent,
+            QObject::tr("Import Settings Failed"),
+            QObject::tr("The settings file uses an unsupported format version.")
+            );
+        return false;
+    }
+
     if (root.value(QStringLiteral("application")).toString()
         != QStringLiteral("Planetary")) {
         QMessageBox::warning(
@@ -156,6 +214,21 @@ bool importSettings(QWidget *parent, const QString &filePath)
             QObject::tr("The selected file does not contain any settings.")
             );
         return false;
+    }
+
+    QMap<QString, QVariant> parsedValues;
+    for (auto it = values.constBegin(); it != values.constEnd(); ++it) {
+        QVariant converted;
+        if (!jsonToVariant(it.value(), &converted)) {
+            QMessageBox::warning(
+                parent,
+                QObject::tr("Import Settings Failed"),
+                QObject::tr("The setting '%1' has an unsupported value.")
+                    .arg(it.key())
+                );
+            return false;
+        }
+        parsedValues.insert(it.key(), converted);
     }
 
     QMessageBox confirmation(
@@ -182,8 +255,8 @@ bool importSettings(QWidget *parent, const QString &filePath)
 
     settings.clear();
 
-    for (auto it = values.constBegin(); it != values.constEnd(); ++it)
-        settings.setValue(it.key(), jsonToVariant(it.value()));
+    for (auto it = parsedValues.constBegin(); it != parsedValues.constEnd(); ++it)
+        settings.setValue(it.key(), it.value());
 
     settings.sync();
 
