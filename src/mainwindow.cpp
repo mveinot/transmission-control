@@ -108,6 +108,7 @@
 #include "sessionsettingsdialog.h"
 #include "settingskeys.h"
 #include "torrentaddcontroller.h"
+#include "bencodeparser.h"
 #include "settingsimportexport.h"
 #include "foldermapping.h"
 
@@ -1834,6 +1835,7 @@ void MainWindow::addTorrentFromUrl()
                           .arg(QCoreApplication::applicationVersion()));
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setTransferTimeout(30'000);
 
     if (statusBarController)
         statusBarController->showMessage(tr("Downloading torrent file..."), 5000);
@@ -1852,22 +1854,69 @@ void MainWindow::addTorrentFromUrl()
 
     const QString filePath = temporary->fileName();
     auto writeFailed = std::make_shared<bool>(false);
+    auto sizeLimitExceeded = std::make_shared<bool>(false);
+    auto bytesReceived = std::make_shared<qint64>(0);
+    constexpr qint64 MaximumTorrentBytes =
+        BencodeParser::MaximumInputBytes;
 
     QNetworkReply *reply = network->get(request);
-    connect(reply, &QNetworkReply::readyRead, this,
-            [reply, temporary, writeFailed]() {
-                while (reply->bytesAvailable() > 0) {
-                    const QByteArray chunk = reply->read(64 * 1024);
-                    if (chunk.isEmpty())
-                        break;
-                    if (temporary->write(chunk) != chunk.size())
-                        *writeFailed = true;
+    reply->setReadBufferSize(64 * 1024);
+    connect(reply, &QNetworkReply::metaDataChanged, this,
+            [reply, sizeLimitExceeded]() {
+        bool hasContentLength = false;
+        const qint64 contentLength =
+            reply->header(QNetworkRequest::ContentLengthHeader)
+                .toLongLong(&hasContentLength);
+        if (hasContentLength && contentLength > MaximumTorrentBytes) {
+            *sizeLimitExceeded = true;
+            reply->abort();
+        }
+    });
+    const auto consumeAvailable =
+        [reply, temporary, writeFailed, sizeLimitExceeded, bytesReceived]() {
+            while (reply->bytesAvailable() > 0) {
+                const QByteArray chunk = reply->read(64 * 1024);
+                if (chunk.isEmpty())
+                    break;
+                if (chunk.size() > MaximumTorrentBytes - *bytesReceived) {
+                    *sizeLimitExceeded = true;
+                    reply->abort();
+                    return;
                 }
-            });
+                *bytesReceived += chunk.size();
+                if (temporary->write(chunk) != chunk.size()) {
+                    *writeFailed = true;
+                    reply->abort();
+                    return;
+                }
+            }
+        };
+    connect(reply, &QNetworkReply::readyRead, this,
+            consumeAvailable);
     connect(reply, &QNetworkReply::finished, this,
-            [this, reply, network, temporary, writeFailed, filePath]() {
+            [this, reply, network, temporary, writeFailed, sizeLimitExceeded,
+             consumeAvailable, filePath]() {
         reply->deleteLater();
         network->deleteLater();
+
+        if (*sizeLimitExceeded) {
+            temporary->close();
+            QFile::remove(filePath);
+            if (statusBarController)
+                statusBarController->showMessage(
+                    tr("The downloaded torrent file exceeds the maximum supported size of 128 MiB."),
+                    6000);
+            return;
+        }
+
+        if (*writeFailed) {
+            temporary->close();
+            QFile::remove(filePath);
+            if (statusBarController)
+                statusBarController->showMessage(
+                    tr("Could not save the downloaded torrent file."), 5000);
+            return;
+        }
 
         if (reply->error() != QNetworkReply::NoError) {
             temporary->close();
@@ -1879,23 +1928,25 @@ void MainWindow::addTorrentFromUrl()
             return;
         }
 
-        while (reply->bytesAvailable() > 0) {
-            const QByteArray chunk = reply->read(64 * 1024);
-            if (chunk.isEmpty())
-                break;
-            if (temporary->write(chunk) != chunk.size())
-                *writeFailed = true;
-        }
-        temporary->close();
-
-        if (*writeFailed || temporary->size() == 0) {
+        consumeAvailable();
+        if (*sizeLimitExceeded || *writeFailed) {
+            temporary->close();
             QFile::remove(filePath);
             if (statusBarController)
                 statusBarController->showMessage(
-                    *writeFailed
-                        ? tr("Could not save the downloaded torrent file.")
-                        : tr("The downloaded torrent file was empty."),
-                    5000);
+                    *sizeLimitExceeded
+                        ? tr("The downloaded torrent file exceeds the maximum supported size of 128 MiB.")
+                        : tr("Could not save the downloaded torrent file."),
+                    6000);
+            return;
+        }
+        temporary->close();
+
+        if (temporary->size() == 0) {
+            QFile::remove(filePath);
+            if (statusBarController)
+                statusBarController->showMessage(
+                    tr("The downloaded torrent file was empty."), 5000);
             return;
         }
 
