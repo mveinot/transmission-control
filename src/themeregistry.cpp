@@ -513,12 +513,18 @@ bool ThemeRegistry::ensureThemeMaterialized(const QString &themeId) const
     const ArchiveSource source = sourceIt.value();
     const QString manifestPath = QDir(source.cachePath).filePath(
         QString::fromLatin1(ThemeManifestParser::FileName));
-    ThemeManifestResult cached = ThemeManifestParser::parseFile(manifestPath);
-    if (cached.succeeded() && canonicalId(cached.theme.id()) == themeId) {
+    const auto loadValidCache = [this, &manifestPath, &themeId]() {
+        const ThemeManifestResult cached =
+            ThemeManifestParser::parseFile(manifestPath);
+        if (!cached.succeeded() || canonicalId(cached.theme.id()) != themeId)
+            return false;
+
         m_themes.insert(themeId, cached.theme);
         m_materializedArchiveIds.insert(themeId);
         return true;
-    }
+    };
+    if (loadValidCache())
+        return true;
 
     const QString cacheParent = QFileInfo(source.cachePath).absolutePath();
     if (!QDir().mkpath(cacheParent)) {
@@ -555,29 +561,76 @@ bool ThemeRegistry::ensureThemeMaterialized(const QString &themeId) const
         return false;
     }
 
-    if (!QDir().rename(staging.path(), source.cachePath)) {
-        // Another instance may have populated the same immutable cache while
-        // this one was extracting it.
-        cached = ThemeManifestParser::parseFile(manifestPath);
-        if (!cached.succeeded() || canonicalId(cached.theme.id()) != themeId) {
-            qWarning().noquote() << "Could not finalize cached theme:" << themeId;
+    // The cache may already exist but be corrupt. Move it aside before
+    // installing the validated extraction; keeping the backup in the cache
+    // parent also keeps the rename on one filesystem. The temporary directory
+    // removes the old cache automatically after successful replacement.
+    if (QFileInfo::exists(source.cachePath)) {
+        if (loadValidCache())
+            return true;
+
+        QTemporaryDir invalidCacheBackup(
+            QDir(cacheParent).filePath(QStringLiteral(".invalid-cache-XXXXXX")));
+        if (!invalidCacheBackup.isValid()) {
+            qWarning().noquote() << "Could not create a backup for invalid theme cache:"
+                                 << themeId;
             m_failedArchiveIds.insert(themeId);
             return false;
         }
-        m_themes.insert(themeId, cached.theme);
-        m_materializedArchiveIds.insert(themeId);
+
+        const QString backupPath = QDir(invalidCacheBackup.path())
+                                       .filePath(QStringLiteral("cache"));
+        if (!QDir().rename(source.cachePath, backupPath)) {
+            // A competing instance may have repaired the cache after our last
+            // check. Accept it if it now validates.
+            if (loadValidCache())
+                return true;
+
+            qWarning().noquote() << "Could not move aside invalid theme cache:"
+                                 << themeId;
+            m_failedArchiveIds.insert(themeId);
+            return false;
+        }
+
+        if (!QDir().rename(staging.path(), source.cachePath)) {
+            const bool restored = QDir().rename(backupPath, source.cachePath);
+            if (loadValidCache())
+                return true;
+
+            qWarning().noquote()
+                << "Could not install staged theme cache; previous cache restored:"
+                << restored << themeId;
+            m_failedArchiveIds.insert(themeId);
+            return false;
+        }
+
+        staging.setAutoRemove(false);
+        if (!loadValidCache()) {
+            qWarning().noquote() << "Finalized theme cache failed validation:"
+                                 << themeId;
+            m_failedArchiveIds.insert(themeId);
+            return false;
+        }
         return true;
     }
 
+    if (!QDir().rename(staging.path(), source.cachePath)) {
+        // Another instance may have populated the cache while this one was
+        // extracting it.
+        if (loadValidCache())
+            return true;
+
+        qWarning().noquote() << "Could not finalize cached theme:" << themeId;
+        m_failedArchiveIds.insert(themeId);
+        return false;
+    }
+
     staging.setAutoRemove(false);
-    cached = ThemeManifestParser::parseFile(manifestPath);
-    if (!cached.succeeded() || canonicalId(cached.theme.id()) != themeId) {
+    if (!loadValidCache()) {
         qWarning().noquote() << "Finalized theme cache failed validation:" << themeId;
         m_failedArchiveIds.insert(themeId);
         return false;
     }
-    m_themes.insert(themeId, cached.theme);
-    m_materializedArchiveIds.insert(themeId);
     return true;
 }
 
