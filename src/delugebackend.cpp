@@ -458,6 +458,8 @@ void DelugeBackend::failAdd(const RequestContext &context,
 {
     if (!context.torrentFilePath.isEmpty())
         emit torrentFileAddFailed(context.torrentFilePath, reason);
+    emit torrentAddCompleted(context.addRequestId,
+                             TorrentAddCompletion::Failed, {}, {}, reason);
     emit commandFailed(QStringLiteral("torrent-add"), reason);
 }
 
@@ -709,6 +711,9 @@ void DelugeBackend::handleReply(QNetworkReply *reply)
             emit torrentFileAddSucceeded(context.torrentFilePath);
         }
         emit torrentAdded(torrentKey, context.torrentName);
+        emit torrentAddCompleted(context.addRequestId,
+                                 TorrentAddCompletion::Added,
+                                 torrentKey, context.torrentName, {});
         emit commandSucceeded(QStringLiteral("torrent-add"));
     }
 }
@@ -1251,12 +1256,14 @@ void DelugeBackend::addTorrentFile(const QString &filePath,
                                    const QList<int> &,
                                    const QList<int> &,
                                    const QList<int> &,
-                                   bool deleteFileOnSuccess)
+                                   bool deleteFileOnSuccess,
+                                   quint64 requestId)
 {
+    RequestContext context;
+    context.addRequestId = requestId;
+    context.torrentFilePath = filePath;
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly)) {
-        RequestContext context;
-        context.torrentFilePath = filePath;
         failAdd(context,
                 tr("Could not open torrent file: %1")
                     .arg(file.errorString()));
@@ -1271,7 +1278,6 @@ void DelugeBackend::addTorrentFile(const QString &filePath,
                        downloadDir.trimmed());
     }
 
-    RequestContext context;
     context.kind = RequestKind::AddTorrent;
     context.method = QStringLiteral("core.add_torrent_file_async");
     context.commandMethod = QStringLiteral("torrent-add");
@@ -1287,11 +1293,13 @@ void DelugeBackend::addTorrentFile(const QString &filePath,
 }
 void DelugeBackend::addMagnetLink(const QString &magnetLink,
                                   const QString &downloadDir,
-                                  bool paused)
+                                  bool paused,
+                                  quint64 requestId)
 {
     const QString normalized = magnetLink.trimmed();
     if (normalized.isEmpty()) {
         RequestContext context;
+        context.addRequestId = requestId;
         failAdd(context, tr("No magnet link was specified."));
         return;
     }
@@ -1306,6 +1314,7 @@ void DelugeBackend::addMagnetLink(const QString &magnetLink,
 
     RequestContext context;
     context.kind = RequestKind::AddTorrent;
+    context.addRequestId = requestId;
     context.method = QStringLiteral("core.add_torrent_magnet");
     context.commandMethod = QStringLiteral("torrent-add");
     context.parameters = QJsonArray{normalized, options};

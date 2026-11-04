@@ -8,9 +8,17 @@
 
 #include <QJsonObject>
 #include <QList>
+#include <QMetaType>
 #include <QObject>
 #include <QString>
 #include <QVector>
+
+enum class TorrentAddCompletion {
+    Added,
+    Duplicate,
+    Failed
+};
+Q_DECLARE_METATYPE(TorrentAddCompletion)
 
 // Feature discovery keeps optional backend operations out of UI type checks.
 // Values may change after a backend has completed its version handshake.
@@ -87,10 +95,12 @@ public:
                                 const QList<int> &filesUnwanted = {},
                                 const QList<int> &priorityLow = {},
                                 const QList<int> &priorityHigh = {},
-                                bool deleteFileOnSuccess = false) = 0;
+                                bool deleteFileOnSuccess = false,
+                                quint64 requestId = 0) = 0;
     virtual void addMagnetLink(const QString &magnetLink,
                                const QString &downloadDir = QString(),
-                               bool paused = false) = 0;
+                               bool paused = false,
+                               quint64 requestId = 0) = 0;
 
     virtual void startTorrents(const QList<TorrentKey> &torrentKeys) = 0;
     virtual void startAllTorrents() = 0;
@@ -160,6 +170,11 @@ signals:
     void torrentPropertiesReceived(const TorrentProperties &properties);
     void commandSucceeded(const QString &method);
     void commandFailed(const QString &method, const QString &message);
+    void torrentAddCompleted(quint64 requestId,
+                             TorrentAddCompletion completion,
+                             const TorrentKey &torrentKey,
+                             const QString &name,
+                             const QString &message);
     void torrentFileAddSucceeded(const QString &filePath);
     void torrentAdded(const TorrentKey &torrentKey, const QString &name);
     void torrentFileAddFailed(const QString &filePath,

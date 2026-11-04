@@ -52,7 +52,10 @@ TorrentAddController::TorrentAddController(TorrentBackend *client,
 {
     if (m_client) {
         connect(m_client, &TorrentBackend::serverChanged,
-                this, [this]() { m_knownDownloadDirs.clear(); });
+                this, [this]() {
+                    m_knownDownloadDirs.clear();
+                    m_pendingAdds.clear();
+                });
         connect(m_client, &TorrentBackend::torrentsReceived,
                 this, [this](const QVector<torrent> &torrents) {
                     QSet<QString> uniqueDirs;
@@ -67,12 +70,21 @@ TorrentAddController::TorrentAddController(TorrentBackend *client,
                                   return lhs.compare(rhs, Qt::CaseInsensitive) < 0;
                               });
                 });
-        connect(m_client, &TorrentBackend::torrentAdded,
-                this, [this](const TorrentKey &key, const QString &) {
-                    if (m_pendingAdds.isEmpty())
+        connect(m_client, &TorrentBackend::torrentAddCompleted,
+                this, [this](quint64 requestId,
+                             TorrentAddCompletion completion,
+                             const TorrentKey &key,
+                             const QString &,
+                             const QString &) {
+                    auto pendingIt = m_pendingAdds.find(requestId);
+                    if (pendingIt == m_pendingAdds.end())
                         return;
 
-                    const PendingAdd pending = m_pendingAdds.dequeue();
+                    const PendingAdd pending = pendingIt.value();
+                    m_pendingAdds.erase(pendingIt);
+                    if (completion != TorrentAddCompletion::Added)
+                        return;
+
                     if (!pending.downloadDir.isEmpty()) {
                         QSettings settings;
                         if (pending.userDefinedDownloadDir) {
@@ -96,12 +108,6 @@ TorrentAddController::TorrentAddController(TorrentBackend *client,
                         m_client->renameTorrentPath(key, pending.originalName,
                                                     pending.newName);
                     }
-                });
-        connect(m_client, &TorrentBackend::commandFailed,
-                this, [this](const QString &method, const QString &) {
-                    if (method == QStringLiteral("torrent-add")
-                        && !m_pendingAdds.isEmpty())
-                        m_pendingAdds.dequeue();
                 });
     }
 }
@@ -433,20 +439,35 @@ void TorrentAddController::submitAdd(
     const QString &originalName,
     const QString &newName)
 {
-    m_pendingAdds.enqueue({downloadDir, userDefinedDownloadDir,
-                            originalName, newName});
+    if (!m_client) {
+        emit addFailed(tr("No torrent backend is available."));
+        return;
+    }
+
+    const quint64 requestId = nextAddRequestId();
+    m_pendingAdds.insert(requestId, {downloadDir, userDefinedDownloadDir,
+                                     originalName, newName});
 
     switch (sourceType) {
     case TorrentAddDialog::SourceType::TorrentFile:
         m_client->addTorrentFile(source, downloadDir, startPaused,
                                  unwantedFileIndices, lowPriorityFileIndices,
                                  highPriorityFileIndices,
-                                 deleteTorrentFileOnSuccessfulAdd());
+                                 deleteTorrentFileOnSuccessfulAdd(), requestId);
         break;
     case TorrentAddDialog::SourceType::MagnetLink:
-        m_client->addMagnetLink(source, downloadDir, startPaused);
+        m_client->addMagnetLink(source, downloadDir, startPaused, requestId);
         break;
     }
+}
+
+quint64 TorrentAddController::nextAddRequestId()
+{
+    quint64 requestId = 0;
+    do {
+        requestId = m_nextAddRequestId++;
+    } while (requestId == 0 || m_pendingAdds.contains(requestId));
+    return requestId;
 }
 
 void TorrentAddController::addTorrentFileUsingDefaults(const QString &filePath)

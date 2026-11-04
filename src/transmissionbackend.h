@@ -43,11 +43,13 @@ public:
                         const QList<int> &filesUnwanted = {},
                         const QList<int> &priorityLow = {},
                         const QList<int> &priorityHigh = {},
-                        bool deleteFileOnSuccess = false) override;
+                        bool deleteFileOnSuccess = false,
+                        quint64 requestId = 0) override;
 
     void addMagnetLink(const QString &magnetLink,
                        const QString &downloadDir = QString(),
-                       bool paused = false) override;
+                       bool paused = false,
+                       quint64 requestId = 0) override;
     void startTorrents(const QList<TorrentKey> &torrentKeys) override;
     void startAllTorrents() override;
     void startTorrentsNow(const QList<TorrentKey> &torrentKeys) override;
@@ -132,6 +134,7 @@ private:
         bool retriedAfterAuth = false;
         bool updateBlocklistAfterSuccess = false;
         qint64 requestId = 0;
+        quint64 addRequestId = 0;
     };
 
     QString username;

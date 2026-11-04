@@ -3,6 +3,7 @@
 #include <QSettings>
 #include <QSignalSpy>
 #include <QComboBox>
+#include <QCryptographicHash>
 #include <QTemporaryDir>
 #include <QTemporaryFile>
 
@@ -41,23 +42,27 @@ public:
                         const QList<int> &,
                         const QList<int> &,
                         const QList<int> &,
-                        bool deleteFileOnSuccess) override
+                        bool deleteFileOnSuccess,
+                        quint64 requestId) override
     {
         ++fileAddCount;
         lastSource = filePath;
         lastDownloadDir = downloadDir;
         lastPaused = paused;
         lastDeleteFileOnSuccess = deleteFileOnSuccess;
+        addRequestIds.append(requestId);
     }
 
     void addMagnetLink(const QString &magnetLink,
                        const QString &downloadDir,
-                       bool paused) override
+                       bool paused,
+                       quint64 requestId) override
     {
         ++magnetAddCount;
         lastSource = magnetLink;
         lastDownloadDir = downloadDir;
         lastPaused = paused;
+        addRequestIds.append(requestId);
     }
 
     void startTorrents(const QList<TorrentKey> &) override {}
@@ -100,6 +105,7 @@ public:
     QString lastDownloadDir;
     bool lastPaused = false;
     bool lastDeleteFileOnSuccess = false;
+    QList<quint64> addRequestIds;
 };
 
 class TestTorrentAddController : public QObject
@@ -112,6 +118,7 @@ private slots:
     void skipsMagnetOptionsDialog();
     void skipsTorrentFileOptionsDialog();
     void remembersDestinationOnlyAfterServerConfirmation();
+    void outOfOrderAddCompletionsUseMatchingOptions();
     void destinationComboOffersKnownFoldersAndAllowsFreeText();
 
 private:
@@ -202,8 +209,10 @@ void TestTorrentAddController::remembersDestinationOnlyAfterServerConfirmation()
                              return key.endsWith(QStringLiteral("-lastAccepted"));
                          }));
 
-    emit backend.torrentAdded(QStringLiteral("confirmed-id"),
-                              QStringLiteral("Confirmed torrent"));
+    emit backend.torrentAddCompleted(
+        backend.addRequestIds.last(), TorrentAddCompletion::Added,
+        QStringLiteral("confirmed-id"), QStringLiteral("Confirmed torrent"),
+        {});
 
     const QStringList keys = settings.allKeys();
     const auto lastAcceptedKey = std::find_if(
@@ -217,6 +226,47 @@ void TestTorrentAddController::remembersDestinationOnlyAfterServerConfirmation()
     QVERIFY(std::none_of(keys.cbegin(), keys.cend(), [](const QString &key) {
         return key.endsWith(QStringLiteral("-acceptedPaths"));
     }));
+}
+
+void TestTorrentAddController::outOfOrderAddCompletionsUseMatchingOptions()
+{
+    QSettings settings;
+    settings.setValue(SettingsKeys::ShowMagnetLinkOptionsDialog, false);
+
+    RecordingTorrentBackend backend;
+    const QString settingsIdentity =
+        backend.backendName() + QLatin1Char('\n') + backend.endpointUrl();
+    const QString perServerKey =
+        QString::fromLatin1(SettingsKeys::TorrentAddDownloadDir)
+        + QStringLiteral("/servers/")
+        + QString::fromLatin1(QCryptographicHash::hash(
+              settingsIdentity.toUtf8(), QCryptographicHash::Sha256).toHex());
+    settings.setValue(perServerKey, QStringLiteral("/downloads/first"));
+
+    TorrentAddController controller(&backend, nullptr);
+    controller.addMagnetLink(QStringLiteral("magnet:?xt=urn:btih:first"));
+    const quint64 firstRequestId = backend.addRequestIds.last();
+
+    settings.setValue(perServerKey, QStringLiteral("/downloads/second"));
+    controller.addMagnetLink(QStringLiteral("magnet:?xt=urn:btih:second"));
+    const quint64 secondRequestId = backend.addRequestIds.last();
+
+    QVERIFY(firstRequestId != 0);
+    QVERIFY(secondRequestId != 0);
+    QVERIFY(firstRequestId != secondRequestId);
+
+    const QString lastAcceptedKey = perServerKey + QStringLiteral("-lastAccepted");
+    emit backend.torrentAddCompleted(
+        secondRequestId, TorrentAddCompletion::Added,
+        QStringLiteral("second-id"), QStringLiteral("Second"), {});
+    QCOMPARE(settings.value(lastAcceptedKey).toString(),
+             QStringLiteral("/downloads/second"));
+
+    emit backend.torrentAddCompleted(
+        firstRequestId, TorrentAddCompletion::Added,
+        QStringLiteral("first-id"), QStringLiteral("First"), {});
+    QCOMPARE(settings.value(lastAcceptedKey).toString(),
+             QStringLiteral("/downloads/first"));
 }
 
 void TestTorrentAddController::destinationComboOffersKnownFoldersAndAllowsFreeText()

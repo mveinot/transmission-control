@@ -544,9 +544,12 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
         }
 
         if (requestType == RpcRequestType::Command
-            && context.method == QStringLiteral("torrent-add")
-            && !context.torrentFilePath.isEmpty()) {
-            emit torrentFileAddFailed(context.torrentFilePath, message);
+            && context.method == QStringLiteral("torrent-add")) {
+            if (!context.torrentFilePath.isEmpty())
+                emit torrentFileAddFailed(context.torrentFilePath, message);
+            emit torrentAddCompleted(context.addRequestId,
+                                     TorrentAddCompletion::Failed,
+                                     {}, {}, message);
         }
 
         if (context.updateBlocklistAfterSuccess
@@ -782,12 +785,32 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
             const QJsonObject arguments = protocolReply.result;
             const QJsonObject added =
                 arguments.value(QStringLiteral("torrent-added")).toObject();
+            const QJsonObject duplicate =
+                arguments.value(QStringLiteral("torrent-duplicate")).toObject();
 
             if (!added.isEmpty()) {
+                const TorrentKey key = torrentKeyFromObject(added);
+                const QString name =
+                    added.value(QStringLiteral("name")).toString();
                 emit torrentAdded(
-                    torrentKeyFromObject(added),
-                    added.value(QStringLiteral("name")).toString()
-                    );
+                    key, name);
+                emit torrentAddCompleted(context.addRequestId,
+                                         TorrentAddCompletion::Added,
+                                         key, name, {});
+            } else if (!duplicate.isEmpty()) {
+                emit torrentAddCompleted(
+                    context.addRequestId,
+                    TorrentAddCompletion::Duplicate,
+                    torrentKeyFromObject(duplicate),
+                    duplicate.value(QStringLiteral("name")).toString(), {});
+            } else {
+                const QString message =
+                    tr("Transmission did not report which torrent was added.");
+                emit torrentAddCompleted(context.addRequestId,
+                                         TorrentAddCompletion::Failed,
+                                         {}, {}, message);
+                emit commandFailed(context.method, message);
+                return;
             }
 
             if (!context.torrentFilePath.isEmpty())
@@ -1952,7 +1975,8 @@ void TransmissionBackend::addTorrentFile(const QString &filePath,
                                 const QList<int> &filesUnwanted,
                                 const QList<int> &priorityLow,
                                 const QList<int> &priorityHigh,
-                                bool deleteFileOnSuccess)
+                                bool deleteFileOnSuccess,
+                                quint64 requestId)
 {
     QFile file(filePath);
 
@@ -1962,6 +1986,8 @@ void TransmissionBackend::addTorrentFile(const QString &filePath,
 
         emit torrentFileAddFailed(filePath, message);
         emit commandFailed(QStringLiteral("torrent-add"), message);
+        emit torrentAddCompleted(requestId, TorrentAddCompletion::Failed,
+                                 {}, {}, message);
         return;
     }
 
@@ -1973,6 +1999,8 @@ void TransmissionBackend::addTorrentFile(const QString &filePath,
 
         emit torrentFileAddFailed(filePath, message);
         emit commandFailed(QStringLiteral("torrent-add"), message);
+        emit torrentAddCompleted(requestId, TorrentAddCompletion::Failed,
+                                 {}, {}, message);
         return;
     }
 
@@ -2005,18 +2033,25 @@ void TransmissionBackend::addTorrentFile(const QString &filePath,
     context.type = RpcRequestType::Command;
     context.torrentFilePath = filePath;
     context.deleteTorrentFileOnSuccess = deleteFileOnSuccess;
+    context.addRequestId = requestId;
 
     postRpc(context);
 }
 
 void TransmissionBackend::addMagnetLink(const QString &magnetLink,
                                const QString &downloadDir,
-                               bool paused)
+                               bool paused,
+                               quint64 requestId)
 {
     const QString trimmed = magnetLink.trimmed();
 
-    if (trimmed.isEmpty())
+    if (trimmed.isEmpty()) {
+        const QString message = tr("No magnet link was specified.");
+        emit torrentAddCompleted(requestId, TorrentAddCompletion::Failed,
+                                 {}, {}, message);
+        emit commandFailed(QStringLiteral("torrent-add"), message);
         return;
+    }
 
     QJsonObject arguments;
     arguments.insert(QStringLiteral("filename"), trimmed);
@@ -2028,7 +2063,10 @@ void TransmissionBackend::addMagnetLink(const QString &magnetLink,
 
     arguments.insert(QStringLiteral("paused"), paused);
 
-    postRpc(QStringLiteral("torrent-add"),
-            arguments,
-            RpcRequestType::Command);
+    RpcRequestContext context;
+    context.method = QStringLiteral("torrent-add");
+    context.type = RpcRequestType::Command;
+    context.arguments = arguments;
+    context.addRequestId = requestId;
+    postRpc(context);
 }

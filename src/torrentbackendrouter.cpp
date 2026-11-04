@@ -58,6 +58,8 @@ void TorrentBackendRouter::forwardSignals(TorrentBackend *backend) {
           &TorrentBackend::commandSucceeded);
   connect(backend, &TorrentBackend::commandFailed, this,
           &TorrentBackend::commandFailed);
+  connect(backend, &TorrentBackend::torrentAddCompleted, this,
+          &TorrentBackend::torrentAddCompleted);
   connect(backend, &TorrentBackend::torrentFileAddSucceeded, this,
           &TorrentBackend::torrentFileAddSucceeded);
   connect(backend, &TorrentBackend::torrentAdded, this,
@@ -175,14 +177,15 @@ void TorrentBackendRouter::addTorrentFromMagnet(const QString &a) {
 void TorrentBackendRouter::addTorrentFile(const QString &a, const QString &b,
                                           bool c, const QList<int> &d,
                                           const QList<int> &e,
-                                          const QList<int> &f, bool g) {
+                                          const QList<int> &f, bool g,
+                                          quint64 requestId) {
   if (m_backend)
-    m_backend->addTorrentFile(a, b, c, d, e, f, g);
+    m_backend->addTorrentFile(a, b, c, d, e, f, g, requestId);
 }
 void TorrentBackendRouter::addMagnetLink(const QString &a, const QString &b,
-                                         bool c) {
+                                         bool c, quint64 requestId) {
   if (m_backend)
-    m_backend->addMagnetLink(a, b, c);
+    m_backend->addMagnetLink(a, b, c, requestId);
 }
 void TorrentBackendRouter::startTorrents(const QList<TorrentKey> &v) {
   if (m_backend)

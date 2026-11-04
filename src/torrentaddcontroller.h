@@ -4,9 +4,9 @@
 #include "torrentadddialog.h"
 
 #include <QObject>
+#include <QHash>
 #include <QString>
 #include <QStringList>
-#include <QQueue>
 
 class QWidget;
 class TorrentBackend;
@@ -50,7 +50,8 @@ private:
 
     QString m_defaultDownloadDir;
     QStringList m_knownDownloadDirs;
-    QQueue<PendingAdd> m_pendingAdds;
+    QHash<quint64, PendingAdd> m_pendingAdds;
+    quint64 m_nextAddRequestId = 1;
 
     bool deleteTorrentFileOnSuccessfulAdd() const;
     bool showOptionsDialog(TorrentAddDialog::SourceType sourceType) const;
@@ -68,6 +69,7 @@ private:
     QString acceptedDownloadDirsSettingKey() const;
 
     void saveOptions(bool startPaused);
+    quint64 nextAddRequestId();
     void submitAdd(TorrentAddDialog::SourceType sourceType,
                    const QString &source,
                    const QString &downloadDir,

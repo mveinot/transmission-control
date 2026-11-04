@@ -428,6 +428,8 @@ void QBittorrentBackend::failAdd(const RequestContext &context,
                                  const QString &reason) {
   if (!context.torrentFilePath.isEmpty())
     emit torrentFileAddFailed(context.torrentFilePath, reason);
+  emit torrentAddCompleted(context.addRequestId,
+                           TorrentAddCompletion::Failed, {}, {}, reason);
   emit commandFailed(QStringLiteral("torrent-add"), reason);
 }
 
@@ -766,6 +768,9 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
         emit torrentFileAddSucceeded(context.torrentFilePath);
       }
       emit torrentAdded(context.key, context.torrentName);
+      emit torrentAddCompleted(context.addRequestId,
+                               TorrentAddCompletion::Added,
+                               context.key, context.torrentName, {});
       emit commandSucceeded(QStringLiteral("torrent-add"));
       return;
     }
@@ -1336,10 +1341,12 @@ void QBittorrentBackend::addTorrentFile(const QString &filePath,
                                         bool paused,
                                         const QList<int> &, const QList<int> &,
                                         const QList<int> &,
-                                        bool deleteFileOnSuccess) {
+                                        bool deleteFileOnSuccess,
+                                        quint64 requestId) {
   const QFileInfo fileInfo(filePath);
   RequestContext context;
   context.kind = RequestKind::AddTorrent;
+  context.addRequestId = requestId;
   context.torrentFilePath = fileInfo.absoluteFilePath();
   const TorrentMetadata metadata =
       TorrentMetadataParser::parseTorrentFile(context.torrentFilePath);
@@ -1361,9 +1368,11 @@ void QBittorrentBackend::addTorrentFile(const QString &filePath,
 }
 void QBittorrentBackend::addMagnetLink(const QString &magnetLink,
                                        const QString &downloadDir,
-                                       bool paused) {
+                                       bool paused,
+                                       quint64 requestId) {
   RequestContext context;
   context.kind = RequestKind::AddTorrent;
+  context.addRequestId = requestId;
   context.magnetLink = magnetLink.trimmed();
   context.key = torrentKeyFromMagnet(context.magnetLink);
   context.torrentName = torrentNameFromMagnet(context.magnetLink);

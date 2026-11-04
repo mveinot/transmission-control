@@ -39,8 +39,9 @@ public:
     void addTorrentFromMagnet(const QString &) override;
     void addTorrentFile(const QString &, const QString &, bool,
                         const QList<int> &, const QList<int> &,
-                        const QList<int> &, bool) override;
-    void addMagnetLink(const QString &, const QString &, bool) override;
+                        const QList<int> &, bool, quint64 = 0) override;
+    void addMagnetLink(const QString &, const QString &, bool,
+                       quint64 = 0) override;
     void startTorrents(const QList<TorrentKey> &) override;
     void startAllTorrents() override;
     void startTorrentsNow(const QList<TorrentKey> &) override;
@@ -106,6 +107,7 @@ private:
         QString commandMethod;
         QString torrentFilePath;
         QString torrentName;
+        quint64 addRequestId = 0;
         QString requestedPath;
         TorrentKey torrentKey;
         QJsonArray parameters;
