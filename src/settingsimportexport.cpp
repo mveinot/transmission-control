@@ -8,6 +8,7 @@
 #include <QMap>
 #include <QMessageBox>
 #include <QSettings>
+#include <QSaveFile>
 #include <QVariant>
 
 namespace {
@@ -132,19 +133,42 @@ bool exportSettings(QWidget *parent, const QString &filePath)
 
     root.insert(QStringLiteral("settings"), values);
 
-    QFile file(filePath);
+    QSaveFile file(filePath);
 
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+    if (!file.open(QIODevice::WriteOnly)) {
         QMessageBox::warning(
             parent,
             QObject::tr("Export Settings Failed"),
-            QObject::tr("Could not write settings file:\n%1").arg(filePath)
+            QObject::tr("Could not write settings file:\n%1\n\n%2")
+                .arg(filePath, file.errorString())
             );
         return false;
     }
 
-    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
-    file.close();
+    const QByteArray data = QJsonDocument(root).toJson(QJsonDocument::Indented);
+    if (file.write(data) != data.size()) {
+        const QString error = file.errorString();
+        file.cancelWriting();
+        QMessageBox::warning(
+            parent,
+            QObject::tr("Export Settings Failed"),
+            QObject::tr("Could not write settings file:\n%1\n\n%2")
+                .arg(filePath, error)
+            );
+        return false;
+    }
+
+    // commit() flushes and closes the temporary file, then atomically replaces
+    // the destination. It reports errors that a plain close() cannot expose.
+    if (!file.commit()) {
+        QMessageBox::warning(
+            parent,
+            QObject::tr("Export Settings Failed"),
+            QObject::tr("Could not complete settings file:\n%1\n\n%2")
+                .arg(filePath, file.errorString())
+            );
+        return false;
+    }
 
     return true;
 }
