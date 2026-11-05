@@ -13,6 +13,9 @@
 #include <QStringList>
 #include <QVBoxLayout>
 
+#include <cmath>
+#include <limits>
+
 namespace {
 StatisticsDialog::StatisticLabels addStatisticRows(QFormLayout *layout, bool includeSessionCount)
 {
@@ -166,7 +169,19 @@ QString StatisticsDialog::formatRatio(qint64 uploadedBytes, qint64 downloadedByt
 qint64 StatisticsDialog::jsonInteger(const QJsonObject &object, const QString &key)
 {
     const QJsonValue value = object.value(key);
-    return value.isDouble() ? static_cast<qint64>(value.toDouble()) : -1;
+    if (!value.isDouble())
+        return -1;
+
+    const double number = value.toDouble();
+    const double minimum =
+        static_cast<double>(std::numeric_limits<qint64>::min());
+    const double maximumExclusive = -minimum;
+    if (!std::isfinite(number) || std::trunc(number) != number
+        || number < minimum || number >= maximumExclusive) {
+        return -1;
+    }
+
+    return static_cast<qint64>(number);
 }
 
 void StatisticsDialog::populateLabels(const QJsonObject &statistics,

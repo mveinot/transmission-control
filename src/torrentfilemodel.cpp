@@ -108,7 +108,8 @@ QVariant TorrentFileModel::data(const QModelIndex &index, int role) const
 
     const qint64 remaining = std::max<qint64>(0, node->length - node->bytesCompleted);
     const double percent = node->length > 0
-        ? static_cast<double>(node->bytesCompleted) / node->length * 100.0 : 0.0;
+        ? static_cast<double>(node->bytesCompleted) / node->length * 100.0
+        : 100.0;
 
     if (role == SortRole) {
         switch (index.column()) {
