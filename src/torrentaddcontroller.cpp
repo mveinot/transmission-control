@@ -54,6 +54,10 @@ TorrentAddController::TorrentAddController(TorrentBackend *client,
         connect(m_client, &TorrentBackend::serverChanged,
                 this, [this]() {
                     m_knownDownloadDirs.clear();
+                    for (const PendingAdd &pending : std::as_const(m_pendingAdds)) {
+                        if (!pending.torrentFilePath.isEmpty())
+                            emit torrentFileAddAborted(pending.torrentFilePath);
+                    }
                     m_pendingAdds.clear();
                 });
         connect(m_client, &TorrentBackend::torrentsReceived,
@@ -459,8 +463,10 @@ void TorrentAddController::submitAdd(
     }
 
     const quint64 requestId = nextAddRequestId();
+    const QString torrentFilePath =
+        sourceType == TorrentAddDialog::SourceType::TorrentFile ? source : QString();
     m_pendingAdds.insert(requestId, {downloadDir, userDefinedDownloadDir,
-                                     originalName, newName});
+                                     originalName, newName, torrentFilePath});
 
     switch (sourceType) {
     case TorrentAddDialog::SourceType::TorrentFile:

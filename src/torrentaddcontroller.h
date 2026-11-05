@@ -44,6 +44,7 @@ private:
         bool userDefinedDownloadDir = false;
         QString originalName;
         QString newName;
+        QString torrentFilePath;
     };
 
     TorrentBackend *m_client = nullptr;
