@@ -18,6 +18,11 @@
 
 namespace {
 
+void closeTorrentUploadFile(QNetworkReply *reply) {
+  if (QFile *file = reply->findChild<QFile *>())
+    file->close();
+}
+
 int normalizedStatus(const QString &state) {
   const QString value = state.toLower();
 
@@ -673,6 +678,12 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
   const QString networkError = reply->errorString();
   const int status =
       reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+  if (context.kind == RequestKind::AddTorrent &&
+      !context.torrentFilePath.isEmpty()) {
+    // Release the uploaded file before success/failure handlers try to remove
+    // it. This matters on Windows, where an open QFile prevents deletion.
+    closeTorrentUploadFile(reply);
+  }
   reply->deleteLater();
 
   if (context.kind == RequestKind::Login) {
@@ -1273,6 +1284,7 @@ void QBittorrentBackend::abortRequests() {
   const QList<QNetworkReply *> replies = m_requests.keys();
   m_requests.clear();
   for (QNetworkReply *reply : replies) {
+    closeTorrentUploadFile(reply);
     reply->abort();
     reply->deleteLater();
   }
