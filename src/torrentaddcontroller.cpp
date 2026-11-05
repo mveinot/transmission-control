@@ -127,6 +127,7 @@ void TorrentAddController::addTorrentFile(const QString &filePath)
     const QFileInfo fileInfo(filePath);
 
     if (!fileInfo.exists() || !fileInfo.isFile()) {
+        emit torrentFileAddAborted(fileInfo.absoluteFilePath());
         emit addFailed(tr("Torrent file does not exist: %1")
                            .arg(filePath));
         return;
@@ -157,6 +158,8 @@ void TorrentAddController::addTorrentFiles(const QStringList &filePaths)
     }
 
     if (!m_client) {
+        for (const QString &filePath : std::as_const(normalizedFilePaths))
+            emit torrentFileAddAborted(QFileInfo(filePath).absoluteFilePath());
         emit addFailed(tr("No torrent backend is available."));
         return;
     }
@@ -168,6 +171,7 @@ void TorrentAddController::addTorrentFiles(const QStringList &filePaths)
         const QFileInfo fileInfo(filePath);
 
         if (!fileInfo.exists() || !fileInfo.isFile()) {
+            emit torrentFileAddAborted(fileInfo.absoluteFilePath());
             emit addFailed(tr("Torrent file does not exist: %1")
                                .arg(filePath));
             continue;
@@ -209,6 +213,8 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
                                         const QString &source)
 {
     if (!m_client) {
+        if (sourceType == TorrentAddDialog::SourceType::TorrentFile)
+            emit torrentFileAddAborted(source);
         emit addFailed(tr("No torrent backend is available."));
         return false;
     }
@@ -247,6 +253,8 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
     dialog.setRememberOptions(true);
 
     if (dialog.exec() != QDialog::Accepted) {
+        if (sourceType == TorrentAddDialog::SourceType::TorrentFile)
+            emit torrentFileAddAborted(source);
         emit addCancelled();
         return false;
     }
@@ -263,6 +271,8 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
             || renamedFolder == QStringLiteral("..")
             || renamedFolder.contains(QLatin1Char('/'))
             || renamedFolder.contains(QLatin1Char('\\')))) {
+        if (sourceType == TorrentAddDialog::SourceType::TorrentFile)
+            emit torrentFileAddAborted(source);
         emit addFailed(tr("The top-level folder name is not valid."));
         return false;
     }
@@ -297,6 +307,8 @@ bool TorrentAddController::addUsingDefaults(
     const QString &source)
 {
     if (!m_client) {
+        if (sourceType == TorrentAddDialog::SourceType::TorrentFile)
+            emit torrentFileAddAborted(source);
         emit addFailed(tr("No torrent backend is available."));
         return false;
     }
@@ -440,6 +452,8 @@ void TorrentAddController::submitAdd(
     const QString &newName)
 {
     if (!m_client) {
+        if (sourceType == TorrentAddDialog::SourceType::TorrentFile)
+            emit torrentFileAddAborted(source);
         emit addFailed(tr("No torrent backend is available."));
         return;
     }
@@ -480,6 +494,7 @@ void TorrentAddController::addTorrentFileUsingDefaults(const QString &filePath)
     const QFileInfo fileInfo(filePath);
 
     if (!fileInfo.exists() || !fileInfo.isFile()) {
+        emit torrentFileAddAborted(fileInfo.absoluteFilePath());
         emit addFailed(tr("Torrent file does not exist: %1")
                            .arg(filePath));
         return;

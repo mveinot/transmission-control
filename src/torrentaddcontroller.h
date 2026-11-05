@@ -36,6 +36,7 @@ signals:
     void addStarted();
     void addCancelled();
     void addFailed(const QString &message);
+    void torrentFileAddAborted(const QString &filePath);
 
 private:
     struct PendingAdd {

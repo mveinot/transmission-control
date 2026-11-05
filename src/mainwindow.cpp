@@ -736,20 +736,9 @@ MainWindow::MainWindow(QWidget *parent)
                                              const QString &) {
                 removeDownloadedTorrent(path);
             });
-    connect(torrentAddController, &TorrentAddController::addCancelled,
-            this, [this]() {
-                const QSet<QString> paths = pendingDownloadedTorrentFiles;
-                pendingDownloadedTorrentFiles.clear();
-                for (const QString &path : paths)
-                    QFile::remove(path);
-            });
-    connect(torrentAddController, &TorrentAddController::addFailed,
-            this, [this](const QString &) {
-                const QSet<QString> paths = pendingDownloadedTorrentFiles;
-                pendingDownloadedTorrentFiles.clear();
-                for (const QString &path : paths)
-                    QFile::remove(path);
-            });
+    connect(torrentAddController,
+            &TorrentAddController::torrentFileAddAborted,
+            this, removeDownloadedTorrent);
 
     // setupUi() must precede controller construction because controllers retain
     // pointers to widgets owned by the generated UI tree.
