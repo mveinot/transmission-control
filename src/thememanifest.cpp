@@ -184,7 +184,19 @@ ThemeManifestResult ThemeManifestParser::parseFile(const QString &manifestPath)
                            .arg(manifest.errorString()));
     }
 
-    return parseData(manifest.readAll(), QFileInfo(manifestPath).absolutePath());
+    if (manifest.size() > static_cast<qint64>(MaxThemeManifestBytes))
+        return failure(QStringLiteral("Theme manifest exceeds the 1 MiB limit"));
+
+    const QByteArray data = manifest.read(
+        static_cast<qint64>(MaxThemeManifestBytes) + 1);
+    if (manifest.error() != QFileDevice::NoError) {
+        return failure(QStringLiteral("Could not read manifest: %1")
+                           .arg(manifest.errorString()));
+    }
+    if (data.size() > static_cast<qsizetype>(MaxThemeManifestBytes))
+        return failure(QStringLiteral("Theme manifest exceeds the 1 MiB limit"));
+
+    return parseData(data, QFileInfo(manifestPath).absolutePath());
 }
 
 ThemeManifestResult ThemeManifestParser::parseData(
@@ -192,6 +204,9 @@ ThemeManifestResult ThemeManifestParser::parseData(
     const QString &basePath,
     bool verifyReferencedFiles)
 {
+    if (manifestData.size() > static_cast<qsizetype>(MaxThemeManifestBytes))
+        return failure(QStringLiteral("Theme manifest exceeds the 1 MiB limit"));
+
     QJsonParseError parseError;
     const QJsonDocument document =
         QJsonDocument::fromJson(manifestData, &parseError);

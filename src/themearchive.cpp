@@ -1,4 +1,5 @@
 #include "themearchive.h"
+#include "thememanifest.h"
 
 #include <QDir>
 #include <QFile>
@@ -12,7 +13,6 @@
 namespace AppThemes {
 namespace {
 
-constexpr quint64 MaxManifestBytes = 1024 * 1024;
 constexpr quint64 MaxEntryBytes = 16 * 1024 * 1024;
 constexpr quint64 MaxExtractedBytes = 128 * 1024 * 1024;
 constexpr int MaxEntries = 2048;
@@ -101,7 +101,7 @@ ThemeArchiveManifest ThemeArchive::readManifest(const QString &archivePath)
             result.error = archiveError(&archive,
                                         QStringLiteral("Could not inspect manifest"));
         } else if (!stat.m_is_supported || stat.m_is_encrypted
-                   || stat.m_uncomp_size > MaxManifestBytes) {
+                   || stat.m_uncomp_size > MaxThemeManifestBytes) {
             result.error = QStringLiteral("Theme manifest is unsupported or too large");
         } else {
             size_t size = 0;

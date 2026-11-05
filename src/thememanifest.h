@@ -8,6 +8,8 @@
 
 namespace AppThemes {
 
+inline constexpr quint64 MaxThemeManifestBytes = 1024 * 1024;
+
 struct ThemeManifestResult
 {
     Theme theme;
