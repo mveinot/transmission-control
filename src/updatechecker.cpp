@@ -11,6 +11,7 @@
 
 namespace {
 constexpr int SupportedManifestSchemaVersion = 1;
+constexpr int ManifestTransferTimeoutMs = 30'000;
 
 bool isHttpsUrl(const QUrl &url)
 {
@@ -41,6 +42,7 @@ void UpdateChecker::checkForUpdates(bool userInitiated, bool beta)
     request.setRawHeader("Accept", "application/json");
     request.setRawHeader("Cache-Control", "no-cache");
     request.setRawHeader("User-Agent", "Planetary");
+    request.setTransferTimeout(ManifestTransferTimeoutMs);
 
     QNetworkReply *reply = m_network->get(request);
     reply->setProperty("userInitiated", userInitiated);

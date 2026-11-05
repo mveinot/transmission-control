@@ -35,6 +35,7 @@
 
 namespace {
 constexpr int AutomaticUpdateCheckIntervalSeconds = 24 * 60 * 60;
+constexpr int ReleaseDownloadTransferTimeoutMs = 60'000;
 }
 
 UpdateCheckController::UpdateCheckController(QWidget *parentWidget, QObject *parent)
@@ -167,6 +168,7 @@ void UpdateCheckController::setup()
                     }
                     QNetworkRequest request(downloadUrl);
                     request.setRawHeader("User-Agent", "Planetary");
+                    request.setTransferTimeout(ReleaseDownloadTransferTimeoutMs);
                     QNetworkReply *reply = network->get(request);
                     connect(reply, &QNetworkReply::downloadProgress, &dialog,
                             [progress](qint64 received, qint64 total) {
