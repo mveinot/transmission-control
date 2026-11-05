@@ -540,17 +540,27 @@ void TorrentFilesController::showContextMenu(const QPoint &pos)
 QString TorrentFilesController::mapRemotePathToLocalPath(
     const QString &remotePath, const QList<FolderMapping> &mappings) const
 {
-    const QString cleanRemotePath = QDir::cleanPath(remotePath.trimmed());
-    if (cleanRemotePath.isEmpty())
+    const auto cleanRemotePath = [](QString path) {
+        path = path.trimmed();
+        path.replace(QLatin1Char('\\'), QLatin1Char('/'));
+        return QDir::cleanPath(path);
+    };
+
+    const QString normalizedRemotePath = cleanRemotePath(remotePath);
+    if (normalizedRemotePath.isEmpty())
         return {};
     const FolderMapping *bestMatch = nullptr;
     QString bestRemotePrefix;
     for (const FolderMapping &mapping : mappings) {
-        const QString remotePrefix = QDir::cleanPath(mapping.remotePath.trimmed());
+        const QString remotePrefix = cleanRemotePath(mapping.remotePath);
         if (remotePrefix.isEmpty())
             continue;
-        const bool exact = cleanRemotePath == remotePrefix;
-        const bool child = cleanRemotePath.startsWith(remotePrefix + QLatin1Char('/'));
+        const bool exact = normalizedRemotePath == remotePrefix;
+        const QString childPrefix = remotePrefix == QStringLiteral("/")
+            ? remotePrefix
+            : remotePrefix + QLatin1Char('/');
+        const bool child = normalizedRemotePath.startsWith(childPrefix)
+            && normalizedRemotePath != remotePrefix;
         if ((exact || child) && (!bestMatch || remotePrefix.length() > bestRemotePrefix.length())) {
             bestMatch = &mapping;
             bestRemotePrefix = remotePrefix;
@@ -559,7 +569,7 @@ QString TorrentFilesController::mapRemotePathToLocalPath(
     if (!bestMatch)
         return {};
     const QString localPrefix = QDir::cleanPath(bestMatch->localPath.trimmed());
-    QString suffix = cleanRemotePath.mid(bestRemotePrefix.length());
+    QString suffix = normalizedRemotePath.mid(bestRemotePrefix.length());
     if (suffix.startsWith(QLatin1Char('/')))
         suffix.remove(0, 1);
     return suffix.isEmpty() ? localPrefix : QDir(localPrefix).filePath(suffix);
