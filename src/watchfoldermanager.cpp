@@ -11,6 +11,7 @@ namespace {
 
 constexpr qsizetype MaxStoredFingerprints = 1000;
 constexpr int NativeWatcherReconciliationIntervalMs = 30000;
+constexpr int MissingFolderRetryIntervalMs = 30000;
 
 } // namespace
 
@@ -25,6 +26,13 @@ WatchFolderManager::WatchFolderManager(QObject *parent)
     connect(&m_watcher, &QFileSystemWatcher::directoryChanged,
             this, &WatchFolderManager::handleDirectoryChanged);
 
+    m_folderRetryTimer.setSingleShot(true);
+    connect(&m_folderRetryTimer, &QTimer::timeout,
+            this, [this]() {
+                if (m_enabled)
+                    restartWatcher();
+            });
+
     loadProcessedFingerprints();
 }
 
@@ -37,8 +45,10 @@ void WatchFolderManager::setEnabled(bool enabled)
 
     if (m_enabled)
         restartWatcher();
-    else
+    else {
+        m_folderUnavailable = false;
         stopWatcher();
+    }
 }
 
 bool WatchFolderManager::isEnabled() const
@@ -59,6 +69,7 @@ void WatchFolderManager::setWatchFolder(const QString &folderPath)
     m_watchFolder = cleanedPath;
     m_candidates.clear();
     m_pendingFingerprintsByPath.clear();
+    m_folderUnavailable = false;
 
     if (m_enabled)
         restartWatcher();
@@ -160,11 +171,13 @@ void WatchFolderManager::restartWatcher()
     const QFileInfo folderInfo(m_watchFolder);
 
     if (!folderInfo.exists() || !folderInfo.isDir()) {
-        emit warningMessage(
-            tr("Watch folder does not exist: %1").arg(m_watchFolder)
-            );
+        handleUnavailableFolder(
+            tr("Watch folder does not exist: %1").arg(m_watchFolder));
         return;
     }
+
+    m_folderUnavailable = false;
+    m_folderRetryTimer.stop();
 
     m_nativeWatcherActive = m_watcher.addPath(m_watchFolder);
 
@@ -199,9 +212,21 @@ void WatchFolderManager::stopWatcher()
         m_watcher.removePaths(m_watcher.directories());
 
     m_scanTimer.stop();
+    m_folderRetryTimer.stop();
     m_nativeWatcherActive = false;
     m_candidates.clear();
     m_pendingFingerprintsByPath.clear();
+}
+
+void WatchFolderManager::handleUnavailableFolder(const QString &message)
+{
+    const bool shouldWarn = !m_folderUnavailable;
+    m_folderUnavailable = true;
+    stopWatcher();
+    if (shouldWarn)
+        emit warningMessage(message);
+    if (m_enabled)
+        m_folderRetryTimer.start(MissingFolderRetryIntervalMs);
 }
 
 void WatchFolderManager::handleDirectoryChanged(const QString &path)
@@ -276,10 +301,8 @@ void WatchFolderManager::scanWatchFolder()
     const QFileInfo folderInfo(m_watchFolder);
 
     if (!folderInfo.exists() || !folderInfo.isDir()) {
-        emit warningMessage(
-            tr("Watch folder is no longer available: %1").arg(m_watchFolder)
-            );
-        stopWatcher();
+        handleUnavailableFolder(
+            tr("Watch folder is no longer available: %1").arg(m_watchFolder));
         return;
     }
 

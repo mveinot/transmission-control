@@ -57,9 +57,11 @@ private:
 
     QFileSystemWatcher m_watcher;
     QTimer m_scanTimer;
+    QTimer m_folderRetryTimer;
 
     QString m_watchFolder;
     bool m_enabled = false;
+    bool m_folderUnavailable = false;
 
     int m_scanIntervalMs = 1000;
     int m_requiredStableChecks = 2;
@@ -71,6 +73,7 @@ private:
 
     void restartWatcher();
     void stopWatcher();
+    void handleUnavailableFolder(const QString &message);
 
     QStringList torrentFilesInWatchFolder() const;
     bool isTorrentFile(const QString &filePath) const;
