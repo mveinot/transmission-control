@@ -13,6 +13,8 @@
 
 namespace {
 
+constexpr qint64 MaximumSettingsImportBytes = 10 * 1024 * 1024;
+
 QJsonValue variantToJson(const QVariant &value)
 {
     switch (value.metaType().id()) {
@@ -190,7 +192,24 @@ bool importSettings(QWidget *parent, const QString &filePath)
         return false;
     }
 
-    const QByteArray data = file.readAll();
+    if (file.size() > MaximumSettingsImportBytes) {
+        QMessageBox::warning(
+            parent,
+            QObject::tr("Import Settings Failed"),
+            QObject::tr("The settings file exceeds the maximum supported size of 10 MiB.")
+            );
+        return false;
+    }
+
+    const QByteArray data = file.read(MaximumSettingsImportBytes + 1);
+    if (data.size() > MaximumSettingsImportBytes || file.error() != QFileDevice::NoError) {
+        QMessageBox::warning(
+            parent,
+            QObject::tr("Import Settings Failed"),
+            QObject::tr("Could not read a valid settings file within the 10 MiB size limit.")
+            );
+        return false;
+    }
 
     QJsonParseError parseError;
     const QJsonDocument document =

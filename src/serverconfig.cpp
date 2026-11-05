@@ -30,6 +30,8 @@
 
 namespace {
 
+constexpr qint64 MaximumServerImportBytes = 1 * 1024 * 1024;
+
 QString serverTypeDisplayName(const QString &backendType)
 {
     if (backendType == QStringLiteral("qbittorrent"))
@@ -584,7 +586,24 @@ bool ServerConfig::importServerFromFile()
         return false;
     }
 
-    const QByteArray data = file.readAll();
+    if (file.size() > MaximumServerImportBytes) {
+        QMessageBox::warning(
+            this,
+            tr("Import Server Failed"),
+            tr("The server file exceeds the maximum supported size of 1 MiB.")
+            );
+        return false;
+    }
+
+    const QByteArray data = file.read(MaximumServerImportBytes + 1);
+    if (data.size() > MaximumServerImportBytes || file.error() != QFileDevice::NoError) {
+        QMessageBox::warning(
+            this,
+            tr("Import Server Failed"),
+            tr("Could not read a valid server file within the 1 MiB size limit.")
+            );
+        return false;
+    }
 
     QJsonParseError parseError;
     const QJsonDocument document = QJsonDocument::fromJson(data, &parseError);
