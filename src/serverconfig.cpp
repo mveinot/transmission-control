@@ -24,6 +24,7 @@
 #include <QPushButton>
 #include <QPalette>
 #include <QRegularExpression>
+#include <QSaveFile>
 #include <QSignalBlocker>
 #include <QUrl>
 
@@ -714,19 +715,39 @@ void ServerConfig::exportSelectedServer()
     root.insert(QStringLiteral("formatVersion"), 1);
     root.insert(QStringLiteral("server"), serverToJson(server, includePassword));
 
-    QFile file(selectedPath);
+    QSaveFile file(selectedPath);
 
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+    if (!file.open(QIODevice::WriteOnly)) {
         QMessageBox::warning(
             this,
             tr("Export Server Failed"),
-            tr("Could not write server file:\n%1").arg(selectedPath)
+            tr("Could not write server file:\n%1\n\n%2")
+                .arg(selectedPath, file.errorString())
             );
         return;
     }
 
-    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
-    file.close();
+    const QByteArray data = QJsonDocument(root).toJson(QJsonDocument::Indented);
+    if (file.write(data) != data.size()) {
+        const QString error = file.errorString();
+        file.cancelWriting();
+        QMessageBox::warning(
+            this,
+            tr("Export Server Failed"),
+            tr("Could not write server file:\n%1\n\n%2")
+                .arg(selectedPath, error)
+            );
+        return;
+    }
+
+    if (!file.commit()) {
+        QMessageBox::warning(
+            this,
+            tr("Export Server Failed"),
+            tr("Could not complete server file:\n%1\n\n%2")
+                .arg(selectedPath, file.errorString())
+            );
+    }
 }
 
 void ServerConfig::removeSelectedServer()
