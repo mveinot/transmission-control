@@ -29,14 +29,14 @@ class ServerProfileRepository
 {
 public:
     QVector<ServerProfile> loadProfiles() const;
-    void saveProfiles(const QVector<ServerProfile> &profiles) const;
+    bool saveProfiles(const QVector<ServerProfile> &profiles) const;
     ServerProfile profileAtSettingsIndex(int index) const;
 
     int defaultIndex() const;
     int currentIndex() const;
     int preferredIndex() const;
-    void setDefaultIndex(int index) const;
-    void setCurrentIndex(int index) const;
+    bool setDefaultIndex(int index) const;
+    bool setCurrentIndex(int index) const;
 };
 
 #endif // SERVERPROFILE_H

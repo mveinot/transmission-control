@@ -255,16 +255,27 @@ void ServerConfig::loadServers()
         defaultServerIndex = servers.isEmpty() ? -1 : 0;
 }
 
-void ServerConfig::saveServers()
+bool ServerConfig::saveServers()
 {
     for (int index = 0; index < servers.size(); ++index)
         servers[index].settingsIndex = index;
 
     ServerProfileRepository repository;
-    repository.saveProfiles(servers);
-    repository.setDefaultIndex(defaultServerIndex);
-    if (servers.isEmpty())
-        repository.setCurrentIndex(-1);
+    bool saved = repository.saveProfiles(servers);
+    if (saved)
+        saved = repository.setDefaultIndex(defaultServerIndex);
+    if (saved && servers.isEmpty())
+        saved = repository.setCurrentIndex(-1);
+
+    if (!saved) {
+        QMessageBox::warning(
+            this,
+            tr("Server Configuration"),
+            tr("Planetary could not save the server configuration. Check that the settings location is writable and try again.")
+            );
+    }
+
+    return saved;
 }
 
 void ServerConfig::refreshServerList()
@@ -676,7 +687,8 @@ bool ServerConfig::importServerFromFile()
     ui->buttonExportServer->setEnabled(true);
     ui->buttonConfigureFolderMappings->setEnabled(true);
     updateFolderMappingsSummary();
-    saveServers();
+    if (!saveServers())
+        return false;
     return true;
 }
 
@@ -827,7 +839,7 @@ bool ServerConfig::saveSelectedServer()
         // Removing the final server intentionally leaves no editor selection.
         // Persist that empty transactional state when the dialog is accepted.
         if (servers.isEmpty())
-            saveServers();
+            return saveServers();
         return true;
     }
 
@@ -855,9 +867,7 @@ bool ServerConfig::saveSelectedServer()
 
     saveEditorToServer(index);
     updateFolderMappingsSummary();
-    saveServers();
-
-    return true;
+    return saveServers();
 }
 
 bool ServerConfig::prepareEditorUrl(QUrl *url, bool forConnectionTest)

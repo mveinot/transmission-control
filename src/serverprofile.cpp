@@ -72,7 +72,7 @@ QVector<ServerProfile> ServerProfileRepository::loadProfiles() const
     return profiles;
 }
 
-void ServerProfileRepository::saveProfiles(
+bool ServerProfileRepository::saveProfiles(
     const QVector<ServerProfile> &profiles) const
 {
     QSettings settings;
@@ -106,6 +106,7 @@ void ServerProfileRepository::saveProfiles(
 
     settings.endArray();
     settings.sync();
+    return settings.status() == QSettings::NoError;
 }
 
 ServerProfile ServerProfileRepository::profileAtSettingsIndex(int index) const
@@ -154,16 +155,18 @@ int ServerProfileRepository::preferredIndex() const
     return -1;
 }
 
-void ServerProfileRepository::setCurrentIndex(int index) const
+bool ServerProfileRepository::setCurrentIndex(int index) const
 {
     QSettings settings;
     settings.setValue(SettingsKeys::ServersCurrentIndex, index);
     settings.sync();
+    return settings.status() == QSettings::NoError;
 }
 
-void ServerProfileRepository::setDefaultIndex(int index) const
+bool ServerProfileRepository::setDefaultIndex(int index) const
 {
     QSettings settings;
     settings.setValue(SettingsKeys::ServersDefaultIndex, index);
     settings.sync();
+    return settings.status() == QSettings::NoError;
 }

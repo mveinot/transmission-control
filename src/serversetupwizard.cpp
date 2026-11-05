@@ -263,11 +263,20 @@ void ServerSetupWizard::accept()
     profile.username = m_usernameEdit->text().trimmed();
     profile.password = m_passwordEdit->text();
     profiles.append(profile);
-    repository.saveProfiles(profiles);
 
-    if (!m_appendToExisting)
-        repository.setDefaultIndex(serverIndex);
-    repository.setCurrentIndex(serverIndex);
+    bool saved = repository.saveProfiles(profiles);
+    if (saved && !m_appendToExisting)
+        saved = repository.setDefaultIndex(serverIndex);
+    if (saved)
+        saved = repository.setCurrentIndex(serverIndex);
+    if (!saved) {
+        QMessageBox::warning(
+            this,
+            tr("Server Setup Failed"),
+            tr("Planetary could not save the server configuration. Check that the settings location is writable and try again.")
+            );
+        return;
+    }
 
     m_savedServerIndex = serverIndex;
     QWizard::accept();

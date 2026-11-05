@@ -41,7 +41,7 @@ private:
     int currentServerIndex() const;
 
     void loadServers();
-    void saveServers();
+    bool saveServers();
 
     void refreshServerList();
     void loadServerIntoEditor(int index);
