@@ -540,19 +540,15 @@ void TorrentFilesController::showContextMenu(const QPoint &pos)
 QString TorrentFilesController::mapRemotePathToLocalPath(
     const QString &remotePath, const QList<FolderMapping> &mappings) const
 {
-    const auto cleanRemotePath = [](QString path) {
-        path = path.trimmed();
-        path.replace(QLatin1Char('\\'), QLatin1Char('/'));
-        return QDir::cleanPath(path);
-    };
-
-    const QString normalizedRemotePath = cleanRemotePath(remotePath);
+    const QString normalizedRemotePath =
+        FolderMappings::normalizeRemotePath(remotePath);
     if (normalizedRemotePath.isEmpty())
         return {};
     const FolderMapping *bestMatch = nullptr;
     QString bestRemotePrefix;
     for (const FolderMapping &mapping : mappings) {
-        const QString remotePrefix = cleanRemotePath(mapping.remotePath);
+        const QString remotePrefix =
+            FolderMappings::normalizeRemotePath(mapping.remotePath);
         if (remotePrefix.isEmpty())
             continue;
         const bool exact = normalizedRemotePath == remotePrefix;

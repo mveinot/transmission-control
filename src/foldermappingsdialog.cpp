@@ -255,8 +255,9 @@ bool FolderMappingsDialog::validateMappings()
         }
 
         for (int j = i + 1; j < currentMappings.size(); ++j) {
-            if (QDir::cleanPath(mapping.remotePath)
-                == QDir::cleanPath(currentMappings.at(j).remotePath)) {
+            if (FolderMappings::normalizeRemotePath(mapping.remotePath)
+                == FolderMappings::normalizeRemotePath(
+                    currentMappings.at(j).remotePath)) {
                 QMessageBox::warning(
                     this,
                     tr("Duplicate Folder Mapping"),
