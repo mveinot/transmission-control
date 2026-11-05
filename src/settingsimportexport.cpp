@@ -78,8 +78,12 @@ bool jsonToVariant(const QJsonValue &value, QVariant *result)
 
         const QJsonArray array = value.toArray();
 
-        for (const QJsonValue &item : array)
+        for (const QJsonValue &item : array) {
+            if (!item.isString())
+                return false;
+
             list.append(item.toString());
+        }
 
         *result = list;
         return true;
