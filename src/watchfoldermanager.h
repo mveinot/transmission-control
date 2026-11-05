@@ -74,6 +74,7 @@ private:
 
     QStringList torrentFilesInWatchFolder() const;
     bool isTorrentFile(const QString &filePath) const;
+    void updateScanTimerInterval();
 
     void observeCandidate(const QString &filePath);
     bool candidateIsStable(const QString &filePath,

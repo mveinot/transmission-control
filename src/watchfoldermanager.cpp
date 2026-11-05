@@ -77,10 +77,7 @@ void WatchFolderManager::setScanIntervalMs(int intervalMs)
         return;
 
     m_scanIntervalMs = normalizedInterval;
-    m_scanTimer.setInterval(
-        m_nativeWatcherActive
-            ? qMax(m_scanIntervalMs, NativeWatcherReconciliationIntervalMs)
-            : m_scanIntervalMs);
+    updateScanTimerInterval();
 }
 
 int WatchFolderManager::scanIntervalMs() const
@@ -145,17 +142,7 @@ void WatchFolderManager::retryTorrentFile(const QString &filePath)
     QTimer::singleShot(
         m_scanIntervalMs,
         this,
-        [this, cleanedPath]() {
-            scanWatchFolder();
-
-            // The retry scan creates a fresh stability candidate. Schedule its
-            // comparison sample explicitly when native reconciliation is slow.
-            if (m_candidates.contains(cleanedPath)) {
-                QTimer::singleShot(m_scanIntervalMs,
-                                   this,
-                                   &WatchFolderManager::scanWatchFolder);
-            }
-        });
+        &WatchFolderManager::scanWatchFolder);
 }
 
 void WatchFolderManager::restartWatcher()
@@ -192,12 +179,10 @@ void WatchFolderManager::restartWatcher()
         tr("Watching folder for torrents: %1").arg(m_watchFolder)
         );
 
-    // Native events provide low-latency discovery. The timer becomes a slower
-    // reconciliation safety net unless native registration failed.
-    m_scanTimer.setInterval(
-        m_nativeWatcherActive
-            ? qMax(m_scanIntervalMs, NativeWatcherReconciliationIntervalMs)
-            : m_scanIntervalMs);
+    // Native events provide low-latency discovery. While files need stability
+    // checks, keep the timer at the configured interval; otherwise it serves
+    // as a slower reconciliation safety net.
+    updateScanTimerInterval();
     m_scanTimer.start();
 
     /*
@@ -206,15 +191,6 @@ void WatchFolderManager::restartWatcher()
      * persistent fingerprint history.
      */
     scanWatchFolder();
-
-    // Existing files need another short-interval sample to establish that
-    // their size and modification time are stable. Native reconciliation can
-    // remain slow after this initial candidate set has been resolved.
-    if (!m_candidates.isEmpty()) {
-        QTimer::singleShot(m_scanIntervalMs,
-                           this,
-                           &WatchFolderManager::scanWatchFolder);
-    }
 }
 
 void WatchFolderManager::stopWatcher()
@@ -240,9 +216,20 @@ void WatchFolderManager::handleDirectoryChanged(const QString &path)
      */
     scanWatchFolder();
 
-    // A copy may still be in progress at the event edge. Schedule the next
-    // configured stability sample without restoring high-frequency polling.
-    QTimer::singleShot(m_scanIntervalMs, this, &WatchFolderManager::scanWatchFolder);
+    // If the scan found an unstable file, scanWatchFolder() has switched the
+    // periodic timer to the configured interval until its stability checks
+    // complete.
+}
+
+void WatchFolderManager::updateScanTimerInterval()
+{
+    const bool checkingStability = !m_candidates.isEmpty();
+    const int interval = m_nativeWatcherActive && !checkingStability
+        ? qMax(m_scanIntervalMs, NativeWatcherReconciliationIntervalMs)
+        : m_scanIntervalMs;
+
+    if (m_scanTimer.interval() != interval)
+        m_scanTimer.setInterval(interval);
 }
 
 QStringList WatchFolderManager::torrentFilesInWatchFolder() const
@@ -314,6 +301,8 @@ void WatchFolderManager::scanWatchFolder()
         if (!currentlySeen.contains(candidatePath))
             m_candidates.remove(candidatePath);
     }
+
+    updateScanTimerInterval();
 }
 
 void WatchFolderManager::observeCandidate(const QString &filePath)
