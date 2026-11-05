@@ -283,6 +283,14 @@ bool importSettings(QWidget *parent, const QString &filePath)
         settings.setValue(it.key(), it.value());
 
     settings.sync();
+    if (settings.status() != QSettings::NoError) {
+        QMessageBox::warning(
+            parent,
+            QObject::tr("Import Settings Failed"),
+            QObject::tr("Planetary could not save the imported settings. They may not be available after restarting the app.")
+            );
+        return false;
+    }
 
     return true;
 }
