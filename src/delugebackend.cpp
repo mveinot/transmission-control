@@ -1,4 +1,5 @@
 #include "delugebackend.h"
+#include "torrentmetadataparser.h"
 
 #include <QFile>
 #include <QFileInfo>
@@ -1262,11 +1263,11 @@ void DelugeBackend::addTorrentFile(const QString &filePath,
     RequestContext context;
     context.addRequestId = requestId;
     context.torrentFilePath = filePath;
-    QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly)) {
-        failAdd(context,
-                tr("Could not open torrent file: %1")
-                    .arg(file.errorString()));
+    QByteArray torrentData;
+    QString readError;
+    if (!TorrentMetadataParser::readTorrentFileData(filePath, &torrentData,
+                                                    &readError)) {
+        failAdd(context, readError);
         return;
     }
 
@@ -1286,7 +1287,7 @@ void DelugeBackend::addTorrentFile(const QString &filePath,
     context.deleteTorrentFileOnSuccess = deleteFileOnSuccess;
     context.parameters = QJsonArray{
         QFileInfo(filePath).fileName(),
-        QString::fromLatin1(file.readAll().toBase64()),
+        QString::fromLatin1(torrentData.toBase64()),
         options
     };
     queueOrPostRpc(context);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QByteArray>
 #include <QList>
 #include <QString>
 
@@ -26,6 +27,9 @@ struct TorrentMetadata
 class TorrentMetadataParser
 {
 public:
+    static bool readTorrentFileData(const QString &filePath,
+                                    QByteArray *data,
+                                    QString *errorString = nullptr);
     static TorrentMetadata parseTorrentFile(const QString &filePath);
     static TorrentMetadata parseTorrentData(const QByteArray &data);
 };

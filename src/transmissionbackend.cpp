@@ -6,6 +6,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include "transmissionbackend.h"
+#include "torrentmetadataparser.h"
 
 #include <algorithm>
 #include <utility>
@@ -1225,45 +1226,8 @@ QNetworkRequest TransmissionBackend::makeRequest() const
 void TransmissionBackend::addTorrentFromFile(const QString &filePath,
                                     bool deleteFileOnSuccess)
 {
-    QFile file(filePath);
-
-    if (!file.open(QIODevice::ReadOnly)) {
-        const QString message =
-            tr("Could not open torrent file: %1").arg(filePath);
-
-        qWarning() << "Could not open torrent file:"
-                   << filePath
-                   << file.errorString();
-
-        emit torrentFileAddFailed(filePath, message);
-        emit commandFailed(QStringLiteral("torrent-add"), message);
-        return;
-    }
-
-    const QByteArray torrentData = file.readAll();
-
-    if (torrentData.isEmpty()) {
-        const QString message =
-            tr("Torrent file is empty: %1").arg(filePath);
-
-        qWarning() << "Torrent file is empty:" << filePath;
-
-        emit torrentFileAddFailed(filePath, message);
-        emit commandFailed(QStringLiteral("torrent-add"), message);
-        return;
-    }
-
-    QJsonObject arguments;
-    arguments["metainfo"] = QString::fromLatin1(torrentData.toBase64());
-
-    RpcRequestContext context;
-    context.method = "torrent-add";
-    context.arguments = arguments;
-    context.type = RpcRequestType::Command;
-    context.torrentFilePath = filePath;
-    context.deleteTorrentFileOnSuccess = deleteFileOnSuccess;
-
-    postRpc(context);
+    addTorrentFile(filePath, QString(), false, {}, {}, {},
+                   deleteFileOnSuccess);
 }
 
 void TransmissionBackend::addTorrentFromMagnet(const QString &magnetLink)
@@ -1978,11 +1942,11 @@ void TransmissionBackend::addTorrentFile(const QString &filePath,
                                 bool deleteFileOnSuccess,
                                 quint64 requestId)
 {
-    QFile file(filePath);
-
-    if (!file.open(QIODevice::ReadOnly)) {
-        const QString message =
-            tr("Could not open torrent file: %1").arg(filePath);
+    QByteArray data;
+    QString readError;
+    if (!TorrentMetadataParser::readTorrentFileData(filePath, &data,
+                                                    &readError)) {
+        const QString message = readError;
 
         emit torrentFileAddFailed(filePath, message);
         emit commandFailed(QStringLiteral("torrent-add"), message);
@@ -1990,8 +1954,6 @@ void TransmissionBackend::addTorrentFile(const QString &filePath,
                                  {}, {}, message);
         return;
     }
-
-    const QByteArray data = file.readAll();
 
     if (data.isEmpty()) {
         const QString message =

@@ -286,6 +286,7 @@ add_planetary_test(test_delugebackend
 )
 use_planetary_test_support(test_delugebackend planetary_test_torrent)
 use_planetary_test_support(test_delugebackend planetary_test_serverprofile)
+use_planetary_test_support(test_delugebackend planetary_test_bencode)
 
 add_planetary_test(test_transmissionbackend
     test_transmissionbackend.cpp
@@ -298,6 +299,7 @@ add_planetary_test(test_transmissionbackend
 )
 use_planetary_test_support(test_transmissionbackend planetary_test_torrent)
 use_planetary_test_support(test_transmissionbackend planetary_test_serverprofile)
+use_planetary_test_support(test_transmissionbackend planetary_test_bencode)
 
 add_planetary_test(test_qbittorrentbackend
     test_qbittorrentbackend.cpp

@@ -8,6 +8,7 @@
 #include <QStringList>
 
 #include <limits>
+#include <utility>
 
 namespace {
 
@@ -65,38 +66,63 @@ bool TorrentMetadata::isValid() const
     return errorString.isEmpty() && !name.isEmpty() && !files.isEmpty();
 }
 
-TorrentMetadata TorrentMetadataParser::parseTorrentFile(const QString &filePath)
+bool TorrentMetadataParser::readTorrentFileData(const QString &filePath,
+                                                QByteArray *data,
+                                                QString *errorString)
 {
+    const auto fail = [errorString](const QString &message) {
+        if (errorString)
+            *errorString = message;
+        return false;
+    };
+
+    if (!data)
+        return fail(QObject::tr("Could not read torrent file."));
+    data->clear();
+
     QFile file(filePath);
 
     if (!file.open(QIODevice::ReadOnly)) {
-        TorrentMetadata metadata;
-        metadata.errorString = QObject::tr("Could not open torrent file: %1")
-                                   .arg(file.errorString());
-        return metadata;
+        return fail(QObject::tr("Could not open torrent file: %1")
+                        .arg(file.errorString()));
     }
 
-    const auto tooLarge = []() {
-        TorrentMetadata metadata;
-        metadata.errorString = QObject::tr(
-            "Bencode input exceeds the 128 MiB limit");
-        return metadata;
+    const auto tooLarge = [errorString]() {
+        if (errorString) {
+            *errorString = QObject::tr(
+                "Bencode input exceeds the 128 MiB limit");
+        }
+        return false;
     };
 
     if (file.size() > BencodeParser::MaximumInputBytes)
         return tooLarge();
 
-    QByteArray data = file.read(
+    QByteArray contents = file.read(
         static_cast<qint64>(BencodeParser::MaximumInputBytes) + 1);
     if (file.error() != QFileDevice::NoError) {
-        TorrentMetadata metadata;
-        metadata.errorString = QObject::tr("Could not read torrent file: %1")
-                                   .arg(file.errorString());
-        return metadata;
+        return fail(QObject::tr("Could not read torrent file: %1")
+                        .arg(file.errorString()));
     }
 
-    if (data.size() > BencodeParser::MaximumInputBytes)
+    if (contents.size() > BencodeParser::MaximumInputBytes)
         return tooLarge();
+
+    *data = std::move(contents);
+    if (errorString)
+        errorString->clear();
+    return true;
+}
+
+TorrentMetadata TorrentMetadataParser::parseTorrentFile(const QString &filePath)
+{
+    QByteArray data;
+    QString errorString;
+    if (!readTorrentFileData(filePath, &data, &errorString)) {
+        TorrentMetadata metadata;
+        metadata.errorString = errorString;
+        return metadata;
+    }
 
     return parseTorrentData(data);
 }
