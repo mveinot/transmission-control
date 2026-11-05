@@ -1380,10 +1380,6 @@ void QBittorrentBackend::addTorrentFile(const QString &filePath,
   context.kind = RequestKind::AddTorrent;
   context.addRequestId = requestId;
   context.torrentFilePath = fileInfo.absoluteFilePath();
-  const TorrentMetadata metadata =
-      TorrentMetadataParser::parseTorrentFile(context.torrentFilePath);
-  context.key = metadata.infoHash;
-  context.torrentName = metadata.name;
   context.downloadDir = downloadDir;
   context.startPaused = paused;
   context.deleteTorrentFileOnSuccess = deleteFileOnSuccess;
@@ -1392,6 +1388,18 @@ void QBittorrentBackend::addTorrentFile(const QString &filePath,
     failAdd(context, tr("Torrent file does not exist: %1").arg(filePath));
     return;
   }
+
+  const TorrentMetadata metadata =
+      TorrentMetadataParser::parseTorrentFile(context.torrentFilePath);
+  if (!metadata.isValid()) {
+    const QString reason = metadata.errorString.isEmpty()
+        ? tr("Torrent metadata is invalid.")
+        : metadata.errorString;
+    failAdd(context, reason);
+    return;
+  }
+  context.key = metadata.infoHash;
+  context.torrentName = metadata.name;
 
   // qBittorrent's add endpoint accepts the file and destination atomically.
   // Per-file wanted/priority changes require the resulting hash and therefore
