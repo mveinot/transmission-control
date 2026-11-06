@@ -224,6 +224,7 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
     }
 
     TorrentAddDialog dialog(m_dialogParent);
+    TorrentMetadata torrentMetadata;
 
     dialog.setSource(sourceType,
                      sourceType == TorrentAddDialog::SourceType::TorrentFile
@@ -234,7 +235,8 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
     // the add request. Existing-torrent file controls are a separate capability.
     if (sourceType == TorrentAddDialog::SourceType::TorrentFile
         && m_client->capabilities().addTorrentFileSelection) {
-        dialog.setTorrentMetadata(TorrentMetadataParser::parseTorrentFile(source));
+        torrentMetadata = TorrentMetadataParser::parseTorrentFile(source);
+        dialog.setTorrentMetadata(torrentMetadata);
     }
 
     QStringList downloadDirs = m_knownDownloadDirs;
@@ -286,6 +288,9 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
 
     switch (sourceType) {
     case TorrentAddDialog::SourceType::TorrentFile:
+        if (!renamedFolder.isEmpty() && !torrentMetadata.isValid())
+            torrentMetadata = TorrentMetadataParser::parseTorrentFile(source);
+
         submitAdd(sourceType, source, downloadDir, startPaused,
                   dialog.unwantedFileIndices(),
                   dialog.lowPriorityFileIndices(),
@@ -293,7 +298,7 @@ bool TorrentAddController::promptAndAdd(TorrentAddDialog::SourceType sourceType,
                   userDefinedDownloadDir,
                   renamedFolder.isEmpty()
                       ? QString()
-                      : TorrentMetadataParser::parseTorrentFile(source).name,
+                      : torrentMetadata.name,
                   renamedFolder);
         break;
 
