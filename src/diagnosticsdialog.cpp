@@ -32,6 +32,18 @@ QString valueOrUnknown(const QJsonObject &o, const QString &key)
 }
 
 QString yesNo(bool value) { return value ? QStringLiteral("Yes") : QStringLiteral("No"); }
+
+QString sanitizedUrl(const QString &value)
+{
+    QUrl url(value);
+    if (!url.isValid() || url.isEmpty())
+        return value;
+
+    url.setUserName(QString());
+    url.setPassword(QString());
+    return url.toString();
+}
+
 QString line(const QString &name, const QString &value)
 {
     return name.leftJustified(28) + value + QLatin1Char('\n');
@@ -110,10 +122,10 @@ QString DiagnosticsDialog::buildReport() const
     out += line(QStringLiteral("Refresh interval"), QString::number(refreshIntervalMs) + QStringLiteral(" ms"));
 
     out += QStringLiteral("\nACTIVE SERVER / RPC\n-------------------\n");
-    out += line(QStringLiteral("Server name"), serverName.isEmpty() ? QStringLiteral("Unknown") : serverName);
+    out += line(QStringLiteral("Server name"), serverName.isEmpty() ? QStringLiteral("Unknown") : sanitizedUrl(serverName));
     out += line(QStringLiteral("Backend"), backendName.isEmpty() ? QStringLiteral("Unknown") : backendName);
     out += line(QStringLiteral("Protocol"), protocolDescription.isEmpty() ? QStringLiteral("Unknown") : protocolDescription);
-    out += line(QStringLiteral("RPC endpoint"), rpcUrl.isEmpty() ? QStringLiteral("Unknown") : rpcUrl);
+    out += line(QStringLiteral("RPC endpoint"), rpcUrl.isEmpty() ? QStringLiteral("Unknown") : sanitizedUrl(rpcUrl));
     out += line(QStringLiteral("Session data available"), yesNo(!sessionSettings.isEmpty()));
     out += line(QStringLiteral("Transmission version"), valueOrUnknown(sessionSettings, QStringLiteral("version")));
     out += line(QStringLiteral("RPC version"), valueOrUnknown(sessionSettings, QStringLiteral("rpc-version")));
