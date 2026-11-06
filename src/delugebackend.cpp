@@ -743,7 +743,52 @@ void DelugeBackend::handleTorrentStatus(const RequestContext &context,
             status.contains(QStringLiteral("sequential_download"));
         details.sequentialDownload =
             status.value(QStringLiteral("sequential_download")).toBool();
-        details.fields = status.toVariantMap();
+        QJsonObject normalizedFields = status;
+        const QString state = status.value(QStringLiteral("state")).toString();
+        const double progress =
+            status.value(QStringLiteral("progress")).toDouble();
+        const bool finished = state.compare(QStringLiteral("seeding"),
+                                            Qt::CaseInsensitive) == 0
+                              || progress >= 100.0;
+
+        // Keep Deluge's native fields available while exposing the shared
+        // Transmission-style vocabulary consumed by the Details tab.
+        if (status.contains(QStringLiteral("state"))) {
+            normalizedFields.insert(
+                QStringLiteral("status"), normalizedStatus(state, finished));
+        }
+        normalizedFields.insert(QStringLiteral("isFinished"), finished);
+        if (status.contains(QStringLiteral("progress"))) {
+            normalizedFields.insert(QStringLiteral("percentDone"),
+                                    progress / 100.0);
+        }
+        if (status.contains(QStringLiteral("ratio"))) {
+            normalizedFields.insert(QStringLiteral("uploadRatio"),
+                                    status.value(QStringLiteral("ratio")));
+        }
+        if (status.contains(QStringLiteral("download_location"))) {
+            normalizedFields.insert(
+                QStringLiteral("downloadDir"),
+                status.value(QStringLiteral("download_location")));
+        }
+        normalizedFields.insert(
+            QStringLiteral("hashString"),
+            status.value(QStringLiteral("hash")).toString(context.torrentKey));
+        if (status.contains(QStringLiteral("total_size"))) {
+            normalizedFields.insert(QStringLiteral("totalSize"),
+                                    status.value(QStringLiteral("total_size")));
+            normalizedFields.insert(QStringLiteral("sizeWhenDone"),
+                                    status.value(QStringLiteral("total_size")));
+        }
+        if (status.contains(QStringLiteral("time_created"))) {
+            normalizedFields.insert(QStringLiteral("dateCreated"),
+                                    status.value(QStringLiteral("time_created")));
+        }
+        if (status.contains(QStringLiteral("eta"))) {
+            normalizedFields.insert(QStringLiteral("eta"),
+                                    status.value(QStringLiteral("eta")));
+        }
+        details.fields = normalizedFields.toVariantMap();
         emit torrentDetailsReceived(details);
         return;
     }
