@@ -49,6 +49,14 @@ bool isConfigurableServerType(const QString &backendType)
            || backendType == QStringLiteral("deluge");
 }
 
+bool isValidHttpUrl(const QString &endpoint)
+{
+    const QUrl url(endpoint);
+    return url.isValid() && !url.host().isEmpty()
+           && (url.scheme() == QStringLiteral("http")
+               || url.scheme() == QStringLiteral("https"));
+}
+
 } // namespace
 
 ServerConfig::ServerConfig(QWidget *parent)
@@ -500,6 +508,14 @@ bool ServerConfig::serverFromJson(const QJsonObject &object,
         return false;
     }
 
+    if (!isValidHttpUrl(parsed.rpcUrl)) {
+        if (errorMessage) {
+            *errorMessage =
+                tr("The server file must contain a valid HTTP or HTTPS RPC URL.");
+        }
+        return false;
+    }
+
     const QJsonArray mappings = object.value(QStringLiteral("folderMappings")).toArray();
 
     for (const QJsonValue &value : mappings) {
@@ -892,9 +908,7 @@ bool ServerConfig::prepareEditorUrl(QUrl *url, bool forConnectionTest)
     }
 
     const QUrl parsed(endpoint);
-    if (!parsed.isValid() || parsed.host().isEmpty()
-        || (parsed.scheme() != QStringLiteral("http")
-            && parsed.scheme() != QStringLiteral("https"))) {
+    if (!isValidHttpUrl(endpoint)) {
         if (forConnectionTest) {
             setConnectionTestResult(
                 tr("Enter a valid HTTP or HTTPS server URL."), false);
