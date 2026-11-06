@@ -16,11 +16,26 @@
 
 #include <utility>
 
+namespace {
+
+constexpr qint64 DirectlyNotifiedAddedKeyLifetimeMs = 10 * 60 * 1000;
+constexpr qsizetype MaximumDirectlyNotifiedAddedKeys = 4096;
+constexpr int DirectlyNotifiedAddedKeyCleanupIntervalMs = 60 * 1000;
+
+} // namespace
+
 NotificationController::NotificationController(QObject *parent,
                                                    DeliveryFunction deliveryFunction)
     : QObject(parent)
     , m_deliveryFunction(std::move(deliveryFunction))
 {
+    m_directlyNotifiedAddedKeyExpiryTimer.setInterval(
+        DirectlyNotifiedAddedKeyCleanupIntervalMs);
+    connect(&m_directlyNotifiedAddedKeyExpiryTimer, &QTimer::timeout,
+            this, [this]() {
+                expireDirectlyNotifiedAddedKeys(
+                    QDateTime::currentMSecsSinceEpoch());
+            });
 }
 
 bool NotificationController::notificationsEnabled() const
@@ -218,6 +233,21 @@ void NotificationController::resetBaseline()
     m_baselineLoaded = false;
     m_knownTorrentStates.clear();
     m_directlyNotifiedAddedTorrentKeys.clear();
+    m_directlyNotifiedAddedKeyExpiryTimer.stop();
+}
+
+void NotificationController::expireDirectlyNotifiedAddedKeys(qint64 nowMs)
+{
+    for (auto it = m_directlyNotifiedAddedTorrentKeys.begin();
+         it != m_directlyNotifiedAddedTorrentKeys.end();) {
+        if (nowMs - it.value() >= DirectlyNotifiedAddedKeyLifetimeMs)
+            it = m_directlyNotifiedAddedTorrentKeys.erase(it);
+        else
+            ++it;
+    }
+
+    if (m_directlyNotifiedAddedTorrentKeys.isEmpty())
+        m_directlyNotifiedAddedKeyExpiryTimer.stop();
 }
 
 void NotificationController::setServerName(const QString &serverName)
@@ -232,8 +262,25 @@ void NotificationController::handleTorrentAdded(const TorrentKey &torrentKey,
                                name.isEmpty() ? tr("The torrent server accepted a new torrent.") : name,
                                m_serverName, ActivityLevel::Torrent);
 
-    if (isValidTorrentKey(torrentKey))
-        m_directlyNotifiedAddedTorrentKeys.insert(torrentKey);
+    if (isValidTorrentKey(torrentKey)) {
+        const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+        expireDirectlyNotifiedAddedKeys(nowMs);
+        m_directlyNotifiedAddedTorrentKeys.insert(torrentKey, nowMs);
+
+        while (m_directlyNotifiedAddedTorrentKeys.size()
+               > MaximumDirectlyNotifiedAddedKeys) {
+            auto oldest = m_directlyNotifiedAddedTorrentKeys.begin();
+            for (auto it = m_directlyNotifiedAddedTorrentKeys.begin();
+                 it != m_directlyNotifiedAddedTorrentKeys.end(); ++it) {
+                if (it.value() < oldest.value())
+                    oldest = it;
+            }
+            m_directlyNotifiedAddedTorrentKeys.erase(oldest);
+        }
+
+        if (!m_directlyNotifiedAddedKeyExpiryTimer.isActive())
+            m_directlyNotifiedAddedKeyExpiryTimer.start();
+    }
     if (!eventEnabled(SettingsKeys::NotifyTorrentAdded))
         return;
 
@@ -250,6 +297,8 @@ void NotificationController::handleTorrentAdded(const TorrentKey &torrentKey,
 
 void NotificationController::processTorrentList(const QVector<torrent> &torrents)
 {
+    expireDirectlyNotifiedAddedKeys(QDateTime::currentMSecsSinceEpoch());
+
     QHash<TorrentKey, TorrentState> currentStates;
     currentStates.reserve(torrents.size());
     for (const torrent &torrentItem : torrents)
@@ -261,6 +310,7 @@ void NotificationController::processTorrentList(const QVector<torrent> &torrents
         m_knownTorrentStates = currentStates;
         for (auto it = currentStates.cbegin(); it != currentStates.cend(); ++it)
             m_directlyNotifiedAddedTorrentKeys.remove(it.key());
+        expireDirectlyNotifiedAddedKeys(QDateTime::currentMSecsSinceEpoch());
         m_baselineLoaded = true;
         return;
     }
@@ -316,4 +366,5 @@ void NotificationController::processTorrentList(const QVector<torrent> &torrents
         }
     }
     m_knownTorrentStates = currentStates;
+    expireDirectlyNotifiedAddedKeys(QDateTime::currentMSecsSinceEpoch());
 }
