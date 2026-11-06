@@ -65,6 +65,15 @@ platform-aware client before they can use platform-specific entries.
 
 Newlines in Markdown must be escaped as `\n` in the JSON string.
 
+For GitHub compare (diff) URLs in `releaseNotesMarkdown`, use an explicit
+Markdown link instead of a bare URL. Qt's bare-URL linker can stop at the dots
+in version tags and the `...` separator, leaving part of the URL unlinked. For
+example:
+
+```markdown
+[Full Changelog](https://github.com/mveinot/transmission-control/compare/v2.5.2.455...v2.6.2.501)
+```
+
 ## Fields
 
 | Field | Required | Format and behavior |
