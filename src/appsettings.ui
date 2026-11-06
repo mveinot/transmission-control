@@ -142,7 +142,7 @@
               <item row="0" column="0">
                <widget class="QCheckBox" name="deleteTorrentOnAdd">
                 <property name="text">
-                 <string>Delete .torrent file after successful addition</string>
+                 <string>Delete .torrent file after adding or detecting a duplicate</string>
                 </property>
                </widget>
               </item>

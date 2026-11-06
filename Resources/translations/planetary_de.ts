@@ -80,8 +80,8 @@
     </message>
     <message>
         <location filename="../../src/appsettings.ui" line="145"/>
-        <source>Delete .torrent file after successful addition</source>
-        <translation>.torrent-Datei nach erfolgreichem Hinzufügen löschen</translation>
+        <source>Delete .torrent file after adding or detecting a duplicate</source>
+        <translation>.torrent-Datei nach dem Hinzufügen oder Erkennen eines Duplikats löschen</translation>
     </message>
     <message>
         <location filename="../../src/appsettings.ui" line="152"/>
