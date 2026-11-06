@@ -25,8 +25,10 @@ public:
     void update(const QVariantMap &details);
 
 private:
+    QTabWidget *m_tabWidget = nullptr;
     QWidget *m_tab = nullptr;
     QTableWidget *m_table = nullptr;
+    QVariantMap m_latestDetails;
 };
 
 #endif // TORRENTDETAILSTABCONTROLLER_H

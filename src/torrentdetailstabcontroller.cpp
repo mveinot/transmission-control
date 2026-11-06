@@ -48,6 +48,7 @@ TorrentDetailsTabController::TorrentDetailsTabController(QTabWidget *tabWidget,
                                                          QWidget *generalTab,
                                                          QObject *parent)
     : QObject(parent)
+    , m_tabWidget(tabWidget)
 {
     m_tab = new QWidget(tabWidget);
 
@@ -72,6 +73,12 @@ TorrentDetailsTabController::TorrentDetailsTabController(QTabWidget *tabWidget,
     const int generalIndex = tabWidget->indexOf(generalTab);
     tabWidget->insertTab(generalIndex + 1, m_tab, tr("Details"));
 
+    connect(tabWidget, &QTabWidget::currentChanged, this,
+            [this](int) {
+                if (m_tabWidget && m_tabWidget->currentWidget() == m_tab)
+                    update(m_latestDetails);
+            });
+
     clear();
 }
 
@@ -82,6 +89,8 @@ QWidget *TorrentDetailsTabController::widget() const
 
 void TorrentDetailsTabController::clear()
 {
+    m_latestDetails.clear();
+
     if (!m_table)
         return;
 
@@ -93,8 +102,19 @@ void TorrentDetailsTabController::clear()
 void TorrentDetailsTabController::update(const QVariantMap &details)
 {
     // Rebuild from a snapshot to keep section ordering deterministic when RPC
-    // versions add or omit fields.
+    // versions add or omit fields. Piece updates can arrive while this tab is
+    // hidden, so retain the latest snapshot and defer the rebuild until shown.
+    m_latestDetails = details;
+
+    if (m_latestDetails.isEmpty()) {
+        clear();
+        return;
+    }
+
     if (!m_table)
+        return;
+
+    if (!m_tabWidget || m_tabWidget->currentWidget() != m_tab)
         return;
 
     m_table->setSortingEnabled(false);
