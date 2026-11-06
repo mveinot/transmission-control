@@ -46,6 +46,10 @@ void WatchFolderController::setup()
     connect(m_client, &TorrentBackend::torrentFileAddFailed,
             this, &WatchFolderController::handleTorrentFileAddFailed);
 
+    connect(m_torrentAddController,
+            &TorrentAddController::torrentFileAddAborted,
+            m_manager, &WatchFolderManager::retryTorrentFile);
+
     connect(m_manager, &WatchFolderManager::statusMessage,
             this, [this](const QString &message) {
                 emit statusMessageRequested(message, 3000);
