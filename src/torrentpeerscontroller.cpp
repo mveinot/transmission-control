@@ -188,10 +188,12 @@ void TorrentPeersController::populate(const TorrentPeers &snapshot)
     // Reconciler output orders removals before inserts and updates. Removing
     // first avoids transient duplicate rows when an endpoint disappears and
     // another peer is added in the same snapshot.
+    QSet<QString> removedAddresses;
     for (const PeerRowChange &change : changes) {
         switch (change.kind) {
         case PeerRowChange::Kind::Remove:
             removePeerRow(change.key);
+            removedAddresses.insert(change.key.address);
             break;
         case PeerRowChange::Kind::Insert:
             insertPeerRow(change.key, change.peer);
@@ -201,6 +203,19 @@ void TorrentPeersController::populate(const TorrentPeers &snapshot)
             break;
         }
     }
+
+    for (const QString &address : std::as_const(removedAddresses)) {
+        bool stillDisplayed = false;
+        for (auto it = rowAnchors.cbegin(); it != rowAnchors.cend(); ++it) {
+            if (it.key().address == address) {
+                stillDisplayed = true;
+                break;
+            }
+        }
+        if (!stillDisplayed)
+            cancelHostnameLookup(address);
+    }
+    startQueuedHostnameLookups();
 
     if (suspendSorting)
         peerTableWidget->setSortingEnabled(true);
@@ -214,6 +229,7 @@ void TorrentPeersController::populate(const TorrentPeers &snapshot)
 
 void TorrentPeersController::resetRows()
 {
+    cancelAllHostnameLookups();
     reconciler.clear();
     rowAnchors.clear();
     peerTableWidget->clearContents();
@@ -430,6 +446,34 @@ void TorrentPeersController::startQueuedHostnameLookups()
 
         hostnameLookupIds.insert(lookupId, address);
     }
+}
+
+void TorrentPeersController::cancelHostnameLookup(const QString &address)
+{
+    pendingHostnameLookups.remove(address);
+    hostnameLookupQueue.removeAll(address);
+
+    const QList<int> lookupIds = hostnameLookupIds.keys();
+    for (const int lookupId : lookupIds) {
+        if (hostnameLookupIds.value(lookupId) != address)
+            continue;
+
+        // Remove the correlation entry first; abort may deliver a completion
+        // callback, which must not update a row for a disconnected peer.
+        hostnameLookupIds.remove(lookupId);
+        QHostInfo::abortHostLookup(lookupId);
+    }
+}
+
+void TorrentPeersController::cancelAllHostnameLookups()
+{
+    const QList<int> lookupIds = hostnameLookupIds.keys();
+    hostnameLookupIds.clear();
+    hostnameLookupQueue.clear();
+    pendingHostnameLookups.clear();
+
+    for (const int lookupId : lookupIds)
+        QHostInfo::abortHostLookup(lookupId);
 }
 
 void TorrentPeersController::cacheHostnameResult(const QString &address,

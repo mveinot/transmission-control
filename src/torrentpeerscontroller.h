@@ -71,6 +71,8 @@ private:
     void applyHostnameLookupResult(const QString &address, const QString &hostname);
     QString hostnameDisplayText(const QString &address) const;
     QString hostnameToolTip(const QString &address) const;
+    void cancelHostnameLookup(const QString &address);
+    void cancelAllHostnameLookups();
 
     QTableWidget *peerTableWidget = nullptr;
     GeoIpService *geoIpService = nullptr;
