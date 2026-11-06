@@ -137,13 +137,14 @@ ServerConnectionProbe::buildCandidates(const QString &backendType,
                       fullyAdjusted.path() != enteredUrl.path()});
     } else {
         if (backendType == QStringLiteral("qbittorrent")) {
-            const QString path = enteredUrl.path();
+            QString path = enteredUrl.path();
+            while (path.endsWith(QLatin1Char('/')))
+                path.chop(1);
+
             const QString apiSuffix = QStringLiteral("/api/v2/auth/login");
             if (path.endsWith(apiSuffix)) {
                 QUrl baseAdjusted = enteredUrl;
                 QString basePath = path.left(path.size() - apiSuffix.size());
-                if (basePath.endsWith(QLatin1Char('/')))
-                    basePath.chop(1);
                 baseAdjusted.setPath(basePath);
                 appendUnique({baseAdjusted, false, true});
 
