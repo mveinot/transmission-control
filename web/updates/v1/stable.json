@@ -8,7 +8,7 @@
   "packageType": "dmg",
   "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.6.2.501/Planetary-2.6.2.501-macOS-universal.dmg",
   "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.6.2.501",
-  "releaseNotesMarkdown": "**Full Changelog**: https://github.com/mveinot/transmission-control/compare/v2.5.2.455...v2.6.2.501\n\nFirst non-beta release featuring Linux and Windows distributables\n\n- Linux image is built against a base of Ubuntu 22.04 for reasonable compatibility\n- Windows release is not signed and will likely require allowing it through Windows Defender\n\n* Fix Linux tray icon visibility issue\n* Reorganization of source files, simplification of test build process\n* Improve Windows release packaging\n* Fix dock icon behaviour regression\n* Implement GUI toggle for automated update check\n\nPlease report any issues with any of the platform releases",
+  "releaseNotesMarkdown": "**Full Changelog**: [v2.5.2.455...v2.6.2.501](https://github.com/mveinot/transmission-control/compare/v2.5.2.455...v2.6.2.501)\n\nFirst non-beta release featuring Linux and Windows distributables\n\n- Linux image is built against a base of Ubuntu 22.04 for reasonable compatibility\n- Windows release is not signed and will likely require allowing it through Windows Defender\n\n* Fix Linux tray icon visibility issue\n* Reorganization of source files, simplification of test build process\n* Improve Windows release packaging\n* Fix dock icon behaviour regression\n* Implement GUI toggle for automated update check\n\nPlease report any issues with any of the platform releases",
   "sha256": "ed381fe227302be6ba53c992b8182ac482388846e94b592bae9b62b19133d6c4",
   "artifacts": {
     "macos-universal": {

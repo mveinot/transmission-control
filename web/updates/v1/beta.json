@@ -7,7 +7,7 @@
   "minimumMacOSVersion": "14.4",
   "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.6.0.490/Planetary-2.6.0.490-macOS-universal.dmg",
   "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.6.0.490",
-  "releaseNotesMarkdown": "**Full Changelog**: https://github.com/mveinot/transmission-control/compare/v2.5.2.455...v2.6.0.490\n\nBeta release\n\n* Fix regression in dock icon handling\n* Improvements to Linux and Windows release builds\n* Windows apps are self-signed and will likely require allowing through defender\n* The built-in update feature is currently only engineered for the macOS version - this will get fixed before the release",
+  "releaseNotesMarkdown": "**Full Changelog**: [v2.5.2.455...v2.6.0.490](https://github.com/mveinot/transmission-control/compare/v2.5.2.455...v2.6.0.490)\n\nBeta release\n\n* Fix regression in dock icon handling\n* Improvements to Linux and Windows release builds\n* Windows apps are self-signed and will likely require allowing through defender\n* The built-in update feature is currently only engineered for the macOS version - this will get fixed before the release",
   "sha256": "b6d085aed9b79a0c7097345ecaddda5e63797a5c972e1c33e14958913db45e06",
   "artifacts": {
     "macos-universal": {
