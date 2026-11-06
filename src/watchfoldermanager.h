@@ -88,7 +88,6 @@ private:
                                const QFileInfo &fileInfo) const;
 
     bool alreadyProcessed(const QString &fingerprint) const;
-    bool isPending(const QString &filePath, const QString &fingerprint) const;
     void markPending(const QString &filePath, const QString &fingerprint);
     void forgetPending(const QString &filePath);
     void markProcessed(const QString &fingerprint);

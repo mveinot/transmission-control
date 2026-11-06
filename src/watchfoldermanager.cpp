@@ -336,8 +336,10 @@ void WatchFolderManager::observeCandidate(const QString &filePath)
     const QFileInfo fileInfo(filePath);
     const QString fingerprint = fingerprintForFile(filePath, fileInfo);
 
-    if (alreadyProcessed(fingerprint) || isPending(fileInfo.absoluteFilePath(), fingerprint))
+    if (alreadyProcessed(fingerprint)
+        || hasPendingTorrentFile(fileInfo.absoluteFilePath())) {
         return;
+    }
 
     CandidateFile candidate = m_candidates.value(filePath);
 
@@ -400,15 +402,6 @@ QString WatchFolderManager::fingerprintForFile(const QString &filePath,
 bool WatchFolderManager::alreadyProcessed(const QString &fingerprint) const
 {
     return m_processedFingerprints.contains(fingerprint);
-}
-
-bool WatchFolderManager::isPending(const QString &filePath,
-                                   const QString &fingerprint) const
-{
-    const QString cleanedPath =
-        QDir::cleanPath(QFileInfo(filePath).absoluteFilePath());
-
-    return m_pendingFingerprintsByPath.value(cleanedPath) == fingerprint;
 }
 
 void WatchFolderManager::markPending(const QString &filePath,
