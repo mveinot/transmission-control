@@ -5,7 +5,6 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
-#include <QTimer>
 #include <QVector>
 
 #include <functional>
@@ -95,9 +94,6 @@ private:
     bool m_baselineLoaded = false;
     QHash<TorrentKey, TorrentState> m_knownTorrentStates;
     QHash<TorrentKey, qint64> m_directlyNotifiedAddedTorrentKeys;
-    QTimer m_directlyNotifiedAddedKeyExpiryTimer;
-
-    void expireDirectlyNotifiedAddedKeys(qint64 nowMs);
 };
 
 #endif // NOTIFICATIONCONTROLLER_H
