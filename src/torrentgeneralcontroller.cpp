@@ -83,6 +83,10 @@ void TorrentGeneralController::clear()
 
     m_currentDetailsCache.clear();
     m_currentPieces = {};
+    m_pieceCountCacheKey.clear();
+    m_pieceCountCacheBitfield.clear();
+    m_pieceCountCachePieceCount = -1;
+    m_cachedCompletedPieceCount = 0;
     m_currentTorrentKey.clear();
     m_currentHashString.clear();
     m_currentMagnetLink.clear();
@@ -97,10 +101,32 @@ void TorrentGeneralController::update(const TorrentDetails &details)
     m_currentHashString = details.hashString;
     m_currentMagnetLink = details.magnetLink;
 
+    const QVariant pieceCountValue =
+        m_currentDetailsCache.value(QStringLiteral("pieceCount"));
+    if (pieceCountValue.isValid()) {
+        const int pieceCount = qMax(0, pieceCountValue.toInt());
+        QByteArray bitfield;
+        const QVariant piecesValue =
+            m_currentDetailsCache.value(QStringLiteral("pieces"));
+        if (piecesValue.isValid()) {
+            bitfield = QByteArray::fromBase64(
+                piecesValue.toString().toLatin1());
+        } else if (m_currentPieces.key == details.key) {
+            bitfield = m_currentPieces.completedPieces;
+        }
+        m_currentDetailsCache.insert(
+            QStringLiteral("completedPieceCount"),
+            completedPieceCountFor(details.key, pieceCount, bitfield));
+    }
+
     updateGeneralFields(details);
 
     if (m_pieceProgressController && m_currentPieces.key == details.key)
-        m_pieceProgressController->update(m_currentPieces);
+        m_pieceProgressController->update(
+            m_currentPieces,
+            completedPieceCountFor(m_currentPieces.key,
+                                  m_currentPieces.pieceCount,
+                                  m_currentPieces.completedPieces));
 
     if (m_detailsTabController)
         m_detailsTabController->update(m_currentDetailsCache);
@@ -118,16 +144,49 @@ void TorrentGeneralController::updatePieces(const TorrentPieces &pieces)
         return;
 
     m_currentPieces = pieces;
+    const int completedPieceCount = completedPieceCountFor(
+        pieces.key, pieces.pieceCount, pieces.completedPieces);
     m_currentDetailsCache.insert(QStringLiteral("pieceCount"), pieces.pieceCount);
     m_currentDetailsCache.insert(QStringLiteral("pieces"),
                                  QString::fromLatin1(pieces.completedPieces.toBase64()));
+    m_currentDetailsCache.insert(QStringLiteral("completedPieceCount"),
+                                 completedPieceCount);
     m_currentDetailsCache.insert(QStringLiteral("percentDone"), pieces.percentDone);
 
     if (m_pieceProgressController)
-        m_pieceProgressController->update(pieces);
+        m_pieceProgressController->update(pieces, completedPieceCount);
 
     if (m_detailsTabController)
         m_detailsTabController->update(m_currentDetailsCache);
+}
+
+int TorrentGeneralController::completedPieceCountFor(
+    const TorrentKey &key, int pieceCount, const QByteArray &pieceBitfield)
+{
+    pieceCount = qMax(0, pieceCount);
+    if (m_pieceCountCacheKey == key
+        && m_pieceCountCachePieceCount == pieceCount
+        && m_pieceCountCacheBitfield == pieceBitfield) {
+        return m_cachedCompletedPieceCount;
+    }
+
+    int completed = 0;
+    for (int index = 0; index < pieceCount; ++index) {
+        const int byteIndex = index / 8;
+        if (byteIndex >= pieceBitfield.size())
+            continue;
+
+        const int bitIndex = 7 - (index % 8);
+        const uchar byte = static_cast<uchar>(pieceBitfield.at(byteIndex));
+        if ((byte & (1u << bitIndex)) != 0)
+            ++completed;
+    }
+
+    m_pieceCountCacheKey = key;
+    m_pieceCountCachePieceCount = pieceCount;
+    m_pieceCountCacheBitfield = pieceBitfield;
+    m_cachedCompletedPieceCount = completed;
+    return completed;
 }
 
 TorrentKey TorrentGeneralController::currentTorrentKey() const

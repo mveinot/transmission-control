@@ -59,6 +59,9 @@ signals:
 
 private:
     static bool looksLikeUrl(const QString &text);
+    int completedPieceCountFor(const TorrentKey &key,
+                               int pieceCount,
+                               const QByteArray &pieceBitfield);
     void configureMagnetLabel();
     void updateGeneralFields(const TorrentDetails &details);
 
@@ -67,6 +70,10 @@ private:
     TorrentDetailsTabController *m_detailsTabController = nullptr;
     QVariantMap m_currentDetailsCache;
     TorrentPieces m_currentPieces;
+    TorrentKey m_pieceCountCacheKey;
+    QByteArray m_pieceCountCacheBitfield;
+    int m_pieceCountCachePieceCount = -1;
+    int m_cachedCompletedPieceCount = 0;
     TorrentKey m_currentTorrentKey;
     QString m_currentHashString;
     QString m_currentMagnetLink;
