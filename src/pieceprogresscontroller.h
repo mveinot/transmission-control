@@ -22,7 +22,7 @@ public:
     QWidget *widget() const;
 
     void clear();
-    void update(const TorrentPieces &pieces);
+    void update(const TorrentPieces &pieces, int completedPieceCount = -1);
 
 private:
     PieceProgressBarWidget *m_pieceProgressBar = nullptr;

@@ -282,23 +282,8 @@ void TorrentDetailsTabController::update(const QVariantMap &details)
 
     const qint64 pieceSize = jsonInt64(QStringLiteral("pieceSize"));
     const int pieceCount = details.value(QStringLiteral("pieceCount")).toInt();
-    const QByteArray pieces = QByteArray::fromBase64(
-        details.value(QStringLiteral("pieces")).toString().toLatin1()
-    );
-
-    int completedPieces = 0;
-    if (pieceCount > 0 && !pieces.isEmpty()) {
-        for (int index = 0; index < pieceCount; ++index) {
-            const int byteIndex = index / 8;
-            const int bitIndex = 7 - (index % 8);
-
-            if (byteIndex >= 0 && byteIndex < pieces.size()) {
-                const uchar byte = static_cast<uchar>(pieces.at(byteIndex));
-                if ((byte & (1u << bitIndex)) != 0)
-                    ++completedPieces;
-            }
-        }
-    }
+    const int completedPieces =
+        details.value(QStringLiteral("completedPieceCount")).toInt();
 
     addSection(tr("State"));
     addRowIfPresent(QStringLiteral("status"), tr("Status"), statusText(details.value(QStringLiteral("status"), -1).toInt()));

@@ -25,7 +25,8 @@ void PieceProgressController::clear()
         m_pieceProgressBar->clear();
 }
 
-void PieceProgressController::update(const TorrentPieces &pieces)
+void PieceProgressController::update(const TorrentPieces &pieces,
+                                     int completedPieceCount)
 {
     if (!m_pieceProgressBar)
         return;
@@ -33,5 +34,6 @@ void PieceProgressController::update(const TorrentPieces &pieces)
     m_pieceProgressBar->setProgress(
         pieces.pieceCount,
         pieces.completedPieces,
-        pieces.percentDone);
+        pieces.percentDone,
+        completedPieceCount);
 }

@@ -2,6 +2,7 @@
 #define PIECEPROGRESSBARWIDGET_H
 
 #include <QByteArray>
+#include <QVector>
 #include <QWidget>
 
 // Full-width two-band torrent progress visualization with a fixed,
@@ -22,7 +23,8 @@ public:
     void clear();
     void setProgress(int pieceCount,
                      const QByteArray &pieceBitfield,
-                     double percentDone);
+                     double percentDone,
+                     int completedPieceCount = -1);
 
     int pieceCount() const;
     int completedPieceCount() const;
@@ -40,11 +42,15 @@ protected:
 
 private:
     bool hasPiece(int index) const;
-    double completedFraction(const PieceRange &range) const;
+    void updatePieceColumnCompletionFractions(int piecesWidth);
 
     int m_pieceCount = 0;
+    int m_completedPieceCount = 0;
     QByteArray m_pieceBitfield;
     double m_percentDone = 0.0;
+    QVector<double> m_pieceColumnCompletionFractions;
+    int m_cachedColumnCount = -1;
+    bool m_pieceColumnCompletionFractionsValid = false;
 };
 
 #endif // PIECEPROGRESSBARWIDGET_H

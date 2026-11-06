@@ -41,8 +41,12 @@ PieceProgressBarWidget::PieceProgressBarWidget(QWidget *parent)
 void PieceProgressBarWidget::clear()
 {
     m_pieceCount = 0;
+    m_completedPieceCount = 0;
     m_pieceBitfield.clear();
     m_percentDone = 0.0;
+    m_pieceColumnCompletionFractions.clear();
+    m_cachedColumnCount = -1;
+    m_pieceColumnCompletionFractionsValid = false;
     setToolTip(QString());
     setAccessibleDescription(tr("No piece completion data available."));
     update();
@@ -50,15 +54,32 @@ void PieceProgressBarWidget::clear()
 
 void PieceProgressBarWidget::setProgress(int pieceCount,
                                          const QByteArray &pieceBitfield,
-                                         double percentDone)
+                                         double percentDone,
+                                         int completedPieceCount)
 {
-    m_pieceCount = qMax(0, pieceCount);
+    const int normalizedPieceCount = qMax(0, pieceCount);
+    const bool pieceBitfieldChanged =
+        m_pieceCount != normalizedPieceCount
+        || m_pieceBitfield != pieceBitfield;
+    m_pieceCount = normalizedPieceCount;
     m_pieceBitfield = pieceBitfield;
     m_percentDone = qBound(0.0, percentDone, 1.0);
+    if (completedPieceCount >= 0) {
+        m_completedPieceCount = qBound(0, completedPieceCount, m_pieceCount);
+    } else if (pieceBitfieldChanged) {
+        m_completedPieceCount = 0;
+        for (int index = 0; index < m_pieceCount; ++index) {
+            if (hasPiece(index))
+                ++m_completedPieceCount;
+        }
+    }
+    if (pieceBitfieldChanged)
+        m_pieceColumnCompletionFractionsValid = false;
+
     const QString progressSummary =
         tr("%1% downloaded · %2 of %3 pieces complete")
             .arg(m_percentDone * 100.0, 0, 'f', 1)
-            .arg(completedPieceCount())
+            .arg(m_completedPieceCount)
             .arg(m_pieceCount);
     setToolTip(progressSummary);
     // Keep assistive output synchronized with the visual and hover summaries.
@@ -73,12 +94,7 @@ int PieceProgressBarWidget::pieceCount() const
 
 int PieceProgressBarWidget::completedPieceCount() const
 {
-    int completed = 0;
-    for (int index = 0; index < m_pieceCount; ++index) {
-        if (hasPiece(index))
-            ++completed;
-    }
-    return completed;
+    return m_completedPieceCount;
 }
 
 double PieceProgressBarWidget::percentDone() const
@@ -125,18 +141,34 @@ bool PieceProgressBarWidget::hasPiece(int index) const
     return (byte & (1u << bitIndex)) != 0;
 }
 
-double PieceProgressBarWidget::completedFraction(const PieceRange &range) const
+void PieceProgressBarWidget::updatePieceColumnCompletionFractions(
+    int piecesWidth)
 {
-    const int count = range.lastExclusive - range.first;
-    if (count <= 0)
-        return 0.0;
-
-    int completed = 0;
-    for (int index = range.first; index < range.lastExclusive; ++index) {
-        if (hasPiece(index))
-            ++completed;
+    const int columnCount = qMin(m_pieceCount, piecesWidth);
+    if (m_pieceColumnCompletionFractionsValid
+        && m_cachedColumnCount == columnCount) {
+        return;
     }
-    return static_cast<double>(completed) / count;
+
+    // Each logical column owns a disjoint piece range. Compute the fractions
+    // when the bitfield or column count changes, not on every paint event.
+    m_pieceColumnCompletionFractions.resize(columnCount);
+    for (int column = 0; column < columnCount; ++column) {
+        const PieceRange range =
+            pieceRangeForColumn(column, columnCount, m_pieceCount);
+        const int count = range.lastExclusive - range.first;
+        int completed = 0;
+        for (int index = range.first; index < range.lastExclusive; ++index) {
+            if (hasPiece(index))
+                ++completed;
+        }
+        m_pieceColumnCompletionFractions[column] = count > 0
+            ? static_cast<double>(completed) / count
+            : 0.0;
+    }
+
+    m_cachedColumnCount = columnCount;
+    m_pieceColumnCompletionFractionsValid = true;
 }
 
 void PieceProgressBarWidget::paintEvent(QPaintEvent *event)
@@ -170,6 +202,7 @@ void PieceProgressBarWidget::paintEvent(QPaintEvent *event)
     }
 
     if (m_pieceCount > 0 && piecesRect.width() > 0) {
+        updatePieceColumnCompletionFractions(piecesRect.width());
         const int columns = qMin(m_pieceCount, piecesRect.width());
         for (int column = 0; column < columns; ++column) {
             const int left = piecesRect.x()
@@ -178,13 +211,10 @@ void PieceProgressBarWidget::paintEvent(QPaintEvent *event)
             const int right = piecesRect.x()
                 + static_cast<int>((static_cast<qint64>(column + 1)
                                     * piecesRect.width()) / columns);
-            const PieceRange range =
-                pieceRangeForColumn(column, columns, m_pieceCount);
-
             painter.fillRect(QRect(left, piecesRect.y(), qMax(1, right - left),
                                    piecesRect.height()),
                              blendedColor(background, foreground,
-                                          completedFraction(range)));
+                                          m_pieceColumnCompletionFractions.at(column)));
         }
     }
 
