@@ -167,9 +167,11 @@ bool TorrentGeneralController::looksLikeUrl(const QString &text)
         return false;
 
     const QUrl url = QUrl::fromUserInput(trimmed);
+    const QString scheme = url.scheme().toLower();
 
     return url.isValid()
-           && !url.scheme().isEmpty()
+           && (scheme == QStringLiteral("http")
+               || scheme == QStringLiteral("https"))
            && !url.host().isEmpty();
 }
 
