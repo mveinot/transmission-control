@@ -68,7 +68,6 @@ void WatchFolderManager::setWatchFolder(const QString &folderPath)
 
     m_watchFolder = cleanedPath;
     m_candidates.clear();
-    m_pendingFingerprintsByPath.clear();
     m_folderUnavailable = false;
 
     if (m_enabled)
@@ -110,7 +109,6 @@ void WatchFolderManager::clearProcessedHistory()
 {
     m_processedFingerprints.clear();
     m_candidates.clear();
-    m_pendingFingerprintsByPath.clear();
     saveProcessedFingerprints();
 
     if (m_enabled)
@@ -215,7 +213,6 @@ void WatchFolderManager::stopWatcher()
     m_folderRetryTimer.stop();
     m_nativeWatcherActive = false;
     m_candidates.clear();
-    m_pendingFingerprintsByPath.clear();
 }
 
 void WatchFolderManager::handleUnavailableFolder(const QString &message)
@@ -265,7 +262,6 @@ QStringList WatchFolderManager::torrentFilesInWatchFolder() const
     QDir dir(m_watchFolder);
 
     const QFileInfoList entries = dir.entryInfoList(
-        QStringList { QStringLiteral("*.torrent") },
         QDir::Files | QDir::Readable | QDir::NoSymLinks,
         QDir::Name
         );
@@ -273,8 +269,11 @@ QStringList WatchFolderManager::torrentFilesInWatchFolder() const
     QStringList result;
     result.reserve(entries.size());
 
-    for (const QFileInfo &entry : entries)
-        result.append(entry.absoluteFilePath());
+    for (const QFileInfo &entry : entries) {
+        const QString filePath = entry.absoluteFilePath();
+        if (isTorrentFile(filePath))
+            result.append(filePath);
+    }
 
     return result;
 }
