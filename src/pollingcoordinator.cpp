@@ -135,6 +135,9 @@ void PollingCoordinator::requestSelectedTorrent(bool includeSummary)
 
 void PollingCoordinator::handleTorrentListReceived()
 {
+    // A valid list snapshot is authoritative even if a backend previously
+    // reported a failure without a matching updateFinished signal.
+    m_backendUpdateFailedSinceLastFinished = false;
     handleBackendUpdateFinished();
     refreshSlowData();
     requestVisibleTorrentData();
@@ -143,6 +146,7 @@ void PollingCoordinator::handleTorrentListReceived()
 void PollingCoordinator::handleBackendUpdateFailed(const QString &message)
 {
     Q_UNUSED(message)
+    m_backendUpdateFailedSinceLastFinished = true;
     if (m_retryTimer->isActive())
         return;
 
@@ -152,6 +156,11 @@ void PollingCoordinator::handleBackendUpdateFailed(const QString &message)
 
 void PollingCoordinator::handleBackendUpdateFinished()
 {
+    if (m_backendUpdateFailedSinceLastFinished) {
+        m_backendUpdateFailedSinceLastFinished = false;
+        return;
+    }
+
     const bool wasRetrying = m_retryAttempt > 0 || m_retryTimer->isActive();
     m_retryTimer->stop();
     m_retryAttempt = 0;
@@ -175,6 +184,7 @@ void PollingCoordinator::resetForServerChange()
     m_commandRefreshTimer->stop();
     m_retryTimer->stop();
     m_retryAttempt = 0;
+    m_backendUpdateFailedSinceLastFinished = false;
     m_pendingCommandDetailsRefresh = false;
     m_lastFreeSpaceRefreshMs = 0;
     m_lastTrackerMetadataRefreshMs = 0;

@@ -92,6 +92,7 @@ private:
     bool m_detailsPaneVisible = true;
     bool m_fileRefreshSuppressed = false;
     bool m_pendingCommandDetailsRefresh = false;
+    bool m_backendUpdateFailedSinceLastFinished = false;
     int m_retryAttempt = 0;
 
     void requestVisibleTorrentData();
