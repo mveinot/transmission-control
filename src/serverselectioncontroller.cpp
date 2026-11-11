@@ -28,8 +28,7 @@ void ServerSelectionController::reloadProfiles()
     if (!m_selector)
         return;
 
-    const int previousSettingsIndex = currentProfile().settingsIndex;
-    const bool hadPreviousSelection = previousSettingsIndex >= 0;
+    const QString previousProfileId = currentProfile().id;
     m_profiles = m_repository.loadProfiles();
     const int defaultIndex = m_repository.defaultIndex();
 
@@ -51,9 +50,9 @@ void ServerSelectionController::reloadProfiles()
     }
 
     m_selector->setEnabled(true);
-    int comboIndex = hadPreviousSelection
-                         ? comboIndexForSettingsIndex(previousSettingsIndex)
-                         : -1;
+    int comboIndex = comboIndexForProfileId(previousProfileId);
+    if (comboIndex < 0)
+        comboIndex = comboIndexForSettingsIndex(defaultIndex);
     if (comboIndex < 0)
         comboIndex = comboIndexForSettingsIndex(m_repository.preferredIndex());
     if (comboIndex < 0)
@@ -126,6 +125,19 @@ bool ServerSelectionController::hasProfiles() const
 int ServerSelectionController::comboIndexForSettingsIndex(int settingsIndex) const
 {
     return m_selector ? m_selector->findData(settingsIndex) : -1;
+}
+
+int ServerSelectionController::comboIndexForProfileId(
+    const QString &profileId) const
+{
+    if (!m_selector || profileId.isEmpty())
+        return -1;
+
+    for (int index = 0; index < m_profiles.size(); ++index) {
+        if (m_profiles.at(index).id == profileId)
+            return index;
+    }
+    return -1;
 }
 
 QString ServerSelectionController::profileLabel(const ServerProfile &profile,

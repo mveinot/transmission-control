@@ -5,12 +5,14 @@
 
 #include <QList>
 #include <QString>
+#include <QUuid>
 #include <QVector>
 
-// Backend-neutral connection definition. The persistent array index remains
-// metadata rather than identity so profiles can be validated before use.
+// Backend-neutral connection definition. id is stable across array reordering;
+// settingsIndex records the current position in the persisted profile array.
 struct ServerProfile
 {
+    QString id = QUuid::createUuid().toString(QUuid::WithoutBraces);
     int settingsIndex = -1;
     QString backendType = QStringLiteral("transmission");
     QString name;

@@ -85,6 +85,7 @@ inline constexpr const char *ServersArray =                 "servers";
 inline constexpr const char *ServersDefaultIndex =          "servers/defaultIndex";
 inline constexpr const char *ServersCurrentIndex =          "servers/currentIndex";
 inline constexpr const char *ServerName =                   "name";
+inline constexpr const char *ServerProfileId =              "profileId";
 inline constexpr const char *ServerBackendType =            "backendType";
 inline constexpr const char *ServerRpcUrl =                 "rpcUrl";
 inline constexpr const char *ServerUsername =               "username";

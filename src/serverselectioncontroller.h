@@ -39,6 +39,7 @@ private:
     QVector<ServerProfile> m_profiles;
 
     int comboIndexForSettingsIndex(int settingsIndex) const;
+    int comboIndexForProfileId(const QString &profileId) const;
     QString profileLabel(const ServerProfile &profile, int defaultIndex) const;
 };
 

@@ -38,12 +38,19 @@ QVector<ServerProfile> ServerProfileRepository::loadProfiles() const
     QSettings settings;
     const int count = settings.beginReadArray(SettingsKeys::ServersArray);
     profiles.reserve(count);
+    bool addedMissingProfileIds = false;
 
     for (int index = 0; index < count; ++index) {
         settings.setArrayIndex(index);
 
         ServerProfile profile;
         profile.settingsIndex = index;
+        profile.id = settings.value(SettingsKeys::ServerProfileId).toString().trimmed();
+        if (profile.id.isEmpty()) {
+            profile.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+            settings.setValue(SettingsKeys::ServerProfileId, profile.id);
+            addedMissingProfileIds = true;
+        }
         profile.backendType = normalizedBackendType(
             settings.value(SettingsKeys::ServerBackendType,
                            QStringLiteral("transmission")).toString());
@@ -69,6 +76,8 @@ QVector<ServerProfile> ServerProfileRepository::loadProfiles() const
     }
 
     settings.endArray();
+    if (addedMissingProfileIds)
+        settings.sync();
     return profiles;
 }
 
@@ -81,6 +90,7 @@ bool ServerProfileRepository::saveProfiles(
     for (int index = 0; index < profiles.size(); ++index) {
         const ServerProfile &profile = profiles.at(index);
         settings.setArrayIndex(index);
+        settings.setValue(SettingsKeys::ServerProfileId, profile.id);
         settings.setValue(SettingsKeys::ServerName, profile.name);
         settings.setValue(SettingsKeys::ServerBackendType,
                           normalizedBackendType(profile.backendType));
