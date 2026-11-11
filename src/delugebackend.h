@@ -5,8 +5,10 @@
 
 #include <QHash>
 #include <QJsonArray>
+#include <QList>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QVector>
 
 // Deluge Web JSON-RPC transport. Torrent projections and commands are added
 // independently; this layer owns authentication, daemon readiness, request
@@ -110,18 +112,53 @@ private:
         quint64 addRequestId = 0;
         QString requestedPath;
         TorrentKey torrentKey;
+        QVector<int> filePriorities;
+        QJsonArray trackers;
         QJsonArray parameters;
         quint64 generation = 0;
         bool deleteTorrentFileOnSuccess = false;
         bool retriedAuthentication = false;
+        bool updatesFilePriorities = false;
+        bool updatesTrackers = false;
+    };
+
+    struct FilePriorityEdit {
+        QList<int> fileIndices;
+        bool wanted = true;
+        int priority = 0;
+        bool changePriority = false;
+    };
+
+    struct FilePriorityUpdateState {
+        QList<FilePriorityEdit> queuedEdits;
+        bool requestInFlight = false;
+    };
+
+    enum class TrackerEditKind {
+        Add,
+        Edit,
+        Remove
+    };
+
+    struct TrackerEdit {
+        TrackerEditKind kind = TrackerEditKind::Add;
+        int trackerIndex = -1;
+        QString announceUrl;
+    };
+
+    struct TrackerUpdateState {
+        QList<TrackerEdit> queuedEdits;
+        bool requestInFlight = false;
     };
 
     QNetworkAccessManager m_network;
     QHash<QNetworkReply *, RequestContext> m_requests;
     QList<RequestContext> m_requestsPendingAfterAuthentication;
     QHash<TorrentKey, QVector<int>> m_filePrioritiesByKey;
+    QHash<TorrentKey, FilePriorityUpdateState> m_filePriorityUpdatesByKey;
     QHash<TorrentKey, QHash<QString, int>> m_fileIndicesByKey;
     QHash<TorrentKey, QJsonArray> m_trackersByKey;
+    QHash<TorrentKey, TrackerUpdateState> m_trackerUpdatesByKey;
     QHash<TorrentKey, TorrentProperties> m_propertiesByKey;
     QJsonObject m_sessionConfig;
     QString m_serverName;
@@ -158,8 +195,13 @@ private:
     void setFilePriorities(const TorrentKey &torrentKey,
                            const QList<int> &fileIndices, bool wanted,
                            int priority, bool changePriority);
-    void setTrackers(const TorrentKey &torrentKey,
-                     const QJsonArray &trackers);
+    void sendNextFilePriorityUpdate(const TorrentKey &torrentKey);
+    void finishFilePriorityUpdate(const RequestContext &context,
+                                  bool succeeded);
+    void queueTrackerEdit(const TorrentKey &torrentKey,
+                          const TrackerEdit &edit);
+    void sendNextTrackerUpdate(const TorrentKey &torrentKey);
+    void finishTrackerUpdate(const RequestContext &context, bool succeeded);
     static QJsonObject normalizeSessionSettings(
         const QJsonObject &nativeSettings);
     QNetworkRequest makeRequest() const;
