@@ -438,7 +438,7 @@ $repositoryUrl = sprintf(
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
     <meta name="theme-color" content="#10131a">
-    <meta name="description" content="Download the latest Planetary release for macOS and read release notes.">
+    <meta name="description" content="Download Planetary for macOS, Windows, and Linux, and read release notes.">
     <title>Downloads — Planetary</title>
     <link rel="icon" href="../favicon.png">
     <link rel="stylesheet" href="../styles.css">
@@ -465,8 +465,8 @@ $repositoryUrl = sprintf(
         <h1>Get Planetary.</h1>
         <p class="lead">
             Download the universal app for Apple Silicon and Intel Macs running
-            macOS 13 or later, or install it with Homebrew. Windows and Linux
-            builds are available from source while release packaging matures.
+            macOS 14.4 or later, or install it with Homebrew. Current releases
+            also include a Windows x64 installer and a Linux x86_64 AppImage.
         </p>
     </section>
 
