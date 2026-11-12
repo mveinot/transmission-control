@@ -299,6 +299,20 @@ bool importSettings(QWidget *parent, const QString &filePath)
     // Parsing and structural validation complete before clear(), preventing a
     // malformed document from partially replacing the current configuration.
     QSettings settings;
+    settings.sync();
+    if (settings.status() != QSettings::NoError) {
+        QMessageBox::warning(
+            parent,
+            QObject::tr("Import Settings Failed"),
+            QObject::tr("Planetary could not read the current settings, so the imported settings were not applied.")
+            );
+        return false;
+    }
+
+    QMap<QString, QVariant> previousValues;
+    const QStringList existingKeys = settings.allKeys();
+    for (const QString &key : existingKeys)
+        previousValues.insert(key, settings.value(key));
 
     settings.clear();
 
@@ -307,10 +321,24 @@ bool importSettings(QWidget *parent, const QString &filePath)
 
     settings.sync();
     if (settings.status() != QSettings::NoError) {
+        // Use a fresh QSettings instance because the failed writer retains its
+        // error status. Restore the snapshot before returning the import error.
+        QSettings rollbackSettings;
+        rollbackSettings.clear();
+        for (auto it = previousValues.constBegin();
+             it != previousValues.constEnd(); ++it) {
+            rollbackSettings.setValue(it.key(), it.value());
+        }
+        rollbackSettings.sync();
+        const bool previousSettingsRestored =
+            rollbackSettings.status() == QSettings::NoError;
+
         QMessageBox::warning(
             parent,
             QObject::tr("Import Settings Failed"),
-            QObject::tr("Planetary could not save the imported settings. They may not be available after restarting the app.")
+            previousSettingsRestored
+                ? QObject::tr("Planetary could not save the imported settings. Your previous settings were restored.")
+                : QObject::tr("Planetary could not save the imported settings, and could not confirm that your previous settings were restored. Settings may be incomplete after restarting the app.")
             );
         return false;
     }
