@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SSH_TARGET="${PLANETARY_WINDOWS_SSH_TARGET:-Mark@192.168.10.158}"
+SSH_TARGET="${PLANETARY_WINDOWS_SSH_TARGET:-Mark@192.168.10.160}"
 REMOTE_REPO="${PLANETARY_WINDOWS_REPO:-C:\\Users\\Mark\\Documents\\transmission-control}"
 GIT_URL="${PLANETARY_RELEASE_GIT_URL:-https://github.com/mveinot/transmission-control.git}"
 
