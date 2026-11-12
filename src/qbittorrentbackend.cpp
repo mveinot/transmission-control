@@ -23,6 +23,17 @@ void closeTorrentUploadFile(QNetworkReply *reply) {
     file->close();
 }
 
+bool isObjectArray(const QJsonDocument &document) {
+  if (!document.isArray())
+    return false;
+
+  for (const QJsonValue &value : document.array()) {
+    if (!value.isObject())
+      return false;
+  }
+  return true;
+}
+
 int normalizedStatus(const QString &state) {
   const QString value = state.toLower();
 
@@ -255,6 +266,7 @@ void QBittorrentBackend::setServer(const QString &name, const QString &url,
   m_addsPendingAfterLogin.clear();
   m_readsPendingAfterLogin.clear();
   m_infoByKey.clear();
+  m_detailPropertiesByKey.clear();
   m_editorPropertiesByKey.clear();
   m_trackerUrlsByKey.clear();
   m_filePathsByKey.clear();
@@ -951,14 +963,23 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
 
   if (context.kind == RequestKind::TorrentInfo) {
     const QJsonArray array = document.array();
-    if (!array.isEmpty())
-      m_infoByKey.insert(context.key, array.first().toObject().toVariantMap());
+    if (!array.isEmpty()) {
+      const QVariantMap info = array.first().toObject().toVariantMap();
+      m_infoByKey.insert(context.key, info);
+      const auto properties = m_detailPropertiesByKey.constFind(context.key);
+      if (properties != m_detailPropertiesByKey.cend())
+        emit torrentDetailsReceived(normalizeDetails(info, properties.value()));
+    }
   } else if (context.kind == RequestKind::TorrentProperties) {
     const QVariantMap properties = document.object().toVariantMap();
+    m_detailPropertiesByKey.insert(context.key, properties);
     const QVariantMap info = m_infoByKey.value(context.key);
     if (!info.isEmpty())
       emit torrentDetailsReceived(normalizeDetails(info, properties));
   } else if (context.kind == RequestKind::TorrentPieces) {
+    if (!document.isArray())
+      return;
+
     const QJsonArray states = document.array();
     TorrentPieces pieces;
     pieces.key = context.key;
@@ -989,6 +1010,9 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
           static_cast<double>(completedCount) / pieces.pieceCount;
     emit torrentPiecesReceived(pieces);
   } else if (context.kind == RequestKind::TorrentFiles) {
+    if (!isObjectArray(document))
+      return;
+
     const QJsonArray sourceFiles = document.array();
     TorrentFiles files;
     files.key = context.key;
@@ -1020,10 +1044,22 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
     m_filePathsByKey.insert(context.key, filePaths);
     emit torrentFilesReceived(files);
   } else if (context.kind == RequestKind::TorrentPeers) {
+    if (!document.isObject())
+      return;
+
+    const QJsonValue peersValue =
+        document.object().value(QStringLiteral("peers"));
+    if (!peersValue.isObject())
+      return;
+
+    const QJsonObject sourcePeers = peersValue.toObject();
+    for (auto it = sourcePeers.cbegin(); it != sourcePeers.cend(); ++it) {
+      if (!it.value().isObject())
+        return;
+    }
+
     TorrentPeers peers;
     peers.key = context.key;
-    const QJsonObject sourcePeers =
-        document.object().value(QStringLiteral("peers")).toObject();
     peers.peers.reserve(sourcePeers.size());
 
     for (auto it = sourcePeers.constBegin(); it != sourcePeers.constEnd(); ++it) {
@@ -1048,6 +1084,9 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
     }
     emit torrentPeersReceived(peers);
   } else if (context.kind == RequestKind::TorrentTrackers) {
+    if (!isObjectArray(document))
+      return;
+
     const QJsonArray sourceTrackers = document.array();
     TorrentTrackers trackers;
     trackers.key = context.key;

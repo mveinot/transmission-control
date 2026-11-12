@@ -116,6 +116,7 @@ private:
   QNetworkAccessManager m_network;
   QHash<QNetworkReply *, RequestContext> m_requests;
   QHash<TorrentKey, QVariantMap> m_infoByKey;
+  QHash<TorrentKey, QVariantMap> m_detailPropertiesByKey;
   QHash<TorrentKey, TorrentProperties> m_editorPropertiesByKey;
   QHash<TorrentKey, QHash<int, QString>> m_trackerUrlsByKey;
   QHash<TorrentKey, QSet<QString>> m_filePathsByKey;
