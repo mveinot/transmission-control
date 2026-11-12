@@ -769,19 +769,6 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
             emit blocklistUpdateFinished(ruleCount);
         }
 
-        if (context.method == "torrent-add" &&
-            context.deleteTorrentFileOnSuccess &&
-            !context.torrentFilePath.isEmpty()) {
-
-            if (QFile::remove(context.torrentFilePath)) {
-                qDebug() << "Deleted torrent file after successful add:"
-                         << context.torrentFilePath;
-            } else {
-                qWarning() << "Could not delete torrent file after add:"
-                           << context.torrentFilePath;
-            }
-        }
-
         if (context.method == QStringLiteral("torrent-add")) {
             const QJsonObject arguments = protocolReply.result;
             const QJsonObject added =
@@ -789,30 +776,57 @@ void TransmissionBackend::replyFinished(QNetworkReply *reply)
             const QJsonObject duplicate =
                 arguments.value(QStringLiteral("torrent-duplicate")).toObject();
 
-            if (!added.isEmpty()) {
-                const TorrentKey key = torrentKeyFromObject(added);
-                const QString name =
-                    added.value(QStringLiteral("name")).toString();
-                emit torrentAdded(
-                    key, name);
-                emit torrentAddCompleted(context.addRequestId,
-                                         TorrentAddCompletion::Added,
-                                         key, name, {});
-            } else if (!duplicate.isEmpty()) {
-                emit torrentAddCompleted(
-                    context.addRequestId,
-                    TorrentAddCompletion::Duplicate,
-                    torrentKeyFromObject(duplicate),
-                    duplicate.value(QStringLiteral("name")).toString(), {});
-            } else {
-                const QString message =
-                    tr("Transmission did not report which torrent was added.");
+            const auto failTorrentAdd = [this, &context](const QString &message) {
+                if (!context.torrentFilePath.isEmpty())
+                    emit torrentFileAddFailed(context.torrentFilePath, message);
                 emit torrentAddCompleted(context.addRequestId,
                                          TorrentAddCompletion::Failed,
                                          {}, {}, message);
                 emit commandFailed(context.method, message);
+            };
+
+            TorrentAddCompletion completion;
+            TorrentKey torrentKey;
+            QString torrentName;
+            if (!added.isEmpty()) {
+                completion = TorrentAddCompletion::Added;
+                torrentKey = torrentKeyFromObject(added);
+                torrentName = added.value(QStringLiteral("name")).toString();
+            } else if (!duplicate.isEmpty()) {
+                completion = TorrentAddCompletion::Duplicate;
+                torrentKey = torrentKeyFromObject(duplicate);
+                torrentName = duplicate.value(QStringLiteral("name")).toString();
+            } else {
+                const QString message =
+                    tr("Transmission did not report which torrent was added.");
+                failTorrentAdd(message);
                 return;
             }
+
+            if (!isValidTorrentKey(torrentKey)) {
+                const QString message =
+                    tr("Transmission returned a torrent-add result without a valid torrent key.");
+                failTorrentAdd(message);
+                return;
+            }
+
+            // Transmission has confirmed either an addition or a duplicate;
+            // only now may the optional source-file cleanup run.
+            if (context.deleteTorrentFileOnSuccess &&
+                !context.torrentFilePath.isEmpty()) {
+                if (QFile::remove(context.torrentFilePath)) {
+                    qDebug() << "Deleted torrent file after successful add:"
+                             << context.torrentFilePath;
+                } else {
+                    qWarning() << "Could not delete torrent file after add:"
+                               << context.torrentFilePath;
+                }
+            }
+
+            if (completion == TorrentAddCompletion::Added)
+                emit torrentAdded(torrentKey, torrentName);
+            emit torrentAddCompleted(context.addRequestId, completion,
+                                     torrentKey, torrentName, {});
 
             if (!context.torrentFilePath.isEmpty())
                 emit torrentFileAddSucceeded(context.torrentFilePath);
