@@ -971,6 +971,9 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
         emit torrentDetailsReceived(normalizeDetails(info, properties.value()));
     }
   } else if (context.kind == RequestKind::TorrentProperties) {
+    if (!document.isObject())
+      return;
+
     const QVariantMap properties = document.object().toVariantMap();
     m_detailPropertiesByKey.insert(context.key, properties);
     const QVariantMap info = m_infoByKey.value(context.key);
@@ -1139,6 +1142,9 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
     m_trackerUrlsByKey.insert(context.key, trackerUrls);
     emit torrentTrackersReceived(trackers);
   } else if (context.kind == RequestKind::TorrentPropertyEditor) {
+    if (!document.isObject())
+      return;
+
     const QVariantMap nativeProperties = document.object().toVariantMap();
     const QVariantMap info = m_infoByKey.value(context.key);
     TorrentProperties properties;
@@ -1736,40 +1742,9 @@ void QBittorrentBackend::setTorrentProperties(
     commandPosted = true;
   }
 
-  // The properties resource does not repeat tags, category, or share limits.
-  // Keep the cached list projection coherent so Apply's immediate confirmation
-  // request does not momentarily restore the pre-command values.
-  QVariantMap info = m_infoByKey.value(key);
-  info.insert(QStringLiteral("tags"),
-              changes.labels.join(QStringLiteral(", ")));
-  if (changes.setGroup)
-    info.insert(QStringLiteral("category"), changes.group);
-  info.insert(QStringLiteral("ratio_limit"),
-              changes.seedRatioMode == 0
-                  ? -2.0
-                  : (changes.seedRatioMode == 2 ? -1.0
-                                                : changes.seedRatioLimit));
-  info.insert(QStringLiteral("inactive_seeding_time_limit"),
-              changes.seedIdleMode == 0
-                  ? -2
-                  : (changes.seedIdleMode == 2 ? -1
-                                              : changes.seedIdleLimit));
-  m_infoByKey.insert(key, info);
-
-  TorrentProperties confirmed = current;
-  confirmed.peerLimit = changes.peerLimit;
-  confirmed.downloadLimited = changes.downloadLimited;
-  confirmed.downloadLimit = changes.downloadLimit;
-  confirmed.uploadLimited = changes.uploadLimited;
-  confirmed.uploadLimit = changes.uploadLimit;
-  confirmed.seedRatioMode = changes.seedRatioMode;
-  confirmed.seedRatioLimit = changes.seedRatioLimit;
-  confirmed.seedIdleMode = changes.seedIdleMode;
-  confirmed.seedIdleLimit = changes.seedIdleLimit;
-  confirmed.labels = changes.labels;
-  if (changes.setGroup)
-    confirmed.group = changes.group;
-  m_editorPropertiesByKey.insert(key, confirmed);
+  // These updates are sent as independent asynchronous requests. Keep both
+  // caches at the last server-confirmed values; the read handlers refresh
+  // them after qBittorrent reports the actual state.
 
   if (!commandPosted)
     emit commandSucceeded(QStringLiteral("torrent-set"));
