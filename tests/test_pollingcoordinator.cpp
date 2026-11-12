@@ -198,7 +198,7 @@ void TestPollingCoordinator::failedPollingSchedulesRetry()
     coordinator.handleBackendUpdateFinished();
     coordinator.handleBackendUpdateFailed(QStringLiteral("connection refused"));
     QCOMPARE(retrySpy.size(), 2);
-    QCOMPARE(retrySpy.last().first().toInt(), 1);
+    QCOMPARE(retrySpy.last().first().toInt(), 2);
 }
 
 QTEST_GUILESS_MAIN(TestPollingCoordinator)
