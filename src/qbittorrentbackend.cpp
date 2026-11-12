@@ -962,14 +962,28 @@ void QBittorrentBackend::handleReply(QNetworkReply *reply) {
   }
 
   if (context.kind == RequestKind::TorrentInfo) {
+    if (!document.isArray())
+      return;
+
     const QJsonArray array = document.array();
-    if (!array.isEmpty()) {
-      const QVariantMap info = array.first().toObject().toVariantMap();
-      m_infoByKey.insert(context.key, info);
-      const auto properties = m_detailPropertiesByKey.constFind(context.key);
-      if (properties != m_detailPropertiesByKey.cend())
-        emit torrentDetailsReceived(normalizeDetails(info, properties.value()));
+    if (array.isEmpty())
+      return;
+
+    if (array.size() != 1 || !array.first().isObject())
+      return;
+
+    const QJsonObject source = array.first().toObject();
+    const QJsonValue hashValue = source.value(QStringLiteral("hash"));
+    if (!hashValue.isString()
+        || hashValue.toString().compare(context.key, Qt::CaseInsensitive) != 0) {
+      return;
     }
+
+    const QVariantMap info = source.toVariantMap();
+    m_infoByKey.insert(context.key, info);
+    const auto properties = m_detailPropertiesByKey.constFind(context.key);
+    if (properties != m_detailPropertiesByKey.cend())
+      emit torrentDetailsReceived(normalizeDetails(info, properties.value()));
   } else if (context.kind == RequestKind::TorrentProperties) {
     if (!document.isObject())
       return;
