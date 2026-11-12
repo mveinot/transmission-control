@@ -241,7 +241,9 @@ void TestQBittorrentBackend::commandsUseFormEncodedHashes()
 
 void TestQBittorrentBackend::selectedTorrentEndpointsAreProjected()
 {
-    FakeHttpServer server([](const FakeHttpServer::Request &request) {
+    int infoRequestCount = 0;
+    int propertiesRequestCount = 0;
+    FakeHttpServer server([&](const FakeHttpServer::Request &request) {
         if (request.target.startsWith("/api/v2/auth/login")) {
             return FakeHttpServer::Response{
                 200, "OK", {{"Set-Cookie", "SID=test; Path=/"}}, "Ok."};
@@ -249,6 +251,8 @@ void TestQBittorrentBackend::selectedTorrentEndpointsAreProjected()
 
         QByteArray body;
         if (request.target.startsWith("/api/v2/torrents/info")) {
+            if (request.target.contains("hashes=hash-one"))
+                ++infoRequestCount;
             body = QJsonDocument(
                        QJsonArray{QJsonObject{
                            {"hash", "hash-one"}, {"name", "Linux ISO"},
@@ -257,6 +261,7 @@ void TestQBittorrentBackend::selectedTorrentEndpointsAreProjected()
                        .toJson(QJsonDocument::Compact);
         } else if (request.target.startsWith(
                        "/api/v2/torrents/properties")) {
+            ++propertiesRequestCount;
             body = R"({"comment":"Release","created_by":"tool"})";
         } else if (request.target.startsWith(
                        "/api/v2/torrents/pieceStates")) {
@@ -312,11 +317,26 @@ void TestQBittorrentBackend::selectedTorrentEndpointsAreProjected()
     backend.getTorrentTrackers(QStringLiteral("hash-one"));
     backend.getTorrentPieces(QStringLiteral("hash-one"));
 
-    QTRY_COMPARE(details.size(), 1);
+    // The info and properties endpoints are independent requests. If the
+    // properties response arrives first, it can be combined with the info
+    // already cached from the torrent list; the later info response then
+    // emits a second, equally valid projection. Assert the resulting data
+    // instead of depending on which response wins the race.
+    QTRY_VERIFY(!details.isEmpty());
     QTRY_COMPARE(files.size(), 1);
     QTRY_COMPARE(peers.size(), 1);
     QTRY_COMPARE(trackers.size(), 1);
     QTRY_COMPARE(pieces.size(), 1);
+    QCOMPARE(infoRequestCount, 1);
+    QCOMPARE(propertiesRequestCount, 1);
+    const TorrentDetails detailSnapshot =
+        qvariant_cast<TorrentDetails>(details.last().first());
+    QCOMPARE(detailSnapshot.key, QStringLiteral("hash-one"));
+    QCOMPARE(detailSnapshot.name, QStringLiteral("Linux ISO"));
+    QCOMPARE(detailSnapshot.comment, QStringLiteral("Release"));
+    QCOMPARE(detailSnapshot.creator, QStringLiteral("tool"));
+    QCOMPARE(detailSnapshot.downloadDirectory, QStringLiteral("/downloads"));
+    QCOMPARE(detailSnapshot.totalSize, qint64(1000));
     const TorrentPieces pieceSnapshot =
         qvariant_cast<TorrentPieces>(pieces.first().first());
     QCOMPARE(pieceSnapshot.pieceCount, 3);
