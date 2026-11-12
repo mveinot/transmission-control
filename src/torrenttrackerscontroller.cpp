@@ -141,6 +141,7 @@ void TorrentTrackersController::restoreViewState()
 
 void TorrentTrackersController::clear()
 {
+    trackersLoaded = false;
     if (!trackerTableWidget)
         return;
 
@@ -153,6 +154,7 @@ void TorrentTrackersController::clear()
 
 void TorrentTrackersController::setLoading()
 {
+    trackersLoaded = false;
     if (!trackerTableWidget)
         return;
 
@@ -165,11 +167,14 @@ void TorrentTrackersController::setLoading()
 
 void TorrentTrackersController::setTorrentKey(TorrentKey torrentKey)
 {
+    if (this->torrentKey != torrentKey)
+        trackersLoaded = false;
     this->torrentKey = torrentKey;
 }
 
 void TorrentTrackersController::populate(const TorrentTrackers &snapshot)
 {
+    trackersLoaded = true;
     if (!trackerTableWidget)
         return;
 
@@ -315,7 +320,7 @@ QString TorrentTrackersController::trackerAnnounceUrlForRow(int row) const
 
 void TorrentTrackersController::addTrackerFromContextMenu()
 {
-    if (!client || !isValidTorrentKey(torrentKey))
+    if (!client || !isValidTorrentKey(torrentKey) || !trackersLoaded)
         return;
 
     bool ok = false;
@@ -429,7 +434,7 @@ void TorrentTrackersController::showContextMenu(const QPoint &pos)
     QAction *addTrackerAction = menu.addAction(tr("Add Tracker…"));
     addTrackerAction->setVisible(editingSupported);
     addTrackerAction->setEnabled(
-        editingSupported && isValidTorrentKey(torrentKey));
+        editingSupported && isValidTorrentKey(torrentKey) && trackersLoaded);
 
     QAction *editTrackerAction = menu.addAction(tr("Edit Tracker…"));
     editTrackerAction->setVisible(editingSupported);

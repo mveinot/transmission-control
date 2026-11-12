@@ -187,9 +187,11 @@ void DelugeBackend::setServer(const QString &name, const QString &url,
     m_password = password;
     m_filePrioritiesByKey.clear();
     m_filePriorityUpdatesByKey.clear();
+    m_filePrioritySnapshotRevisions.clear();
     m_fileIndicesByKey.clear();
     m_trackersByKey.clear();
     m_trackerUpdatesByKey.clear();
+    m_trackerSnapshotRevisions.clear();
     m_propertiesByKey.clear();
     m_sessionConfig = {};
     m_authenticated = false;
@@ -290,6 +292,14 @@ void DelugeBackend::postTorrentStatus(RequestKind kind,
     context.kind = kind;
     context.method = QStringLiteral("core.get_torrent_status");
     context.torrentKey = torrentKey;
+    if (kind == RequestKind::TorrentFiles) {
+        context.filePrioritySnapshotRevision =
+            m_filePrioritySnapshotRevisions.value(torrentKey, 0);
+    }
+    if (kind == RequestKind::TorrentTrackers) {
+        context.trackerSnapshotRevision =
+            m_trackerSnapshotRevisions.value(torrentKey, 0);
+    }
     context.parameters = QJsonArray{torrentKey, fields};
     queueOrPostRpc(context);
 }
@@ -807,6 +817,14 @@ void DelugeBackend::handleTorrentStatus(const RequestContext &context,
     }
 
     if (context.kind == RequestKind::TorrentFiles) {
+        // Do not let a file snapshot from before or during a priority edit
+        // revert the visible file model or either of its related caches.
+        if (m_filePriorityUpdatesByKey.contains(context.torrentKey)
+            || context.filePrioritySnapshotRevision
+                   != m_filePrioritySnapshotRevisions.value(context.torrentKey, 0)) {
+            return;
+        }
+
         TorrentFiles files;
         files.key = context.torrentKey;
         files.downloadDirectory =
@@ -841,9 +859,7 @@ void DelugeBackend::handleTorrentStatus(const RequestContext &context,
             cachedPriorities.append(nativePriority);
             cachedIndices.insert(file.path, file.index);
         }
-        if (!m_filePriorityUpdatesByKey.contains(context.torrentKey)) {
-            m_filePrioritiesByKey.insert(context.torrentKey, cachedPriorities);
-        }
+        m_filePrioritiesByKey.insert(context.torrentKey, cachedPriorities);
         m_fileIndicesByKey.insert(context.torrentKey, cachedIndices);
         emit torrentFilesReceived(files);
         return;
@@ -884,6 +900,14 @@ void DelugeBackend::handleTorrentStatus(const RequestContext &context,
     }
 
     if (context.kind == RequestKind::TorrentTrackers) {
+        // A response requested before or during a tracker edit must not
+        // overwrite the cache after that edit has committed.
+        if (m_trackerUpdatesByKey.contains(context.torrentKey)
+            || context.trackerSnapshotRevision
+                   != m_trackerSnapshotRevisions.value(context.torrentKey, 0)) {
+            return;
+        }
+
         TorrentTrackers trackers;
         trackers.key = context.torrentKey;
         const QJsonArray nativeTrackers =
@@ -899,8 +923,7 @@ void DelugeBackend::handleTorrentStatus(const RequestContext &context,
             tracker.host = QUrl(tracker.announceUrl).host();
             trackers.trackers.append(tracker);
         }
-        if (!m_trackerUpdatesByKey.contains(context.torrentKey))
-            m_trackersByKey.insert(context.torrentKey, nativeTrackers);
+        m_trackersByKey.insert(context.torrentKey, nativeTrackers);
         emit torrentTrackersReceived(trackers);
         return;
     }
@@ -1090,6 +1113,9 @@ void DelugeBackend::sendNextFilePriorityUpdate(const TorrentKey &torrentKey)
     for (int value : priorities)
         native.append(value);
 
+    // Invalidate file snapshots already in flight. A completion bump also
+    // invalidates snapshots started while this priority update was pending.
+    ++m_filePrioritySnapshotRevisions[torrentKey];
     stateIt->requestInFlight = true;
 
     RequestContext context;
@@ -1121,6 +1147,10 @@ void DelugeBackend::finishFilePriorityUpdate(const RequestContext &context,
         return;
     }
 
+    // Keep reads made during a file-priority RPC from replacing the cache,
+    // regardless of whether the RPC succeeds or fails.
+    ++m_filePrioritySnapshotRevisions[context.torrentKey];
+
     if (succeeded) {
         m_filePrioritiesByKey.insert(context.torrentKey,
                                      context.filePriorities);
@@ -1141,6 +1171,13 @@ void DelugeBackend::queueTrackerEdit(const TorrentKey &torrentKey,
 {
     if (!isValidTorrentKey(torrentKey))
         return;
+
+    if (!m_trackersByKey.contains(torrentKey)) {
+        emit commandFailed(
+            QStringLiteral("torrent-set"),
+            tr("Refresh the tracker list before editing Deluge trackers."));
+        return;
+    }
 
     TrackerUpdateState &state = m_trackerUpdatesByKey[torrentKey];
     state.queuedEdits.append(edit);
@@ -1200,6 +1237,10 @@ void DelugeBackend::sendNextTrackerUpdate(const TorrentKey &torrentKey)
         break;
     }
 
+    // Invalidate tracker snapshots that were already in flight. A second
+    // revision bump on completion also invalidates snapshots started while
+    // the replacement request was pending.
+    ++m_trackerSnapshotRevisions[torrentKey];
     stateIt->requestInFlight = true;
     RequestContext context;
     context.kind = RequestKind::Command;
@@ -1225,8 +1266,37 @@ void DelugeBackend::finishTrackerUpdate(const RequestContext &context,
         return;
     }
 
-    if (succeeded)
+    // Discard reads issued while this replacement was in flight, whether it
+    // succeeded or failed, before the next queued edit is allowed to start.
+    ++m_trackerSnapshotRevisions[context.torrentKey];
+
+    const TrackerEdit completedEdit = stateIt->queuedEdits.first();
+    if (succeeded) {
         m_trackersByKey.insert(context.torrentKey, context.trackers);
+
+        // The UI identifies Deluge trackers by their current array position.
+        // A successful removal shifts every later position, so rebase queued
+        // edits against the newly committed list. Edits aimed at the removed
+        // tracker must be discarded rather than applied to its new occupant.
+        if (completedEdit.kind == TrackerEditKind::Remove) {
+            for (int index = 1; index < stateIt->queuedEdits.size();) {
+                TrackerEdit &queuedEdit = stateIt->queuedEdits[index];
+                if (queuedEdit.kind == TrackerEditKind::Add) {
+                    ++index;
+                    continue;
+                }
+
+                if (queuedEdit.trackerIndex == completedEdit.trackerIndex) {
+                    stateIt->queuedEdits.removeAt(index);
+                    continue;
+                }
+
+                if (queuedEdit.trackerIndex > completedEdit.trackerIndex)
+                    --queuedEdit.trackerIndex;
+                ++index;
+            }
+        }
+    }
 
     stateIt->requestInFlight = false;
     stateIt->queuedEdits.removeFirst();

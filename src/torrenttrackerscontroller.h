@@ -84,6 +84,7 @@ private:
     TorrentBackend *client = nullptr;
     QWidget *dialogParent = nullptr;
     TorrentKey torrentKey;
+    bool trackersLoaded = false;
     std::unique_ptr<TableColumnController> columnController;
     std::unique_ptr<TablePlaceholderController> placeholderController;
 };

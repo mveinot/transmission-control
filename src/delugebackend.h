@@ -112,6 +112,8 @@ private:
         quint64 addRequestId = 0;
         QString requestedPath;
         TorrentKey torrentKey;
+        quint64 filePrioritySnapshotRevision = 0;
+        quint64 trackerSnapshotRevision = 0;
         QVector<int> filePriorities;
         QJsonArray trackers;
         QJsonArray parameters;
@@ -156,9 +158,11 @@ private:
     QList<RequestContext> m_requestsPendingAfterAuthentication;
     QHash<TorrentKey, QVector<int>> m_filePrioritiesByKey;
     QHash<TorrentKey, FilePriorityUpdateState> m_filePriorityUpdatesByKey;
+    QHash<TorrentKey, quint64> m_filePrioritySnapshotRevisions;
     QHash<TorrentKey, QHash<QString, int>> m_fileIndicesByKey;
     QHash<TorrentKey, QJsonArray> m_trackersByKey;
     QHash<TorrentKey, TrackerUpdateState> m_trackerUpdatesByKey;
+    QHash<TorrentKey, quint64> m_trackerSnapshotRevisions;
     QHash<TorrentKey, TorrentProperties> m_propertiesByKey;
     QJsonObject m_sessionConfig;
     QString m_serverName;
