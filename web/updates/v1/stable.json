@@ -1,40 +1,40 @@
 {
   "schemaVersion": 1,
   "channel": "stable",
-  "version": "2.6.2",
-  "build": 501,
-  "displayVersion": "2.6.2.501",
+  "version": "2.6.9",
+  "build": 565,
+  "displayVersion": "2.6.9.565",
   "minimumMacOSVersion": "14.4",
   "packageType": "dmg",
-  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.6.2.501/Planetary-2.6.2.501-macOS-universal.dmg",
-  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.6.2.501",
-  "releaseNotesMarkdown": "**Full Changelog**: [v2.5.2.455...v2.6.2.501](https://github.com/mveinot/transmission-control/compare/v2.5.2.455...v2.6.2.501)\n\nFirst non-beta release featuring Linux and Windows distributables\n\n- Linux image is built against a base of Ubuntu 22.04 for reasonable compatibility\n- Windows release is not signed and will likely require allowing it through Windows Defender\n\n* Fix Linux tray icon visibility issue\n* Reorganization of source files, simplification of test build process\n* Improve Windows release packaging\n* Fix dock icon behaviour regression\n* Implement GUI toggle for automated update check\n\nPlease report any issues with any of the platform releases",
-  "sha256": "ed381fe227302be6ba53c992b8182ac482388846e94b592bae9b62b19133d6c4",
+  "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.6.9.565/Planetary-2.6.9.565-macOS-universal.dmg",
+  "releaseNotesUrl": "https://github.com/mveinot/transmission-control/releases/tag/v2.6.9.565",
+  "releaseNotesMarkdown": "Spent a lot of time find and correcting edge cases, inefficiencies and potential bugs. Not many user facing changes in this one, but it should be more robust and potentially more responsive.\n\n- More reliable backend updates and edits: qBittorrent responses are validated before they can clear or corrupt displayed data, and overlapping list refreshes are coalesced. Deluge file-priority and tracker edits are serialized and protected from stale snapshots. Transmission now validates add results before reporting success or deleting the source file.\n- Safer, more dependable torrent adds: Async add results are correlated with their options, so folder and rename choices stay with the correct torrent. File reads and URL downloads are size-bounded; malformed metadata such as negative or overflowing file sizes is rejected.\n- Watch folders recover better: Monitoring retries when folders are missing, keeps checking files while they settle, and avoids duplicate or lost adds when files change or monitoring/server settings change.\n- Stronger settings and server-data handling: Imports have size and type checks; exports use safer writes; and failed persistence is reported. Imported server URLs are validated, path mappings handle cross-platform separators consistently, and diagnostics redact credentials.\n- Smoother ongoing use: Polling slows while the app is in the tray. Piece progress and hidden Details-tab updates do less repeated work, and obsolete peer hostname lookups are canceled.\n\n**Full Changelog**: [v2.6.2.501...v2.6.9.565](https://github.com/mveinot/transmission-control/compare/v2.6.2.501...v2.6.9.565)",
+  "sha256": "9f51bb7244feae184f9841914be0a36dd3cb7448e8080817916b8c16c3e104ac",
   "artifacts": {
     "macos-universal": {
-      "version": "2.6.2",
-      "build": 501,
-      "displayVersion": "2.6.2.501",
+      "version": "2.6.9",
+      "build": 565,
+      "displayVersion": "2.6.9.565",
       "minimumMacOSVersion": "14.4",
       "packageType": "dmg",
-      "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.6.2.501/Planetary-2.6.2.501-macOS-universal.dmg",
-      "sha256": "ed381fe227302be6ba53c992b8182ac482388846e94b592bae9b62b19133d6c4"
+      "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.6.9.565/Planetary-2.6.9.565-macOS-universal.dmg",
+      "sha256": "9f51bb7244feae184f9841914be0a36dd3cb7448e8080817916b8c16c3e104ac"
     },
     "linux-x86_64": {
-      "version": "2.6.2",
-      "build": 501,
-      "displayVersion": "2.6.2.501",
+      "version": "2.6.9",
+      "build": 565,
+      "displayVersion": "2.6.9.565",
       "packageType": "appimage",
-      "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.6.2.501/Planetary-2.6.2.501-x86_64.AppImage",
-      "sha256": "b3da2ea4af7b4298da73f5b2bc89eaf74a40ff63e4bb244217c6ad9343dc321e"
+      "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.6.9.565/Planetary-2.6.9.565-x86_64.AppImage",
+      "sha256": "cc0bdfde53965e11aa1c9bfbc25d092895613597b354b48067b26077e787940b"
     },
     "windows-x86_64": {
-      "version": "2.6.2",
-      "build": 501,
-      "displayVersion": "2.6.2.501",
+      "version": "2.6.9",
+      "build": 567,
+      "displayVersion": "2.6.9.567",
       "packageType": "installer",
-      "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.6.2.501/Planetary-2.6.2.501-Windows-x64-Setup.exe",
-      "sha256": "0ca51263cc86c2d3818ba515813558962bff228affb813e7d6a6da4be232d664"
+      "downloadUrl": "https://github.com/mveinot/transmission-control/releases/download/v2.6.9.565/Planetary-2.6.9.567-Windows-x64-Setup.exe",
+      "sha256": "ccb2b06c89f31b3aa6c26a87d8990a8332253559c275e5448b87903fca3a8b3e"
     }
   }
 }
