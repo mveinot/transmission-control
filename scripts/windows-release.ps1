@@ -1,5 +1,6 @@
 param(
     [string]$SigningConfig = (Join-Path $PSScriptRoot 'windows-release.local.json'),
+    [switch]$Sign,
     [switch]$Unsigned,
     [switch]$CheckOnly,
     [ValidateRange(1,128)][int]$Jobs = 4
@@ -32,7 +33,9 @@ $releaseLock = $null
 try {
     New-Item -ItemType Directory -Path $distDir -Force | Out-Null
     $releaseLock = [IO.File]::Open((Join-Path $distDir 'windows-release.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
-    if (Test-Path -LiteralPath $SigningConfig -PathType Leaf) {
+    if ($Sign -and $Unsigned) { throw 'Choose either -Sign or -Unsigned, not both.' }
+    $signingEnabled = [bool]$Sign
+    if ($signingEnabled -and (Test-Path -LiteralPath $SigningConfig -PathType Leaf)) {
         $config = Get-Content -LiteralPath $SigningConfig -Raw | ConvertFrom-Json
         $allowed = @('PLANETARY_SIGN_PFX','PLANETARY_SIGN_PASSWORD_FILE','PLANETARY_SIGN_THUMBPRINT',
             'PLANETARY_SIGNTOOL','PLANETARY_TIMESTAMP_URL')
@@ -41,7 +44,6 @@ try {
             [Environment]::SetEnvironmentVariable($property.Name, [string]$property.Value, 'Process')
         }
     }
-    $signingEnabled = -not $Unsigned
     $signScript = Join-Path $PSScriptRoot 'windows-sign-file.ps1'
     if (-not (Test-Path -LiteralPath $installerCompiler -PathType Leaf)) { throw "Inno Setup not found: $installerCompiler" }
     if ($signingEnabled) {
@@ -103,15 +105,15 @@ try {
                 '-File', $signScript, $path)
         }
     } else {
-        Write-Warning 'Explicit -Unsigned mode: this package is not signed.'
+        Write-Warning 'Windows signing is disabled; this package is not signed.'
     }
 
     if (Test-Path -LiteralPath $installerCompiler -PathType Leaf) {
         $installerArgs = @()
-        # Each build signs a fresh uninstaller; do not reuse cached signing identities.
-        $signCache = Join-Path $distDir ('signing-' + [guid]::NewGuid().ToString('N'))
-        $installerArgs += "/DUninstallerSigningDir=$signCache"
         if ($signingEnabled) {
+            # Each signed build gets a fresh uninstaller; do not reuse cached identities.
+            $signCache = Join-Path $distDir ('signing-' + [guid]::NewGuid().ToString('N'))
+            $installerArgs += "/DUninstallerSigningDir=$signCache"
             $signScript = Join-Path $PSScriptRoot 'windows-sign-file.ps1'
             $signCommand = 'planetary=powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $q' + $signScript + '$q $f'
             $installerArgs += '/DSigningEnabled'
