@@ -56,6 +56,8 @@ inline constexpr const char *TorrentTableVerticalHeaderState =
     "ui/torrentTable/verticalHeaderState/v1";
 inline constexpr const char *TorrentTableVisibleColumns =
     "ui/torrentTable/visibleColumns/v2";
+inline constexpr const char *TorrentTableStatusSort =
+    "ui/torrentTable/statusSort/v1";
 inline constexpr const char *FileTreeHeaderState =
     "ui/fileTreeWidget/headerState/v6";
 inline constexpr const char *FileTreeVisibleColumns =

@@ -50,7 +50,7 @@ through the built-in theme set.
 
 ## Screenshots
 
-<a href="web/assets/screen2.webp"><img src="web/assets/screen2.webp" alt="Planetary torrent list with file details" width="100%"></a>
+<a href="web/assets/screen2.png"><img src="web/assets/screen2.png" alt="Planetary torrent list with file details" width="100%"></a>
 
 <table>
   <tr>

@@ -956,6 +956,7 @@ MainWindow::MainWindow(QWidget *parent)
     torrentFilterController = new TorrentFilterController(
         ui->listWidget,
         ui->editTorrentFilter,
+        ui->tableView,
         proxy,
         filterActions,
         this

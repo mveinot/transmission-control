@@ -16,6 +16,7 @@ class QLineEdit;
 class QListWidget;
 class QListWidgetItem;
 class QPoint;
+class QTableView;
 
 
 // Synchronizes toolbar actions, sidebar items, and TorrentSortProxyModel state.
@@ -39,6 +40,7 @@ public:
 
     explicit TorrentFilterController(QListWidget *filterList,
                                      QLineEdit *searchEdit,
+                                     QTableView *tableView,
                                      TorrentSortProxyModel *proxyModel,
                                      const Actions &actions,
                                      QObject *parent = nullptr);
@@ -69,6 +71,7 @@ private:
 
     QListWidget *m_filterList = nullptr;
     QLineEdit *m_searchEdit = nullptr;
+    QTableView *m_tableView = nullptr;
     TorrentSortProxyModel *m_proxy = nullptr;
     Actions m_actions;
     QStringList m_lastTrackerHosts;
@@ -117,6 +120,10 @@ private:
     void updateCheckedAction(TorrentSortProxyModel::StateFilter filter);
     void updateFilterItemCounts();
     void updateFilterStatusSignals();
+    void saveStatusSort(const QListWidgetItem *item,
+                        int column,
+                        Qt::SortOrder order) const;
+    void restoreStatusSort(TorrentSortProxyModel::StateFilter filter);
     void applySectionCollapseState();
     void setSectionCollapsed(ItemType type, bool collapsed);
     void copyFilterValueToClipboard(QListWidgetItem *item) const;

@@ -1,6 +1,7 @@
 #include "torrentfiltercontroller.h"
 #include "iconthememanager.h"
 #include "settingskeys.h"
+#include "torrentmodel.h"
 
 #include <QAbstractItemModel>
 #include <QAction>
@@ -18,6 +19,8 @@
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QSize>
+#include <QTableView>
+#include <QHeaderView>
 
 #include <algorithm>
 #include <array>
@@ -29,16 +32,63 @@ constexpr int FilterValueRole = Qt::UserRole + 1;
 constexpr int FilterBaseLabelRole = Qt::UserRole + 2;
 constexpr int FilterSectionRole = Qt::UserRole + 3;
 constexpr int FilterIconRole = Qt::UserRole + 4;
+
+QString statusSortId(TorrentSortProxyModel::StateFilter filter)
+{
+    switch (filter) {
+    case TorrentSortProxyModel::StateFilter::All:
+        return QStringLiteral("all");
+    case TorrentSortProxyModel::StateFilter::Downloading:
+        return QStringLiteral("downloading");
+    case TorrentSortProxyModel::StateFilter::Waiting:
+        return QStringLiteral("waiting");
+    case TorrentSortProxyModel::StateFilter::Completed:
+        return QStringLiteral("completed");
+    case TorrentSortProxyModel::StateFilter::Active:
+        return QStringLiteral("active");
+    case TorrentSortProxyModel::StateFilter::Inactive:
+        return QStringLiteral("inactive");
+    case TorrentSortProxyModel::StateFilter::Stopped:
+        return QStringLiteral("stopped");
+    case TorrentSortProxyModel::StateFilter::Error:
+        return QStringLiteral("error");
+    }
+    return QStringLiteral("all");
+}
+
+QPair<int, Qt::SortOrder> defaultStatusSort(
+    TorrentSortProxyModel::StateFilter filter)
+{
+    using Filter = TorrentSortProxyModel::StateFilter;
+    switch (filter) {
+    case Filter::Downloading:
+        return {TorrentModel::PercentDoneColumn, Qt::DescendingOrder};
+    case Filter::Waiting:
+        return {TorrentModel::QueueColumn, Qt::AscendingOrder};
+    case Filter::Completed:
+        return {TorrentModel::CompletedDateColumn, Qt::DescendingOrder};
+    case Filter::Active:
+        return {TorrentModel::RateDownloadColumn, Qt::DescendingOrder};
+    case Filter::All:
+    case Filter::Inactive:
+    case Filter::Stopped:
+    case Filter::Error:
+        return {TorrentModel::NameColumn, Qt::AscendingOrder};
+    }
+    return {TorrentModel::NameColumn, Qt::AscendingOrder};
+}
 }
 
 TorrentFilterController::TorrentFilterController(QListWidget *filterList,
                                                  QLineEdit *searchEdit,
+                                                 QTableView *tableView,
                                                  TorrentSortProxyModel *proxyModel,
                                                  const Actions &actions,
                                                  QObject *parent)
     : QObject(parent),
       m_filterList(filterList),
       m_searchEdit(searchEdit),
+      m_tableView(tableView),
       m_proxy(proxyModel),
       m_actions(actions)
 {
@@ -133,9 +183,23 @@ void TorrentFilterController::setup()
         });
 
     connect(m_filterList, &QListWidget::currentItemChanged,
-            this, [this](QListWidgetItem *current, QListWidgetItem *) {
+            this, [this](QListWidgetItem *current, QListWidgetItem *previous) {
+                if (previous && m_proxy)
+                    saveStatusSort(previous,
+                                   m_proxy->sortColumn(),
+                                   m_proxy->sortOrder());
                 applyCurrentListSelection(current);
             });
+
+    if (m_tableView && m_tableView->horizontalHeader()) {
+        connect(m_tableView->horizontalHeader(),
+                &QHeaderView::sortIndicatorChanged,
+                this,
+                [this](int column, Qt::SortOrder order) {
+                    if (m_filterList)
+                        saveStatusSort(m_filterList->currentItem(), column, order);
+                });
+    }
     connect(m_filterList, &QListWidget::itemClicked,
             this, [this](QListWidgetItem *item) {
                 if (!item
@@ -226,10 +290,15 @@ void TorrentFilterController::setStateFilter(TorrentSortProxyModel::StateFilter 
     if (!m_proxy)
         return;
 
+    if (m_filterList && m_filterList->currentItem())
+        saveStatusSort(m_filterList->currentItem(),
+                       m_proxy->sortColumn(), m_proxy->sortOrder());
+
     m_proxy->setStateFilter(filter);
     clearCategoricalFilters();
     updateCheckedAction(filter);
     selectStatusFilter(filter);
+    restoreStatusSort(filter);
     updateFilterStatusSignals();
 }
 
@@ -277,6 +346,7 @@ void TorrentFilterController::rebuildWithFilters(const QStringList &trackerHosts
         m_proxy->setStateFilter(TorrentSortProxyModel::StateFilter::All);
         clearCategoricalFilters();
         updateCheckedAction(TorrentSortProxyModel::StateFilter::All);
+        restoreStatusSort(TorrentSortProxyModel::StateFilter::All);
     }
 
     updateFilterItemCounts();
@@ -538,6 +608,7 @@ void TorrentFilterController::applyCurrentListSelection(QListWidgetItem *current
         m_proxy->setStateFilter(stateFilter);
         clearCategoricalFilters();
         updateCheckedAction(stateFilter);
+        restoreStatusSort(stateFilter);
         updateFilterStatusSignals();
         return;
     }
@@ -576,6 +647,54 @@ void TorrentFilterController::applyCurrentListSelection(QListWidgetItem *current
         updateCheckedAction(TorrentSortProxyModel::StateFilter::All);
         updateFilterStatusSignals();
     }
+}
+
+void TorrentFilterController::saveStatusSort(const QListWidgetItem *item,
+                                             int column,
+                                             Qt::SortOrder order) const
+{
+    if (!item || !m_proxy)
+        return;
+
+    if (intToType(item->data(FilterTypeRole).toInt()) != ItemType::Status)
+        return;
+
+    const auto filter = static_cast<TorrentSortProxyModel::StateFilter>(
+        item->data(FilterValueRole).toString().toInt());
+    if (column < 0 || column >= TorrentModel::ColumnCount)
+        return;
+
+    const QString base = QString::fromLatin1(SettingsKeys::TorrentTableStatusSort)
+                         + QLatin1Char('/') + statusSortId(filter);
+    QSettings settings;
+    settings.setValue(base + QStringLiteral("/column"), column);
+    settings.setValue(base + QStringLiteral("/order"), static_cast<int>(order));
+}
+
+void TorrentFilterController::restoreStatusSort(
+    TorrentSortProxyModel::StateFilter filter)
+{
+    if (!m_tableView || !m_proxy)
+        return;
+
+    const QString base = QString::fromLatin1(SettingsKeys::TorrentTableStatusSort)
+                         + QLatin1Char('/') + statusSortId(filter);
+    QSettings settings;
+    const bool hasSavedSort = settings.contains(base + QStringLiteral("/column"))
+                              && settings.contains(base + QStringLiteral("/order"));
+    const QPair<int, Qt::SortOrder> defaults = defaultStatusSort(filter);
+    const int column = hasSavedSort
+                           ? settings.value(base + QStringLiteral("/column")).toInt()
+                           : defaults.first;
+    const int orderValue = hasSavedSort
+                               ? settings.value(base + QStringLiteral("/order")).toInt()
+                               : static_cast<int>(defaults.second);
+    if (column < 0 || column >= TorrentModel::ColumnCount
+        || (orderValue != static_cast<int>(Qt::AscendingOrder)
+            && orderValue != static_cast<int>(Qt::DescendingOrder)))
+        return;
+
+    m_tableView->sortByColumn(column, static_cast<Qt::SortOrder>(orderValue));
 }
 
 void TorrentFilterController::selectStatusFilter(TorrentSortProxyModel::StateFilter filter)
