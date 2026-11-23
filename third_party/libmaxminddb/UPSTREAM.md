@@ -1,11 +1,11 @@
 # Upstream provenance
 
 - Project: libmaxminddb
-- Version: 1.14.0
+- Version: 1.14.1
 - Upstream: https://github.com/maxmind/libmaxminddb
-- Release tag: https://github.com/maxmind/libmaxminddb/releases/tag/1.14.0
-- Source archive SHA-256: `65ff92382c71ef6634b8c13e278651a2efa68f1de28ef3c31fc32369fa0bb3e3`
-- Imported: 2026-09-28
+- Release tag: https://github.com/maxmind/libmaxminddb/releases/tag/1.14.1
+- Source archive SHA-256: `ca5c87d41339f8bc4daabb53e8a9356b3c995f2d2419b85d7bff823b2ecc252d`
+- Imported: 2026-11-23
 
 The library source, public header, configuration template, license, notice,
 and upstream documentation are kept verbatim from the tagged archive.
