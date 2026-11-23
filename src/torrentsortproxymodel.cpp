@@ -32,6 +32,7 @@ bool TorrentSortProxyModel::lessThan(const QModelIndex &left, const QModelIndex 
     case TorrentModel::EtaColumn:
     case TorrentModel::QueueColumn:
     case TorrentModel::AddedColumn:
+    case TorrentModel::CompletedDateColumn:
     case TorrentModel::DownloadedEverColumn:
     case TorrentModel::UploadedEverColumn:
     case TorrentModel::SeedsColumn:

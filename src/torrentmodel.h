@@ -36,6 +36,7 @@ public:
         SeedsColumn,
         PeersConnectedColumn,
         PriorityColumn,
+        CompletedDateColumn,
         ColumnCount
     };
 

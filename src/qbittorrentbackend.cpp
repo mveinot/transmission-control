@@ -523,6 +523,8 @@ QJsonObject QBittorrentBackend::normalizeTorrent(const QJsonObject &source) {
   result.insert(QStringLiteral("totalSize"), totalSize);
   result.insert(QStringLiteral("addedDate"),
                 source.value(QStringLiteral("added_on")));
+  result.insert(QStringLiteral("doneDate"),
+                source.value(QStringLiteral("completion_on")));
   result.insert(QStringLiteral("downloadedEver"),
                 source.value(QStringLiteral("downloaded")));
   result.insert(QStringLiteral("uploadedEver"),

@@ -106,7 +106,8 @@ public:
                                      option.rect.top(),
                                      WantedCheckboxGutter,
                                      option.rect.height());
-            if (checkboxRect.contains(mouse->position().toPoint())) {
+            if (mouse->button() == Qt::LeftButton
+                && checkboxRect.contains(mouse->position().toPoint())) {
                 m_controller->toggleWanted(index);
                 return true;
             }

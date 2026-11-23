@@ -62,6 +62,7 @@ torrent::torrent(const QJsonValue &val)
     peers = obj.value("peers");
     sizeWhenDone = obj.value("sizeWhenDone").toDouble();
     addedDate = static_cast<qint64>(obj.value("addedDate").toDouble());
+    completedDate = static_cast<qint64>(obj.value("doneDate").toDouble());
     downloadedEver = static_cast<qint64>(obj.value("downloadedEver").toDouble());
     uploadedEver = static_cast<qint64>(obj.value("uploadedEver").toDouble());
     downloadDir = obj.value("downloadDir").toString().trimmed();
@@ -330,6 +331,19 @@ QString torrent::getAddedDate() const
 qint64 torrent::getAddedDateSecs() const
 {
     return addedDate;
+}
+
+QString torrent::getCompletedDate() const
+{
+    if (completedDate <= 0)
+        return QString();
+
+    return QDateTime::fromSecsSinceEpoch(completedDate).toString(QStringLiteral("yyyy-MM-dd HH:mm"));
+}
+
+qint64 torrent::getCompletedDateSecs() const
+{
+    return completedDate;
 }
 
 QString torrent::getDownloadedEver() const
@@ -620,6 +634,7 @@ bool torrent::sameDisplayData(const torrent &other) const
            && eta == other.eta
            && sizeWhenDone == other.sizeWhenDone
            && addedDate == other.addedDate
+           && completedDate == other.completedDate
            && downloadedEver == other.downloadedEver
            && uploadedEver == other.uploadedEver
            && downloadDir == other.downloadDir

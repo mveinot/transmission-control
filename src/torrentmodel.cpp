@@ -260,6 +260,9 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
         case AddedColumn:
             return t.getAddedDate();
 
+        case CompletedDateColumn:
+            return t.getCompletedDate();
+
         case DownloadedEverColumn:
             return t.getDownloadedEver();
 
@@ -351,6 +354,9 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
         case AddedColumn:
             return t.getAddedDateSecs();
 
+        case CompletedDateColumn:
+            return t.getCompletedDateSecs();
+
         case DownloadedEverColumn:
             return t.getDownloadedEverBytes();
 
@@ -385,6 +391,7 @@ QVariant TorrentModel::data(const QModelIndex &index, int role) const
         case EtaColumn:
         case QueueColumn:
         case AddedColumn:
+        case CompletedDateColumn:
         case DownloadedEverColumn:
         case UploadedEverColumn:
         case SeedsColumn:
@@ -466,6 +473,9 @@ QVariant TorrentModel::headerData(int section,
 
         case PriorityColumn:
             return "Priority";
+
+        case CompletedDateColumn:
+            return "Completed On";
 
         default:
             return {};

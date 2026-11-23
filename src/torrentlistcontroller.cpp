@@ -90,6 +90,7 @@ const QVector<TorrentColumnDefinition> &torrentColumnDefinitions()
         { TorrentModel::SeedsColumn, "seeds", false, true },
         { TorrentModel::PeersConnectedColumn, "peers", false, true },
         { TorrentModel::PriorityColumn, "priority", false, true },
+        { TorrentModel::CompletedDateColumn, "completedDate", false, true },
     };
 
     return definitions;

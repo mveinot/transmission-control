@@ -54,6 +54,8 @@ public:
     qint64 getSizeBytes() const;
     QString getAddedDate() const;
     qint64 getAddedDateSecs() const;
+    QString getCompletedDate() const;
+    qint64 getCompletedDateSecs() const;
     QString getDownloadedEver() const;
     qint64 getDownloadedEverBytes() const;
     QString getUploadedEver() const;
@@ -101,6 +103,7 @@ private:
     int eta = 0;
     double sizeWhenDone = 0.0;
     qint64 addedDate = 0;
+    qint64 completedDate = 0;
     qint64 downloadedEver = 0;
     qint64 uploadedEver = 0;
     QString downloadDir;

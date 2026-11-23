@@ -1178,6 +1178,7 @@ void TransmissionBackend::getTorrentList()
         "queuePosition",
         "bandwidthPriority",
         "addedDate",
+        "doneDate",
         "downloadedEver",
         "uploadedEver",
         "downloadDir",
