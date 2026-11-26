@@ -16,6 +16,8 @@
 #include <QClipboard>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QDesktopServices>
+#include <QFileInfo>
 #include <QFormLayout>
 #include <QHeaderView>
 #include <QItemSelectionModel>
@@ -34,6 +36,7 @@
 #include <QStyleOptionViewItem>
 #include <QTableView>
 #include <QtGlobal>
+#include <QUrl>
 #include <QVBoxLayout>
 #include <QVector>
 
@@ -462,6 +465,38 @@ void TorrentListController::clearCurrentTorrentDetails()
     m_currentBandwidthPriorityKnown = false;
 }
 
+void TorrentListController::setFolderMappingsProvider(
+    const std::function<QList<FolderMapping>()> &provider)
+{
+    m_folderMappingsProvider = provider;
+}
+
+void TorrentListController::openDestinationFolder(const QString &remotePath)
+{
+    const QList<FolderMapping> mappings = m_folderMappingsProvider
+        ? m_folderMappingsProvider() : QList<FolderMapping>{};
+    const QString localPath = FolderMappings::mapRemotePathToLocalPath(remotePath, mappings);
+    if (localPath.isEmpty()) {
+        QMessageBox::information(m_dialogParent, tr("No Folder Mapping"),
+            tr("Planetary could not map this remote download folder to a local folder.\n\nRemote path:\n%1")
+                .arg(remotePath));
+        return;
+    }
+
+    if (!QFileInfo(localPath).isDir()) {
+        QMessageBox::warning(m_dialogParent, tr("Folder Not Found"),
+            tr("The mapped download folder does not exist.\n\nRemote path:\n%1\n\nLocal folder:\n%2")
+                .arg(remotePath, QDir::toNativeSeparators(localPath)));
+        return;
+    }
+
+    if (!QDesktopServices::openUrl(QUrl::fromLocalFile(localPath))) {
+        QMessageBox::warning(m_dialogParent, tr("Open Folder Failed"),
+            tr("The operating system could not open this folder:\n\n%1")
+                .arg(QDir::toNativeSeparators(localPath)));
+    }
+}
+
 void TorrentListController::setDefaultDownloadDir(const QString &downloadDir)
 {
     m_defaultDownloadDir = downloadDir.trimmed();
@@ -679,6 +714,13 @@ void TorrentListController::showContextMenu(const QPoint &pos)
     QAction *moveBottomAction = queueMenu->addAction(tr("Move to Bottom"));
 
     menu.addSeparator();
+
+    const QString downloadDir = index.siblingAtColumn(TorrentModel::DownloadDirColumn)
+        .data(Qt::DisplayRole).toString();
+    QAction *openDestinationAction = menu.addAction(tr("Open Destination Folder"));
+    openDestinationAction->setEnabled(hasSingleSelection && !downloadDir.isEmpty());
+    connect(openDestinationAction, &QAction::triggered, this,
+            [this, downloadDir]() { openDestinationFolder(downloadDir); });
 
     QAction *setLocationAction = menu.addAction(tr("Set Location…"));
     setLocationAction->setVisible(capabilities.torrentLocation);

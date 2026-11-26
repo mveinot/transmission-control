@@ -68,8 +68,6 @@ private:
                                              QString *localPath,
                                              QString *remotePath = nullptr,
                                              bool requireFileExists = true);
-    QString mapRemotePathToLocalPath(const QString &remotePath,
-                                     const QList<FolderMapping> &mappings) const;
     void setSelectedFilesPriorityState(int priority, bool wanted);
     void updateSelectionState();
     void clearSelectionState();

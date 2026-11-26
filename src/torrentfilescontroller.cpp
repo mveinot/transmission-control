@@ -538,40 +538,6 @@ void TorrentFilesController::showContextMenu(const QPoint &pos)
     menu.exec(fileTreeWidget->viewport()->mapToGlobal(pos));
 }
 
-QString TorrentFilesController::mapRemotePathToLocalPath(
-    const QString &remotePath, const QList<FolderMapping> &mappings) const
-{
-    const QString normalizedRemotePath =
-        FolderMappings::normalizeRemotePath(remotePath);
-    if (normalizedRemotePath.isEmpty())
-        return {};
-    const FolderMapping *bestMatch = nullptr;
-    QString bestRemotePrefix;
-    for (const FolderMapping &mapping : mappings) {
-        const QString remotePrefix =
-            FolderMappings::normalizeRemotePath(mapping.remotePath);
-        if (remotePrefix.isEmpty())
-            continue;
-        const bool exact = normalizedRemotePath == remotePrefix;
-        const QString childPrefix = remotePrefix == QStringLiteral("/")
-            ? remotePrefix
-            : remotePrefix + QLatin1Char('/');
-        const bool child = normalizedRemotePath.startsWith(childPrefix)
-            && normalizedRemotePath != remotePrefix;
-        if ((exact || child) && (!bestMatch || remotePrefix.length() > bestRemotePrefix.length())) {
-            bestMatch = &mapping;
-            bestRemotePrefix = remotePrefix;
-        }
-    }
-    if (!bestMatch)
-        return {};
-    const QString localPrefix = QDir::cleanPath(bestMatch->localPath.trimmed());
-    QString suffix = normalizedRemotePath.mid(bestRemotePrefix.length());
-    if (suffix.startsWith(QLatin1Char('/')))
-        suffix.remove(0, 1);
-    return suffix.isEmpty() ? localPrefix : QDir(localPrefix).filePath(suffix);
-}
-
 bool TorrentFilesController::resolveMappedLocalPathForSingleFile(
     const QList<int> &fileIndices, const QString &dialogTitle,
     QString *localPath, QString *remotePath, bool requireFileExists)
@@ -601,7 +567,7 @@ bool TorrentFilesController::resolveMappedLocalPathForSingleFile(
         QDir::cleanPath(torrentDownloadDir + QLatin1Char('/') + relativePath);
     const QList<FolderMapping> mappings = folderMappingsProvider
         ? folderMappingsProvider() : QList<FolderMapping>();
-    const QString resolvedLocalPath = mapRemotePathToLocalPath(resolvedRemotePath, mappings);
+    const QString resolvedLocalPath = FolderMappings::mapRemotePathToLocalPath(resolvedRemotePath, mappings);
     if (remotePath)
         *remotePath = resolvedRemotePath;
     if (resolvedLocalPath.isEmpty()) {

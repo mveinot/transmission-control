@@ -880,13 +880,12 @@ MainWindow::MainWindow(QWidget *parent)
         this,
         this
         );
-    torrentFilesController->setFolderMappingsProvider(
-        [this]() {
-            return serverSelectionController
-                       ? serverSelectionController->currentFolderMappings()
-                       : QList<FolderMapping>{};
-        }
-        );
+    const auto folderMappingsProvider = [this]() {
+        return serverSelectionController
+            ? serverSelectionController->currentFolderMappings()
+            : QList<FolderMapping>{};
+    };
+    torrentFilesController->setFolderMappingsProvider(folderMappingsProvider);
     torrentFilesController->setup();
 
     connect(torrentFilesController,
@@ -996,6 +995,7 @@ MainWindow::MainWindow(QWidget *parent)
         ui->actionForce_Start_Torrent
         });
 
+    torrentListController->setFolderMappingsProvider(folderMappingsProvider);
     torrentListController->setCurrentDetailsDownloadDirProvider(
         [this]() { return torrentGeneralController->currentDownloadDir(); }
         );

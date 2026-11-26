@@ -8,6 +8,7 @@
 #include <functional>
 #include <memory>
 
+#include "foldermapping.h"
 #include "torrentkey.h"
 
 class QAction;
@@ -59,6 +60,7 @@ public:
                                   const QString &hashString,
                                   const QString &magnetLink);
     void clearCurrentTorrentDetails();
+    void setFolderMappingsProvider(const std::function<QList<FolderMapping>()> &provider);
     void setDefaultDownloadDir(const QString &downloadDir);
     void setSequentialDownloadSupported(bool supported);
     void setCurrentTorrentSequentialDownload(TorrentKey torrentKey, bool enabled, bool known);
@@ -113,6 +115,7 @@ private:
     int m_currentBandwidthPriority = 0;
     bool m_currentBandwidthPriorityKnown = false;
     QString m_defaultDownloadDir;
+    std::function<QList<FolderMapping>()> m_folderMappingsProvider;
     std::function<QString()> m_currentDetailsDownloadDirProvider;
     TorrentKey m_lastEmittedTorrentKey;
     bool m_torrentListLoaded = false;
@@ -121,6 +124,7 @@ private:
     QString m_torrentListLoadFailureMessage;
     std::unique_ptr<TablePlaceholderController> m_placeholderController;
 
+    void openDestinationFolder(const QString &remotePath);
     void invokeSelectedTorrentCommand(void (TorrentBackend::*command)(const QList<TorrentKey> &),
                                       const QString &message);
     void copyTextToClipboard(const QString &text,
