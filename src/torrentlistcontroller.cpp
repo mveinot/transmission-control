@@ -14,10 +14,13 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QClipboard>
+#include <QDesktopServices>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QDir>
 #include <QFormLayout>
 #include <QHeaderView>
+#include <QFileInfo>
 #include <QItemSelectionModel>
 #include <QLabel>
 #include <QLineEdit>
@@ -26,6 +29,7 @@
 #include <QModelIndex>
 #include <QPushButton>
 #include <QPair>
+#include <QProcess>
 #include <QSettings>
 #include <QSize>
 #include <QSizePolicy>
@@ -33,6 +37,7 @@
 #include <QStyle>
 #include <QStyleOptionViewItem>
 #include <QTableView>
+#include <QUrl>
 #include <QtGlobal>
 #include <QVBoxLayout>
 #include <QVector>
@@ -495,6 +500,117 @@ void TorrentListController::setCurrentDetailsDownloadDirProvider(const std::func
     m_currentDetailsDownloadDirProvider = provider;
 }
 
+void TorrentListController::setFolderMappingsProvider(
+    std::function<QList<FolderMapping>()> provider)
+{
+    m_folderMappingsProvider = std::move(provider);
+}
+
+QString TorrentListController::mappedDownloadFolder(
+    const TorrentKey &torrentKey) const
+{
+    if (!isValidTorrentKey(torrentKey) || !m_proxyModel
+        || !m_folderMappingsProvider)
+        return {};
+
+    const auto *model = qobject_cast<const TorrentModel *>(m_proxyModel->sourceModel());
+    if (!model)
+        return {};
+
+    const int sourceRow = model->rowForKey(torrentKey);
+    if (sourceRow < 0)
+        return {};
+
+    const QString remoteDownloadDir = model->getTorrent(sourceRow).getDownloadDir();
+    const QString localDownloadDir = FolderMappings::mapRemotePathToLocalPath(
+        remoteDownloadDir, m_folderMappingsProvider());
+    if (localDownloadDir.isEmpty())
+        return {};
+
+    const QFileInfo localInfo(localDownloadDir);
+    return localInfo.isDir() ? localInfo.absoluteFilePath() : QString();
+}
+
+void TorrentListController::openDownloadFolder(const TorrentKey &torrentKey)
+{
+    const QString localDownloadDir = mappedDownloadFolder(torrentKey);
+    if (localDownloadDir.isEmpty())
+        return;
+
+    QString itemPath;
+    const auto *model = m_proxyModel
+        ? qobject_cast<const TorrentModel *>(m_proxyModel->sourceModel())
+        : nullptr;
+    if (model) {
+        const int sourceRow = model->rowForKey(torrentKey);
+        if (sourceRow >= 0) {
+            const QString name = model->getTorrent(sourceRow).getName().trimmed();
+            const QFileInfo nameInfo(name);
+            const QString normalizedName = QDir::cleanPath(name);
+            if (!name.isEmpty() && !nameInfo.isAbsolute()
+                && normalizedName != QStringLiteral("..")
+                && !normalizedName.startsWith(QStringLiteral("../"))) {
+                const QString candidate = QDir(localDownloadDir).filePath(normalizedName);
+                const QFileInfo candidateInfo(candidate);
+                const QString canonicalRoot = QDir::fromNativeSeparators(
+                    QFileInfo(localDownloadDir).canonicalFilePath());
+                const QString canonicalCandidate = QDir::fromNativeSeparators(
+                    candidateInfo.canonicalFilePath());
+                const Qt::CaseSensitivity pathCaseSensitivity =
+#if defined(Q_OS_WIN)
+                    Qt::CaseInsensitive;
+#else
+                    Qt::CaseSensitive;
+#endif
+                if (candidateInfo.exists() && !canonicalRoot.isEmpty()
+                    && !canonicalCandidate.isEmpty()
+                    && canonicalCandidate.startsWith(
+                        canonicalRoot + (canonicalRoot.endsWith(QLatin1Char('/'))
+                                             ? QString() : QStringLiteral("/")),
+                        pathCaseSensitivity)
+                    && canonicalCandidate.compare(canonicalRoot,
+                                                  pathCaseSensitivity) != 0) {
+                    itemPath = canonicalCandidate;
+                }
+            }
+        }
+    }
+
+    bool opened = false;
+#if defined(Q_OS_MACOS)
+    if (!itemPath.isEmpty())
+        opened = QProcess::startDetached(
+            QStringLiteral("/usr/bin/open"), {QStringLiteral("-R"), itemPath});
+#elif defined(Q_OS_WIN)
+    if (!itemPath.isEmpty())
+        opened = QProcess::startDetached(
+            QStringLiteral("explorer.exe"),
+            {QStringLiteral("/select,") + QDir::toNativeSeparators(itemPath)});
+#endif
+
+    // Qt has no portable reveal/select API. On Linux, and if native selection
+    // fails elsewhere, open the mapped download directory as a useful fallback.
+    QString openedPath = itemPath;
+    if (!opened) {
+        openedPath = localDownloadDir;
+        opened = QDesktopServices::openUrl(QUrl::fromLocalFile(localDownloadDir));
+    }
+
+    if (!opened) {
+        QMessageBox::warning(
+            m_dialogParent,
+            tr("Open Download Folder Failed"),
+            tr("The operating system could not open this folder:\n\n%1")
+                .arg(openedPath));
+        return;
+    }
+
+    emit statusMessageRequested(
+        tr("Opening folder %1")
+            .arg(QDir::toNativeSeparators(openedPath)),
+        3000);
+}
+
 void TorrentListController::handleTableClicked(const QModelIndex &proxyIndex)
 {
     Q_UNUSED(proxyIndex);
@@ -685,6 +801,15 @@ void TorrentListController::showContextMenu(const QPoint &pos)
     setLocationAction->setEnabled(
         capabilities.torrentLocation && hasSelection);
 
+    QAction *openDownloadFolderAction = nullptr;
+    if (hasSingleSelection) {
+        const QString localDownloadDir =
+            mappedDownloadFolder(contextTorrentIds.first());
+        if (!localDownloadDir.isEmpty())
+            openDownloadFolderAction =
+                menu.addAction(tr("Open Download Folder"));
+    }
+
     QAction *propertiesAction = menu.addAction(tr("Properties…"));
     propertiesAction->setEnabled(hasSingleSelection);
 
@@ -736,6 +861,12 @@ void TorrentListController::showContextMenu(const QPoint &pos)
             &QAction::triggered,
             this,
             &TorrentListController::setSelectedTorrentsLocation);
+
+    if (openDownloadFolderAction) {
+        const TorrentKey torrentKey = contextTorrentIds.first();
+        connect(openDownloadFolderAction, &QAction::triggered,
+                this, [this, torrentKey]() { openDownloadFolder(torrentKey); });
+    }
 
     connect(sequentialDownloadAction,
             &QAction::triggered,

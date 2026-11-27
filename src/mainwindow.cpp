@@ -999,6 +999,13 @@ MainWindow::MainWindow(QWidget *parent)
     torrentListController->setCurrentDetailsDownloadDirProvider(
         [this]() { return torrentGeneralController->currentDownloadDir(); }
         );
+    torrentListController->setFolderMappingsProvider(
+        [this]() {
+            return serverSelectionController
+                       ? serverSelectionController->currentFolderMappings()
+                       : QList<FolderMapping>{};
+        }
+        );
 
     ui->tableView->setItemDelegateForColumn(
         TorrentModel::PercentDoneColumn,

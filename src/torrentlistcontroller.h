@@ -8,6 +8,7 @@
 #include <functional>
 #include <memory>
 
+#include "foldermapping.h"
 #include "torrentkey.h"
 
 class QAction;
@@ -64,6 +65,8 @@ public:
     void setCurrentTorrentSequentialDownload(TorrentKey torrentKey, bool enabled, bool known);
     void setCurrentTorrentBandwidthPriority(TorrentKey torrentKey, int priority, bool known);
     void setCurrentDetailsDownloadDirProvider(const std::function<QString()> &provider);
+    void setFolderMappingsProvider(
+        std::function<QList<FolderMapping>()> provider);
 
 public slots:
     void handleTableClicked(const QModelIndex &proxyIndex);
@@ -114,6 +117,7 @@ private:
     bool m_currentBandwidthPriorityKnown = false;
     QString m_defaultDownloadDir;
     std::function<QString()> m_currentDetailsDownloadDirProvider;
+    std::function<QList<FolderMapping>()> m_folderMappingsProvider;
     TorrentKey m_lastEmittedTorrentKey;
     bool m_torrentListLoaded = false;
     bool m_connectingToServer = false;
@@ -134,6 +138,8 @@ private:
     void resetColumns();
     void configureHorizontalHeader();
     void updatePlaceholder();
+    QString mappedDownloadFolder(const TorrentKey &torrentKey) const;
+    void openDownloadFolder(const TorrentKey &torrentKey);
 };
 
 #endif // TORRENTLISTCONTROLLER_H
